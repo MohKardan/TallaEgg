@@ -1,0 +1,12 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\bin\Debug\net9.0\Rates.Core.deps.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\bin\Debug\net9.0\Rates.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\bin\Debug\net9.0\Rates.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\refint\Rates.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\Rates.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Core\obj\Debug\net9.0\ref\Rates.Core.dll

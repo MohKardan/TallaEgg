@@ -1,0 +1,8 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\TallaEgg.Api\obj\Debug\net9.0\TallaEgg.Api.csproj.AssemblyReference.cache

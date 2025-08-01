@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Orders.Core;
 using Orders.Infrastructure;
 using Orders.Application;
 
