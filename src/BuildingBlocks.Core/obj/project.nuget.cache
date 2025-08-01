@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "EvdNwMhwP75QKQrA8DUOBdKIxu2hSmk5kMl+FAG9mas+y0SXjgKg0qiXdiiebYETMlaHJpZQKOePTm+naJp3cA==",
+  "dgSpecHash": "3gAiRzVeyaG2Q+wO0N7E0nd0uMyU1FKcJlhBR/+7jMbkseWvk3ElBn9GnGoPnZixe5YEJ4x0MuNzOGTNz8rohg==",
   "success": true,
-  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\BuildingBlocks.Core\\BuildingBlocks.Core.csproj",
+  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\BuildingBlocks.Core\\BuildingBlocks.Core.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

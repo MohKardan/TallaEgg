@@ -1,32 +1,32 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\Rates.Infrastructure.csproj": {}
+    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\Rates.Infrastructure.csproj": {}
   },
   "projects": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\Rates.Infrastructure.csproj": {
+    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\Rates.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
         "projectName": "Rates.Infrastructure",
-        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
+        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net6.0"
+          "net9.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net6.0": {
-            "targetAlias": "net6.0",
+          "net9.0": {
+            "targetAlias": "net9.0",
             "projectReferences": {}
           }
         },
@@ -37,8 +37,8 @@
         }
       },
       "frameworks": {
-        "net6.0": {
-          "targetAlias": "net6.0",
+        "net9.0": {
+          "targetAlias": "net9.0",
           "imports": [
             "net461",
             "net462",

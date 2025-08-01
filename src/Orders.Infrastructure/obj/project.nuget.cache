@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ICdxjgJF5/on+udoSECVQ5rRTidmTZrWfKlzFpNySSV/zOHPLwrxhWwaB1+Eut7cObqeBL3WbuIc6RmPkUYRxg==",
+  "dgSpecHash": "2j08LCx7MToj91gYlHACz3gYDmoSQniYS/q6ix4aLo6CFEysTW8rYKOBPHu7U7BciDfOrQPmlcEW55sSfVgxig==",
   "success": true,
-  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Orders.Infrastructure\\Orders.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

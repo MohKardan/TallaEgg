@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "xRXyo4rQZUSy9t1nDfWwun3U3D3tf5va5o79MyFb2x4rDkgS+t12J9bTVhHWIiqNshvPtEPcArYB4RMYG8o7gQ==",
+  "dgSpecHash": "dZPC1Ag+V4V642HTLLHMJ0LrsglPuTUy7IBf5jmS8TtGpiTFQWgV07YWqEK3gMig+BsTnS87DIs7p808LGQ5lw==",
   "success": true,
-  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "izJYIxoYB1glTOEmeJ76KR+0Xbcj+7W508222+hobzKiFs3rpLxeG1toVRdCTRYa3s4dRbRT6H37hsGS+dmjug==",
+  "dgSpecHash": "kTJKvGx6oAltCmqbFXjhd904Tvml3cyq0rKEa71nOIC72NcIHNvpiiNnV3079yhb8eQIQegWJPheRajj9C2bLA==",
   "success": true,
-  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\Rates.Application\\Rates.Application.csproj",
+  "projectFilePath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Rates.Application\\Rates.Application.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }
