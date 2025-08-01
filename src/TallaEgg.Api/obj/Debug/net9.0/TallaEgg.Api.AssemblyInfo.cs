@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TallaEgg.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+aff1d35eb1ef636df0d3e77a7780c0d364f6c86e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7dddcf5f7c6007ee18f15ed5a41fbee9efc40805")]
 [assembly: System.Reflection.AssemblyProductAttribute("TallaEgg.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TallaEgg.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

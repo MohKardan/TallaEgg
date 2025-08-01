@@ -8,7 +8,8 @@ var builder = WebApplication.CreateBuilder(args);
 // تنظیم اتصال به دیتابیس SQL Server (در appsettings.json هم می‌توان قرار داد)
 builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
-        "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;"));
+        "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+        b => b.MigrationsAssembly("TallaEgg.Api")));
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();

@@ -13,8 +13,8 @@ public class OrdersDbContext : DbContext
     {
         modelBuilder.Entity<Order>().HasKey(o => o.Id);
         modelBuilder.Entity<Order>().Property(o => o.Asset).IsRequired();
-        modelBuilder.Entity<Order>().Property(o => o.Amount).IsRequired();
-        modelBuilder.Entity<Order>().Property(o => o.Price).IsRequired();
+        modelBuilder.Entity<Order>().Property(o => o.Amount).IsRequired().HasPrecision(18, 2);
+        modelBuilder.Entity<Order>().Property(o => o.Price).IsRequired().HasPrecision(18, 2);
         modelBuilder.Entity<Order>().Property(o => o.UserId).IsRequired();
         modelBuilder.Entity<Order>().Property(o => o.Type).IsRequired();
         modelBuilder.Entity<Order>().Property(o => o.CreatedAt).IsRequired();

@@ -27,8 +27,16 @@ class Program
         var botClient = new TelegramBotClient(botToken);
         var orderApi = new OrderApiClient(apiUrl);
 
+        // حذف webhook قبلی
+        await botClient.DeleteWebhookAsync();
+
         var me = await botClient.GetMeAsync();
         Console.WriteLine($"Bot Started: @{me.Username}");
+
+        var receiverOptions = new Telegram.Bot.Polling.ReceiverOptions
+        {
+            AllowedUpdates = Array.Empty<UpdateType>()
+        };
 
         botClient.StartReceiving(
             updateHandler: async (client, update, token) =>
@@ -40,10 +48,7 @@ class Program
                 Console.WriteLine($"Error: {ex.Message}");
                 return Task.CompletedTask;
             },
-            receiverOptions: new Telegram.Bot.Polling.ReceiverOptions
-            {
-                AllowedUpdates = Array.Empty<UpdateType>()
-            }
+            receiverOptions: receiverOptions
         );
 
         Console.WriteLine("Press any key to stop...");
@@ -81,7 +86,7 @@ class Program
                 Asset = asset,
                 Amount = amount,
                 Price = price,
-                UserId = GuidFromTelegramId(message.From.Id),
+                UserId = GuidFromTelegramId(message.From?.Id ?? 0),
                 Type = "BUY"
             };
 
