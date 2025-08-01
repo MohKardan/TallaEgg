@@ -16,16 +16,24 @@ class Program
             .Build();
 
         var botToken = config["TelegramBotToken"];
-        var apiUrl = config["OrderApiUrl"];
+        var orderApiUrl = config["OrderApiUrl"];
+        var usersApiUrl = config["UsersApiUrl"];
+        var affiliateApiUrl = config["AffiliateApiUrl"];
+        var pricesApiUrl = config["PricesApiUrl"];
 
-        if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(apiUrl))
+        if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(orderApiUrl) || 
+            string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl))
         {
-            Console.WriteLine("توکن یا آدرس API تنظیم نشده است.");
+            Console.WriteLine("توکن یا آدرس‌های API تنظیم نشده است.");
             return;
         }
 
         var botClient = new TelegramBotClient(botToken);
-        var orderApi = new OrderApiClient(apiUrl);
+        var orderApi = new OrderApiClient(orderApiUrl);
+        var usersApi = new UsersApiClient(usersApiUrl);
+        var affiliateApi = new AffiliateApiClient(affiliateApiUrl);
+        var priceApi = new PriceApiClient(pricesApiUrl);
+        var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi);
 
         // حذف webhook قبلی
         await botClient.DeleteWebhookAsync();
@@ -35,13 +43,13 @@ class Program
 
         var receiverOptions = new Telegram.Bot.Polling.ReceiverOptions
         {
-            AllowedUpdates = Array.Empty<UpdateType>()
+            AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery }
         };
 
         botClient.StartReceiving(
             updateHandler: async (client, update, token) =>
             {
-                await HandleUpdateAsync(client, update, orderApi);
+                await HandleUpdateAsync(client, update, botHandler);
             },
             pollingErrorHandler: (client, ex, token) =>
             {
@@ -55,55 +63,22 @@ class Program
         Console.ReadKey();
     }
 
-    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, OrderApiClient orderApi)
+    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, BotHandler botHandler)
     {
-        if (update.Message is not { } message || message.Text is not { } msgText)
-            return;
-
-        if (msgText.StartsWith("/buy", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var parts = msgText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 4)
+            if (update.Message != null)
             {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "فرمت صحیح: /buy [Asset] [Amount] [Price]");
-                return;
+                await botHandler.HandleUpdateAsync(update);
             }
-
-            var asset = parts[1];
-            if (!decimal.TryParse(parts[2], out var amount))
+            else if (update.CallbackQuery != null)
             {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "مقدار (Amount) باید عدد باشد.");
-                return;
+                await botHandler.HandleCallbackQueryAsync(update.CallbackQuery);
             }
-            if (!decimal.TryParse(parts[3], out var price))
-            {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "قیمت (Price) باید عدد باشد.");
-                return;
-            }
-
-            var order = new OrderDto
-            {
-                Asset = asset,
-                Amount = amount,
-                Price = price,
-                UserId = GuidFromTelegramId(message.From?.Id ?? 0),
-                Type = "BUY"
-            };
-
-            var (success, resultMsg) = await orderApi.SubmitOrderAsync(order);
-            await botClient.SendTextMessageAsync(message.Chat.Id, resultMsg);
         }
-        else
+        catch (Exception ex)
         {
-            await botClient.SendTextMessageAsync(message.Chat.Id,
-                "برای ثبت سفارش خرید، از دستور زیر استفاده کنید:\n/buy [Asset] [Amount] [Price]\nمثال: /buy Gold 2 5300000");
+            Console.WriteLine($"Error handling update: {ex.Message}");
         }
-    }
-
-    static Guid GuidFromTelegramId(long telegramId)
-    {
-        var bytes = new byte[16];
-        BitConverter.GetBytes(telegramId).CopyTo(bytes, 0);
-        return new Guid(bytes);
     }
 }
