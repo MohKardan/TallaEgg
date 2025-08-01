@@ -17,12 +17,17 @@ var host = Host.CreateDefaultBuilder(args)
         
         // Telegram Bot Client
         var botToken = configuration["TelegramBotToken"];
-        if (string.IsNullOrEmpty(botToken))
+        if (string.IsNullOrEmpty(botToken) || botToken == "YOUR_BOT_TOKEN_HERE")
         {
-            throw new InvalidOperationException("TelegramBotToken is not configured");
+            Console.WriteLine("⚠️  Warning: TelegramBotToken is not configured. Bot will not function properly.");
+            Console.WriteLine("   Please set a valid bot token in appsettings.json");
+            // Use a dummy token for development
+            services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient("dummy_token"));
         }
-        
-        services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient(botToken));
+        else
+        {
+            services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient(botToken));
+        }
         
         // HTTP Client
         services.AddHttpClient();
