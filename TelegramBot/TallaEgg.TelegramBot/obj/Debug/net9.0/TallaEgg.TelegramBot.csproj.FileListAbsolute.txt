@@ -1,0 +1,6 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.csproj.AssemblyReference.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot\obj\Debug\net9.0\TallaEgg.TelegramBot.sourcelink.json
