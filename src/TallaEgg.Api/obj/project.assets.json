@@ -992,6 +992,11 @@
       "Orders.Application/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.7",
+          "Orders.Core": "1.0.0",
+          "Orders.Infrastructure": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/Orders.Application.dll": {}
         },
@@ -1012,6 +1017,11 @@
       "Orders.Infrastructure/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.7",
+          "Microsoft.EntityFrameworkCore.SqlServer": "9.0.7",
+          "Orders.Core": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/Orders.Infrastructure.dll": {}
         },

@@ -27,7 +27,14 @@
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj": {
+                "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj"
+              },
+              "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj"
+              }
+            }
           }
         },
         "warningProperties": {
@@ -45,6 +52,12 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -149,7 +162,11 @@
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
-            "projectReferences": {}
+            "projectReferences": {
+              "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj": {
+                "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj"
+              }
+            }
           }
         },
         "warningProperties": {
@@ -167,6 +184,16 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

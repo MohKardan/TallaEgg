@@ -988,6 +988,16 @@
             "rid": "win"
           }
         }
+      },
+      "Orders.Core/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/Orders.Core.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Orders.Core.dll": {}
+        }
       }
     }
   },
@@ -2738,12 +2748,18 @@
         "system.windows.extensions.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "Orders.Core/1.0.0": {
+      "type": "project",
+      "path": "../Orders.Core/Orders.Core.csproj",
+      "msbuildProject": "../Orders.Core/Orders.Core.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net9.0": [
       "Microsoft.EntityFrameworkCore >= 9.0.7",
-      "Microsoft.EntityFrameworkCore.SqlServer >= 9.0.7"
+      "Microsoft.EntityFrameworkCore.SqlServer >= 9.0.7",
+      "Orders.Core >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -2772,7 +2788,11 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj": {
+              "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
