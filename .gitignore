@@ -709,3 +709,5 @@ chocolatey/
 # Keep important configuration templates
 !*.config.template
 !*.json.template
+bin/
+obj/

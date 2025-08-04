@@ -1,8 +1,0 @@
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.csproj.AssemblyReference.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\rpswa.dswa.cache.json
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.AssemblyInfoInputs.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.AssemblyInfo.cs
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.csproj.CoreCompileInputs.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Api\obj\Debug\net8.0\Matching.Api.sourcelink.json
