@@ -1,4 +1,5 @@
 using Matching.Core;
+using Wallet.Core;
 
 namespace Matching.Application;
 
@@ -222,9 +223,9 @@ public class MatchingEngine
 }
 
 // Interface for wallet service (will be implemented in Wallet service)
-public interface IWalletService
-{
-    Task<decimal> GetBalanceAsync(Guid userId, string asset);
-    Task<bool> CreditAsync(Guid userId, string asset, decimal amount);
-    Task<bool> DebitAsync(Guid userId, string asset, decimal amount);
-} 
+//public interface IWalletService
+//{
+//    Task<decimal> GetBalanceAsync(Guid userId, string asset);
+//    Task<bool> CreditAsync(Guid userId, string asset, decimal amount);
+//    Task<bool> DebitAsync(Guid userId, string asset, decimal amount);
+//} 

@@ -3,6 +3,7 @@ using Matching.Core;
 using Matching.Infrastructure;
 using Matching.Application;
 using Wallet.Application;
+using Wallet.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
