@@ -92,4 +92,47 @@ public class UserService : IUserService
     {
         return await _userRepository.ExistsByTelegramIdAsync(telegramId);
     }
+
+    public async Task<User> CreateRootUserAsync()
+    {
+        var rootUser = new User
+        {
+            Id = Guid.NewGuid(),
+            TelegramId = 123456789,
+            Username = "admin",
+            FirstName = "مدیر",
+            LastName = "سیستم",
+            Role = UserRole.Root,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true,
+            InvitationCode = "ROOT2024"
+        };
+
+        return await _userRepository.CreateAsync(rootUser);
+    }
+
+    public async Task<string> GenerateInvitationCodeAsync(Guid userId)
+    {
+        var code = $"INV{DateTime.Now:yyyyMMdd}{Random.Shared.Next(1000, 9999)}";
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user != null)
+        {
+            user.InvitationCodeGenerated = code;
+            await _userRepository.UpdateAsync(user);
+        }
+        return code;
+    }
+
+    public async Task<bool> IsUserAdminAsync(long telegramId)
+    {
+        var user = await _userRepository.GetByTelegramIdAsync(telegramId);
+        return user?.Role == UserRole.Admin || user?.Role == UserRole.Root;
+    }
+
+    public async Task<bool> IsUserRootAsync(long telegramId)
+    {
+        var user = await _userRepository.GetByTelegramIdAsync(telegramId);
+        return user?.Role == UserRole.Root;
+    }
 } 

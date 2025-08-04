@@ -10,6 +10,9 @@ public class Order
     public string Type { get; set; } = "BUY"; // BUY یا SELL
     public DateTime CreatedAt { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
+    public DateTime? CancelledAt { get; set; }
+    public string? CancelledBy { get; set; }
+    public string? CancellationReason { get; set; }
 }
 
 public enum OrderStatus

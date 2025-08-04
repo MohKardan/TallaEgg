@@ -39,4 +39,10 @@ public class OrderRepository : IOrderRepository
         // This would need to be implemented in the API
         throw new NotImplementedException();
     }
+
+    public async Task<Order> UpdateAsync(Order order)
+    {
+        // This would need to be implemented in the API
+        throw new NotImplementedException();
+    }
 } 
