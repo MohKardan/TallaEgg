@@ -18,6 +18,13 @@ public class UserRepository : IUserRepository
         return await _usersApiClient.GetUserByTelegramIdAsync(telegramId);
     }
 
+    public async Task<User?> GetByIdAsync(Guid userId)
+    {
+        // این متد باید در API پیاده‌سازی شود
+        // فعلاً null برمی‌گردانیم
+        return null;
+    }
+
     public async Task<User?> GetByInvitationCodeAsync(string invitationCode)
     {
         // This would need to be implemented in the API

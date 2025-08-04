@@ -110,6 +110,12 @@ public class BotHandler : IBotHandler
                 case "menu_help":
                     await ShowHelpMenu(chatId);
                     break;
+                case "menu_wallet":
+                    await ShowWalletMenu(chatId);
+                    break;
+                case "menu_history":
+                    await ShowHistoryMenu(chatId);
+                    break;
                 case "back_to_main":
                     await ShowMainMenu(chatId);
                     break;
@@ -253,6 +259,11 @@ public class BotHandler : IBotHandler
             {
                 InlineKeyboardButton.WithCallbackData("📊 حسابداری", "menu_accounting"),
                 InlineKeyboardButton.WithCallbackData("❓ راهنما", "menu_help")
+            },
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("💳 کیف پول", "menu_wallet"),
+                InlineKeyboardButton.WithCallbackData("📋 تاریخچه", "menu_history")
             }
         });
 
@@ -350,6 +361,58 @@ public class BotHandler : IBotHandler
         await _botClient.SendTextMessageAsync(chatId, helpText, replyMarkup: keyboard);
     }
 
+    private async Task ShowWalletMenu(long chatId)
+    {
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("💰 موجودی", "wallet_balance"),
+                InlineKeyboardButton.WithCallbackData("💸 واریز", "wallet_deposit")
+            },
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("💳 برداشت", "wallet_withdraw"),
+                InlineKeyboardButton.WithCallbackData("📊 تراکنشات", "wallet_transactions")
+            },
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("🔙 بازگشت", "menu_main")
+            }
+        });
+
+        await _botClient.SendTextMessageAsync(chatId,
+            "💳 کیف پول\n" +
+            "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+            replyMarkup: keyboard);
+    }
+
+    private async Task ShowHistoryMenu(long chatId)
+    {
+        var keyboard = new InlineKeyboardMarkup(new[]
+        {
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("📋 سفارشات", "history_orders"),
+                InlineKeyboardButton.WithCallbackData("💰 معاملات", "history_trades")
+            },
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("💳 تراکنشات", "history_transactions"),
+                InlineKeyboardButton.WithCallbackData("📊 گزارش", "history_report")
+            },
+            new []
+            {
+                InlineKeyboardButton.WithCallbackData("🔙 بازگشت", "menu_main")
+            }
+        });
+
+        await _botClient.SendTextMessageAsync(chatId,
+            "📋 تاریخچه\n" +
+            "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+            replyMarkup: keyboard);
+    }
+
     private async Task ShowPriceMenu(long chatId)
     {
         var keyboard = new InlineKeyboardMarkup(new[]
@@ -442,11 +505,20 @@ public class BotHandler : IBotHandler
         var orderPrice = orderType == "buy" ? price.BuyPrice : price.SellPrice;
         var orderTypeText = orderType == "buy" ? "خرید" : "فروش";
 
+        // ذخیره اطلاعات سفارش در session (در حالت واقعی باید از cache یا database استفاده شود)
+        var orderInfo = new
+        {
+            Asset = asset,
+            Type = orderType,
+            Price = orderPrice,
+            ChatId = chatId
+        };
+
         var message = $"📋 سفارش {orderTypeText} {asset}\n\n" +
                      $"💰 قیمت: {orderPrice:N0} تومان\n" +
                      $"📅 تاریخ: {DateTime.Now:yyyy/MM/dd}\n" +
                      $"⏰ ساعت: {DateTime.Now:HH:mm}\n\n" +
-                     $"برای تکمیل سفارش با ادمین تماس بگیرید.";
+                     $"لطفاً تعداد واحد مورد نظر خود را وارد کنید:";
 
         var keyboard = new InlineKeyboardMarkup(new[]
         {

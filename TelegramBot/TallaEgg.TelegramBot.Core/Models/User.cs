@@ -14,6 +14,8 @@ public class User
     public DateTime? LastActiveAt { get; set; }
     public bool IsActive { get; set; } = true;
     public UserStatus Status { get; set; } = UserStatus.Pending;
+    public UserRole Role { get; set; } = UserRole.User;
+    public string? InvitationCodeGenerated { get; set; }
 }
 
 public enum UserStatus
@@ -21,4 +23,11 @@ public enum UserStatus
     Pending,
     Active,
     Blocked
+}
+
+public enum UserRole
+{
+    User,
+    Admin,
+    Root
 } 

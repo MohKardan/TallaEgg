@@ -9,4 +9,8 @@ public interface IUserService
     Task<User?> GetUserByTelegramIdAsync(long telegramId);
     Task<User> UpdateUserPhoneAsync(long telegramId, string phoneNumber);
     Task<bool> UserExistsAsync(long telegramId);
+    Task<User> CreateRootUserAsync();
+    Task<string> GenerateInvitationCodeAsync(Guid userId);
+    Task<bool> IsUserAdminAsync(long telegramId);
+    Task<bool> IsUserRootAsync(long telegramId);
 } 

@@ -5,6 +5,7 @@ namespace TallaEgg.TelegramBot.Core.Interfaces;
 public interface IUserRepository
 {
     Task<User?> GetByTelegramIdAsync(long telegramId);
+    Task<User?> GetByIdAsync(Guid userId);
     Task<User?> GetByInvitationCodeAsync(string invitationCode);
     Task<User> CreateAsync(User user);
     Task<User> UpdateAsync(User user);
