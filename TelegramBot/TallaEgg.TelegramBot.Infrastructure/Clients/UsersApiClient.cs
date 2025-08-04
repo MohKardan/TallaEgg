@@ -13,7 +13,7 @@ public class UsersApiClient : IUsersApiClient
     public UsersApiClient(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _baseUrl = configuration["UsersApiUrl"] ?? "http://localhost:5136/api";
+        _baseUrl = configuration["UsersApiUrl"] ?? "https://localhost:7296/api";
     }
 
     public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)
@@ -82,6 +82,7 @@ public class UsersApiClient : IUsersApiClient
     {
         try
         {
+
             var response = await _httpClient.GetAsync($"{_baseUrl}/user/{telegramId}");
             
             if (response.IsSuccessStatusCode)
@@ -92,7 +93,7 @@ public class UsersApiClient : IUsersApiClient
 
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             return null;
         }

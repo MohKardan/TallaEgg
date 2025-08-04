@@ -1,7 +1,8 @@
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
-using Orders.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,15 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PriceService>();
 
 var app = builder.Build();
+
+
+
+// ثبت سفارش جدید توسط مشتری
+app.MapGet("/api/test", async () =>
+{
+    
+    return Results.Ok("ok");
+});
 
 // ثبت سفارش جدید توسط مشتری
 app.MapPost("/api/order", async (CreateOrderCommand cmd, CreateOrderCommandHandler handler) =>
@@ -107,6 +117,8 @@ app.MapPost("/api/prices", async (UpdatePriceRequest request, PriceService price
         return Results.BadRequest(new { message = ex.Message });
     }
 });
+
+
 
 app.Run();
 

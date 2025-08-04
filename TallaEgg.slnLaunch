@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "src\\TallaEgg.Api\\TallaEgg.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
