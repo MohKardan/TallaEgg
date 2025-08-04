@@ -3,6 +3,18 @@
   "WorkspaceRootPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{E6993CFB-0134-D7F9-B07E-E40B141CDE71}|src\\Wallet.Application\\Wallet.Application.csproj|c:\\users\\shahi\\documents\\github\\tallaegg\\src\\wallet.application\\walletservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{E6993CFB-0134-D7F9-B07E-E40B141CDE71}|src\\Wallet.Application\\Wallet.Application.csproj|solutionrelative:src\\wallet.application\\walletservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -23,12 +35,55 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Orders.Application.AssemblyInfo.cs",
+              "DocumentMoniker": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs",
+              "RelativeDocumentMoniker": "src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs",
+              "ToolTip": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs",
+              "RelativeToolTip": "src\\Orders.Application\\obj\\Debug\\net9.0\\Orders.Application.AssemblyInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T12:49:34.453Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "BuildingBlocks.Core.AssemblyInfo.cs",
+              "DocumentMoniker": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs",
+              "RelativeDocumentMoniker": "src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs",
+              "ToolTip": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs",
+              "RelativeToolTip": "src\\BuildingBlocks.Core\\obj\\Debug\\net9.0\\BuildingBlocks.Core.AssemblyInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T12:49:28.521Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": ".NETCoreApp,Version=v8.0.AssemblyAttributes.cs",
+              "DocumentMoniker": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs",
+              "RelativeDocumentMoniker": "src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs",
+              "ToolTip": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs",
+              "RelativeToolTip": "src\\Affiliate.Application\\obj\\Debug\\net8.0\\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-04T12:44:13.303Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "WalletService.cs",
               "DocumentMoniker": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Wallet.Application\\WalletService.cs",
               "RelativeDocumentMoniker": "src\\Wallet.Application\\WalletService.cs",
               "ToolTip": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Wallet.Application\\WalletService.cs",
               "RelativeToolTip": "src\\Wallet.Application\\WalletService.cs",
-              "ViewState": "AgIAAHcAAAAAAAAAAAAgwB0AAAAZAAAAAAAAAA==",
+              "ViewState": "AgIAAHcAAAAAAAAAAAA1wB0AAAAZAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-08-04T10:35:32.258Z",
               "EditorCaption": ""

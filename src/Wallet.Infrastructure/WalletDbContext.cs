@@ -7,22 +7,22 @@ public class WalletDbContext : DbContext
 {
     public WalletDbContext(DbContextOptions<WalletDbContext> options) : base(options) { }
 
-    public DbSet<Wallet> Wallets => Set<Wallet>();
+    public DbSet<WalletEntity> Wallets => Set<WalletEntity>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Wallet configuration
-        modelBuilder.Entity<Wallet>().HasKey(w => w.Id);
-        modelBuilder.Entity<Wallet>().Property(w => w.UserId).IsRequired();
-        modelBuilder.Entity<Wallet>().Property(w => w.Asset).IsRequired();
-        modelBuilder.Entity<Wallet>().Property(w => w.Balance).IsRequired().HasPrecision(18, 8);
-        modelBuilder.Entity<Wallet>().Property(w => w.LockedBalance).IsRequired().HasPrecision(18, 8);
-        modelBuilder.Entity<Wallet>().Property(w => w.CreatedAt).IsRequired();
-        modelBuilder.Entity<Wallet>().Property(w => w.UpdatedAt).IsRequired();
+        modelBuilder.Entity<WalletEntity>().HasKey(w => w.Id);
+        modelBuilder.Entity<WalletEntity>().Property(w => w.UserId).IsRequired();
+        modelBuilder.Entity<WalletEntity>().Property(w => w.Asset).IsRequired();
+        modelBuilder.Entity<WalletEntity>().Property(w => w.Balance).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<WalletEntity>().Property(w => w.LockedBalance).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<WalletEntity>().Property(w => w.CreatedAt).IsRequired();
+        modelBuilder.Entity<WalletEntity>().Property(w => w.UpdatedAt).IsRequired();
         
         // Unique constraint for user and asset combination
-        modelBuilder.Entity<Wallet>().HasIndex(w => new { w.UserId, w.Asset }).IsUnique();
+        modelBuilder.Entity<WalletEntity>().HasIndex(w => new { w.UserId, w.Asset }).IsUnique();
 
         // WalletTransaction configuration
         modelBuilder.Entity<WalletTransaction>().HasKey(wt => wt.Id);

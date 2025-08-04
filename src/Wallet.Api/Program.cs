@@ -12,24 +12,33 @@ builder.Services.AddDbContext<WalletDbContext>(options =>
         b => b.MigrationsAssembly("Wallet.Api")));
 
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
-builder.Services.AddScoped<WalletService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
+
+// اضافه کردن CORS
+builder.Services.AddCors();
 
 var app = builder.Build();
 
+// تنظیم CORS
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+
 // Wallet management endpoints
-app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string asset, WalletService walletService) =>
+app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string asset, IWalletService walletService) =>
 {
     var balance = await walletService.GetBalanceAsync(userId, asset);
     return Results.Ok(new { userId, asset, balance });
 });
 
-app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, WalletService walletService) =>
+app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     var wallets = await walletService.GetUserWalletsAsync(userId);
     return Results.Ok(wallets);
 });
 
-app.MapPost("/api/wallet/deposit", async (DepositRequest request, WalletService walletService) =>
+app.MapPost("/api/wallet/deposit", async (DepositRequest request, IWalletService walletService) =>
 {
     var result = await walletService.DepositAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
     return result.success ? 
@@ -37,7 +46,7 @@ app.MapPost("/api/wallet/deposit", async (DepositRequest request, WalletService 
         Results.BadRequest(new { success = false, message = result.message });
 });
 
-app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, WalletService walletService) =>
+app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, IWalletService walletService) =>
 {
     var result = await walletService.WithdrawAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
     return result.success ? 
@@ -45,7 +54,7 @@ app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, WalletServic
         Results.BadRequest(new { success = false, message = result.message });
 });
 
-app.MapPost("/api/wallet/transfer", async (TransferRequest request, WalletService walletService) =>
+app.MapPost("/api/wallet/transfer", async (TransferRequest request, IWalletService walletService) =>
 {
     var result = await walletService.TransferAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount);
     return result.success ? 
@@ -53,14 +62,14 @@ app.MapPost("/api/wallet/transfer", async (TransferRequest request, WalletServic
         Results.BadRequest(new { success = false, message = result.message });
 });
 
-app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asset, WalletService walletService) =>
+app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asset, IWalletService walletService) =>
 {
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);
     return Results.Ok(transactions);
 });
 
 // Internal wallet operations (for matching engine)
-app.MapPost("/api/wallet/internal/credit", async (CreditRequest request, WalletService walletService) =>
+app.MapPost("/api/wallet/internal/credit", async (CreditRequest request, IWalletService walletService) =>
 {
     var success = await walletService.CreditAsync(request.UserId, request.Asset, request.Amount);
     return success ? 
@@ -68,7 +77,7 @@ app.MapPost("/api/wallet/internal/credit", async (CreditRequest request, WalletS
         Results.BadRequest(new { success = false, message = "خطا در افزایش موجودی" });
 });
 
-app.MapPost("/api/wallet/internal/debit", async (DebitRequest request, WalletService walletService) =>
+app.MapPost("/api/wallet/internal/debit", async (DebitRequest request, IWalletService walletService) =>
 {
     var success = await walletService.DebitAsync(request.UserId, request.Asset, request.Amount);
     return success ? 

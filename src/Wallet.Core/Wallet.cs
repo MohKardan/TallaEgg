@@ -1,6 +1,6 @@
 namespace Wallet.Core;
 
-public class Wallet
+public class WalletEntity
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

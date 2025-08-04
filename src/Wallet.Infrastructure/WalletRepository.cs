@@ -12,13 +12,13 @@ public class WalletRepository : IWalletRepository
         _context = context;
     }
 
-    public async Task<Wallet?> GetWalletAsync(Guid userId, string asset)
+    public async Task<WalletEntity?> GetWalletAsync(Guid userId, string asset)
     {
         return await _context.Wallets
             .FirstOrDefaultAsync(w => w.UserId == userId && w.Asset == asset);
     }
 
-    public async Task<IEnumerable<Wallet>> GetUserWalletsAsync(Guid userId)
+    public async Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId)
     {
         return await _context.Wallets
             .Where(w => w.UserId == userId)
@@ -26,14 +26,14 @@ public class WalletRepository : IWalletRepository
             .ToListAsync();
     }
 
-    public async Task<Wallet> CreateWalletAsync(Wallet wallet)
+    public async Task<WalletEntity> CreateWalletAsync(WalletEntity wallet)
     {
         _context.Wallets.Add(wallet);
         await _context.SaveChangesAsync();
         return wallet;
     }
 
-    public async Task<Wallet> UpdateWalletAsync(Wallet wallet)
+    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet)
     {
         wallet.UpdatedAt = DateTime.UtcNow;
         _context.Wallets.Update(wallet);

@@ -4,3 +4,13 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.AssemblyInfo.cs
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.csproj.CoreCompileInputs.cache
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\bin\Debug\net8.0\Wallet.Infrastructure.deps.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\bin\Debug\net8.0\Wallet.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\bin\Debug\net8.0\Wallet.Infrastructure.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\bin\Debug\net8.0\Wallet.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\bin\Debug\net8.0\Wallet.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.I.AE2D343B.Up2Date
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\refint\Wallet.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\ref\Wallet.Infrastructure.dll

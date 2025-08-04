@@ -4,3 +4,13 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.Application.AssemblyInfo.cs
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.Application.csproj.CoreCompileInputs.cache
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.Application.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\bin\Debug\net8.0\Wallet.Application.deps.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\bin\Debug\net8.0\Wallet.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\bin\Debug\net8.0\Wallet.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\bin\Debug\net8.0\Wallet.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\bin\Debug\net8.0\Wallet.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.A.B937E800.Up2Date
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\refint\Wallet.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\Wallet.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Application\obj\Debug\net8.0\ref\Wallet.Application.dll

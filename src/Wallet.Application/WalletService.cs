@@ -27,7 +27,7 @@ public class WalletService : IWalletService
         if (wallet == null)
         {
             // Create new wallet
-            wallet = new Wallet
+            wallet = new WalletEntity
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
@@ -107,7 +107,7 @@ public class WalletService : IWalletService
         return await _walletRepository.UnlockBalanceAsync(userId, asset, amount);
     }
 
-    public async Task<IEnumerable<Wallet>> GetUserWalletsAsync(Guid userId)
+    public async Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId)
     {
         return await _walletRepository.GetUserWalletsAsync(userId);
     }

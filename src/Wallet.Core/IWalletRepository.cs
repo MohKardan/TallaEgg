@@ -3,10 +3,10 @@ namespace Wallet.Core;
 public interface IWalletRepository
 {
     // Wallet operations
-    Task<Wallet?> GetWalletAsync(Guid userId, string asset);
-    Task<IEnumerable<Wallet>> GetUserWalletsAsync(Guid userId);
-    Task<Wallet> CreateWalletAsync(Wallet wallet);
-    Task<Wallet> UpdateWalletAsync(Wallet wallet);
+    Task<WalletEntity?> GetWalletAsync(Guid userId, string asset);
+    Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId);
+    Task<WalletEntity> CreateWalletAsync(WalletEntity wallet);
+    Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet);
     Task<bool> LockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     
