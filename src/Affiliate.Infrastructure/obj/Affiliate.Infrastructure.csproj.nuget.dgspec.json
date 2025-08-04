@@ -1,31 +1,36 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj": {}
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj": {}
   },
   "projects": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj": {
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj",
         "projectName": "Affiliate.Core",
-        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj",
-        "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\obj\\",
+        "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj",
+        "packagesPath": "C:\\Users\\Ali\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages",
+          "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Ali\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Telerik UI for WPF.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -65,40 +70,45 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj": {
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj",
         "projectName": "Affiliate.Infrastructure",
-        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj",
-        "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Infrastructure\\obj\\",
+        "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Infrastructure\\Affiliate.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\Ali\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages",
+          "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Ali\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Telerik UI for WPF.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj": {
-                "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj"
+              "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj": {
+                "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Affiliate.Core\\Affiliate.Core.csproj"
               }
             }
           }
@@ -144,7 +154,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
