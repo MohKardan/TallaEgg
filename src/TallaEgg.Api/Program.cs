@@ -1,8 +1,7 @@
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
+using Orders.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,22 +23,11 @@ builder.Services.AddCors();
 
 var app = builder.Build();
 
-<<<<<<< HEAD
 // تنظیم CORS
 app.UseCors(builder => builder
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
-=======
-
-
-// ثبت سفارش جدید توسط مشتری
-app.MapGet("/api/test", async () =>
-{
-    
-    return Results.Ok("ok");
-});
->>>>>>> 60e2fe0099837aab95d6bdfb1610f034e25db0bd
 
 // ثبت سفارش جدید توسط مشتری
 app.MapPost("/api/order", async (CreateOrderCommand cmd, CreateOrderCommandHandler handler) =>
@@ -128,8 +116,6 @@ app.MapPost("/api/prices", async (UpdatePriceRequest request, PriceService price
         return Results.BadRequest(new { message = ex.Message });
     }
 });
-
-
 
 app.Run();
 

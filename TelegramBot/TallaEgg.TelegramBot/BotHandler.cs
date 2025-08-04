@@ -94,7 +94,7 @@ public class BotHandler
         }
 
         // Register user
-        var (success, regMessage, userId) = await _usersApi.RegisterUserAsync(
+        (bool success, string regMessage, Guid? userId) = await _usersApi.RegisterUserAsync(
             telegramId, 
             message.From?.Username, 
             message.From?.FirstName, 
@@ -140,7 +140,7 @@ public class BotHandler
             if (!phoneNumber.StartsWith("+"))
                 phoneNumber = "+" + phoneNumber;
 
-            var (success, updateMessage) = await _usersApi.UpdatePhoneAsync(telegramId, phoneNumber);
+            (bool success, string updateMessage) = await _usersApi.UpdatePhoneAsync(telegramId, phoneNumber);
             
             if (success)
             {

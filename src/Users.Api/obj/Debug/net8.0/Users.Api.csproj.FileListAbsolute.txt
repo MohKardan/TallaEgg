@@ -131,7 +131,6 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\staticwe
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\staticwebassets.build.json.cache
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\Users.Api.csproj.Up2Date
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\Users.Api.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Api\obj\Debug\net8.0\refint\Users.Api.dll

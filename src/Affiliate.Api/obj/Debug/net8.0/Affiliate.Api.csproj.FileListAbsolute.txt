@@ -131,7 +131,6 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\stat
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\staticwebassets.build.json.cache
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\staticwebassets.build.endpoints.json
-C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\Affiliat.3F6209B4.Up2Date
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\Affiliate.Api.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Affiliate.Api\obj\Debug\net8.0\refint\Affiliate.Api.dll
