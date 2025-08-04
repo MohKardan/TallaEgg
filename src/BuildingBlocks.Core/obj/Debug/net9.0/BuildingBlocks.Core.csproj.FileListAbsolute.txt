@@ -10,3 +10,15 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\refint\BuildingBlocks.Core.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.pdb
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\ref\BuildingBlocks.Core.dll
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\bin\Debug\net9.0\BuildingBlocks.Core.deps.json
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\bin\Debug\net9.0\BuildingBlocks.Core.dll
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\bin\Debug\net9.0\BuildingBlocks.Core.pdb
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.AssemblyInfoInputs.cache
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.AssemblyInfo.cs
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.csproj.CoreCompileInputs.cache
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.sourcelink.json
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.dll
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\refint\BuildingBlocks.Core.dll
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\BuildingBlocks.Core.pdb
+C:\Users\Ali\source\repos\TallaEgg\src\BuildingBlocks.Core\obj\Debug\net9.0\ref\BuildingBlocks.Core.dll

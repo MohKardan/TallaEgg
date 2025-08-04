@@ -170,6 +170,18 @@ namespace TallaEgg.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("5564f136-b9fb-4719-b4dc-b0833fa24761"),
+                            CreatedAt = new DateTime(2025, 8, 4, 12, 13, 43, 123, DateTimeKind.Local).AddTicks(4567),
+                            FirstName = "مدیر",
+                            InvitationCode = "admin",
+                            IsActive = true,
+                            LastName = "کل",
+                            TelegramId = 0L
+                        });
                 });
 
             modelBuilder.Entity("Orders.Core.Invitation", b =>

@@ -1,1 +1,5 @@
-{"Version":1,"ManifestType":"Build","Endpoints":[]}
+{
+  "Version": 1,
+  "ManifestType": "Build",
+  "Endpoints": []
+}

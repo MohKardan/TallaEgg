@@ -588,6 +588,12 @@
           }
         }
       },
+      "Microsoft.EntityFrameworkCore.Tools/9.0.7": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Design": "9.0.7"
+        }
+      },
       "Microsoft.Extensions.Caching.Abstractions/9.0.7": {
         "type": "package",
         "dependencies": {
@@ -2913,6 +2919,31 @@
         "microsoft.entityframeworkcore.sqlserver.nuspec"
       ]
     },
+    "Microsoft.EntityFrameworkCore.Tools/9.0.7": {
+      "sha512": "NyRRParn9vUQDkHDeWoPU1/+E+gcHTBQR4Nn5XZPxBE5t6CiXwzl3ag0a6Z2SfrGSPyDDVT39r2cz33ar2xsZg==",
+      "type": "package",
+      "path": "microsoft.entityframeworkcore.tools/9.0.7",
+      "hasTools": true,
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "docs/PACKAGE.md",
+        "microsoft.entityframeworkcore.tools.9.0.7.nupkg.sha512",
+        "microsoft.entityframeworkcore.tools.nuspec",
+        "tools/EntityFrameworkCore.PS2.psd1",
+        "tools/EntityFrameworkCore.PS2.psm1",
+        "tools/EntityFrameworkCore.psd1",
+        "tools/EntityFrameworkCore.psm1",
+        "tools/about_EntityFrameworkCore.help.txt",
+        "tools/init.ps1",
+        "tools/net472/any/ef.exe",
+        "tools/net472/win-arm64/ef.exe",
+        "tools/net472/win-x86/ef.exe",
+        "tools/netcoreapp2.0/any/ef.dll",
+        "tools/netcoreapp2.0/any/ef.runtimeconfig.json"
+      ]
+    },
     "Microsoft.Extensions.Caching.Abstractions/9.0.7": {
       "sha512": "30necCQehcg9lFkMEIE7HczcoYGML8GUH6jlincA18d896fLZM9wl5tpTPJHgzANQE/6KXRLZSWbgevgg5csSw==",
       "type": "package",
@@ -4735,51 +4766,59 @@
       "Microsoft.EntityFrameworkCore >= 9.0.7",
       "Microsoft.EntityFrameworkCore.Design >= 9.0.7",
       "Microsoft.EntityFrameworkCore.SqlServer >= 9.0.7",
+      "Microsoft.EntityFrameworkCore.Tools >= 9.0.7",
       "Orders.Application >= 1.0.0",
       "Orders.Core >= 1.0.0",
       "Orders.Infrastructure >= 1.0.0"
     ]
   },
   "packageFolders": {
-    "C:\\Users\\shahi\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "C:\\Users\\Ali\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
+    "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages": {},
+    "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\TallaEgg.Api\\TallaEgg.Api.csproj",
+      "projectUniqueName": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\TallaEgg.Api\\TallaEgg.Api.csproj",
       "projectName": "TallaEgg.Api",
-      "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\TallaEgg.Api\\TallaEgg.Api.csproj",
-      "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\TallaEgg.Api\\obj\\",
+      "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\TallaEgg.Api\\TallaEgg.Api.csproj",
+      "packagesPath": "C:\\Users\\Ali\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\TallaEgg.Api\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+        "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages",
+        "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Ali\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Telerik UI for WPF.config"
       ],
       "originalTargetFrameworks": [
         "net9.0"
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Application\\Orders.Application.csproj": {
-              "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Application\\Orders.Application.csproj"
+            "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Application\\Orders.Application.csproj": {
+              "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Application\\Orders.Application.csproj"
             },
-            "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj": {
-              "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj"
+            "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj": {
+              "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Core\\Orders.Core.csproj"
             },
-            "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj": {
-              "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj"
+            "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\src\\Orders.Infrastructure\\Orders.Infrastructure.csproj"
             }
           }
         }
@@ -4794,7 +4833,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.300"
+      "SdkAnalysisLevel": "9.0.200"
     },
     "frameworks": {
       "net9.0": {
@@ -4809,6 +4848,12 @@
             "version": "[9.0.7, )"
           },
           "Microsoft.EntityFrameworkCore.SqlServer": {
+            "target": "Package",
+            "version": "[9.0.7, )"
+          },
+          "Microsoft.EntityFrameworkCore.Tools": {
+            "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+            "suppressParent": "All",
             "target": "Package",
             "version": "[9.0.7, )"
           }
@@ -4832,7 +4877,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

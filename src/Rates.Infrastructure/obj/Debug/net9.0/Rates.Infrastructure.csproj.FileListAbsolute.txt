@@ -10,3 +10,15 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\refint\Rates.Infrastructure.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.pdb
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\ref\Rates.Infrastructure.dll
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\bin\Debug\net9.0\Rates.Infrastructure.deps.json
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\bin\Debug\net9.0\Rates.Infrastructure.dll
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\bin\Debug\net9.0\Rates.Infrastructure.pdb
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.AssemblyInfo.cs
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.sourcelink.json
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.dll
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\refint\Rates.Infrastructure.dll
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\Rates.Infrastructure.pdb
+C:\Users\Ali\source\repos\TallaEgg\src\Rates.Infrastructure\obj\Debug\net9.0\ref\Rates.Infrastructure.dll

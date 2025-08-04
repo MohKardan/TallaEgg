@@ -1,39 +1,44 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj": {}
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj": {}
   },
   "projects": {
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj": {
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj",
+        "projectUniqueName": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj",
         "projectName": "TallaEgg.TelegramBot.Application",
-        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj",
-        "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\obj\\",
+        "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\TallaEgg.TelegramBot.Application.csproj",
+        "packagesPath": "C:\\Users\\Ali\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Application\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages",
+          "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Ali\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Telerik UI for WPF.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj": {
-                "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj"
+              "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj": {
+                "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj"
               }
             }
           }
@@ -48,7 +53,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net9.0": {
@@ -69,32 +74,37 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj": {
+    "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj",
         "projectName": "TallaEgg.TelegramBot.Core",
-        "projectPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj",
-        "packagesPath": "C:\\Users\\shahi\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\shahi\\Documents\\GitHub\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\obj\\",
+        "projectPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\TallaEgg.TelegramBot.Core.csproj",
+        "packagesPath": "C:\\Users\\Ali\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Ali\\source\\repos\\TallaEgg\\TelegramBot\\TallaEgg.TelegramBot.Core\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+          "C:\\Program Files (x86)\\Syncfusion\\Essential Studio\\WPF\\29.1.33\\ToolboxNuGetPackages",
+          "C:\\Program Files (x86)\\Progress\\ToolboxNuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\shahi\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Ali\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Syncfusion Toolbox for WPF.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Telerik UI for WPF.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -113,7 +123,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net9.0": {
@@ -134,7 +144,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

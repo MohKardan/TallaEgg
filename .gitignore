@@ -1,0 +1,76 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+out/
+[Bb]uild/
+[Ll]og/
+TestResults/
+*.log
+
+
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+*.nuspec
+
+# Dotnet-specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.deps.json
+*.runtimeconfig.json
+
+# ASP.NET
+wwwroot/
+node_modules/
+bower_components/
+
+# Configuration files
+appsettings.*.json
+
+# Others
+*.db
+*.sqlite
+*.pdb
+*.mdb
+*.opendb
+*.cache
+*.tmp
+*.bak
+
+# Rider
+.idea/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+
+# Ignore test coverage results
+coverage/
+*.coverage
+*.coveragexml
+
+
