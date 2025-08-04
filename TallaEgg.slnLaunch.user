@@ -1,0 +1,31 @@
+[
+  {
+    "Name": "Run All",
+    "Projects": [
+      {
+        "Path": "src\\Rates.Infrastructure\\Rates.Infrastructure.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Orders.Infrastructure\\Orders.Infrastructure.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\TallaEgg.Api\\TallaEgg.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "TallaEgg.TelegramBot.Tests\\TallaEgg.TelegramBot.Tests.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "TelegramBot\\TallaEgg.TelegramBot\\TallaEgg.TelegramBot.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

@@ -18,7 +18,16 @@ builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PriceService>();
 
+// اضافه کردن CORS
+builder.Services.AddCors();
+
 var app = builder.Build();
+
+// تنظیم CORS
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // ثبت سفارش جدید توسط مشتری
 app.MapPost("/api/order", async (CreateOrderCommand cmd, CreateOrderCommandHandler handler) =>

@@ -1,0 +1,6 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Infrastructure\obj\Debug\net8.0\Wallet.Infrastructure.sourcelink.json

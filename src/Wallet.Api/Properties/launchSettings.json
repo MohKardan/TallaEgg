@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Wallet.Api": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:60932;http://localhost:60933"
+    }
+  }
+}

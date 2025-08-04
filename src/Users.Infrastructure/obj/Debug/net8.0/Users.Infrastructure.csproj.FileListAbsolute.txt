@@ -1,0 +1,16 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\bin\Debug\net8.0\Users.Infrastructure.deps.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\bin\Debug\net8.0\Users.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\bin\Debug\net8.0\Users.Infrastructure.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\bin\Debug\net8.0\Users.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\bin\Debug\net8.0\Users.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.In.B5616EE7.Up2Date
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\refint\Users.Infrastructure.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\Users.Infrastructure.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Users.Infrastructure\obj\Debug\net8.0\ref\Users.Infrastructure.dll

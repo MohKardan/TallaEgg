@@ -3,12 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Orders.Infrastructure;
 
-public interface IOrderRepository
-{
-    Task<Order> AddAsync(Order order);
-    Task<List<Order>> GetOrdersByAssetAsync(string asset);
-}
-
 public class OrderRepository : IOrderRepository
 {
     private readonly OrdersDbContext _db;

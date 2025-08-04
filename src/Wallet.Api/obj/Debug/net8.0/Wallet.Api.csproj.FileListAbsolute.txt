@@ -1,0 +1,8 @@
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.csproj.AssemblyReference.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\rpswa.dswa.cache.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Wallet.Api\obj\Debug\net8.0\Wallet.Api.sourcelink.json

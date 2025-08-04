@@ -1,9 +1,3 @@
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.csproj.AssemblyReference.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.AssemblyInfoInputs.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.AssemblyInfo.cs
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.csproj.CoreCompileInputs.cache
-C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.sourcelink.json
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\appsettings.json
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.exe
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.deps.json
@@ -47,6 +41,12 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infras
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\TallaEgg.TelegramBot.Core.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\TallaEgg.TelegramBot.Core.pdb
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\bin\Debug\net9.0\TallaEgg.TelegramBot.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.AssemblyInfo.cs
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.sourcelink.json
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.279DBA04.Up2Date
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\TallaEgg.TelegramBot.Infrastructure.dll
 C:\Users\shahi\Documents\GitHub\TallaEgg\TelegramBot\TallaEgg.TelegramBot.Infrastructure\obj\Debug\net9.0\refint\TallaEgg.TelegramBot.Infrastructure.dll

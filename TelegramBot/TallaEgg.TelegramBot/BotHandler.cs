@@ -85,11 +85,11 @@ public class BotHandler
     private async Task HandleInvitationCodeAsync(long chatId, long telegramId, string invitationCode, Message message)
     {
         // Validate invitation code
-        var (isValid, message) = await _affiliateApi.ValidateInvitationAsync(invitationCode);
+        (bool isValid, string strmessage) = await _affiliateApi.ValidateInvitationAsync(invitationCode);
         
         if (!isValid)
         {
-            await _botClient.SendTextMessageAsync(chatId, $"خطا: {message}");
+            await _botClient.SendTextMessageAsync(chatId, $"خطا: {strmessage}");
             return;
         }
 
@@ -107,7 +107,7 @@ public class BotHandler
         }
 
         // Use invitation
-        var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
+        (bool useSuccess, string useMessage, Guid? invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
         
         if (!useSuccess)
         {
