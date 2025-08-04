@@ -1,0 +1,131 @@
+# Ignore build and temp folders/files in all subdirectories
+**/bin/
+**/obj/
+**/TestResults/
+**/.vs/
+**/packages/
+**/artifacts/
+**/node_modules/
+**/coverage/
+**/publish/
+
+# Ignore user and IDE-specific files
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+**/.DS_Store
+**/Thumbs.db
+**/ehthumbs.db
+**/Desktop.ini
+**/.idea/
+
+# Ignore logs and temp files
+**/*.log
+**/*.tmp
+**/*.bak
+**/*.cache
+
+# Ignore database and migration files
+**/*.db
+**/*.sqlite
+**/*.pdb
+**/*.mdb
+**/*.opendb
+
+# Ignore configuration and environment files
+**/appsettings.*.json
+!**/appsettings.json
+**/.env
+**/.env.*
+
+# Ignore documentation and output
+**/doc/
+**/docs/
+
+# Ignore Docker override files
+**/docker-compose.override.yml
+
+# Ignore test coverage results
+**/*.coverage
+**/*.coveragexml
+
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+out/
+[Bb]uild/
+[Ll]og/
+TestResults/
+*.log
+
+
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+*.nuspec
+
+# Dotnet-specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.deps.json
+*.runtimeconfig.json
+
+# ASP.NET
+wwwroot/
+node_modules/
+bower_components/
+
+# Configuration files
+appsettings.*.json
+
+# Others
+*.db
+*.sqlite
+*.pdb
+*.mdb
+*.opendb
+*.cache
+*.tmp
+*.bak
+
+# Rider
+.idea/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+
+# Ignore test coverage results
+coverage/
+*.coverage
+*.coveragexml
+
+
+/.vs/TallaEgg/v17/.suo
+/.vs/TallaEgg/DesignTimeBuild/.dtbcache.v2

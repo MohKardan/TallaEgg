@@ -1,5 +1,6 @@
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Core.Models;
+using TallaEgg.TelegramBot.Core.Utilties;
 
 namespace TallaEgg.TelegramBot.Application.Services;
 
@@ -54,7 +55,7 @@ public class UserService : IUserService
             FirstName = firstName,
             LastName = lastName,
             InvitedByUserId = invitation.CreatedByUserId,
-            InvitationCode = invitationCode,
+            InvitationCode = Utils.GenerateSecureRandomString(5),
             CreatedAt = DateTime.UtcNow,
             LastActiveAt = DateTime.UtcNow,
             IsActive = true,

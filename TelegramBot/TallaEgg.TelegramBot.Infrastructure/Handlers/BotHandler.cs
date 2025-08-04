@@ -144,13 +144,13 @@ public class BotHandler : IBotHandler
     {
         var chatId = message.Chat.Id;
         var text = message.Text ?? "";
-        var parts = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var parts = text.Split('?', StringSplitOptions.RemoveEmptyEntries);
 
         if (parts.Length < 2)
         {
             await _botClient.SendTextMessageAsync(chatId, 
                 "لطفاً کد دعوت خود را وارد کنید:\n" +
-                "/start [کد_دعوت]");
+                "/start?[کد_دعوت]");
             return;
         }
 
