@@ -4,3 +4,17 @@ C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.Application.AssemblyInfo.cs
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.Application.csproj.CoreCompileInputs.cache
 C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.Application.sourcelink.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Matching.Application.deps.json
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Matching.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Matching.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Matching.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Wallet.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Wallet.Core.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Matching.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Wallet.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\bin\Debug\net8.0\Wallet.Core.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.80E72BE5.Up2Date
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\refint\Matching.Application.dll
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\Matching.Application.pdb
+C:\Users\shahi\Documents\GitHub\TallaEgg\src\Matching.Application\obj\Debug\net8.0\ref\Matching.Application.dll
