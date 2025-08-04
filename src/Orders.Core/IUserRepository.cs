@@ -4,6 +4,7 @@ public interface IUserRepository
 {
     Task<User?> GetByTelegramIdAsync(long telegramId);
     Task<User?> GetByInvitationCodeAsync(string invitationCode);
+    Task<Guid?> GetUserIdByInvitationCode(string invitationCode);
     Task<User> CreateAsync(User user);
     Task<User> UpdateAsync(User user);
     Task<bool> ExistsByTelegramIdAsync(long telegramId);

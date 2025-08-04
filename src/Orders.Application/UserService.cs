@@ -39,8 +39,8 @@ public class UserService
 
     public async Task<User> RegisterUserAsync(long telegramId, string? username, string? firstName, string? lastName, string invitationCode)
     {
-        var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
-        if (invitation == null)
+        var createdByUserId = await _userRepository.GetUserIdByInvitationCode(invitationCode);
+        if (createdByUserId == null)
         {
             throw new InvalidOperationException("کد دعوت نامعتبر است.");
         }
@@ -52,7 +52,7 @@ public class UserService
             Username = username,
             FirstName = firstName,
             LastName = lastName,
-            InvitedByUserId = invitation.CreatedByUserId,
+            InvitedByUserId = createdByUserId,
             InvitationCode = invitationCode,
             CreatedAt = DateTime.UtcNow,
             LastActiveAt = DateTime.UtcNow,
@@ -60,9 +60,14 @@ public class UserService
         };
 
         // Update invitation usage count
-        invitation.UsedCount++;
-        await _userRepository.UpdateInvitationAsync(invitation);
+        //invitation.UsedCount++;
+        //await _userRepository.UpdateInvitationAsync(invitation);
 
+        return await _userRepository.CreateAsync(user);
+    }
+
+    public async Task<User> RegisterUserAsync(User user)
+    {
         return await _userRepository.CreateAsync(user);
     }
 
@@ -89,4 +94,10 @@ public class UserService
     {
         return await _userRepository.ExistsByTelegramIdAsync(telegramId);
     }
+    public async Task<Guid?> GetUserIdByInvitationCode(string invitationCode)
+    {
+        return await _userRepository.GetUserIdByInvitationCode(invitationCode);
+    }
+
+
 } 

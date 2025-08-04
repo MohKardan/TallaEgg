@@ -64,4 +64,11 @@ public class UserRepository : IUserRepository
         await _context.SaveChangesAsync();
         return invitation;
     }
+
+    public async Task<Guid?> GetUserIdByInvitationCode(string invitationCode)
+    {
+       return await _context.Users
+            .Where(u => u.InvitationCode == invitationCode)
+            .Select(u => u.Id).FirstOrDefaultAsync();
+    }
 } 

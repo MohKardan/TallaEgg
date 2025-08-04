@@ -44,23 +44,41 @@ app.MapGet("/api/orders/{asset}", async (string asset, IOrderRepository repo) =>
 });
 
 // User management endpoints
+app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
+{
+    var id = await userService.GetUserIdByInvitationCode(invitationCode);
+    return Results.Ok(id);
+});
 app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
 {
     var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
     return Results.Ok(new { isValid = result.isValid, message = result.message });
 });
 
-app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
+//app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
+//{
+//    try
+//    {
+//        var user = await userService.RegisterUserAsync(
+//            request.TelegramId, 
+//            request.Username, 
+//            request.FirstName, 
+//            request.LastName, 
+//            request.InvitationCode);
+//        return Results.Ok(new { success = true, userId = user.Id });
+//    }
+//    catch (Exception ex)
+//    {
+//        return Results.BadRequest(new { success = false, message = ex.Message });
+//    }
+//});
+
+app.MapPost("/api/user/register", async (User user, UserService userService) =>
 {
     try
     {
-        var user = await userService.RegisterUserAsync(
-            request.TelegramId, 
-            request.Username, 
-            request.FirstName, 
-            request.LastName, 
-            request.InvitationCode);
-        return Results.Ok(new { success = true, userId = user.Id });
+        var res = await userService.RegisterUserAsync(user);
+        return Results.Ok(new { success = true, userId = res.Id });
     }
     catch (Exception ex)
     {

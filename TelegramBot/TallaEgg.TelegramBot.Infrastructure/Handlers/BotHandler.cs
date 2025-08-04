@@ -157,21 +157,22 @@ public class BotHandler : IBotHandler
         var invitationCode = parts[1];
         var user = await _userService.GetUserByTelegramIdAsync(message.From!.Id);
 
+        // یوزرقبلا ثبت نام کرده
         if (user != null)
         {
             await ShowMainMenu(chatId);
             return;
         }
 
-        var result = await _userService.ValidateInvitationCodeAsync(invitationCode);
-        var isValid = result.isValid;
-        var messageText = result.message;
+        //var result = await _userService.ValidateInvitationCodeAsync(invitationCode);
+        //var isValid = result.isValid;
+        //var messageText = result.message;
         
-        if (!isValid)
-        {
-            await _botClient.SendTextMessageAsync(chatId, messageText);
-            return;
-        }
+        //if (!isValid)
+        //{
+        //    await _botClient.SendTextMessageAsync(chatId, messageText);
+        //    return;
+        //}
 
         try
         {
@@ -189,7 +190,7 @@ public class BotHandler : IBotHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error registering user");
-            await _botClient.SendTextMessageAsync(chatId, "خطا در ثبت‌نام. لطفاً دوباره تلاش کنید.");
+            await _botClient.SendTextMessageAsync(chatId, ex.Message);
         }
     }
 

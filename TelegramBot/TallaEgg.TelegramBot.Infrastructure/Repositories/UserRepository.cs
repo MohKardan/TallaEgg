@@ -92,4 +92,14 @@ public class UserRepository : IUserRepository
         // This would need to be implemented in the API
         throw new NotImplementedException();
     }
+
+    public Task<(bool isValid, string message)> IsInvitationCodeValidAsync(string code)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
+    {
+          return await _usersApiClient.GetUserIdByInvitationCodeAsync(invitationCode); 
+    }
 } 

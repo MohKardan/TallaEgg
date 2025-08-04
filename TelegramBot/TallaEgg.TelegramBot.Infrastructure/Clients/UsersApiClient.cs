@@ -51,7 +51,7 @@ public class UsersApiClient : IUsersApiClient
                 Username = username,
                 FirstName = firstName,
                 LastName = lastName,
-                InvitationCode = invitationCode
+                InvitationCode = invitationCode,
             };
             
             var json = JsonSerializer.Serialize(request);
@@ -117,6 +117,58 @@ public class UsersApiClient : IUsersApiClient
             if (response.IsSuccessStatusCode)
             {
                 return await GetUserByTelegramIdAsync(telegramId);
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
+    {
+        try
+        {
+
+            var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByInvitationCode/{invitationCode}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<Guid>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+    }
+
+    public async Task<User?> RegisterUserAsync(User user)
+    {
+        try
+        {
+            
+
+            var json = JsonSerializer.Serialize(user);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var result = JsonSerializer.Deserialize<RegisterUserResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (result?.Success == true)
+                {
+                    return user;
+                    //return await GetUserByTelegramIdAsync(telegramId);
+                }
             }
 
             return null;
