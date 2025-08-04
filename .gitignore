@@ -127,3 +127,5 @@ coverage/
 *.coveragexml
 
 
+/.vs/TallaEgg/v17/.suo
+/.vs/TallaEgg/DesignTimeBuild/.dtbcache.v2
