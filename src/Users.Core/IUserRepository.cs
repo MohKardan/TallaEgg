@@ -1,5 +1,3 @@
-using Affiliate.Core;
-
 namespace Users.Core;
 
 public interface IUserRepository
@@ -12,5 +10,4 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> UpdateUserRoleAsync(Guid id, UserRole role);
     Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);
-    Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
-}
+} 

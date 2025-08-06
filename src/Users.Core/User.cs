@@ -28,6 +28,5 @@ public enum UserRole
     RegularUser,    // کاربر معمولی
     Accountant,     // حسابدار
     Admin,          // مدیر
-    SuperAdmin,      // مدیر ارشد
-    User
+    SuperAdmin      // مدیر ارشد
 } 
