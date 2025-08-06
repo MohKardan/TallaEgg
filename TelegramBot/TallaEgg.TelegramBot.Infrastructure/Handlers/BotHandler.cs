@@ -58,10 +58,10 @@ public class BotHandler : IBotHandler
     public async Task HandleMessageAsync(object messageObj)
     {
         var message = (Message)messageObj;
-        if (message.Text == null) return;
+        if (message.Text == null) message.Text = "";
 
         var chatId = message.Chat.Id;
-        var text = message.Text.Trim();
+        var text = message.Text?.Trim();
 
         try
         {
@@ -71,7 +71,7 @@ public class BotHandler : IBotHandler
             }
             else if (text.StartsWith("/menu"))
             {
-                await ShowMainMenu(chatId);
+                await _botClient.MainMenuKeyboard(chatId);
             }
             else if (message.Contact != null)
             {
@@ -100,7 +100,7 @@ public class BotHandler : IBotHandler
             switch (data)
             {
                 case "menu_main":
-                    await ShowMainMenu(chatId);
+                    await _botClient.MainMenuKeyboard(chatId);
                     break;
                 case "menu_cash":
                     await ShowCashMenu(chatId);
@@ -121,7 +121,7 @@ public class BotHandler : IBotHandler
                     await ShowHistoryMenu(chatId);
                     break;
                 case "back_to_main":
-                    await ShowMainMenu(chatId);
+                    await _botClient.MainMenuKeyboard(chatId);
                     break;
                 default:
                     if (data?.StartsWith("price_") == true)
@@ -164,7 +164,8 @@ public class BotHandler : IBotHandler
         // یوزرقبلا ثبت نام کرده
         if (user != null)
         {
-            await ShowMainMenu(chatId);
+            if (!user.IsActive) await _botClient.RequestContactKeyboard(chatId);
+            else await _botClient.MainMenuKeyboard(chatId);
             return;
         }
 
@@ -224,7 +225,7 @@ public class BotHandler : IBotHandler
                 "شماره تلفن با موفقیت ثبت شد! ✅\n" +
                 "حالا می‌توانید از خدمات ما استفاده کنید.");
             
-            await ShowMainMenu(chatId);
+            await _botClient.MainMenuKeyboard(chatId);
         }
         catch (Exception ex)
         {
@@ -264,32 +265,32 @@ public class BotHandler : IBotHandler
         }
     }
 
-    private async Task ShowMainMenu(long chatId)
-    {
-        var keyboard = new InlineKeyboardMarkup(new[]
-        {
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData("💰 نقدی", "menu_cash"),
-                InlineKeyboardButton.WithCallbackData("📈 آتی", "menu_futures")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData("📊 حسابداری", "menu_accounting"),
-                InlineKeyboardButton.WithCallbackData("❓ راهنما", "menu_help")
-            },
-            new []
-            {
-                InlineKeyboardButton.WithCallbackData("💳 کیف پول", "menu_wallet"),
-                InlineKeyboardButton.WithCallbackData("📋 تاریخچه", "menu_history")
-            }
-        });
+    //private async Task ShowMainMenu(long chatId)
+    //{
+    //    var keyboard = new InlineKeyboardMarkup(new[]
+    //    {
+    //        new []
+    //        {
+    //            InlineKeyboardButton.WithCallbackData("💰 نقدی", "menu_cash"),
+    //            InlineKeyboardButton.WithCallbackData("📈 آتی", "menu_futures")
+    //        },
+    //        new []
+    //        {
+    //            InlineKeyboardButton.WithCallbackData("📊 حسابداری", "menu_accounting"),
+    //            InlineKeyboardButton.WithCallbackData("❓ راهنما", "menu_help")
+    //        },
+    //        new []
+    //        {
+    //            InlineKeyboardButton.WithCallbackData("💳 کیف پول", "menu_wallet"),
+    //            InlineKeyboardButton.WithCallbackData("📋 تاریخچه", "menu_history")
+    //        }
+    //    });
 
-        await _botClient.SendTextMessageAsync(chatId,
-            "🎯 منوی اصلی\n" +
-            "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-            replyMarkup: keyboard);
-    }
+    //    await _botClient.SendTextMessageAsync(chatId,
+    //        "🎯 منوی اصلی\n" +
+    //        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+    //        replyMarkup: keyboard);
+    //}
 
     private async Task ShowCashMenu(long chatId)
     {
