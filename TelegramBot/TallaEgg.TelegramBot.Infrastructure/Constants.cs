@@ -8,6 +8,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class Constants
     {
-        public const string DeveloperChatId = "-4777000333"; // Replace with actual developer chat ID
+        public const string DeveloperChatId = "-4777000333"; 
+        public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
     }
 }

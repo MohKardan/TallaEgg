@@ -1,11 +1,14 @@
+using Microsoft.Extensions.Logging;
+using System.Reflection.Metadata;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using TallaEgg.TelegramBot.Core.Interfaces;
+using TallaEgg.TelegramBot.Core.Models;
+using TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Microsoft.Extensions.Logging;
-using TallaEgg.TelegramBot.Core.Interfaces;
-using TallaEgg.TelegramBot.Core.Models;
-using TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Handlers;
 
@@ -188,9 +191,15 @@ public class BotHandler : IBotHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error registering user");
-            await _botClient.SendTextMessageAsync(Constants.DeveloperChatId, ex.Message);
+            await ExceptionHanding(chatId, ex, "Error registering user");
         }
+    }
+
+    private async Task ExceptionHanding(long chatId, Exception ex,string? messge=null)
+    {
+        _logger.LogError(ex, $"{(string.IsNullOrEmpty(messge)? string.Empty:messge)}");
+        await _botClient.SendTextMessageAsync(Constants.DeveloperChatId, JsonSerializer.Serialize(ex));
+        await _botClient.SendTextMessageAsync(chatId, Constants.SupportErrorMessage);
     }
 
     private async Task HandlePhoneNumber(Message message)
@@ -198,9 +207,19 @@ public class BotHandler : IBotHandler
         var chatId = message.Chat.Id;
         var phoneNumber = message.Contact!.PhoneNumber;
 
+
+        if (phoneNumber.StartsWith("98"))//98938621990
+        {
+            phoneNumber = phoneNumber.Replace("98", "0");
+        }
+        if (phoneNumber.StartsWith("+98"))//98938621990
+        {
+            phoneNumber = phoneNumber.Replace("+98", "0");
+        }
+
         try
         {
-            await _userService.UpdateUserPhoneAsync(message.From!.Id, phoneNumber);
+           await _userService.UpdateUserPhoneAsync(message.From!.Id, phoneNumber);
             await _botClient.SendTextMessageAsync(chatId, 
                 "شماره تلفن با موفقیت ثبت شد! ✅\n" +
                 "حالا می‌توانید از خدمات ما استفاده کنید.");
@@ -209,8 +228,7 @@ public class BotHandler : IBotHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating phone number");
-            await _botClient.SendTextMessageAsync(chatId, "خطا در ثبت شماره تلفن. لطفاً دوباره تلاش کنید.");
+            await ExceptionHanding(chatId, ex, "Error updating phone number");
         }
     }
 

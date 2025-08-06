@@ -28,7 +28,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
 
             await _botClient.SendTextMessageAsync(
                 chatId,
-                "برای ثبت نام شماره خود را از طریق کلید زیر و یا به صورت 09112223333 ارسال کنید",
+                "برای ثبت نام شماره خود را از طریق کلید زیر ارسال کنید",
             replyMarkup: keyboard);
 
         }

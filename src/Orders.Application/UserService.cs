@@ -56,7 +56,7 @@ public class UserService
             InvitationCode = invitationCode,
             CreatedAt = DateTime.UtcNow,
             LastActiveAt = DateTime.UtcNow,
-            IsActive = true
+            IsActive = false // بعد از ارسال شماره تلفن فعال میشود
         };
 
         // Update invitation usage count
