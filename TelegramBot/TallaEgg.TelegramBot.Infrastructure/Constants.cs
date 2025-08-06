@@ -11,4 +11,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string DeveloperChatId = "-4777000333"; 
         public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
     }
+
+    public static class ButtonTextsConstants
+    {
+        public const string Spot = "💰 نقدی";
+        public const string Future = "📈 آتی";
+        public const string Accounting = "📊 حسابداری";
+        public const string Help = "❓ راهنما";
+        public const string Wallet = "💳 کیف پول";
+        public const string History = "📋 تاریخچه";
+    }
+
 }

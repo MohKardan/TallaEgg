@@ -71,11 +71,35 @@ public class BotHandler : IBotHandler
             }
             else if (text.StartsWith("/menu"))
             {
-                await _botClient.MainMenuKeyboard(chatId);
+                await ShowMainMenu(chatId);
             }
             else if (message.Contact != null)
             {
                 await HandlePhoneNumber(message);
+            }
+            else if( text.StartsWith(ButtonTextsConstants.Help, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowHelpMenu(chatId);
+            }
+            else if (text.StartsWith(ButtonTextsConstants.Spot, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowCashMenu(chatId);
+            }
+            else if (text.StartsWith(ButtonTextsConstants.Future, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowFuturesMenu(chatId);
+            }
+            else if (text.StartsWith(ButtonTextsConstants.Accounting, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowAccountingMenu(chatId);
+            }
+            else if (text.StartsWith(ButtonTextsConstants.Wallet, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowWalletMenu(chatId);
+            }
+            else if (text.StartsWith(ButtonTextsConstants.History, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowHistoryMenu(chatId);
             }
             else
             {
@@ -100,7 +124,7 @@ public class BotHandler : IBotHandler
             switch (data)
             {
                 case "menu_main":
-                    await _botClient.MainMenuKeyboard(chatId);
+                    await ShowMainMenu(chatId);
                     break;
                 case "menu_cash":
                     await ShowCashMenu(chatId);
@@ -121,7 +145,7 @@ public class BotHandler : IBotHandler
                     await ShowHistoryMenu(chatId);
                     break;
                 case "back_to_main":
-                    await _botClient.MainMenuKeyboard(chatId);
+                    await ShowMainMenu(chatId);
                     break;
                 default:
                     if (data?.StartsWith("price_") == true)
@@ -165,7 +189,7 @@ public class BotHandler : IBotHandler
         if (user != null)
         {
             if (!user.IsActive) await _botClient.RequestContactKeyboard(chatId);
-            else await _botClient.MainMenuKeyboard(chatId);
+            else await ShowMainMenu(chatId);
             return;
         }
 
@@ -225,7 +249,7 @@ public class BotHandler : IBotHandler
                 "شماره تلفن با موفقیت ثبت شد! ✅\n" +
                 "حالا می‌توانید از خدمات ما استفاده کنید.");
             
-            await _botClient.MainMenuKeyboard(chatId);
+            await ShowMainMenu(chatId);
         }
         catch (Exception ex)
         {
@@ -265,32 +289,10 @@ public class BotHandler : IBotHandler
         }
     }
 
-    //private async Task ShowMainMenu(long chatId)
-    //{
-    //    var keyboard = new InlineKeyboardMarkup(new[]
-    //    {
-    //        new []
-    //        {
-    //            InlineKeyboardButton.WithCallbackData("💰 نقدی", "menu_cash"),
-    //            InlineKeyboardButton.WithCallbackData("📈 آتی", "menu_futures")
-    //        },
-    //        new []
-    //        {
-    //            InlineKeyboardButton.WithCallbackData("📊 حسابداری", "menu_accounting"),
-    //            InlineKeyboardButton.WithCallbackData("❓ راهنما", "menu_help")
-    //        },
-    //        new []
-    //        {
-    //            InlineKeyboardButton.WithCallbackData("💳 کیف پول", "menu_wallet"),
-    //            InlineKeyboardButton.WithCallbackData("📋 تاریخچه", "menu_history")
-    //        }
-    //    });
-
-    //    await _botClient.SendTextMessageAsync(chatId,
-    //        "🎯 منوی اصلی\n" +
-    //        "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-    //        replyMarkup: keyboard);
-    //}
+    private async Task ShowMainMenu(long chatId)
+    {
+        await _botClient.MainMenuKeyboard(chatId);
+    }
 
     private async Task ShowCashMenu(long chatId)
     {

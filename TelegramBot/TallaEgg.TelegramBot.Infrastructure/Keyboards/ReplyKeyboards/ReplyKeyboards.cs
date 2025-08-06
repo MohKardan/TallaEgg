@@ -40,9 +40,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             var keyboard = new ReplyKeyboardMarkup(
            new[]
            {
-                new[] { new KeyboardButton("💰 نقدی"), new KeyboardButton("📈 آتی") },
-                new[] { new KeyboardButton("📊 حسابداری"), new KeyboardButton("❓ راهنما") },
-                new[] { new KeyboardButton("💳 کیف پول"), new KeyboardButton("📋 تاریخچه") },
+                new[] { new KeyboardButton(ButtonTextsConstants.Spot), new KeyboardButton(ButtonTextsConstants.Future) },
+
+                new[] { new KeyboardButton(ButtonTextsConstants.Accounting), new KeyboardButton(ButtonTextsConstants.Help) },
+                new[] { new KeyboardButton(ButtonTextsConstants.Wallet), new KeyboardButton(ButtonTextsConstants.History) },
            }
        )
             {
