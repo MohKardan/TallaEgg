@@ -54,6 +54,14 @@ app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, IWalletServi
         Results.BadRequest(new { success = false, message = result.message });
 });
 
+app.MapPost("/api/wallet/charge", async (ChargeRequest request, IWalletService walletService) =>
+{
+    var result = await walletService.ChargeWalletAsync(request.UserId, request.Asset, request.Amount, request.PaymentMethod);
+    return result.success ? 
+        Results.Ok(new { success = true, message = result.message }) :
+        Results.BadRequest(new { success = false, message = result.message });
+});
+
 app.MapPost("/api/wallet/transfer", async (TransferRequest request, IWalletService walletService) =>
 {
     var result = await walletService.TransferAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount);
@@ -90,6 +98,7 @@ app.Run();
 // Request models
 public record DepositRequest(Guid UserId, string Asset, decimal Amount, string? ReferenceId = null);
 public record WithdrawRequest(Guid UserId, string Asset, decimal Amount, string? ReferenceId = null);
+public record ChargeRequest(Guid UserId, string Asset, decimal Amount, string? PaymentMethod = null);
 public record TransferRequest(Guid FromUserId, Guid ToUserId, string Asset, decimal Amount);
 public record CreditRequest(Guid UserId, string Asset, decimal Amount);
 public record DebitRequest(Guid UserId, string Asset, decimal Amount); 

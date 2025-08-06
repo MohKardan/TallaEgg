@@ -67,4 +67,25 @@ public class UserService
 
         return await _userRepository.UpdateAsync(user);
     }
-} 
+
+    public async Task<object?> GetUserIdByInvitationCode(string invitationCode)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task ValidateInvitationCodeAsync(string invitationCode)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task RegisterUserAsync(global::Orders.Core.User user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        throw new NotImplementedException();
+    }
+
+    public async Task RegisterUserAsync(User user)
+    {
+        throw new NotImplementedException();
+    }
+}

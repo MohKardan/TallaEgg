@@ -8,11 +8,12 @@ namespace TallaEgg.TelegramBot;
 public class AffiliateApiClient
 {
     private readonly string _apiUrl;
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient;
 
-    public AffiliateApiClient(string apiUrl)
+    public AffiliateApiClient(string apiUrl, HttpClient httpClient)
     {
         _apiUrl = apiUrl;
+        _httpClient = httpClient;
     }
 
     public async Task<(bool success, string message)> ValidateInvitationAsync(string invitationCode)
@@ -20,21 +21,22 @@ public class AffiliateApiClient
         var request = new { InvitationCode = invitationCode };
         var json = JsonConvert.SerializeObject(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        
+
         try
         {
             var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/validate-invitation", content);
             var respText = await response.Content.ReadAsStringAsync();
-            
+
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(respText);
-                return (result.isValid, result.message.ToString());
+                var result = JsonConvert.DeserializeObject<ValidateInvitationResponse>(respText);
+                return (result?.IsValid ?? false, result?.Message ?? "خطا در بررسی کد دعوت");
             }
             return (false, $"خطا در بررسی کد دعوت: {respText}");
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return (false, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
@@ -46,28 +48,29 @@ public class AffiliateApiClient
             InvitationCode = invitationCode,
             UsedByUserId = usedByUserId
         };
-        
+
         var json = JsonConvert.SerializeObject(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        
+
         try
         {
             var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/use-invitation", content);
             var respText = await response.Content.ReadAsStringAsync();
-            
+
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(respText);
-                if (result.success)
+                var result = JsonConvert.DeserializeObject<UseInvitationResponse>(respText);
+                if (result?.Success == true)
                 {
-                    return (true, "کد دعوت با موفقیت استفاده شد.", Guid.Parse(result.invitationId.ToString()));
+                    return (true, "کد دعوت با موفقیت استفاده شد.", result.InvitationId);
                 }
-                return (false, result.message.ToString(), null);
+                return (false, result?.Message ?? "خطا در استفاده از کد دعوت", null);
             }
             return (false, $"خطا در استفاده از کد دعوت: {respText}", null);
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return (false, $"خطا در ارتباط با سرور: {ex.Message}", null);
         }
     }
@@ -80,22 +83,21 @@ public class AffiliateApiClient
             Type = type,
             MaxUses = maxUses
         };
-        
+
         var json = JsonConvert.SerializeObject(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        
+
         try
         {
             var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/create-invitation", content);
             var respText = await response.Content.ReadAsStringAsync();
-            
+
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(respText);
-                if (result.success)
+                var result = JsonConvert.DeserializeObject<CreateInvitationResponse>(respText);
+                if (result?.Success == true)
                 {
-                    var invitation = JsonConvert.DeserializeObject<InvitationDto>(result.invitation.ToString());
-                    return (true, invitation);
+                    return (true, result.Invitation);
                 }
                 return (false, null);
             }
@@ -103,8 +105,28 @@ public class AffiliateApiClient
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return (false, null);
         }
+    }
+
+    private class ValidateInvitationResponse
+    {
+        public bool IsValid { get; set; }
+        public string Message { get; set; } = "";
+    }
+
+    private class UseInvitationResponse
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = "";
+        public Guid? InvitationId { get; set; }
+    }
+
+    private class CreateInvitationResponse
+    {
+        public bool Success { get; set; }
+        public InvitationDto? Invitation { get; set; }
     }
 }
 
@@ -119,4 +141,4 @@ public class InvitationDto
     public int UsedCount { get; set; }
     public bool IsActive { get; set; }
     public string Type { get; set; } = "";
-} 
+}

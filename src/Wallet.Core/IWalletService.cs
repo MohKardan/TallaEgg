@@ -12,4 +12,5 @@ public interface IWalletService
     Task<(bool success, string message)> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<(bool success, string message)> WithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<(bool success, string message)> TransferAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount);
+    Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null);
 } 

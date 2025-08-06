@@ -215,4 +215,35 @@ public class WalletService : IWalletService
 
         return (true, "انتقال با موفقیت انجام شد.");
     }
+
+    public async Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null)
+    {
+        if (amount <= 0)
+            return (false, "مقدار شارژ باید بزرگتر از صفر باشد.");
+
+        if (amount > 1000000) // محدودیت شارژ: حداکثر 1 میلیون
+            return (false, "مقدار شارژ از حد مجاز بیشتر است.");
+
+        // شارژ کیف پول
+        var success = await CreditAsync(userId, asset, amount);
+        if (success)
+        {
+            // ایجاد تراکنش شارژ
+            var transaction = new WalletTransaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Asset = asset,
+                Amount = amount,
+                Type = TransactionType.Deposit,
+                Status = TransactionStatus.Completed,
+                Description = $"شارژ کیف پول - روش پرداخت: {paymentMethod ?? "نامشخص"}",
+                CreatedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow
+            };
+            await _walletRepository.CreateTransactionAsync(transaction);
+        }
+
+        return success ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
+    }
 } 

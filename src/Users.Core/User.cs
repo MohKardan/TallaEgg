@@ -12,6 +12,7 @@ public class User
     public DateTime? LastActiveAt { get; set; }
     public bool IsActive { get; set; } = true;
     public UserStatus Status { get; set; } = UserStatus.Pending;
+    public UserRole Role { get; set; } = UserRole.RegularUser; // نقش کاربر
 }
 
 public enum UserStatus
@@ -20,4 +21,12 @@ public enum UserStatus
     Active,     // فعال
     Suspended,  // معلق
     Blocked     // مسدود
+}
+
+public enum UserRole
+{
+    RegularUser,    // کاربر معمولی
+    Accountant,     // حسابدار
+    Admin,          // مدیر
+    SuperAdmin      // مدیر ارشد
 } 

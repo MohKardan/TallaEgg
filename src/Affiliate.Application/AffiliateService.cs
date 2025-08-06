@@ -2,6 +2,15 @@ using Affiliate.Core;
 
 namespace Affiliate.Application;
 
+public static class AffiliateMessages
+{
+    public const string InviteNotEntered = "کد دعوت وارد نشده است.";
+    public const string InviteInvalid = "کد دعوت نامعتبر است.";
+    public const string InviteExpired = "کد دعوت منقضی شده است.";
+    public const string InviteMaxUsed = "کد دعوت به حداکثر تعداد استفاده رسیده است.";
+    public const string InviteValid = "کد دعوت معتبر است.";
+}
+
 public class AffiliateService
 {
     private readonly IAffiliateRepository _affiliateRepository;
@@ -14,27 +23,19 @@ public class AffiliateService
     public async Task<(bool isValid, string message, Invitation? invitation)> ValidateInvitationCodeAsync(string code)
     {
         if (string.IsNullOrWhiteSpace(code))
-        {
-            return (false, "کد دعوت وارد نشده است.", null);
-        }
+            return (false, AffiliateMessages.InviteNotEntered, null);
 
         var invitation = await _affiliateRepository.GetInvitationByCodeAsync(code);
         if (invitation == null)
-        {
-            return (false, "کد دعوت نامعتبر است.", null);
-        }
+            return (false, AffiliateMessages.InviteInvalid, null);
 
         if (invitation.ExpiresAt.HasValue && invitation.ExpiresAt.Value < DateTime.UtcNow)
-        {
-            return (false, "کد دعوت منقضی شده است.", null);
-        }
+            return (false, AffiliateMessages.InviteExpired, null);
 
         if (invitation.MaxUses > 0 && invitation.UsedCount >= invitation.MaxUses)
-        {
-            return (false, "کد دعوت به حداکثر تعداد استفاده رسیده است.", null);
-        }
+            return (false, AffiliateMessages.InviteMaxUsed, null);
 
-        return (true, "کد دعوت معتبر است.", invitation);
+        return (true, AffiliateMessages.InviteValid, invitation);
     }
 
     public async Task<Invitation> CreateInvitationAsync(Guid createdByUserId, InvitationType type = InvitationType.Regular, int maxUses = -1, DateTime? expiresAt = null)
@@ -60,7 +61,7 @@ public class AffiliateService
         var invitation = await _affiliateRepository.GetInvitationByCodeAsync(code);
         if (invitation == null)
         {
-            throw new InvalidOperationException("کد دعوت نامعتبر است.");
+            throw new InvalidOperationException(AffiliateMessages.InviteInvalid);
         }
 
         // Update invitation usage count
@@ -95,7 +96,7 @@ public class AffiliateService
         var random = new Random();
         var code = new string(Enumerable.Repeat(chars, 8)
             .Select(s => s[random.Next(s.Length)]).ToArray());
-        
+
         return code;
     }
-} 
+}

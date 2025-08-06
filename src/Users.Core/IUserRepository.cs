@@ -8,4 +8,6 @@ public interface IUserRepository
     Task<bool> ExistsByTelegramIdAsync(long telegramId);
     Task<IEnumerable<User>> GetAllAsync();
     Task<User?> GetByIdAsync(Guid id);
+    Task<User?> UpdateUserRoleAsync(Guid id, UserRole role);
+    Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);
 } 

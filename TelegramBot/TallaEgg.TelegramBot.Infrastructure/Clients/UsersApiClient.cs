@@ -25,7 +25,7 @@ public class UsersApiClient : IUsersApiClient
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/user/validate-invitation", content);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -37,6 +37,7 @@ public class UsersApiClient : IUsersApiClient
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return (false, $"خطا در ارتباط: {ex.Message}");
         }
     }
@@ -53,17 +54,17 @@ public class UsersApiClient : IUsersApiClient
                 LastName = lastName,
                 InvitationCode = invitationCode,
             };
-            
+
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<RegisterUserResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                
+
                 if (result?.Success == true)
                 {
                     return await GetUserByTelegramIdAsync(telegramId);
@@ -72,8 +73,9 @@ public class UsersApiClient : IUsersApiClient
 
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // Log exception here if needed
             return null;
         }
     }
@@ -82,9 +84,8 @@ public class UsersApiClient : IUsersApiClient
     {
         try
         {
-
             var response = await _httpClient.GetAsync($"{_baseUrl}/user/{telegramId}");
-            
+
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
@@ -95,6 +96,7 @@ public class UsersApiClient : IUsersApiClient
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return null;
         }
     }
@@ -108,12 +110,12 @@ public class UsersApiClient : IUsersApiClient
                 TelegramId = telegramId,
                 PhoneNumber = phoneNumber
             };
-            
+
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/user/update-phone", content);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 return await GetUserByTelegramIdAsync(telegramId);
@@ -121,8 +123,9 @@ public class UsersApiClient : IUsersApiClient
 
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // Log exception here if needed
             return null;
         }
     }
@@ -131,7 +134,6 @@ public class UsersApiClient : IUsersApiClient
     {
         try
         {
-
             var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByInvitationCode/{invitationCode}");
 
             if (response.IsSuccessStatusCode)
@@ -144,6 +146,7 @@ public class UsersApiClient : IUsersApiClient
         }
         catch (Exception ex)
         {
+            // Log exception here if needed
             return null;
         }
     }
@@ -152,8 +155,6 @@ public class UsersApiClient : IUsersApiClient
     {
         try
         {
-            
-
             var json = JsonSerializer.Serialize(user);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -167,14 +168,14 @@ public class UsersApiClient : IUsersApiClient
                 if (result?.Success == true)
                 {
                     return user;
-                    //return await GetUserByTelegramIdAsync(telegramId);
                 }
             }
 
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            // Log exception here if needed
             return null;
         }
     }
@@ -190,4 +191,4 @@ public class UsersApiClient : IUsersApiClient
         public bool Success { get; set; }
         public Guid? UserId { get; set; }
     }
-} 
+}

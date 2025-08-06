@@ -2,6 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Microsoft.Extensions.Configuration;
+using System.Net.Http;
 
 namespace TallaEgg.TelegramBot;
 
@@ -31,7 +32,8 @@ class Program
         var botClient = new TelegramBotClient(botToken);
         var orderApi = new OrderApiClient(orderApiUrl);
         var usersApi = new UsersApiClient(usersApiUrl);
-        var affiliateApi = new AffiliateApiClient(affiliateApiUrl);
+        var httpClient = new HttpClient();
+        var affiliateApi = new AffiliateApiClient(affiliateApiUrl, httpClient);
         var priceApi = new PriceApiClient(pricesApiUrl);
         var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi);
 

@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Orders.Core;
 using Orders.Infrastructure;
 using Orders.Application;
+using Users.Application;
+using Users.Infrastructure;
+using UserRepository = Orders.Infrastructure.UserRepository;
+using UserService = Users.Application.UserService;
+using Users.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,11 +17,12 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<Orders.Core.IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PriceService>();
+builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -73,7 +79,7 @@ app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest re
 //    }
 //});
 
-app.MapPost("/api/user/register", async (User user, UserService userService) =>
+app.MapPost("/api/user/register", async (Users.Core.User user, UserService userService) =>
 {
     try
     {
@@ -105,6 +111,35 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
     if (user == null)
         return Results.NotFound();
     return Results.Ok(user);
+});
+
+// مدیریت نقش‌های کاربران
+app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, Users.Core.IUserRepository userRepository, IAuthorizationService authService) =>
+{
+    // بررسی مجوز کاربر درخواست‌کننده
+    var canManageUsers = await authService.CanManageUsersAsync(request.RequestingUserId);
+    if (!canManageUsers)
+        return Results.Forbid();
+
+    var user = await userRepository.UpdateUserRoleAsync(request.UserId, request.NewRole);
+    if (user == null)
+        return Results.NotFound(new { message = "کاربر یافت نشد." });
+
+    return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد.", user });
+});
+
+app.MapGet("/api/users/by-role/{role}", async (string role, Users.Core.IUserRepository userRepository, IAuthorizationService authService) =>
+{
+    // بررسی مجوز کاربر درخواست‌کننده
+    var canManageUsers = await authService.CanManageUsersAsync(Guid.Empty); // نیاز به userId واقعی دارد
+    if (!canManageUsers)
+        return Results.Forbid();
+
+    if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+        return Results.BadRequest(new { message = "نقش نامعتبر است." });
+
+    var users = await userRepository.GetUsersByRoleAsync(userRole);
+    return Results.Ok(users);
 });
 
 // Price endpoints
@@ -142,3 +177,4 @@ public record ValidateInvitationRequest(string InvitationCode);
 public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName, string InvitationCode);
 public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
 public record UpdatePriceRequest(string Asset, decimal BuyPrice, decimal SellPrice, string Source = "Manual");
+public record UpdateUserRoleRequest(Guid RequestingUserId, Guid UserId, string NewRole);
