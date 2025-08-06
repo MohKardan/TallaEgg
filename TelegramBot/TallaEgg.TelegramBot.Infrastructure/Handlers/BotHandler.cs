@@ -5,6 +5,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Microsoft.Extensions.Logging;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Core.Models;
+using TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Handlers;
 
@@ -183,14 +184,12 @@ public class BotHandler : IBotHandler
                 message.From.LastName,
                 invitationCode);
 
-            await _botClient.SendTextMessageAsync(chatId, 
-                "ثبت‌نام با موفقیت انجام شد! 🎉\n" +
-                "لطفاً شماره تلفن خود را به اشتراک بگذارید:");
+            await _botClient.RequestContactKeyboard(chatId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error registering user");
-            await _botClient.SendTextMessageAsync(chatId, ex.Message);
+            await _botClient.SendTextMessageAsync(Constants.DeveloperChatId, ex.Message);
         }
     }
 
