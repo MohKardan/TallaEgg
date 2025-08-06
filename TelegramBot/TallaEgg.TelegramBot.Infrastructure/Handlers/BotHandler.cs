@@ -156,11 +156,6 @@ public class BotHandler : IBotHandler
                     {
                         await HandleOrderSelection(chatId, data);
                     }
-                    else if (data?.StartsWith("placeorder_") == true)
-                    {
-                        var asset = data.Replace("placeorder_", "");
-                        await AskOrderAmount(chatId, asset);
-                    }
                     break;
             }
 
@@ -501,7 +496,6 @@ public class BotHandler : IBotHandler
             },
             new []
             {
-                InlineKeyboardButton.WithCallbackData("📝 ثبت سفارش", $"placeorder_{asset}"),
                 InlineKeyboardButton.WithCallbackData("🔙 بازگشت", "menu_main")
             }
         });
@@ -557,53 +551,4 @@ public class BotHandler : IBotHandler
 
         await _botClient.SendTextMessageAsync(chatId, message, replyMarkup: keyboard);
     }
-
-    // متد جدید: پرسیدن مقدار سفارش از کاربر
-    private async Task AskOrderAmount(long chatId, string asset)
-    {
-        await _botClient.SendTextMessageAsync(chatId, $"لطفاً مقدار {asset} مورد نظر برای ثبت سفارش را وارد کنید:");
-        // در اینجا باید مقدار وارد شده را در پیام بعدی کاربر دریافت و سفارش را ثبت کنید (مثلاً با ذخیره وضعیت کاربر در cache یا database)
-        // برای سادگی، فرض کنید پیام بعدی کاربر مقدار است و سفارش ثبت می‌شود:
-        // این منطق باید در HandleTextMessage تکمیل شود.
-    }
-
-    // در متد HandleTextMessage، اگر وضعیت کاربر در حالت "در حال ثبت سفارش" بود، سفارش را ثبت کن
-    // اینجا فقط نمونه ساده:
-    /*
-    private Dictionary<long, string> _pendingOrderAsset = new(); // chatId -> asset
-
-    private async Task HandleTextMessage(Message message)
-    {
-        var chatId = message.Chat.Id;
-        var text = message.Text ?? "";
-
-        if (_pendingOrderAsset.TryGetValue(chatId, out var asset))
-        {
-            if (decimal.TryParse(text, out var amount) && amount > 0)
-            {
-                // فرض: قیمت را از سرویس قیمت بگیر و سفارش ثبت کن
-                var price = await _priceService.GetLatestPriceAsync(asset);
-                var user = await _userService.GetUserByTelegramIdAsync(message.From!.Id);
-                if (user != null && price != null)
-                {
-                    await _orderService.CreateOrderAsync(asset, amount, price.BuyPrice, user.Id, "BUY");
-                    await _botClient.SendTextMessageAsync(chatId, "✅ سفارش شما ثبت شد.");
-                }
-                else
-                {
-                    await _botClient.SendTextMessageAsync(chatId, "خطا در ثبت سفارش.");
-                }
-            }
-            else
-            {
-                await _botClient.SendTextMessageAsync(chatId, "مقدار وارد شده نامعتبر است.");
-            }
-            _pendingOrderAsset.Remove(chatId);
-            return;
-        }
-
-        // ...existing code...
-    }
-    */
-    // برای پیاده‌سازی کامل، باید وضعیت کاربر را مدیریت کنید.
-}
+} 

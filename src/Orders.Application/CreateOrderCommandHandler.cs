@@ -1,8 +1,32 @@
 using Orders.Core;
 using Orders.Infrastructure;
-using Users.Application;
 
 namespace Orders.Application;
+
+// تعریف اینترفیس مجوز داخلی پروژه (در صورت نیاز آن را در فایل جداگانه قرار دهید)
+public interface IAuthorizationService
+{
+    Task<bool> CanCreateOrderAsync(Guid userId);
+    Task<bool> CanManageUsersAsync(Guid userId); // اضافه شد
+}
+
+// نمونه ساده پیاده‌سازی سرویس مجوز (در پروژه خود باید این را کامل‌تر کنید)
+public class AuthorizationService : IAuthorizationService
+{
+    public async Task<bool> CanCreateOrderAsync(Guid userId)
+    {
+        // منطق بررسی نقش کاربر (مثلاً فقط ادمین‌ها مجاز باشند)
+        // اینجا فقط برای نمونه true برمی‌گردد
+        return await Task.FromResult(true);
+    }
+
+    public async Task<bool> CanManageUsersAsync(Guid userId)
+    {
+        // منطق بررسی نقش کاربر برای مدیریت کاربران (مثلاً فقط ادمین‌ها)
+        // اینجا فقط برای نمونه true برمی‌گردد
+        return await Task.FromResult(true);
+    }
+}
 
 public class CreateOrderCommandHandler
 {
@@ -34,6 +58,8 @@ public class CreateOrderCommandHandler
             Type = cmd.Type,
             CreatedAt = DateTime.UtcNow
         };
-        return await _repo.AddAsync(order);
+        // اطمینان حاصل کنید که متد AddAsync مقدار Order را برمی‌گرداند و نه void
+        var createdOrder = await _repo.AddAsync(order);
+        return createdOrder;
     }
 }
