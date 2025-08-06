@@ -80,4 +80,4 @@ app.Run();
 
 // Request models
 public record PlaceOrderRequest(Guid UserId, string Asset, decimal Amount, decimal Price, OrderType Type);
-public record CancelOrderRequest(Guid OrderId, Guid UserId); 
+public record CancelOrderRequest(Guid OrderId, Guid UserId);
