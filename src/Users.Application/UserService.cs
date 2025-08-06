@@ -1,3 +1,4 @@
+using Affiliate.Core;
 using Users.Core;
 
 namespace Users.Application;
@@ -73,9 +74,22 @@ public class UserService
         throw new NotImplementedException();
     }
 
-    public async Task ValidateInvitationCodeAsync(string invitationCode)
+    public async Task<(bool isValid, string message, Invitation? invitation)> ValidateInvitationCodeAsync(string invitationCode)
     {
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(invitationCode))
+            return (false, "کد دعوت وارد نشده است.", null);
+
+        var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
+        if (invitation == null)
+            return (false, "کد دعوت نامعتبر است.", null);
+
+        if (invitation.ExpiresAt.HasValue && invitation.ExpiresAt.Value < DateTime.UtcNow)
+            return (false, "کد دعوت منقضی شده است.", null);
+
+        if (invitation.MaxUses > 0 && invitation.UsedCount >= invitation.MaxUses)
+            return (false, "کد دعوت به حداکثر تعداد استفاده رسیده است.", null);
+
+        return (true, "کد دعوت معتبر است.", invitation);
     }
 
     public async Task RegisterUserAsync(global::Orders.Core.User user)
@@ -84,8 +98,45 @@ public class UserService
         throw new NotImplementedException();
     }
 
-    public async Task RegisterUserAsync(User user)
+    public async Task<User> RegisterUserAsync(User user)
     {
-        throw new NotImplementedException();
+        ArgumentNullException.ThrowIfNull(user);
+        return await _userRepository.CreateAsync(user);
     }
+
+    // اگر جایی در این فایل یا پروژه متدی دارید که آرگومان دوم آن باید از نوع Users.Core.UserRole باشد، 
+    // باید مقدار رشته را به Enum تبدیل کنید. مثال:
+    public Users.Core.UserRole ParseUserRole(string roleString)
+    {
+        if (Enum.TryParse<Users.Core.UserRole>(roleString, true, out var role))
+            return role;
+        return Users.Core.UserRole.User; // مقدار پیش‌فرض
+    }
+
+    // سپس هنگام فراخوانی متد، به جای رشته، مقدار Enum را ارسال کنید:
+    // var userRole = ParseUserRole(roleString);
+    // someMethod(userId, userRole);
+
+    // اطمینان حاصل کنید که IUserRepository متد زیر را دارد:
+    // Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
+
+    // اگر ندارد، باید به اینترفیس IUserRepository اضافه شود و در کلاس پیاده‌سازی آن نیز نوشته شود.
+    // مثال برای اینترفیس:
+    /*
+    public interface IUserRepository
+    {
+        // ...existing code...
+        Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
+        // ...existing code...
+    }
+    */
+
+    // سپس در کلاس UserRepository پیاده‌سازی کنید:
+    /*
+    public async Task<Invitation?> GetInvitationByCodeAsync(string invitationCode)
+    {
+        // منطق دریافت دعوت‌نامه از دیتابیس
+        // return await dbContext.Invitations.FirstOrDefaultAsync(x => x.Code == invitationCode);
+    }
+    */
 }

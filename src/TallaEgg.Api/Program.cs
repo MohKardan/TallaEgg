@@ -16,6 +16,12 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
+// اضافه کردن DbContext برای Users
+builder.Services.AddDbContext<Users.Infrastructure.UsersDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("UsersDb") ??
+        "Server=localhost;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
+        b => b.MigrationsAssembly("Users.Infrastructure")));
+
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<Orders.Core.IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
@@ -23,6 +29,9 @@ builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+
+// رفع خطا: باید Users.Infrastructure.UserRepository را به عنوان پیاده‌سازی Users.Core.IUserRepository ثبت کنید
+builder.Services.AddScoped<Users.Core.IUserRepository, Users.Infrastructure.UserRepository>();
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -58,6 +67,7 @@ app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string
 app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
 {
     var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
+
     return Results.Ok(new { isValid = result.isValid, message = result.message });
 });
 
@@ -121,7 +131,13 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, Users
     if (!canManageUsers)
         return Results.Forbid();
 
-    var user = await userRepository.UpdateUserRoleAsync(request.UserId, request.NewRole);
+    // تبدیل رشته نقش به Enum
+    if (!Enum.TryParse<Users.Core.UserRole>(request.NewRole, true, out var newRoleEnum))
+        return Results.BadRequest(new { message = "نقش نامعتبر است." });
+
+    var user = await userRepository.UpdateUserRoleAsync(request.UserId, newRoleEnum);
+    // اطمینان حاصل کنید که متد UpdateUserRoleAsync مقدار user را برمی‌گرداند و نه void
+    // اگر متد شما void است، آن را به Task<User?> یا Task<User> تغییر دهید و مقدار را برگردانید.
     if (user == null)
         return Results.NotFound(new { message = "کاربر یافت نشد." });
 

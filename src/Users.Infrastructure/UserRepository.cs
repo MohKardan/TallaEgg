@@ -1,3 +1,4 @@
+using Affiliate.Core;
 using Microsoft.EntityFrameworkCore;
 using Users.Core;
 
@@ -63,5 +64,10 @@ public class UserRepository : IUserRepository
         return await _context.Users
             .Where(u => u.Role == role)
             .ToListAsync();
+    }
+
+    Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)
+    {
+        throw new NotImplementedException();
     }
 } 
