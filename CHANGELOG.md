@@ -15,9 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added InvitationCode property to Users.Core.User model
   - Two-step search logic: first in Users table, then in Invitations table
 
+- **Microservices Architecture Refactoring**
+  - Implemented proper HTTP client pattern for inter-service communication
+  - Created IUsersApiClient interface and UsersApiClient implementation
+  - Removed direct dependency on Users domain from Orders API
+  - Added proper error handling and fallback mechanisms
+  - Configured service URLs in appsettings.json
+
 ### 🔧 Changed
-- Enhanced network diagnostics and proxy support for Telegram bot
-- Improved error handling in BotHandler with comprehensive logging
+- **Architecture Improvements**
+  - Refactored TallaEgg.Api to follow proper microservices pattern
+  - Replaced direct domain dependencies with HTTP client communication
+  - Enhanced network diagnostics and proxy support for Telegram bot
+  - Improved error handling in BotHandler with comprehensive logging
 
 ### 🐛 Fixed
 - Resolved network connectivity issues with proxy detection

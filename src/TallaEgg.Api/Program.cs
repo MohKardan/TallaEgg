@@ -14,12 +14,17 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
+
+
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+
+// اضافه کردن HTTP Client برای ارتباط با Users microservice
+builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>();
 
 // اگر نیاز به اطلاعات کاربر دارید، یک کلاینت HTTP برای ارتباط با سرویس Users بسازید و ثبت کنید
 // builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>(client => { client.BaseAddress = new Uri("http://users-service-url"); });
@@ -49,44 +54,37 @@ app.MapGet("/api/orders/{asset}", async (string asset, IOrderRepository repo) =>
     return Results.Ok(list);
 });
 
-// User management endpoints
-app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async ([FromRoute] string invitationCode, [FromServices] Users.Application.UserService userService) =>
+// User management endpoints (delegated to Users microservice)
+app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async ([FromRoute] string invitationCode, [FromServices] IUsersApiClient usersClient) =>
 {
-    var id = await userService.GetUserIdByInvitationCode(invitationCode);
+    var id = await usersClient.GetUserIdByInvitationCodeAsync(invitationCode);
     return Results.Ok(id);
 });
-app.MapPost("/api/user/validate-invitation", async ([FromBody] ValidateInvitationRequest request, [FromServices] Users.Application.UserService userService) =>
+
+app.MapPost("/api/user/validate-invitation", async ([FromBody] ValidateInvitationRequest request, [FromServices] IUsersApiClient usersClient) =>
 {
-    var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
+    var result = await usersClient.ValidateInvitationCodeAsync(request.InvitationCode);
     return Results.Ok(new { isValid = result.isValid, message = result.message });
 });
-app.MapPost("/api/user/register", async ([FromBody] Users.Core.User user, [FromServices] Users.Application.UserService userService) =>
+
+app.MapPost("/api/user/update-phone", async ([FromBody] UpdatePhoneRequest request, [FromServices] IUsersApiClient usersClient) =>
 {
     try
     {
-        var res = await userService.RegisterUserAsync(user);
-        return Results.Ok(new { success = true, userId = res.Id });
+        var success = await usersClient.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
+        if (success)
+            return Results.Ok(new { success = true, message = "شماره تلفن با موفقیت ثبت شد." });
+        return Results.BadRequest(new { success = false, message = "خطا در بروزرسانی شماره تلفن" });
     }
     catch (Exception ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
 });
-app.MapPost("/api/user/update-phone", async ([FromBody] UpdatePhoneRequest request, [FromServices] Users.Application.UserService userService) =>
+
+app.MapGet("/api/user/{telegramId}", async ([FromRoute] long telegramId, [FromServices] IUsersApiClient usersClient) =>
 {
-    try
-    {
-        var user = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
-        return Results.Ok(new { success = true, message = "شماره تلفن با موفقیت ثبت شد." });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-app.MapGet("/api/user/{telegramId}", async ([FromRoute] long telegramId, [FromServices] Users.Application.UserService userService) =>
-{
-    var user = await userService.GetUserByTelegramIdAsync(telegramId);
+    var user = await usersClient.GetUserByTelegramIdAsync(telegramId);
     if (user == null)
         return Results.NotFound();
     return Results.Ok(user);
