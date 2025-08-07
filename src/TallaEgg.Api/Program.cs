@@ -5,6 +5,7 @@ using Orders.Application;
 using Users.Application;
 using Users.Core;
 using Microsoft.AspNetCore.Mvc;
+using TallaEgg.Api.Clients;
 
 var builder = WebApplication.CreateBuilder(args);
 

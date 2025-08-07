@@ -14,7 +14,16 @@ builder.Services.AddDbContext<UsersDbContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<UserService>();
 
+// اضافه کردن CORS
+builder.Services.AddCors();
+
 var app = builder.Build();
+
+// تنظیم CORS
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // User management endpoints
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
@@ -68,9 +77,100 @@ app.MapPost("/api/user/update-status", async (UpdateStatusRequest request, UserS
     }
 });
 
+// Invitation code endpoints
+app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
+{
+    try
+    {
+        var userId = await userService.GetUserIdByInvitationCode(invitationCode);
+        return Results.Ok(userId);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
+{
+    try
+    {
+        var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
+        return Results.Ok(new { isValid = result.isValid, message = result.message });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+// User registration with invitation code
+app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitationRequest request, UserService userService) =>
+{
+    try
+    {
+        var user = await userService.RegisterUserAsync(request.User);
+        return Results.Ok(new { success = true, userId = user.Id });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+// User role management endpoints
+app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
+{
+    try
+    {
+        var user = await userService.UpdateUserRoleAsync(request.UserId, request.NewRole);
+        if (user == null)
+            return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
+        
+        return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+app.MapGet("/api/users/by-role/{role}", async (string role, UserService userService) =>
+{
+    try
+    {
+        if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+            return Results.BadRequest(new { success = false, message = "نقش نامعتبر است." });
+
+        var users = await userService.GetUsersByRoleAsync(userRole);
+        return Results.Ok(users);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+// User existence check
+app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>
+{
+    try
+    {
+        var exists = await userService.UserExistsAsync(telegramId);
+        return Results.Ok(new { exists = exists });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.Run();
 
 // Request models
 public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName);
 public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
-public record UpdateStatusRequest(long TelegramId, UserStatus Status); 
+public record UpdateStatusRequest(long TelegramId, UserStatus Status);
+public record ValidateInvitationRequest(string InvitationCode);
+public record RegisterUserWithInvitationRequest(User User);
+public record UpdateUserRoleRequest(Guid UserId, UserRole NewRole); 

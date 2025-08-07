@@ -121,6 +121,16 @@ public class UserService
         return await _userRepository.CreateAsync(user);
     }
 
+    public async Task<User?> UpdateUserRoleAsync(Guid userId, UserRole newRole)
+    {
+        return await _userRepository.UpdateUserRoleAsync(userId, newRole);
+    }
+
+    public async Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role)
+    {
+        return await _userRepository.GetUsersByRoleAsync(role);
+    }
+
     // اگر جایی در این فایل یا پروژه متدی دارید که آرگومان دوم آن باید از نوع Users.Core.UserRole باشد، 
     // باید مقدار رشته را به Enum تبدیل کنید. مثال:
     public Users.Core.UserRole ParseUserRole(string roleString)

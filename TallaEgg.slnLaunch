@@ -9,6 +9,10 @@
       {
         "Path": "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
         "Action": "Start"
+      },
+      {
+        "Path": "src\\Users.Api\\Users.Api.csproj",
+        "Action": "Start"
       }
     ]
   }
