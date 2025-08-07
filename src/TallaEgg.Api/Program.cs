@@ -23,7 +23,9 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();
+builder.Services.AddScoped<CreateTakerOrderCommandHandler>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
@@ -48,11 +50,28 @@ app.MapPost("/api/order", async (CreateOrderCommand cmd, CreateOrderCommandHandl
     return Results.Ok(result);
 });
 
+// ثبت سفارش Taker جدید
+app.MapPost("/api/order/taker", async (CreateTakerOrderCommand cmd, CreateTakerOrderCommandHandler handler) =>
+{
+    var result = await handler.Handle(cmd);
+    return Results.Ok(result);
+});
+
 // لیست سفارشات یک دارایی
 app.MapGet("/api/orders/{asset}", async (string asset, IOrderRepository repo) =>
 {
     var list = await repo.GetOrdersByAssetAsync(asset);
     return Results.Ok(list);
+});
+
+// لیست سفارشات Maker موجود برای یک دارایی و نوع معامله
+app.MapGet("/api/orders/available/{asset}/{tradingType}", async (string asset, string tradingType, IOrderService orderService) =>
+{
+    if (!Enum.TryParse<TradingType>(tradingType, true, out var tradingTypeEnum))
+        return Results.BadRequest(new { message = "نوع معامله نامعتبر است" });
+    
+    var orders = await orderService.GetAvailableMakerOrdersAsync(asset, tradingTypeEnum);
+    return Results.Ok(orders);
 });
 
 // User management endpoints (delegated to Users microservice)
