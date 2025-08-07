@@ -1,29 +1,296 @@
 using Orders.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Orders.Infrastructure;
 
 public class OrderRepository : IOrderRepository
 {
-    private readonly OrdersDbContext _db;
+    private readonly OrdersDbContext _dbContext;
+    private readonly ILogger<OrderRepository> _logger;
 
-    public OrderRepository(OrdersDbContext db)
+    public OrderRepository(OrdersDbContext dbContext, ILogger<OrderRepository> logger)
     {
-        _db = db;
+        _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<Order> AddAsync(Order order)
     {
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync();
-        return order;
+        try
+        {
+            _dbContext.Orders.Add(order);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Order created with ID: {OrderId}", order.Id);
+            return order;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating order");
+            throw new InvalidOperationException("خطا در ذخیره سفارش", ex);
+        }
+    }
+
+    public async Task<Order?> GetByIdAsync(Guid id)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .FirstOrDefaultAsync(o => o.Id == id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving order with ID: {OrderId}", id);
+            throw new InvalidOperationException("خطا در بازیابی سفارش", ex);
+        }
     }
 
     public async Task<List<Order>> GetOrdersByAssetAsync(string asset)
     {
-        return await _db.Orders
-            .Where(o => o.Asset == asset)
-            .OrderByDescending(o => o.CreatedAt)
-            .ToListAsync();
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Asset == asset)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders for user: {UserId}", userId);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات کاربر", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Status == status)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetOrdersByTypeAsync(OrderType type)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Type == type)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders with type: {Type}", type);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetActiveOrdersAsync()
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.IsActive())
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving active orders");
+            throw new InvalidOperationException("خطا در بازیابی سفارشات فعال", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetOrdersByDateRangeAsync(DateTime from, DateTime to)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.CreatedAt >= from && o.CreatedAt <= to)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders from {From} to {To}", from, to);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
+    public async Task<int> GetOrderCountByAssetAsync(string asset)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .CountAsync(o => o.Asset == asset);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error counting orders for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در شمارش سفارشات", ex);
+        }
+    }
+
+    public async Task<decimal> GetTotalValueByAssetAsync(string asset)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Asset == asset)
+                .SumAsync(o => o.GetTotalValue());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating total value for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در محاسبه ارزش کل", ex);
+        }
+    }
+
+    public async Task<Order> UpdateAsync(Order order)
+    {
+        try
+        {
+            _dbContext.Orders.Update(order);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Order updated with ID: {OrderId}", order.Id);
+            return order;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating order with ID: {OrderId}", order.Id);
+            throw new InvalidOperationException("خطا در به‌روزرسانی سفارش", ex);
+        }
+    }
+
+    public async Task<bool> UpdateStatusAsync(Guid orderId, OrderStatus status, string? notes = null)
+    {
+        try
+        {
+            var order = await GetByIdAsync(orderId);
+            if (order == null)
+                return false;
+
+            switch (status)
+            {
+                case OrderStatus.Confirmed:
+                    order.Confirm();
+                    break;
+                case OrderStatus.Cancelled:
+                    order.Cancel(notes);
+                    break;
+                case OrderStatus.Completed:
+                    order.Complete();
+                    break;
+                case OrderStatus.Failed:
+                    if (string.IsNullOrWhiteSpace(notes))
+                        throw new ArgumentException("Notes are required for failed orders");
+                    order.Fail(notes);
+                    break;
+                default:
+                    throw new ArgumentException($"Invalid status: {status}");
+            }
+
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Order status updated to {Status} for ID: {OrderId}", status, orderId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating status for order ID: {OrderId}", orderId);
+            throw new InvalidOperationException("خطا در به‌روزرسانی وضعیت سفارش", ex);
+        }
+    }
+
+    public async Task<bool> DeleteAsync(Guid id)
+    {
+        try
+        {
+            var order = await GetByIdAsync(id);
+            if (order == null)
+                return false;
+
+            _dbContext.Orders.Remove(order);
+            await _dbContext.SaveChangesAsync();
+            _logger.LogInformation("Order deleted with ID: {OrderId}", id);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting order with ID: {OrderId}", id);
+            throw new InvalidOperationException("خطا در حذف سفارش", ex);
+        }
+    }
+
+    public async Task<bool> ExistsAsync(Guid id)
+    {
+        try
+        {
+            return await _dbContext.Orders.AnyAsync(o => o.Id == id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking existence of order with ID: {OrderId}", id);
+            throw new InvalidOperationException("خطا در بررسی وجود سفارش", ex);
+        }
+    }
+
+    public async Task<(List<Order> Orders, int TotalCount)> GetOrdersPaginatedAsync(
+        int pageNumber, 
+        int pageSize, 
+        string? asset = null, 
+        OrderType? type = null, 
+        OrderStatus? status = null)
+    {
+        try
+        {
+            var query = _dbContext.Orders.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(asset))
+                query = query.Where(o => o.Asset == asset);
+
+            if (type.HasValue)
+                query = query.Where(o => o.Type == type.Value);
+
+            if (status.HasValue)
+                query = query.Where(o => o.Status == status.Value);
+
+            var totalCount = await query.CountAsync();
+            var orders = await query
+                .OrderByDescending(o => o.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (orders, totalCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving paginated orders");
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
     }
 }

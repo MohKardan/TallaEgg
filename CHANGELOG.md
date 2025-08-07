@@ -8,6 +8,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Orders Service Clean Architecture Refactoring**: Comprehensive refactoring of Orders service to follow Clean Architecture and Clean Code principles
+  - Enhanced Order entity with proper encapsulation, validation, and business rules
+  - Added OrderType and OrderStatus enums for type safety
+  - Implemented domain factory method `Order.Create()` with validation
+  - Added business methods: `Confirm()`, `Cancel()`, `Complete()`, `Fail()`
+  - Added computed properties: `GetTotalValue()`, `IsActive()`, `CanBeCancelled()`
+  - Enhanced IOrderRepository with comprehensive CRUD operations
+  - Added pagination support with filtering capabilities
+  - Implemented proper error handling and logging throughout the application layer
+  - Created OrderService to handle business logic and provide clean interface
+  - Separated IAuthorizationService and AuthorizationService into dedicated files
+  - Simplified CreateOrderCommandHandler to use OrderService
+  - Added comprehensive validation to CreateOrderCommand with data annotations
+  - Enhanced OrderRepository with proper error handling and logging
+  - Updated OrderConfigurations with proper database constraints and indexes
+  - Cleaned up OrdersDbContext to only include Order-related entities
+  - Removed UserRepository from Orders.Infrastructure (belongs to Users domain)
+
+### Changed
+- **Order Entity**: Completely refactored with proper encapsulation
+  - Changed all properties to private setters for encapsulation
+  - Added domain factory method with comprehensive validation
+  - Implemented business rules and state transitions
+  - Added computed properties and business methods
+  - Replaced string Type with OrderType enum for type safety
+  - Added OrderStatus enum for proper state management
+
+- **Repository Pattern**: Enhanced with comprehensive operations
+  - Added pagination support with filtering
+  - Implemented proper error handling and logging
+  - Added performance optimization with database indexes
+  - Enhanced query capabilities with multiple filter options
+
+- **Application Layer**: Improved with proper separation of concerns
+  - Created OrderService to handle business logic
+  - Simplified command handlers to use service layer
+  - Added proper validation and error handling
+  - Implemented comprehensive logging throughout
+
+- **Infrastructure Layer**: Enhanced with proper error handling
+  - Added structured logging with proper context
+  - Implemented comprehensive exception handling
+  - Added database performance optimizations
+  - Cleaned up domain boundaries
+
+### Technical Details
+- **Domain Layer (Orders.Core)**:
+  - Enhanced Order entity with business rules and validation
+  - Added OrderType and OrderStatus enums for type safety
+  - Implemented domain factory method with comprehensive validation
+  - Added business methods for state transitions and computed properties
+
+- **Application Layer (Orders.Application)**:
+  - Created OrderService interface and implementation
+  - Enhanced CreateOrderCommand with data annotations
+  - Simplified CreateOrderCommandHandler to use service layer
+  - Separated authorization concerns into dedicated files
+
+- **Infrastructure Layer (Orders.Infrastructure)**:
+  - Enhanced OrderRepository with comprehensive CRUD operations
+  - Added proper error handling and structured logging
+  - Implemented pagination and filtering capabilities
+  - Updated database configurations with proper constraints and indexes
+
+- **Clean Architecture Compliance**:
+  - Proper separation of concerns between layers
+  - Domain entities with business rules and validation
+  - Application services handling business logic
+  - Infrastructure layer with proper error handling
+  - Removed cross-domain dependencies
+
+### Fixed
+- **Domain Boundaries**: Removed UserRepository from Orders.Infrastructure
+  - User-related operations belong to Users domain
+  - Maintained proper microservices boundaries
+  - Ensured clean separation of concerns
+
+- **Build Issues**: Resolved compilation errors
+  - Fixed namespace conflicts and missing references
+  - Ensured proper dependency injection setup
+  - Maintained backward compatibility where possible
+
+### Added
 - **Endpoint Harmonization**: Synchronized TallaEgg.Api endpoints with Users service endpoints
   - Added comprehensive user management endpoints in TallaEgg.Api that delegate to Users microservice
   - Implemented `/api/user/register` endpoint for user registration
