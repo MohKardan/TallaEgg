@@ -21,9 +21,11 @@ class Program
         var usersApiUrl = config["UsersApiUrl"];
         var affiliateApiUrl = config["AffiliateApiUrl"];
         var pricesApiUrl = config["PricesApiUrl"];
+        var walletApiUrl = config["WalletApiUrl"];
 
         if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(orderApiUrl) || 
-            string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl))
+            string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl) ||
+            string.IsNullOrEmpty(walletApiUrl))
         {
             Console.WriteLine("توکن یا آدرس‌های API تنظیم نشده است.");
             return;
@@ -35,7 +37,8 @@ class Program
         var httpClient = new HttpClient();
         var affiliateApi = new AffiliateApiClient(affiliateApiUrl, httpClient);
         var priceApi = new PriceApiClient(pricesApiUrl);
-        var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi);
+        var walletApi = new WalletApiClient(walletApiUrl);
+        var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi, walletApi);
 
         // حذف webhook قبلی
         await botClient.DeleteWebhookAsync();
