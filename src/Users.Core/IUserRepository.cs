@@ -13,4 +13,5 @@ public interface IUserRepository
     Task<User?> UpdateUserRoleAsync(Guid id, UserRole role);
     Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);
     Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
+    Task<User?> GetByInvitationCodeAsync(string invitationCode);
 }

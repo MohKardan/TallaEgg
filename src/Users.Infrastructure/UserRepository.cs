@@ -66,6 +66,12 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
+    public async Task<User?> GetByInvitationCodeAsync(string invitationCode)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.InvitationCode == invitationCode);
+    }
+
     Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)
     {
         throw new NotImplementedException();

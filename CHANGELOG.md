@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✅ Added
+- **GetUserIdByInvitationCode Implementation**
+  - Complete implementation of GetUserIdByInvitationCode method in UserService
+  - Added GetByInvitationCodeAsync method to IUserRepository interface
+  - Implemented GetByInvitationCodeAsync in UserRepository
+  - Added InvitationCode property to Users.Core.User model
+  - Two-step search logic: first in Users table, then in Invitations table
+
 ### 🔧 Changed
 - Enhanced network diagnostics and proxy support for Telegram bot
 - Improved error handling in BotHandler with comprehensive logging
@@ -15,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Resolved network connectivity issues with proxy detection
 - Fixed breakpoint debugging issues by rebuilding project
 - Corrected package version conflicts in test projects
+- Fixed missing InvitationCode property in Users.Core.User model
 
 ## [1.0.0] - 2024-12-19
 

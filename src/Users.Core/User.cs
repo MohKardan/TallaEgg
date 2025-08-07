@@ -13,6 +13,7 @@ public class User
     public bool IsActive { get; set; } = true;
     public UserStatus Status { get; set; } = UserStatus.Pending;
     public UserRole Role { get; set; } = UserRole.RegularUser; // نقش کاربر
+    public string? InvitationCode { get; set; } // کد دعوت
 }
 
 public enum UserStatus

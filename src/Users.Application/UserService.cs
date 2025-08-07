@@ -71,7 +71,24 @@ public class UserService
 
     public async Task<object?> GetUserIdByInvitationCode(string invitationCode)
     {
-        throw new NotImplementedException();
+        if (string.IsNullOrWhiteSpace(invitationCode))
+            return null;
+
+        // ابتدا در جدول Users جستجو می‌کنیم
+        var user = await _userRepository.GetByInvitationCodeAsync(invitationCode);
+        if (user != null)
+        {
+            return user.Id;
+        }
+
+        // اگر در جدول Users پیدا نشد، در جدول Invitations جستجو می‌کنیم
+        var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
+        if (invitation != null)
+        {
+            return invitation.CreatedByUserId;
+        }
+
+        return null;
     }
 
     public async Task<(bool isValid, string message, Invitation? invitation)> ValidateInvitationCodeAsync(string invitationCode)
