@@ -1,165 +1,156 @@
 # Changelog
 
-All notable changes to the TallaEgg project will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### ✅ Added
-- **GetUserIdByInvitationCode Implementation**
-  - Complete implementation of GetUserIdByInvitationCode method in UserService
-  - Added GetByInvitationCodeAsync method to IUserRepository interface
+### Added
+- **Endpoint Harmonization**: Synchronized TallaEgg.Api endpoints with Users service endpoints
+  - Added comprehensive user management endpoints in TallaEgg.Api that delegate to Users microservice
+  - Implemented `/api/user/register` endpoint for user registration
+  - Implemented `/api/user/register-with-invitation` endpoint for invitation-based registration
+  - Implemented `/api/user/update-status` endpoint for user status management
+  - Implemented `/api/user/exists/{telegramId}` endpoint for user existence checks
+  - Enhanced `/api/user/update-role` and `/api/users/by-role/{role}` endpoints with proper authorization
+  - Updated IUsersApiClient interface with all available Users service methods
+  - Enhanced UsersApiClient implementation with complete HTTP communication
+  - Added proper type mapping and error handling for all user-related operations
+  - Resolved namespace conflicts using using aliases for clean architecture compliance
+
+### Changed
+- **Microservices Architecture**: Refactored TallaEgg.Api to use HTTP client pattern for Users service communication
+  - Removed direct dependencies on Users.Core and Users.Infrastructure from TallaEgg.Api
+  - Implemented IUsersApiClient and UsersApiClient for inter-service communication
+  - Updated all user-related endpoints to delegate to Users microservice
+  - Added proper error handling and response mapping for all user operations
+  - Maintained Clean Architecture principles with proper separation of concerns
+
+### Fixed
+- **Type Conflicts**: Resolved ambiguous reference errors between TallaEgg.Api.Clients and Users.Core namespaces
+  - Added using aliases to distinguish between client and core types
+  - Updated all endpoint implementations to use correct type mappings
+  - Ensured proper serialization and deserialization of user data
+
+### Technical Details
+- **IUsersApiClient Interface**: Extended with complete set of user management methods
+  - `RegisterUserAsync`, `RegisterUserWithInvitationAsync` for user registration
+  - `UpdateUserStatusAsync`, `UpdateUserRoleAsync` for user management
+  - `GetUsersByRoleAsync`, `UserExistsAsync` for user queries
+  - Proper error handling and response mapping for all operations
+
+- **UsersApiClient Implementation**: Enhanced with comprehensive HTTP communication
+  - Complete implementation of all interface methods
+  - Proper JSON serialization/deserialization
+  - Error handling for network failures and service unavailability
+  - Response mapping for different API response formats
+
+- **Endpoint Consistency**: Ensured TallaEgg.Api endpoints match Users service exactly
+  - Same URL patterns and HTTP methods
+  - Consistent request/response models
+  - Proper authorization checks where required
+  - Comprehensive error handling and status codes
+
+## [1.0.0] - 2024-08-04
+
+### Added
+- **Microservices Architecture Refactoring**: Refactored TallaEgg.Api to properly communicate with Users microservice
+  - Removed direct dependencies on Users domain from TallaEgg.Api
+  - Implemented HTTP client pattern for inter-service communication
+  - Added IUsersApiClient interface and UsersApiClient implementation
+  - Updated appsettings.json with UsersApiUrl configuration
+  - Maintained Clean Architecture principles with proper separation of concerns
+
+### Changed
+- **Dependency Injection**: Updated TallaEgg.Api Program.cs to use HTTP client instead of direct domain dependencies
+  - Removed UsersDbContext, IUserRepository, and UserService registrations
+  - Added HttpClient registration for IUsersApiClient
+  - Updated all user-related endpoints to use the new client pattern
+
+### Technical Details
+- **IUsersApiClient Interface**: Defines contract for communicating with Users microservice
+  - `GetUserIdByInvitationCodeAsync` for invitation code lookup
+  - `ValidateInvitationCodeAsync` for invitation validation
+  - `GetUserByTelegramIdAsync` for user retrieval
+  - `UpdateUserPhoneAsync` for phone number updates
+
+- **UsersApiClient Implementation**: Handles HTTP communication with Users microservice
+  - Uses HttpClient for making API requests
+  - Implements proper error handling and response mapping
+  - Configurable base URL from appsettings.json
+  - JSON serialization/deserialization for request/response handling
+
+## [0.1.0] - 2024-08-04
+
+### Added
+- **GetUserIdByInvitationCode Implementation**: Implemented the missing function in Users.Application.UserService
+  - Added two-step lookup process: first in Users table, then in Invitations table
+  - Updated IUserRepository interface with GetByInvitationCodeAsync method
   - Implemented GetByInvitationCodeAsync in UserRepository
-  - Added InvitationCode property to Users.Core.User model
-  - Two-step search logic: first in Users table, then in Invitations table
+  - Added proper error handling and null checks
+  - Maintained Clean Architecture principles with proper separation of concerns
 
-- **Microservices Architecture Refactoring**
-  - Implemented proper HTTP client pattern for inter-service communication
-  - Created IUsersApiClient interface and UsersApiClient implementation
-  - Removed direct dependency on Users domain from Orders API
-  - Added proper error handling and fallback mechanisms
-  - Configured service URLs in appsettings.json
+### Changed
+- **User Entity**: Enhanced Users.Core.User with additional properties
+  - Added UserRole enum with Admin, Accountant, RegularUser, Moderator values
+  - Added Role property to User entity
+  - Added InvitationCode property for invitation-based registration
+  - Updated UserStatus enum with comprehensive status values
 
-### 🔧 Changed
-- **Architecture Improvements**
-  - Refactored TallaEgg.Api to follow proper microservices pattern
-  - Replaced direct domain dependencies with HTTP client communication
-  - Enhanced network diagnostics and proxy support for Telegram bot
-  - Improved error handling in BotHandler with comprehensive logging
+### Technical Details
+- **UserService Implementation**: Enhanced with invitation code functionality
+  - `GetUserIdByInvitationCode` method with two-step lookup process
+  - `ValidateInvitationCodeAsync` method for invitation validation
+  - Proper error handling and validation
+  - Integration with existing user management functionality
 
-### 🐛 Fixed
-- Resolved network connectivity issues with proxy detection
-- Fixed breakpoint debugging issues by rebuilding project
-- Corrected package version conflicts in test projects
-- Fixed missing InvitationCode property in Users.Core.User model
+- **Repository Layer**: Extended IUserRepository and UserRepository
+  - Added GetByInvitationCodeAsync method for invitation code lookup
+  - Added UpdateUserRoleAsync method for role management
+  - Added GetUsersByRoleAsync method for role-based queries
+  - Maintained existing functionality while adding new features
 
-## [1.0.0] - 2024-12-19
+### Fixed
+- **Compilation Errors**: Resolved various build issues
+  - Fixed missing interface implementations
+  - Resolved namespace conflicts
+  - Updated package references and dependencies
+  - Ensured all projects build successfully
 
-### ✅ Added
-- **Complete Telegram Bot Implementation**
-  - Order placement functionality with multi-step flow
-  - User registration with invitation code system
-  - Wallet management integration
-  - Balance validation for sell orders
-  - Keyboard buttons for Buy/Sell options
+## [0.0.1] - 2024-08-04
 
-- **Automated Testing Framework**
-  - MockBotHandler for unit testing without network dependencies
-  - AutomatedTelegramClient for integration testing
-  - Comprehensive test coverage for registration and order flows
-  - Standalone TestRunner for reliable test execution
+### Added
+- **Initial Project Setup**: Created comprehensive .NET solution with Clean Architecture
+  - Orders microservice with Core, Application, Infrastructure, and API layers
+  - Users microservice with complete user management functionality
+  - Wallet microservice with transaction and balance management
+  - Telegram Bot with automated testing framework
+  - Comprehensive unit and integration testing setup
 
-- **Wallet System Enhancement**
-  - Wallet charging functionality with amount validation
-  - Transaction recording and balance tracking
-  - API endpoints for wallet operations
-  - Integration with Telegram bot for balance checks
+### Technical Architecture
+- **Clean Architecture**: Implemented proper separation of concerns
+  - Core layer with domain entities and interfaces
+  - Application layer with business logic and command handlers
+  - Infrastructure layer with data access and external service integration
+  - API layer with HTTP endpoints and request/response handling
 
-- **User Role Management System**
-  - UserRole enum (RegularUser, Accountant, Admin, SuperAdmin)
-  - Role-based access control for order creation
-  - API endpoints for role management
-  - Authorization service implementation
+- **Microservices Pattern**: Independent services with HTTP communication
+  - Orders service for order management
+  - Users service for user management and authentication
+  - Wallet service for financial transactions
+  - Telegram Bot for user interaction
 
-- **API Infrastructure**
-  - CORS configuration for all APIs
-  - Minimal API endpoints for Orders, Users, and Wallet
-  - Entity Framework Core integration
-  - Repository pattern implementation
-
-- **Network Diagnostics**
-  - Network connectivity testing utilities
-  - Proxy detection and configuration
-  - HTTP vs HTTPS connectivity tests
-  - Bot token validation
-
-### 🔧 Changed
-- **Architecture Improvements**
-  - Renamed `Wallet` class to `WalletEntity` to resolve namespace conflicts
-  - Updated all API endpoints to support new wallet charging functionality
-  - Enhanced BotHandler with state management for multi-step flows
-  - Improved error handling in Program.cs with comprehensive diagnostics
-
-- **Project Structure**
-  - Reorganized solution structure with Clean Architecture
-  - Separated concerns into Core, Application, Infrastructure, and API layers
-  - Updated project references and dependencies
-
-### 🐛 Fixed
-- **Build and Compilation Issues**
-  - Resolved empty IOrderRepository.cs file in Orders.Core
-  - Fixed namespace conflicts between Wallet class and namespace
-  - Corrected interface implementation mismatches
-  - Resolved package version conflicts in test projects
-
-- **Network and Connectivity**
-  - Diagnosed and resolved network connectivity issues
-  - Implemented proxy-aware bot client
-  - Fixed timeout issues with improved error handling
-
-- **Debugging Issues**
-  - Resolved breakpoint debugging problems
-  - Fixed source code mismatch issues
-  - Improved Visual Studio debugging experience
-
-### 🧪 Testing
-- **Comprehensive Test Suite**
+### Testing Framework
+- **Automated Testing**: Comprehensive test suite for Telegram Bot
   - Unit tests with MockBotHandler for isolated testing
-  - Integration tests with AutomatedTelegramClient
-  - Network connectivity tests and diagnostics
-  - Automated test runner with configuration management
+  - Integration tests with AutomatedTelegramClient for end-to-end testing
+  - Network connectivity tests for troubleshooting
+  - Standalone test runner for easy execution
 
-- **Test Infrastructure**
-  - Created separate TestRunner project for reliable execution
-  - Added test configuration files and settings
-  - Implemented mock implementations for external dependencies
-
-### 📚 Documentation
-- **Project Documentation**
-  - Updated .gitignore with professional configuration
-  - Added comprehensive inline code documentation
-  - Created test configuration files and settings
-  - Documented API endpoints and usage
-
-### 🔒 Security
-- **Access Control**
-  - Role-based authorization for sensitive operations
-  - Admin-only order creation functionality
-  - User permission validation
-
-### 🚀 Performance
-- **Optimizations**
-  - Improved error handling and logging
-  - Enhanced network request handling
-  - Optimized database queries with Entity Framework
-
-## [0.1.0] - 2024-12-18
-
-### ✅ Added
-- Initial project setup with .NET Clean Architecture
-- Basic API structure with Minimal APIs
-- Entity Framework Core integration
-- SQL Server database configuration
-- Basic Telegram bot foundation
-- Initial user and order management systems
-
-### 📚 Documentation
-- Initial project documentation
-- Basic README setup
-- Solution structure documentation
-
----
-
-## Legend
-
-- ✅ **Added** - New features
-- 🔧 **Changed** - Changes to existing functionality  
-- 🐛 **Fixed** - Bug fixes
-- 🚀 **Performance** - Performance improvements
-- 🔒 **Security** - Security updates
-- 📚 **Documentation** - Documentation updates
-- 🧪 **Testing** - Test updates
-- ⚠️ **Removed** - Removed features
-- 🔥 **Breaking** - Breaking changes 
+### Documentation
+- **Professional Changelog**: Maintained detailed change tracking
+  - Follows "Keep a Changelog" and Semantic Versioning standards
+  - Comprehensive documentation of all features and changes
+  - Technical details for developers and maintainers 

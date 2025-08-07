@@ -6,6 +6,11 @@ using Users.Application;
 using Users.Core;
 using Microsoft.AspNetCore.Mvc;
 using TallaEgg.Api.Clients;
+using ClientUserDto = TallaEgg.Api.Clients.UserDto;
+using ClientUserRole = TallaEgg.Api.Clients.UserRole;
+using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
+using ClientRegisterUserRequest = TallaEgg.Api.Clients.RegisterUserRequest;
+using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUserWithInvitationRequest;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +19,6 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("TallaEgg.Api")));
-
-
 
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -26,9 +29,6 @@ builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
 // اضافه کردن HTTP Client برای ارتباط با Users microservice
 builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>();
-
-// اگر نیاز به اطلاعات کاربر دارید، یک کلاینت HTTP برای ارتباط با سرویس Users بسازید و ثبت کنید
-// builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>(client => { client.BaseAddress = new Uri("http://users-service-url"); });
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -56,6 +56,38 @@ app.MapGet("/api/orders/{asset}", async (string asset, IOrderRepository repo) =>
 });
 
 // User management endpoints (delegated to Users microservice)
+app.MapPost("/api/user/register", async ([FromBody] RegisterUserRequest request, [FromServices] IUsersApiClient usersClient) =>
+{
+    try
+    {
+        var clientRequest = new ClientRegisterUserRequest(request.TelegramId, request.Username, request.FirstName, request.LastName);
+        var user = await usersClient.RegisterUserAsync(clientRequest);
+        if (user != null)
+            return Results.Ok(new { success = true, userId = user.Id });
+        return Results.BadRequest(new { success = false, message = "خطا در ثبت کاربر" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+app.MapPost("/api/user/register-with-invitation", async ([FromBody] RegisterUserWithInvitationRequest request, [FromServices] IUsersApiClient usersClient) =>
+{
+    try
+    {
+        var clientRequest = new ClientRegisterUserWithInvitationRequest(request.User);
+        var user = await usersClient.RegisterUserWithInvitationAsync(clientRequest);
+        if (user != null)
+            return Results.Ok(new { success = true, userId = user.Id });
+        return Results.BadRequest(new { success = false, message = "خطا در ثبت کاربر" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async ([FromRoute] string invitationCode, [FromServices] IUsersApiClient usersClient) =>
 {
     var id = await usersClient.GetUserIdByInvitationCodeAsync(invitationCode);
@@ -83,6 +115,21 @@ app.MapPost("/api/user/update-phone", async ([FromBody] UpdatePhoneRequest reque
     }
 });
 
+app.MapPost("/api/user/update-status", async ([FromBody] UpdateStatusRequest request, [FromServices] IUsersApiClient usersClient) =>
+{
+    try
+    {
+        var success = await usersClient.UpdateUserStatusAsync(request.TelegramId, request.Status);
+        if (success)
+            return Results.Ok(new { success = true, message = "وضعیت کاربر با موفقیت به‌روزرسانی شد." });
+        return Results.BadRequest(new { success = false, message = "خطا در بروزرسانی وضعیت کاربر" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.MapGet("/api/user/{telegramId}", async ([FromRoute] long telegramId, [FromServices] IUsersApiClient usersClient) =>
 {
     var user = await usersClient.GetUserByTelegramIdAsync(telegramId);
@@ -90,27 +137,58 @@ app.MapGet("/api/user/{telegramId}", async ([FromRoute] long telegramId, [FromSe
         return Results.NotFound();
     return Results.Ok(user);
 });
-app.MapPost("/api/user/update-role", async ([FromBody] UpdateUserRoleRequest request, [FromServices] Users.Core.IUserRepository userRepository, [FromServices] IAuthorizationService authService) =>
+
+app.MapPost("/api/user/update-role", async ([FromBody] UpdateUserRoleRequest request, [FromServices] IUsersApiClient usersClient, [FromServices] IAuthorizationService authService) =>
 {
-    var canManageUsers = await authService.CanManageUsersAsync(request.RequestingUserId);
-    if (!canManageUsers)
-        return Results.Forbid();
-    if (!Enum.TryParse<Users.Core.UserRole>(request.NewRole, true, out var newRoleEnum))
-        return Results.BadRequest(new { message = "نقش نامعتبر است." });
-    var user = await userRepository.UpdateUserRoleAsync(request.UserId, newRoleEnum);
-    if (user == null)
-        return Results.NotFound(new { message = "کاربر یافت نشد." });
-    return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد.", user });
+    try
+    {
+        var canManageUsers = await authService.CanManageUsersAsync(request.RequestingUserId);
+        if (!canManageUsers)
+            return Results.Forbid();
+
+        var user = await usersClient.UpdateUserRoleAsync(request.UserId, request.NewRole);
+        if (user == null)
+            return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
+        
+        return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد.", user });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
 });
-app.MapGet("/api/users/by-role/{role}", async ([FromRoute] string role, [FromServices] Users.Core.IUserRepository userRepository, [FromServices] IAuthorizationService authService) =>
+
+app.MapGet("/api/users/by-role/{role}", async ([FromRoute] string role, [FromServices] IUsersApiClient usersClient, [FromServices] IAuthorizationService authService) =>
 {
-    var canManageUsers = await authService.CanManageUsersAsync(Guid.Empty);
-    if (!canManageUsers)
-        return Results.Forbid();
-    if (!Enum.TryParse<UserRole>(role, true, out var userRole))
-        return Results.BadRequest(new { message = "نقش نامعتبر است." });
-    var users = await userRepository.GetUsersByRoleAsync(userRole);
-    return Results.Ok(users);
+    try
+    {
+        var canManageUsers = await authService.CanManageUsersAsync(Guid.Empty);
+        if (!canManageUsers)
+            return Results.Forbid();
+
+        if (!Enum.TryParse<ClientUserRole>(role, true, out var userRole))
+            return Results.BadRequest(new { success = false, message = "نقش نامعتبر است." });
+
+        var users = await usersClient.GetUsersByRoleAsync(userRole);
+        return Results.Ok(users);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+app.MapGet("/api/user/exists/{telegramId}", async ([FromRoute] long telegramId, [FromServices] IUsersApiClient usersClient) =>
+{
+    try
+    {
+        var exists = await usersClient.UserExistsAsync(telegramId);
+        return Results.Ok(new { exists = exists });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
 });
 
 // Price endpoints
@@ -145,7 +223,9 @@ app.Run();
 
 // Request models
 public record ValidateInvitationRequest(string InvitationCode);
-public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName, string InvitationCode);
+public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName);
+public record RegisterUserWithInvitationRequest(ClientUserDto User);
 public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
+public record UpdateStatusRequest(long TelegramId, ClientUserStatus Status);
 public record UpdatePriceRequest(string Asset, decimal BuyPrice, decimal SellPrice, string Source = "Manual");
-public record UpdateUserRoleRequest(Guid RequestingUserId, Guid UserId, string NewRole);
+public record UpdateUserRoleRequest(Guid RequestingUserId, Guid UserId, ClientUserRole NewRole);
