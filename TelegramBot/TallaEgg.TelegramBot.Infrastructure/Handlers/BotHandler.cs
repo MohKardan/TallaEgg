@@ -85,6 +85,10 @@ public class BotHandler : IBotHandler
             {
                 await ShowSpotMenu(chatId);
             }
+            else if (text.StartsWith(ButtonTextsConstants.MakeOrder, StringComparison.OrdinalIgnoreCase))
+            {
+                await ShowAssetsList(chatId);
+            }
             else if (text.StartsWith(ButtonTextsConstants.Future, StringComparison.OrdinalIgnoreCase))
             {
                 await ShowFuturesMenu(chatId);
@@ -318,7 +322,10 @@ public class BotHandler : IBotHandler
     {
         await _botClient.SpotMenuKeyboard(chatId);
     }
-
+    private async Task ShowAssetsList(long chatId)
+    {
+        ///
+    }
     private async Task ShowFuturesMenu(long chatId)
     {
         var keyboard = new InlineKeyboardMarkup(new[]

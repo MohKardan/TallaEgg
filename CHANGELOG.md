@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Telegram Bot Compilation Errors**: Resolved multiple compilation errors in BotHandler
+  - Fixed deconstruction variable type inference errors in HandleInvitationCodeAsync
+  - Corrected method signature mismatches between BotHandler and API clients
+  - Fixed variable naming conflicts in HandlePhoneNumberRequestAsync
+  - Updated method calls to match actual API client signatures
+  - Corrected parameter types for UseInvitationAsync method
+  - Fixed UpdatePhoneAsync method call to use correct method name
+  - Resolved all compilation errors while maintaining functionality
+
+### Technical Details
+- **Method Signature Corrections**:
+  - Updated UseInvitationAsync call to pass invitationCode and userId correctly
+  - Fixed UpdatePhoneAsync method call to use correct API client method
+  - Corrected variable naming to avoid conflicts with parameter names
+  - Ensured proper type inference for deconstruction variables
+
+- **Error Handling Improvements**:
+  - Enhanced error handling in invitation code processing
+  - Improved user registration flow with proper validation
+  - Added null checks for userId before using invitation
+  - Maintained proper error messages for user feedback
+
 ### Added
 - **Telegram Bot Maker/Taker Trading System**: Enhanced Telegram Bot to support comprehensive trading workflow
   - Added trading type selection (Spot/Futures) before order placement

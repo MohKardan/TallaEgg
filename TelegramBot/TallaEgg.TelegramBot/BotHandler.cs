@@ -113,13 +113,15 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandleInvitationCodeAsync(long chatId, long telegramId, string invitationCode, Message message)
         {
-            var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(telegramId, invitationCode);
+            // First register the user
+            var (regSuccess, regMessage, userId) = await _usersApi.RegisterUserAsync(telegramId, message.From?.Username, message.From?.FirstName, message.From?.LastName);
 
-            if (useSuccess)
+            if (regSuccess && userId.HasValue)
             {
-                var (regSuccess, regMessage, userId) = await _usersApi.RegisterUserAsync(telegramId, message.From?.Username, message.From?.FirstName, message.From?.LastName);
+                // Then use the invitation
+                var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
 
-                if (regSuccess)
+                if (useSuccess)
                 {
                     await _botClient.SendTextMessageAsync(chatId, BotTexts.MsgWelcome,
                         replyMarkup: new ReplyKeyboardMarkup(new[]
@@ -132,12 +134,12 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                    await _botClient.SendTextMessageAsync(chatId, $"خطا در ثبت‌نام: {regMessage}");
+                    await _botClient.SendTextMessageAsync(chatId, $"خطا در استفاده از کد دعوت: {useMessage}");
                 }
             }
             else
             {
-                await _botClient.SendTextMessageAsync(chatId, $"خطا در استفاده از کد دعوت: {useMessage}");
+                await _botClient.SendTextMessageAsync(chatId, $"خطا در ثبت‌نام: {regMessage}");
             }
         }
 
@@ -145,7 +147,7 @@ namespace TallaEgg.TelegramBot
         {
             if (message.Contact?.PhoneNumber != null)
             {
-                var (success, message) = await _usersApi.UpdateUserPhoneAsync(telegramId, message.Contact.PhoneNumber);
+                var (success, updateMessage) = await _usersApi.UpdatePhoneAsync(telegramId, message.Contact.PhoneNumber);
 
                 if (success)
                 {
@@ -155,7 +157,7 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                    await _botClient.SendTextMessageAsync(chatId, $"خطا در ثبت شماره تلفن: {message}");
+                    await _botClient.SendTextMessageAsync(chatId, $"خطا در ثبت شماره تلفن: {updateMessage}");
                 }
             }
             else

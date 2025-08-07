@@ -62,7 +62,7 @@ public class AffiliateApiClient
                 var result = JsonConvert.DeserializeObject<UseInvitationResponse>(respText);
                 if (result?.Success == true)
                 {
-                    return (true, "کد دعوت با موفقیت استفاده شد.", result.InvitationId);
+                    return (true, result.Message, result.InvitationId);
                 }
                 return (false, result?.Message ?? "خطا در استفاده از کد دعوت", null);
             }
@@ -107,6 +107,35 @@ public class AffiliateApiClient
         {
             // Log exception here if needed
             return (false, null);
+        }
+    }
+
+    public async Task<(bool success, string message)> UpdateUserPhoneAsync(long telegramId, string phoneNumber)
+    {
+        var request = new
+        {
+            TelegramId = telegramId,
+            PhoneNumber = phoneNumber
+        };
+
+        var json = JsonConvert.SerializeObject(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/update-user-phone", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, "شماره تلفن با موفقیت به‌روزرسانی شد.");
+            }
+            return (false, $"خطا در به‌روزرسانی شماره تلفن: {respText}");
+        }
+        catch (Exception ex)
+        {
+            // Log exception here if needed
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
 
