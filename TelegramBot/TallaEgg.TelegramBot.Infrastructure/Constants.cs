@@ -14,12 +14,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
     public static class ButtonTextsConstants
     {
+        public const string MainMenu = "💰 منوی اصلی";
         public const string Spot = "💰 نقدی";
         public const string Future = "📈 آتی";
         public const string Accounting = "📊 حسابداری";
         public const string Help = "❓ راهنما";
         public const string Wallet = "💳 کیف پول";
         public const string History = "📋 تاریخچه";
+        public const string MakeOrder = "📋 ثبت سفارش";
+        public const string TakeOrder = "📋 بازار";
+        
     }
 
 }

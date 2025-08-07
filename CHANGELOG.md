@@ -8,6 +8,68 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Telegram Bot Maker/Taker Trading System**: Enhanced Telegram Bot to support comprehensive trading workflow
+  - Added trading type selection (Spot/Futures) before order placement
+  - Implemented asset selection with InlineKeyboardButton for available trading symbols
+  - Added order confirmation step with detailed order summary
+  - Enhanced OrderState with TradingType and IsConfirmed properties
+  - Added new BotTexts constants for trading workflow
+  - Implemented HandleTradingTypeSelectionAsync for trading type selection
+  - Enhanced HandleOrderTypeSelectionAsync to work with trading types
+  - Added HandleOrderConfirmationAsync for order confirmation
+  - Updated OrderDto to support TradingType field
+  - Enhanced TallaEgg.Api endpoint to handle new OrderDto structure
+  - Added comprehensive error handling and validation throughout the workflow
+
+### Changed
+- **BotHandler**: Enhanced with complete trading workflow
+  - Added TradingType selection before OrderType selection
+  - Enhanced OrderState with TradingType and IsConfirmed properties
+  - Improved order flow: TradingType → OrderType → Asset → Amount → Confirmation
+  - Added order confirmation with detailed summary before submission
+  - Enhanced callback handling for new trading workflow
+  - Improved error handling and user feedback
+
+- **OrderDto**: Updated to support new trading system
+  - Added TradingType field for "Spot" or "Futures" trading
+  - Updated Type field to use "Buy" or "Sell" instead of "BUY" or "SELL"
+  - Enhanced compatibility with new Maker/Taker system
+
+- **TallaEgg.Api**: Updated to handle new OrderDto structure
+  - Added OrderDto class definition for Telegram Bot compatibility
+  - Enhanced /api/order endpoint to convert OrderDto to CreateOrderCommand
+  - Added proper error handling and validation for order submission
+
+### Technical Details
+- **Trading Workflow**: Complete user journey for order placement
+  1. User clicks "📝 ثبت سفارش" button
+  2. User selects trading type (💰 نقدی / 📈 آتی)
+  3. User selects order type (🛒 خرید / 🛍️ فروش)
+  4. User selects trading symbol from available assets
+  5. User enters amount
+  6. System shows order confirmation with details
+  7. User confirms or cancels the order
+  8. Order is submitted to the system
+
+- **Order Confirmation**: Detailed order summary before submission
+  - Shows trading symbol, order type, amount, price, and total value
+  - Provides confirm and cancel options
+  - Validates user balance for sell orders
+  - Handles errors gracefully with user-friendly messages
+
+- **Asset Selection**: Dynamic asset list from price API
+  - Fetches available trading symbols from price service
+  - Displays as InlineKeyboardButton for easy selection
+  - Handles API failures gracefully
+  - Provides back navigation option
+
+- **Error Handling**: Comprehensive error management
+  - Validates user existence and phone number
+  - Checks balance for sell orders
+  - Handles API failures with user-friendly messages
+  - Provides clear error messages for each step
+
+### Added
 - **Maker/Taker Trading System**: Implemented comprehensive trading system with Maker/Taker pattern
   - Added TradingType enum (Spot, Futures) for different trading types
   - Added OrderRole enum (Maker, Taker) for order roles

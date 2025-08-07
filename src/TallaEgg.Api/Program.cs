@@ -44,10 +44,28 @@ app.UseCors(builder => builder
     .AllowAnyHeader());
 
 // ثبت سفارش جدید توسط مشتری
-app.MapPost("/api/order", async (CreateOrderCommand cmd, CreateOrderCommandHandler handler) =>
+app.MapPost("/api/order", async (OrderDto orderDto, CreateOrderCommandHandler handler) =>
 {
-    var result = await handler.Handle(cmd);
-    return Results.Ok(result);
+    try
+    {
+        // Convert from OrderDto to CreateOrderCommand
+        var command = new CreateOrderCommand(
+            orderDto.Asset,
+            orderDto.Amount,
+            orderDto.Price,
+            orderDto.UserId,
+            Enum.Parse<OrderType>(orderDto.Type, true),
+            Enum.Parse<TradingType>(orderDto.TradingType, true),
+            null
+        );
+
+        var result = await handler.Handle(command);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
 });
 
 // ثبت سفارش Taker جدید
@@ -248,3 +266,14 @@ public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
 public record UpdateStatusRequest(long TelegramId, ClientUserStatus Status);
 public record UpdatePriceRequest(string Asset, decimal BuyPrice, decimal SellPrice, string Source = "Manual");
 public record UpdateUserRoleRequest(Guid RequestingUserId, Guid UserId, ClientUserRole NewRole);
+
+// Order DTO for Telegram Bot
+public class OrderDto
+{
+    public string Asset { get; set; } = "";
+    public decimal Amount { get; set; }
+    public decimal Price { get; set; }
+    public Guid UserId { get; set; }
+    public string Type { get; set; } = "Buy"; // "Buy" or "Sell"
+    public string TradingType { get; set; } = "Spot"; // "Spot" or "Futures"
+}

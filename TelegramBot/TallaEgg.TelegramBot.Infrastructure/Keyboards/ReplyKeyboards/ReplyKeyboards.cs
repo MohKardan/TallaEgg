@@ -45,7 +45,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
                 new[] { new KeyboardButton(ButtonTextsConstants.Accounting), new KeyboardButton(ButtonTextsConstants.Help) },
                 new[] { new KeyboardButton(ButtonTextsConstants.Wallet), new KeyboardButton(ButtonTextsConstants.History) },
            }
-       )
+            )
             {
                 ResizeKeyboard = true,
             };
@@ -55,6 +55,29 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
                 chatId,
                 "🎯 منوی اصلی\n" +
     "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
+            replyMarkup: keyboard);
+        
+        }
+
+    public static async Task SpotMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        {
+
+            var keyboard = new ReplyKeyboardMarkup(
+           new[]
+           {
+                new[] { new KeyboardButton(ButtonTextsConstants.MakeOrder), new KeyboardButton(ButtonTextsConstants.TakeOrder) },
+                new[] { new KeyboardButton(ButtonTextsConstants.MainMenu)},
+           }
+                        )
+            {
+                ResizeKeyboard = true,
+            };
+
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                "🎯 منوی معاملات نقدی\n" +
+    "لطفاً یکی از گزینه‌های را انتخاب کنید:",
             replyMarkup: keyboard);
 
         }

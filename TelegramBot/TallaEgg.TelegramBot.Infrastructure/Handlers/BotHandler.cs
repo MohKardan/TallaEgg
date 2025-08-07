@@ -69,7 +69,7 @@ public class BotHandler : IBotHandler
             {
                 await HandleStartCommand(message);
             }
-            else if (text.StartsWith("/menu"))
+            else if (text.StartsWith(ButtonTextsConstants.MainMenu))
             {
                 await ShowMainMenu(chatId);
             }
@@ -83,7 +83,7 @@ public class BotHandler : IBotHandler
             }
             else if (text.StartsWith(ButtonTextsConstants.Spot, StringComparison.OrdinalIgnoreCase))
             {
-                await ShowCashMenu(chatId);
+                await ShowSpotMenu(chatId);
             }
             else if (text.StartsWith(ButtonTextsConstants.Future, StringComparison.OrdinalIgnoreCase))
             {
@@ -127,7 +127,7 @@ public class BotHandler : IBotHandler
                     await ShowMainMenu(chatId);
                     break;
                 case "menu_cash":
-                    await ShowCashMenu(chatId);
+                    await ShowSpotMenu(chatId);
                     break;
                 case "menu_futures":
                     await ShowFuturesMenu(chatId);
@@ -313,6 +313,10 @@ public class BotHandler : IBotHandler
             "💰 معاملات نقدی\n" +
             "لطفاً دارایی مورد نظر خود را انتخاب کنید:",
             replyMarkup: keyboard);
+    }
+    private async Task ShowSpotMenu(long chatId)
+    {
+        await _botClient.SpotMenuKeyboard(chatId);
     }
 
     private async Task ShowFuturesMenu(long chatId)

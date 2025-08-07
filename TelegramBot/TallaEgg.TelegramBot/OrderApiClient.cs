@@ -40,5 +40,6 @@ public class OrderDto
     public decimal Amount { get; set; }
     public decimal Price { get; set; }
     public Guid UserId { get; set; }
-    public string Type { get; set; } = "BUY";
+    public string Type { get; set; } = "Buy"; // "Buy" or "Sell"
+    public string TradingType { get; set; } = "Spot"; // "Spot" or "Futures"
 }
