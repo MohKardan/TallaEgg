@@ -1,0 +1,23 @@
+{
+  "BotToken": "986910087:AAEviFSrKh8VbfEeczTWXIsQpudBj7iMwlY",
+  "TestUserPhone": "+989123456789",
+  "TestUserFirstName": "Test",
+  "TestUserLastName": "User",
+  "TestInvitationCode": "TEST123",
+  "TestAsset": "BTC",
+  "TestAmount": "0.001",
+  "ApiUrls": {
+    "OrderApiUrl": "http://localhost:5135/api/order",
+    "UsersApiUrl": "http://localhost:5136/api",
+    "AffiliateApiUrl": "http://localhost:5137/api",
+    "PricesApiUrl": "http://localhost:5135/api",
+    "WalletApiUrl": "http://localhost:5138"
+  },
+  "TestSettings": {
+    "EnableAutoRegistration": true,
+    "EnableOrderPlacement": true,
+    "EnableBalanceCheck": true,
+    "WaitTimeBetweenActions": 2000,
+    "MaxRetries": 3
+  }
+}
