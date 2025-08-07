@@ -5,22 +5,27 @@ namespace Orders.Application;
 
 public interface IOrderService
 {
-    Task<Order> CreateOrderAsync(CreateOrderCommand command);
+    Task<Order> CreateMakerOrderAsync(CreateOrderCommand command);
+    Task<Order> CreateTakerOrderAsync(CreateTakerOrderCommand command);
     Task<Order?> GetOrderByIdAsync(Guid orderId);
     Task<List<Order>> GetOrdersByAssetAsync(string asset);
     Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
     Task<List<Order>> GetActiveOrdersAsync();
+    Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);
     Task<bool> UpdateOrderStatusAsync(Guid orderId, OrderStatus status, string? notes = null);
     Task<bool> CancelOrderAsync(Guid orderId, string? reason = null);
     Task<bool> ConfirmOrderAsync(Guid orderId);
     Task<bool> CompleteOrderAsync(Guid orderId);
     Task<bool> FailOrderAsync(Guid orderId, string reason);
+    Task<bool> AcceptTakerOrderAsync(Guid makerOrderId, Guid takerOrderId);
     Task<(List<Order> Orders, int TotalCount)> GetOrdersPaginatedAsync(
         int pageNumber, 
         int pageSize, 
         string? asset = null, 
         OrderType? type = null, 
-        OrderStatus? status = null);
+        OrderStatus? status = null,
+        TradingType? tradingType = null,
+        OrderRole? role = null);
     Task<decimal> GetTotalValueByAssetAsync(string asset);
     Task<int> GetOrderCountByAssetAsync(string asset);
 }
@@ -41,11 +46,12 @@ public class OrderService : IOrderService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
+    public async Task<Order> CreateMakerOrderAsync(CreateOrderCommand command)
     {
         try
         {
-            _logger.LogInformation("Creating order for user {UserId} with asset {Asset}", command.UserId, command.Asset);
+            _logger.LogInformation("Creating maker order for user {UserId} with asset {Asset} and trading type {TradingType}", 
+                command.UserId, command.Asset, command.TradingType);
 
             // Check authorization
             var canCreateOrder = await _authorizationService.CanCreateOrderAsync(command.UserId);
@@ -55,26 +61,77 @@ public class OrderService : IOrderService
                 throw new UnauthorizedAccessException("شما مجوز ثبت سفارش ندارید. فقط مدیران می‌توانند سفارش ثبت کنند.");
             }
 
-            // Create order using domain factory method
-            var order = Order.Create(
+            // Create maker order using domain factory method
+            var order = Order.CreateMakerOrder(
                 command.Asset,
                 command.Amount,
                 command.Price,
                 command.UserId,
                 command.Type,
+                command.TradingType,
                 command.Notes
             );
 
             // Save to repository
             var createdOrder = await _orderRepository.AddAsync(order);
             
-            _logger.LogInformation("Order created successfully with ID: {OrderId}", createdOrder.Id);
+            _logger.LogInformation("Maker order created successfully with ID: {OrderId}", createdOrder.Id);
             return createdOrder;
         }
         catch (Exception ex) when (ex is not UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Error creating order for user {UserId}", command.UserId);
-            throw new InvalidOperationException("خطا در ایجاد سفارش", ex);
+            _logger.LogError(ex, "Error creating maker order for user {UserId}", command.UserId);
+            throw new InvalidOperationException("خطا در ایجاد سفارش maker", ex);
+        }
+    }
+
+    public async Task<Order> CreateTakerOrderAsync(CreateTakerOrderCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Creating taker order for user {UserId} with parent order {ParentOrderId}", 
+                command.UserId, command.ParentOrderId);
+
+            // Get parent order
+            var parentOrder = await _orderRepository.GetByIdAsync(command.ParentOrderId);
+            if (parentOrder == null)
+            {
+                throw new ArgumentException("Parent order not found", nameof(command.ParentOrderId));
+            }
+
+            if (!parentOrder.IsMaker())
+            {
+                throw new InvalidOperationException("Parent order must be a maker order");
+            }
+
+            if (parentOrder.Status != OrderStatus.Pending)
+            {
+                throw new InvalidOperationException("Parent order must be pending");
+            }
+
+            if (command.Amount > parentOrder.Amount)
+            {
+                throw new ArgumentException("Taker order amount cannot exceed maker order amount");
+            }
+
+            // Create taker order
+            var takerOrder = Order.CreateTakerOrder(
+                command.ParentOrderId,
+                command.Amount,
+                command.UserId,
+                command.Notes
+            );
+
+            // Set properties from parent order
+            takerOrder = await _orderRepository.AddAsync(takerOrder);
+            
+            _logger.LogInformation("Taker order created successfully with ID: {OrderId}", takerOrder.Id);
+            return takerOrder;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating taker order for user {UserId}", command.UserId);
+            throw new InvalidOperationException("خطا در ایجاد سفارش taker", ex);
         }
     }
 
@@ -127,6 +184,25 @@ public class OrderService : IOrderService
         {
             _logger.LogError(ex, "Error retrieving active orders");
             throw new InvalidOperationException("خطا در بازیابی سفارشات فعال", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType)
+    {
+        try
+        {
+            var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
+            return orders.Where(o => 
+                o.IsMaker() && 
+                o.IsActive() && 
+                o.TradingType == tradingType)
+                .OrderBy(o => o.Price)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving available maker orders for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات maker موجود", ex);
         }
     }
 
@@ -203,16 +279,41 @@ public class OrderService : IOrderService
         }
     }
 
+    public async Task<bool> AcceptTakerOrderAsync(Guid makerOrderId, Guid takerOrderId)
+    {
+        try
+        {
+            var makerOrder = await _orderRepository.GetByIdAsync(makerOrderId);
+            var takerOrder = await _orderRepository.GetByIdAsync(takerOrderId);
+
+            if (makerOrder == null || takerOrder == null)
+                return false;
+
+            makerOrder.AcceptTakerOrder(takerOrder);
+            await _orderRepository.UpdateAsync(makerOrder);
+            
+            _logger.LogInformation("Taker order {TakerOrderId} accepted by maker order {MakerOrderId}", takerOrderId, makerOrderId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error accepting taker order {TakerOrderId} by maker order {MakerOrderId}", takerOrderId, makerOrderId);
+            throw new InvalidOperationException("خطا در پذیرش سفارش taker", ex);
+        }
+    }
+
     public async Task<(List<Order> Orders, int TotalCount)> GetOrdersPaginatedAsync(
         int pageNumber, 
         int pageSize, 
         string? asset = null, 
         OrderType? type = null, 
-        OrderStatus? status = null)
+        OrderStatus? status = null,
+        TradingType? tradingType = null,
+        OrderRole? role = null)
     {
         try
         {
-            return await _orderRepository.GetOrdersPaginatedAsync(pageNumber, pageSize, asset, type, status);
+            return await _orderRepository.GetOrdersPaginatedAsync(pageNumber, pageSize, asset, type, status, tradingType, role);
         }
         catch (Exception ex)
         {

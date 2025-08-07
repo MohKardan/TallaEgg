@@ -109,6 +109,38 @@ public class OrderRepository : IOrderRepository
         }
     }
 
+    public async Task<List<Order>> GetOrdersByTradingTypeAsync(TradingType tradingType)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.TradingType == tradingType)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders with trading type: {TradingType}", tradingType);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetOrdersByRoleAsync(OrderRole role)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Role == role)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders with role: {Role}", role);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
+
     public async Task<List<Order>> GetActiveOrdersAsync()
     {
         try
@@ -122,6 +154,25 @@ public class OrderRepository : IOrderRepository
         {
             _logger.LogError(ex, "Error retrieving active orders");
             throw new InvalidOperationException("خطا در بازیابی سفارشات فعال", ex);
+        }
+    }
+
+    public async Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.Asset == asset && 
+                           o.TradingType == tradingType && 
+                           o.Role == OrderRole.Maker && 
+                           o.IsActive())
+                .OrderBy(o => o.Price)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving available maker orders for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات maker موجود", ex);
         }
     }
 
@@ -263,7 +314,9 @@ public class OrderRepository : IOrderRepository
         int pageSize, 
         string? asset = null, 
         OrderType? type = null, 
-        OrderStatus? status = null)
+        OrderStatus? status = null,
+        TradingType? tradingType = null,
+        OrderRole? role = null)
     {
         try
         {
@@ -277,6 +330,12 @@ public class OrderRepository : IOrderRepository
 
             if (status.HasValue)
                 query = query.Where(o => o.Status == status.Value);
+
+            if (tradingType.HasValue)
+                query = query.Where(o => o.TradingType == tradingType.Value);
+
+            if (role.HasValue)
+                query = query.Where(o => o.Role == role.Value);
 
             var totalCount = await query.CountAsync();
             var orders = await query

@@ -17,6 +17,18 @@ public enum OrderStatus
     Failed
 }
 
+public enum TradingType
+{
+    Spot,      // معاملات نقدی
+    Futures    // معاملات آتی
+}
+
+public enum OrderRole
+{
+    Maker,     // ایجاد کننده سفارش
+    Taker      // پذیرنده سفارش
+}
+
 public class Order
 {
     public Guid Id { get; private set; }
@@ -26,19 +38,23 @@ public class Order
     public Guid UserId { get; private set; }
     public OrderType Type { get; private set; }
     public OrderStatus Status { get; private set; }
+    public TradingType TradingType { get; private set; }
+    public OrderRole Role { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public string? Notes { get; private set; }
+    public Guid? ParentOrderId { get; private set; } // برای Taker orders که به Maker order متصل می‌شوند
 
     // Private constructor for EF Core
     private Order() { }
 
-    public static Order Create(
+    public static Order CreateMakerOrder(
         string asset, 
         decimal amount, 
         decimal price, 
         Guid userId, 
         OrderType type,
+        TradingType tradingType,
         string? notes = null)
     {
         if (string.IsNullOrWhiteSpace(asset))
@@ -62,7 +78,41 @@ public class Order
             UserId = userId,
             Type = type,
             Status = OrderStatus.Pending,
+            TradingType = tradingType,
+            Role = OrderRole.Maker,
             CreatedAt = DateTime.UtcNow,
+            Notes = notes
+        };
+    }
+
+    public static Order CreateTakerOrder(
+        Guid parentOrderId,
+        decimal amount,
+        Guid userId,
+        string? notes = null)
+    {
+        if (parentOrderId == Guid.Empty)
+            throw new ArgumentException("ParentOrderId cannot be empty", nameof(parentOrderId));
+        
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
+        
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty", nameof(userId));
+
+        return new Order
+        {
+            Id = Guid.NewGuid(),
+            Asset = string.Empty, // Will be set from parent order
+            Amount = amount,
+            Price = 0, // Will be set from parent order
+            UserId = userId,
+            Type = OrderType.Buy, // Will be opposite of parent order
+            Status = OrderStatus.Pending,
+            TradingType = TradingType.Spot, // Will be set from parent order
+            Role = OrderRole.Taker,
+            CreatedAt = DateTime.UtcNow,
+            ParentOrderId = parentOrderId,
             Notes = notes
         };
     }
@@ -105,9 +155,43 @@ public class Order
         Notes = reason;
     }
 
+    public void AcceptTakerOrder(Order takerOrder)
+    {
+        if (Role != OrderRole.Maker)
+            throw new InvalidOperationException("Only maker orders can accept taker orders");
+        
+        if (Status != OrderStatus.Pending)
+            throw new InvalidOperationException("Only pending maker orders can accept taker orders");
+        
+        if (takerOrder.Role != OrderRole.Taker)
+            throw new ArgumentException("Only taker orders can be accepted");
+        
+        if (takerOrder.Amount > Amount)
+            throw new ArgumentException("Taker order amount cannot exceed maker order amount");
+        
+        // Update amounts
+        Amount -= takerOrder.Amount;
+        
+        // If maker order is fully filled, complete it
+        if (Amount <= 0)
+        {
+            Complete();
+        }
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public decimal GetTotalValue() => Amount * Price;
 
     public bool IsActive() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
 
     public bool CanBeCancelled() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
+
+    public bool IsMaker() => Role == OrderRole.Maker;
+    
+    public bool IsTaker() => Role == OrderRole.Taker;
+
+    public bool IsSpot() => TradingType == TradingType.Spot;
+    
+    public bool IsFutures() => TradingType == TradingType.Futures;
 }

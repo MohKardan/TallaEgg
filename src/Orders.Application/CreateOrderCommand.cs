@@ -23,6 +23,9 @@ public record CreateOrderCommand
     [Required]
     public OrderType Type { get; init; }
     
+    [Required]
+    public TradingType TradingType { get; init; }
+    
     [StringLength(500)]
     public string? Notes { get; init; }
 
@@ -32,6 +35,7 @@ public record CreateOrderCommand
         decimal price, 
         Guid userId, 
         OrderType type,
+        TradingType tradingType,
         string? notes = null)
     {
         Asset = asset?.Trim() ?? throw new ArgumentNullException(nameof(asset));
@@ -39,6 +43,35 @@ public record CreateOrderCommand
         Price = price;
         UserId = userId;
         Type = type;
+        TradingType = tradingType;
+        Notes = notes;
+    }
+}
+
+public record CreateTakerOrderCommand
+{
+    [Required]
+    public Guid ParentOrderId { get; init; }
+    
+    [Required]
+    [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than zero")]
+    public decimal Amount { get; init; }
+    
+    [Required]
+    public Guid UserId { get; init; }
+    
+    [StringLength(500)]
+    public string? Notes { get; init; }
+
+    public CreateTakerOrderCommand(
+        Guid parentOrderId,
+        decimal amount,
+        Guid userId,
+        string? notes = null)
+    {
+        ParentOrderId = parentOrderId;
+        Amount = amount;
+        UserId = userId;
         Notes = notes;
     }
 }

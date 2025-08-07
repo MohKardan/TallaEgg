@@ -13,6 +13,21 @@ public class CreateOrderCommandHandler
 
     public async Task<Order> Handle(CreateOrderCommand command)
     {
-        return await _orderService.CreateOrderAsync(command);
+        return await _orderService.CreateMakerOrderAsync(command);
+    }
+}
+
+public class CreateTakerOrderCommandHandler
+{
+    private readonly IOrderService _orderService;
+
+    public CreateTakerOrderCommandHandler(IOrderService orderService)
+    {
+        _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
+    }
+
+    public async Task<Order> Handle(CreateTakerOrderCommand command)
+    {
+        return await _orderService.CreateTakerOrderAsync(command);
     }
 }

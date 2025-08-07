@@ -33,6 +33,14 @@ namespace Orders.Infrastructure.Configurations
                 .IsRequired()
                 .HasConversion<string>();
             
+            builder.Property(o => o.TradingType)
+                .IsRequired()
+                .HasConversion<string>();
+            
+            builder.Property(o => o.Role)
+                .IsRequired()
+                .HasConversion<string>();
+            
             builder.Property(o => o.CreatedAt)
                 .IsRequired();
             
@@ -41,12 +49,21 @@ namespace Orders.Infrastructure.Configurations
             builder.Property(o => o.Notes)
                 .HasMaxLength(500);
             
+            builder.Property(o => o.ParentOrderId);
+            
             // Indexes for better performance
             builder.HasIndex(o => o.Asset);
             builder.HasIndex(o => o.UserId);
             builder.HasIndex(o => o.Status);
             builder.HasIndex(o => o.Type);
+            builder.HasIndex(o => o.TradingType);
+            builder.HasIndex(o => o.Role);
             builder.HasIndex(o => o.CreatedAt);
+            builder.HasIndex(o => o.ParentOrderId);
+            
+            // Composite indexes for common queries
+            builder.HasIndex(o => new { o.Asset, o.TradingType, o.Role, o.Status });
+            builder.HasIndex(o => new { o.UserId, o.Status });
         }
     }
 }

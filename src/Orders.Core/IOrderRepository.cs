@@ -11,8 +11,11 @@ public interface IOrderRepository
     Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
     Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status);
     Task<List<Order>> GetOrdersByTypeAsync(OrderType type);
+    Task<List<Order>> GetOrdersByTradingTypeAsync(TradingType tradingType);
+    Task<List<Order>> GetOrdersByRoleAsync(OrderRole role);
     Task<List<Order>> GetActiveOrdersAsync();
     Task<List<Order>> GetOrdersByDateRangeAsync(DateTime from, DateTime to);
+    Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);
     Task<int> GetOrderCountByAssetAsync(string asset);
     Task<decimal> GetTotalValueByAssetAsync(string asset);
     
@@ -32,5 +35,7 @@ public interface IOrderRepository
         int pageSize, 
         string? asset = null, 
         OrderType? type = null, 
-        OrderStatus? status = null);
+        OrderStatus? status = null,
+        TradingType? tradingType = null,
+        OrderRole? role = null);
 } 

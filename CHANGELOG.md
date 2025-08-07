@@ -8,6 +8,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Maker/Taker Trading System**: Implemented comprehensive trading system with Maker/Taker pattern
+  - Added TradingType enum (Spot, Futures) for different trading types
+  - Added OrderRole enum (Maker, Taker) for order roles
+  - Enhanced Order entity with trading type and role support
+  - Implemented CreateMakerOrder and CreateTakerOrder factory methods
+  - Added AcceptTakerOrder method for maker order management
+  - Created CreateTakerOrderCommand for taker order creation
+  - Enhanced OrderService with maker/taker specific operations
+  - Added GetAvailableMakerOrdersAsync for listing available orders
+  - Implemented AcceptTakerOrderAsync for order matching
+  - Enhanced repository layer with trading type and role filtering
+  - Updated database configurations with new indexes and constraints
+  - Added CreateTakerOrderCommandHandler for taker order processing
+
+### Changed
+- **Order Entity**: Enhanced with trading system capabilities
+  - Added TradingType and OrderRole properties
+  - Added ParentOrderId for taker orders linking to maker orders
+  - Implemented CreateMakerOrder and CreateTakerOrder factory methods
+  - Added AcceptTakerOrder method for order matching logic
+  - Enhanced business methods with role and trading type support
+  - Added IsMaker(), IsTaker(), IsSpot(), IsFutures() helper methods
+
+- **OrderService**: Extended with maker/taker functionality
+  - Renamed CreateOrderAsync to CreateMakerOrderAsync
+  - Added CreateTakerOrderAsync for taker order creation
+  - Added GetAvailableMakerOrdersAsync for order discovery
+  - Added AcceptTakerOrderAsync for order matching
+  - Enhanced pagination with trading type and role filtering
+  - Improved error handling and validation for trading operations
+
+- **Repository Layer**: Enhanced with trading system support
+  - Added GetOrdersByTradingTypeAsync and GetOrdersByRoleAsync
+  - Added GetAvailableMakerOrdersAsync for order discovery
+  - Enhanced pagination with trading type and role parameters
+  - Updated database queries with new filtering capabilities
+  - Added composite indexes for performance optimization
+
+- **Database Configuration**: Updated for trading system
+  - Added TradingType and OrderRole property configurations
+  - Added ParentOrderId property configuration
+  - Enhanced indexes for trading type and role queries
+  - Added composite indexes for common trading queries
+  - Optimized database schema for maker/taker operations
+
+### Technical Details
+- **Trading Types**: Support for Spot and Futures trading
+  - Spot trading for immediate settlement
+  - Futures trading for future settlement
+  - Type-specific order management and validation
+
+- **Order Roles**: Maker and Taker pattern implementation
+  - Maker orders: Create liquidity in the market
+  - Taker orders: Consume liquidity from existing orders
+  - Parent-child relationship between maker and taker orders
+  - Automatic order matching and settlement
+
+- **Order Matching**: Intelligent order matching system
+  - Taker orders automatically link to available maker orders
+  - Price and amount validation for order matching
+  - Partial and full order fulfillment support
+  - Order status management for matched orders
+
+- **Performance Optimizations**: Database and query optimizations
+  - Composite indexes for common trading queries
+  - Efficient filtering by trading type and role
+  - Optimized pagination for large order sets
+  - Enhanced query performance for order discovery
+
+### Added
 - **Orders Service Clean Architecture Refactoring**: Comprehensive refactoring of Orders service to follow Clean Architecture and Clean Code principles
   - Enhanced Order entity with proper encapsulation, validation, and business rules
   - Added OrderType and OrderStatus enums for type safety
