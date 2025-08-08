@@ -14,6 +14,12 @@
 - **Database:** SQL Server (see `create_table.sql` for schema)
 - **Main API Gateway:** TallaEgg.Api on port 5135
 
+## Bot Configuration
+- **Referral Settings:** Configure in `TelegramBot/TallaEgg.TelegramBot/appsettings.json`
+- **RequireReferralCode:** true/false to make referral codes mandatory
+- **DefaultReferralCode:** used when referral not required (default: "ADMIN2024")
+- **Admin Commands:** `/admin_referral_on`, `/admin_referral_off`, `/admin_referral_status`
+
 ## Code Style & Conventions
 - **Framework:** .NET 9.0 with C# nullable enabled
 - **Imports:** Microsoft.Extensions.* for DI/logging, explicit usings for business logic

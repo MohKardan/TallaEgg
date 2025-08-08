@@ -1,4 +1,4 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +26,10 @@ class Program
             var affiliateApiUrl = config["AffiliateApiUrl"];
             var pricesApiUrl = config["PricesApiUrl"];
             var walletApiUrl = config["WalletApiUrl"];
+            
+            // Bot settings
+            var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "true");
+            var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "ADMIN2024";
 
             Console.WriteLine($"Bot Token: {botToken?.Substring(0, Math.Min(10, botToken?.Length ?? 0))}...");
             Console.WriteLine($"Order API URL: {orderApiUrl}");
@@ -33,6 +37,8 @@ class Program
             Console.WriteLine($"Affiliate API URL: {affiliateApiUrl}");
             Console.WriteLine($"Prices API URL: {pricesApiUrl}");
             Console.WriteLine($"Wallet API URL: {walletApiUrl}");
+            Console.WriteLine($"Require Referral Code: {requireReferralCode}");
+            Console.WriteLine($"Default Referral Code: {defaultReferralCode}");
 
             if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(orderApiUrl) || 
                 string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl) ||
@@ -75,7 +81,8 @@ class Program
             var affiliateApi = new AffiliateApiClient(affiliateApiUrl, httpClient);
             var priceApi = new PriceApiClient(pricesApiUrl);
             var walletApi = new WalletApiClient(walletApiUrl);
-            var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi, walletApi);
+            var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi, walletApi, 
+                                           requireReferralCode, defaultReferralCode);
 
             Console.WriteLine("✅ API clients initialized");
 

@@ -54,9 +54,12 @@ namespace TallaEgg.TelegramBot
         private readonly PriceApiClient _priceApi;
         private readonly WalletApiClient _walletApi;
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
+        private bool _requireReferralCode;
+        private string _defaultReferralCode;
 
         public BotHandler(ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi, 
-                         AffiliateApiClient affiliateApi, PriceApiClient priceApi, WalletApiClient walletApi)
+                         AffiliateApiClient affiliateApi, PriceApiClient priceApi, WalletApiClient walletApi,
+                         bool requireReferralCode = true, string defaultReferralCode = "ADMIN2024")
         {
             _botClient = botClient;
             _orderApi = orderApi;
@@ -64,6 +67,8 @@ namespace TallaEgg.TelegramBot
             _affiliateApi = affiliateApi;
             _priceApi = priceApi;
             _walletApi = walletApi;
+            _requireReferralCode = requireReferralCode;
+            _defaultReferralCode = defaultReferralCode;
         }
 
         public async Task HandleUpdateAsync(Update update)
@@ -89,6 +94,12 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
+            // Check for admin commands first
+            if (await HandleAdminCommandsAsync(chatId, telegramId, message))
+            {
+                return;
+            }
+
             await HandleMainMenuAsync(chatId, telegramId, message);
         }
 
@@ -106,7 +117,16 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                    await _botClient.SendTextMessageAsync(chatId, BotTexts.MsgEnterInvite);
+                    // Check if referral code is required
+                    if (_requireReferralCode)
+                    {
+                        await _botClient.SendTextMessageAsync(chatId, BotTexts.MsgEnterInvite);
+                    }
+                    else
+                    {
+                        // Use default referral code and register user directly
+                        await HandleInvitationCodeAsync(chatId, telegramId, _defaultReferralCode, message);
+                    }
                 }
             }
         }
@@ -259,6 +279,59 @@ namespace TallaEgg.TelegramBot
                           "برای پشتیبانی با تیم فنی تماس بگیرید.";
 
             await _botClient.SendTextMessageAsync(chatId, helpText);
+        }
+
+        private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message)
+        {
+            var msgText = message.Text ?? "";
+            
+            // Check if user is admin
+            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            if (!userExists || user == null || (!IsUserAdmin(user)))
+            {
+                return false; // Not an admin, continue with normal processing
+            }
+
+            switch (msgText.ToLower())
+            {
+                case "/admin_referral_on":
+                    _requireReferralCode = true;
+                    await _botClient.SendTextMessageAsync(chatId, 
+                        "✅ اجباری بودن کد دعوت فعال شد.\n" +
+                        "کاربران جدید باید کد دعوت داشته باشند.");
+                    return true;
+
+                case "/admin_referral_off":
+                    _requireReferralCode = false;
+                    await _botClient.SendTextMessageAsync(chatId, 
+                        "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
+                        $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
+                    return true;
+
+                case "/admin_referral_status":
+                    var status = _requireReferralCode ? "فعال" : "غیرفعال";
+                    await _botClient.SendTextMessageAsync(chatId,
+                        $"📊 وضعیت فعلی:\n" +
+                        $"اجباری بودن کد دعوت: {status}\n" +
+                        $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
+                        $"دستورات مدیریتی:\n" +
+                        $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
+                        $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
+                        $"/admin_referral_status - نمایش وضعیت فعلی");
+                    return true;
+
+                default:
+                    return false; // Not an admin command, continue with normal processing
+            }
+        }
+
+        private bool IsUserAdmin(UserDto user)
+        {
+            // Check if user has admin status or is a known admin Telegram ID
+            var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
+            return user.Status?.ToLower().Contains("admin") == true || 
+                   user.Status?.ToLower().Contains("root") == true ||
+                   adminTelegramIds.Contains(user.TelegramId);
         }
 
         private async Task HandlePlaceOrderAsync(long chatId, long telegramId)
