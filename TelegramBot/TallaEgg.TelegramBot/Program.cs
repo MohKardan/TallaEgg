@@ -2,6 +2,8 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using TallaEgg.TelegramBot.Core.Interfaces;
 using System.Net.Http;
 
 namespace TallaEgg.TelegramBot;
@@ -74,22 +76,37 @@ class Program
                 return;
             }
 
-            var botClient = ProxyBotClient.CreateWithProxy(botToken);
-            var orderApi = new OrderApiClient(orderApiUrl);
-            var usersApi = new UsersApiClient(usersApiUrl);
-            var httpClient = new HttpClient();
-            var affiliateApi = new AffiliateApiClient(affiliateApiUrl, httpClient);
-            var priceApi = new PriceApiClient(pricesApiUrl);
-            var walletApi = new WalletApiClient(walletApiUrl);
-            var botHandler = new BotHandler(botClient, orderApi, usersApi, affiliateApi, priceApi, walletApi, 
-                                           requireReferralCode, defaultReferralCode);
+            // Setup Dependency Injection
+            var services = new ServiceCollection();
+            
+            // Register services
+            services.AddSingleton<ITelegramBotClient>(provider => ProxyBotClient.CreateWithProxy(botToken));
+            services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(orderApiUrl));
+            services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(usersApiUrl));
+            services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
+            services.AddSingleton<PriceApiClient>(provider => new PriceApiClient(pricesApiUrl));
+            services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
+            services.AddSingleton<IBotHandler>(provider => new BotHandler(
+                provider.GetRequiredService<ITelegramBotClient>(),
+                provider.GetRequiredService<OrderApiClient>(),
+                provider.GetRequiredService<UsersApiClient>(),
+                provider.GetRequiredService<AffiliateApiClient>(),
+                provider.GetRequiredService<PriceApiClient>(),
+                provider.GetRequiredService<WalletApiClient>(),
+                requireReferralCode,
+                defaultReferralCode
+            ));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var botClient = serviceProvider.GetRequiredService<ITelegramBotClient>();
+            var botHandler = serviceProvider.GetRequiredService<IBotHandler>();
 
             Console.WriteLine("✅ API clients initialized");
 
             // حذف webhook قبلی
             try
             {
-                await botClient.DeleteWebhookAsync();
+                await botClient.DeleteWebhook(dropPendingUpdates: true);
                 Console.WriteLine("✅ Webhook deleted successfully");
             }
             catch (Exception ex)
@@ -100,7 +117,7 @@ class Program
             // Test bot connection
             try
             {
-                var me = await botClient.GetMeAsync();
+                var me = await botClient.GetMe();
                 Console.WriteLine($"✅ Bot connection successful: @{me.Username}");
             }
             catch (Exception ex)
@@ -117,22 +134,26 @@ class Program
 
             Console.WriteLine("🔄 Starting message polling...");
 
+            var cts = new CancellationTokenSource();
+
             botClient.StartReceiving(
-                updateHandler: async (client, update, token) =>
+                updateHandler: async (bot, update, ct) =>
                 {
-                    await HandleUpdateAsync(client, update, botHandler);
+                    await HandleUpdateAsync(bot, update, botHandler);
                 },
-                pollingErrorHandler: (client, ex, token) =>
+
+                errorHandler: async (bot, exception, source, ct) =>
                 {
-                    Console.WriteLine($"❌ Polling Error: {ex.Message}");
-                    Console.WriteLine($"Error Type: {ex.GetType().Name}");
-                    if (ex.InnerException != null)
+                    Console.WriteLine($"❌ Polling Error: {exception.Message}");
+                    Console.WriteLine($"Error Type: {exception.GetType().Name}");
+                    if (exception.InnerException != null)
                     {
-                        Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+                        Console.WriteLine($"Inner Error: {exception.InnerException.Message}");
                     }
-                    return Task.CompletedTask;
                 },
-                receiverOptions: receiverOptions
+
+                receiverOptions: receiverOptions,
+                cancellationToken: cts.Token
             );
 
             Console.WriteLine("✅ Bot is now running and listening for messages...");
@@ -152,7 +173,7 @@ class Program
         }
     }
 
-    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, BotHandler botHandler)
+    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, IBotHandler botHandler)
     {
         try
         {

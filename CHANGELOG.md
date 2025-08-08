@@ -8,6 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Telegram Bot Infrastructure DI**: Resolved OrderApiClient service resolution error in Infrastructure project
+  - Added concrete class registrations for BotHandler dependencies in TallaEgg.TelegramBot.Infrastructure
+  - Registered OrderApiClient, UsersApiClient, AffiliateApiClient, PriceApiClient, and WalletApiClient as concrete classes
+  - Added configuration-based URL resolution with fallback defaults
+  - Fixed service resolution error that was preventing Infrastructure project startup
+  - Maintained both interface and concrete class registrations for flexibility
+  - All BotHandler dependencies now properly resolved through DI container
+
+- **Telegram Bot Dependency Injection**: Resolved OrderApiClient service resolution error
+  - Added Microsoft.Extensions.DependencyInjection package to Telegram Bot project
+  - Implemented proper DI container setup in Program.cs
+  - Registered all API clients (OrderApiClient, UsersApiClient, AffiliateApiClient, PriceApiClient, WalletApiClient) as singletons
+  - Registered IBotHandler interface with proper dependency injection
+  - Fixed service resolution error that was preventing bot startup
+  - Updated HandleUpdateAsync method to use IBotHandler interface instead of concrete class
+  - All services now properly resolved through DI container
+
+### Changed
+- **Telegram Bot Architecture**: Improved service registration and dependency management
+  - Moved from direct instantiation to dependency injection pattern
+  - Added proper service lifetime management (singleton for all API clients)
+  - Improved separation of concerns with interface-based dependencies
+  - Enhanced Infrastructure project with dual registration pattern (interface + concrete)
+
+### Technical Details
+- Added `Microsoft.Extensions.DependencyInjection` package (v9.0.7) to Telegram Bot project
+- Modified `Program.cs` to use `ServiceCollection` for service registration
+- Updated service instantiation to use `BuildServiceProvider()` and `GetRequiredService<T>()`
+- Maintained backward compatibility while improving architecture
+- Added configuration-based URL resolution with fallback defaults for all API endpoints
+
+### Fixed
 - **Telegram Bot Compilation Errors**: Resolved multiple compilation errors in BotHandler
   - Fixed deconstruction variable type inference errors in HandleInvitationCodeAsync
   - Corrected method signature mismatches between BotHandler and API clients

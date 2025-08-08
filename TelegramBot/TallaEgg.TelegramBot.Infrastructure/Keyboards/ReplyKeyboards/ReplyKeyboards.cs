@@ -27,7 +27,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             };
 
 
-            await _botClient.SendTextMessageAsync(
+            await _botClient.SendMessage(
                 chatId,
                 "برای ثبت نام شماره خود را از طریق کلید زیر ارسال کنید",
             replyMarkup: keyboard);
@@ -51,7 +51,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             };
 
 
-            await _botClient.SendTextMessageAsync(
+            await _botClient.SendMessage(
                 chatId,
                 "🎯 منوی اصلی\n" +
     "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
@@ -74,7 +74,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             };
 
 
-            await _botClient.SendTextMessageAsync(
+            await _botClient.SendMessage(
                 chatId,
                 "🎯 منوی معاملات نقدی\n" +
     "لطفاً یکی از گزینه‌های را انتخاب کنید:",

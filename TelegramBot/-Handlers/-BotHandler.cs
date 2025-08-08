@@ -221,7 +221,7 @@ public class BotHandler : IBotHandler
     }
 
     private async Task HandleStartCommand(Message message)
-    {
+    {        
         var chatId = message.Chat.Id;
         var text = message.Text ?? "";
         var parts = text.Split('?', StringSplitOptions.RemoveEmptyEntries);

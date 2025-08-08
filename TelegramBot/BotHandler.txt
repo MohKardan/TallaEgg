@@ -2,7 +2,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using TallaEgg.TelegramBot.Core.Interfaces;
 
 namespace TallaEgg.TelegramBot
 {
@@ -45,7 +44,7 @@ namespace TallaEgg.TelegramBot
         public bool IsConfirmed { get; set; } = false;
     }
 
-    public class BotHandler: IBotHandler
+    public class BotHandler
     {
         private readonly ITelegramBotClient _botClient;
         private readonly OrderApiClient _orderApi;
@@ -70,11 +69,9 @@ namespace TallaEgg.TelegramBot
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
         }
-        
-        public async Task HandleUpdateAsync(object updateObj)
-        {
-            var update = (Update)updateObj;
 
+        public async Task HandleUpdateAsync(Update update)
+        {
             if (update.Message is not { } message || message.Text is not { } msgText)
                 return;
 
@@ -689,16 +686,6 @@ namespace TallaEgg.TelegramBot
             }
 
             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
-        }
-
-        public Task HandleMessageAsync(object message)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task HandleCallbackQueryAsync(object callbackQuery)
-        {
-            throw new NotImplementedException();
         }
     }
 }
