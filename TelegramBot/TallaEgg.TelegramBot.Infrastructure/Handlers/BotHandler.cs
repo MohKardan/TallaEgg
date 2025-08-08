@@ -100,7 +100,7 @@ public class BotHandler : IBotHandler
             {
                 await HandlePhoneNumber(message);
             }
-            else if( text.StartsWith(ButtonTextsConstants.Help, StringComparison.OrdinalIgnoreCase))
+            else if (text.StartsWith(ButtonTextsConstants.Help, StringComparison.OrdinalIgnoreCase))
             {
                 await ShowHelpMenu(chatId);
             }
@@ -110,7 +110,7 @@ public class BotHandler : IBotHandler
             }
             else if (text.StartsWith(ButtonTextsConstants.MakeOrder, StringComparison.OrdinalIgnoreCase))
             {
-                await ShowAssetsList(chatId);
+                await ShowSymbolsList(chatId);
             }
             if (text.StartsWith("asset_"))
             {
@@ -228,7 +228,7 @@ public class BotHandler : IBotHandler
 
         if (parts.Length < 2)
         {
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "لطفاً کد دعوت خود را وارد کنید:\n" +
                 "/start?[کد_دعوت]");
             return;
@@ -248,7 +248,7 @@ public class BotHandler : IBotHandler
         //var result = await _userService.ValidateInvitationCodeAsync(invitationCode);
         //var isValid = result.isValid;
         //var messageText = result.message;
-        
+
         //if (!isValid)
         //{
         //    await _botClient.SendTextMessageAsync(chatId, messageText);
@@ -272,9 +272,9 @@ public class BotHandler : IBotHandler
         }
     }
 
-    private async Task ExceptionHanding(long chatId, Exception ex,string? messge=null)
+    private async Task ExceptionHanding(long chatId, Exception ex, string? messge = null)
     {
-        _logger.LogError(ex, $"{(string.IsNullOrEmpty(messge)? string.Empty:messge)}");
+        _logger.LogError(ex, $"{(string.IsNullOrEmpty(messge) ? string.Empty : messge)}");
         await _botClient.SendTextMessageAsync(Constants.DeveloperChatId, JsonSerializer.Serialize(ex));
         await _botClient.SendTextMessageAsync(chatId, Constants.SupportErrorMessage);
     }
@@ -296,11 +296,11 @@ public class BotHandler : IBotHandler
 
         try
         {
-           await _userService.UpdateUserPhoneAsync(message.From!.Id, phoneNumber);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _userService.UpdateUserPhoneAsync(message.From!.Id, phoneNumber);
+            await _botClient.SendTextMessageAsync(chatId,
                 "شماره تلفن با موفقیت ثبت شد! ✅\n" +
                 "حالا می‌توانید از خدمات ما استفاده کنید.");
-            
+
             await ShowMainMenu(chatId);
         }
         catch (Exception ex)
@@ -318,7 +318,7 @@ public class BotHandler : IBotHandler
         var user = await _userService.GetUserByTelegramIdAsync(message.From!.Id);
         if (user == null || string.IsNullOrEmpty(user.PhoneNumber))
         {
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "لطفاً ابتدا ثبت‌نام کنید و شماره تلفن خود را وارد کنید.");
             return;
         }
@@ -335,7 +335,7 @@ public class BotHandler : IBotHandler
                 await ShowOrderMenu(chatId);
                 break;
             default:
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     "لطفاً از منوی اصلی استفاده کنید.");
                 break;
         }
@@ -370,6 +370,13 @@ public class BotHandler : IBotHandler
     {
         await _botClient.SpotMenuKeyboard(chatId);
     }
+
+    /// <summary>
+    /// فعلا هیچی پاک نکن
+    /// چیزای اضافه بذار باشن به عنوان سمپل برای کپی پیست کردن لازم میشن
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <returns></returns>
     private async Task ShowAssetsList(long chatId)
     {
         try
@@ -379,7 +386,7 @@ public class BotHandler : IBotHandler
 
             if (prices == null || !prices.Any())
             {
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     "⚠️ در حال حاضر لیست دارایی‌های قابل معامله در دسترس نیست.\n" +
                     "لطفاً بعداً تلاش کنید.");
                 return;
@@ -387,7 +394,7 @@ public class BotHandler : IBotHandler
 
             // ساخت دکمه‌ها برای هر دارایی با نمایش قیمت
             var assetButtons = new List<InlineKeyboardButton[]>();
-            
+
             foreach (var price in prices)
             {
                 var displayText = $"{GetAssetEmoji(price.Asset)} {price.Asset} - {price.BuyPrice:N0} تومان";
@@ -411,20 +418,65 @@ public class BotHandler : IBotHandler
                             "قیمت‌ها به صورت لحظه‌ای به‌روزرسانی می‌شوند.";
 
             await _botClient.SendTextMessageAsync(
-                chatId, 
-                messageText, 
+                chatId,
+                messageText,
                 parseMode: ParseMode.Markdown,
                 replyMarkup: keyboard);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در نمایش لیست دارایی‌ها برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در دریافت لیست دارایی‌ها.\n" +
                 "لطفاً بعداً تلاش کنید.");
         }
     }
 
+    /// <summary>
+    /// نمادهای قابل معامله را به کاربر نمایش میدهد
+    /// Trading Pair
+    /// مثال: BTCUSDT
+    /// </summary>
+    /// <param name="chatId"></param>
+    /// <returns></returns>
+    private async Task ShowSymbolsList(long chatId)
+    {
+        /// فعلا هارد کد کردم چون یک نماد معاملاتی بیشتر نداریم
+        /// ولی بعدا باید یک جدول براش در نطر بگیریم و از سرویس خودش بحونیمش
+        try
+        {
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("🪙 طلا آبشده", $"asset_Melted"),
+
+                },
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("🔙 بازگشت", "back_to_main")
+                }
+            });
+
+            // ارسال پیام به کاربر با توضیحات
+            var messageText = "📊 **لیست دارایی‌های قابل معامله**\n\n" +
+                            "لطفاً دارایی مورد نظر خود را انتخاب کنید:\n" +
+                            "قیمت‌ها به صورت لحظه‌ای به‌روزرسانی می‌شوند.";
+
+            await _botClient.SendTextMessageAsync(
+                chatId,
+                messageText,
+                parseMode: ParseMode.Markdown,
+                replyMarkup: keyboard);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "خطا در نمایش لیست دارایی‌ها برای chatId: {ChatId}", chatId);
+            await _botClient.SendTextMessageAsync(chatId,
+                "❌ خطا در دریافت لیست دارایی‌ها.\n" +
+                "لطفاً بعداً تلاش کنید.");
+        }
+    }
     private async Task ShowFuturesMenu(long chatId)
     {
         var keyboard = new InlineKeyboardMarkup(new[]
@@ -469,7 +521,7 @@ public class BotHandler : IBotHandler
 
     private async Task ShowHelpMenu(long chatId)
     {
-        var helpText = 
+        var helpText =
             "❓ راهنمای استفاده\n\n" +
             "🔹 برای شروع معامله:\n" +
             "1. منوی نقدی یا آتی را انتخاب کنید\n" +
@@ -668,21 +720,21 @@ public class BotHandler : IBotHandler
         {
             var asset = data.Substring("asset_".Length); // حذف پیشوند "asset_"
             var telegramId = callbackQuery.From?.Id ?? 0;
-            
+
             // ذخیره asset در state کاربر
             if (!_userOrderStates.ContainsKey(telegramId))
             {
-            _userOrderStates[telegramId] = new OrderState();
+                _userOrderStates[telegramId] = new OrderState();
             }
-            
+
             _userOrderStates[telegramId].Asset = asset;
-            
+
             // دریافت قیمت فعلی
             var price = await _priceService.GetLatestPriceAsync(asset);
             if (price != null)
             {
-            _userOrderStates[telegramId].Price = price.BuyPrice;
-                
+                _userOrderStates[telegramId].Price = price.BuyPrice;
+
                 // نمایش منوی نوع سفارش (خرید/فروش)
                 var keyboard = new InlineKeyboardMarkup(new[]
                 {
@@ -710,7 +762,7 @@ public class BotHandler : IBotHandler
             }
             else
             {
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     $"❌ خطا در دریافت قیمت {asset}.\n" +
                     "لطفاً دوباره تلاش کنید.");
             }
@@ -718,7 +770,7 @@ public class BotHandler : IBotHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در انتخاب دارایی برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در انتخاب دارایی.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -730,22 +782,22 @@ public class BotHandler : IBotHandler
         {
             var tradingType = data.Substring("trading_".Length); // حذف پیشوند "trading_"
             var telegramId = callbackQuery.From?.Id ?? 0;
-            
+
             // ذخیره trading type در state کاربر
             if (!_userOrderStates.ContainsKey(telegramId))
             {
                 _userOrderStates[telegramId] = new OrderState();
             }
-            
+
             _userOrderStates[telegramId].TradingType = tradingType;
-            
+
             // نمایش لیست دارایی‌ها
             await ShowAssetsList(chatId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در انتخاب نوع معامله برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در انتخاب نوع معامله.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -757,13 +809,13 @@ public class BotHandler : IBotHandler
         {
             var orderType = data.Substring("order_type_".Length); // حذف پیشوند "order_type_"
             var telegramId = callbackQuery.From?.Id ?? 0;
-            
+
             if (_userOrderStates.ContainsKey(telegramId))
             {
                 _userOrderStates[telegramId].OrderType = orderType;
-                
+
                 // درخواست مقدار واحد
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     $"📝 **ثبت سفارش {orderType}**\n\n" +
                     $"نماد: **{_userOrderStates[telegramId].Asset}**\n" +
                     $"قیمت: **{_userOrderStates[telegramId].Price:N0}** تومان\n\n" +
@@ -772,7 +824,7 @@ public class BotHandler : IBotHandler
             }
             else
             {
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     "❌ خطا در پردازش سفارش.\n" +
                     "لطفاً از ابتدا شروع کنید.");
             }
@@ -780,7 +832,7 @@ public class BotHandler : IBotHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در انتخاب نوع سفارش برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در انتخاب نوع سفارش.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -791,18 +843,18 @@ public class BotHandler : IBotHandler
         try
         {
             var telegramId = callbackQuery.From?.Id ?? 0;
-            
+
             if (_userOrderStates.ContainsKey(telegramId))
             {
                 var orderState = _userOrderStates[telegramId];
-                
+
                 // بررسی موجودی برای فروش
                 if (orderState.OrderType.ToLower() == "sell")
                 {
                     var (balanceSuccess, balance) = await _userService.GetUserBalanceAsync(telegramId, orderState.Asset);
                     if (!balanceSuccess || balance < orderState.Amount)
                     {
-                        await _botClient.SendTextMessageAsync(chatId, 
+                        await _botClient.SendTextMessageAsync(chatId,
                             $"❌ موجودی کافی نیست.\n" +
                             $"موجودی شما: **{balance}** واحد\n" +
                             $"مقدار درخواستی: **{orderState.Amount}** واحد",
@@ -810,7 +862,7 @@ public class BotHandler : IBotHandler
                         return;
                     }
                 }
-                
+
                 // ثبت سفارش
                 try
                 {
@@ -823,36 +875,36 @@ public class BotHandler : IBotHandler
                     );
                     var success = order != null;
                     var message = success ? "سفارش با موفقیت ثبت شد" : "خطا در ثبت سفارش";
-                
+
                     if (success)
-                {
-                    await _botClient.SendTextMessageAsync(chatId, 
-                        $"✅ **سفارش با موفقیت ثبت شد!**\n\n" +
-                        $"نماد: **{orderState.Asset}**\n" +
-                        $"نوع: **{orderState.OrderType}**\n" +
-                        $"مقدار: **{orderState.Amount}** واحد\n" +
-                        $"قیمت: **{orderState.Price:N0}** تومان\n" +
-                        $"مبلغ کل: **{orderState.Amount * orderState.Price:N0}** تومان",
-                        parseMode: ParseMode.Markdown);
-                    
+                    {
+                        await _botClient.SendTextMessageAsync(chatId,
+                            $"✅ **سفارش با موفقیت ثبت شد!**\n\n" +
+                            $"نماد: **{orderState.Asset}**\n" +
+                            $"نوع: **{orderState.OrderType}**\n" +
+                            $"مقدار: **{orderState.Amount}** واحد\n" +
+                            $"قیمت: **{orderState.Price:N0}** تومان\n" +
+                            $"مبلغ کل: **{orderState.Amount * orderState.Price:N0}** تومان",
+                            parseMode: ParseMode.Markdown);
+
                         // پاک کردن state
                         _userOrderStates.Remove(telegramId);
                     }
                     else
                     {
-                        await _botClient.SendTextMessageAsync(chatId, 
+                        await _botClient.SendTextMessageAsync(chatId,
                             $"❌ خطا در ثبت سفارش: {message}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    await _botClient.SendTextMessageAsync(chatId, 
+                    await _botClient.SendTextMessageAsync(chatId,
                         $"❌ خطا در ثبت سفارش: {ex.Message}");
                 }
             }
             else
             {
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     "❌ خطا در پردازش سفارش.\n" +
                     "لطفاً از ابتدا شروع کنید.");
             }
@@ -860,7 +912,7 @@ public class BotHandler : IBotHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در تایید سفارش برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در تایید سفارش.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -871,24 +923,24 @@ public class BotHandler : IBotHandler
         try
         {
             var telegramId = callbackQuery.From?.Id ?? 0;
-            
+
             // پاک کردن state
             if (_userOrderStates.ContainsKey(telegramId))
             {
                 _userOrderStates.Remove(telegramId);
             }
-            
-            await _botClient.SendTextMessageAsync(chatId, 
+
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ سفارش لغو شد.\n" +
                 "می‌توانید سفارش جدیدی ثبت کنید.");
-            
+
             // نمایش منوی اصلی
             await ShowMainMenu(chatId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در لغو سفارش برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در لغو سفارش.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -903,15 +955,15 @@ public class BotHandler : IBotHandler
             {
                 _userOrderStates[telegramId] = new OrderState();
             }
-            
+
             _userOrderStates[telegramId].Asset = asset;
-            
+
             // دریافت قیمت فعلی
             var price = await _priceService.GetLatestPriceAsync(asset);
             if (price != null)
             {
                 _userOrderStates[telegramId].Price = price.BuyPrice;
-                
+
                 // نمایش منوی نوع سفارش (خرید/فروش)
                 var keyboard = new InlineKeyboardMarkup(new[]
                 {
@@ -939,7 +991,7 @@ public class BotHandler : IBotHandler
             }
             else
             {
-                await _botClient.SendTextMessageAsync(chatId, 
+                await _botClient.SendTextMessageAsync(chatId,
                     $"❌ خطا در دریافت قیمت {asset}.\n" +
                     "لطفاً دوباره تلاش کنید.");
             }
@@ -947,7 +999,7 @@ public class BotHandler : IBotHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "خطا در انتخاب دارایی برای chatId: {ChatId}", chatId);
-            await _botClient.SendTextMessageAsync(chatId, 
+            await _botClient.SendTextMessageAsync(chatId,
                 "❌ خطا در انتخاب دارایی.\n" +
                 "لطفاً دوباره تلاش کنید.");
         }
@@ -966,4 +1018,4 @@ public class BotHandler : IBotHandler
             _ => "��"
         };
     }
-} 
+}
