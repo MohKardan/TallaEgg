@@ -59,7 +59,7 @@ namespace TallaEgg.TelegramBot
 
         public BotHandler(ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi, 
                          AffiliateApiClient affiliateApi, PriceApiClient priceApi, WalletApiClient walletApi,
-                         bool requireReferralCode = true, string defaultReferralCode = "ADMIN2024")
+                         bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
             _botClient = botClient;
             _orderApi = orderApi;
