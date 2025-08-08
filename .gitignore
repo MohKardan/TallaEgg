@@ -711,3 +711,4 @@ chocolatey/
 !*.json.template
 bin/
 obj/
+/clean_build.bat
