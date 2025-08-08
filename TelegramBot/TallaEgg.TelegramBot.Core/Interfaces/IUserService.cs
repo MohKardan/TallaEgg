@@ -14,4 +14,5 @@ public interface IUserService
     Task<string> GenerateInvitationCodeAsync(Guid userId);
     Task<bool> IsUserAdminAsync(long telegramId);
     Task<bool> IsUserRootAsync(long telegramId);
+    Task<(bool success, decimal balance)> GetUserBalanceAsync(long telegramId, string asset);
 } 

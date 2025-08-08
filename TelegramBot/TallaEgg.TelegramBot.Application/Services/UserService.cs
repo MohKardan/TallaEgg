@@ -141,4 +141,11 @@ public class UserService : IUserService
     {
        return await _userRepository.IsInvitationCodeValidAsync(code);
     }
+
+    public async Task<(bool success, decimal balance)> GetUserBalanceAsync(long telegramId, string asset)
+    {
+        // For now, return a mock balance
+        // TODO: Implement actual wallet service integration
+        return (true, 1000m);
+    }
 } 
