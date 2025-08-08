@@ -29,17 +29,17 @@ public class TelegramBotService : BackgroundService
         var receiverOptions = new ReceiverOptions
         {
             AllowedUpdates = new[] { Telegram.Bot.Types.Enums.UpdateType.Message, Telegram.Bot.Types.Enums.UpdateType.CallbackQuery },
-            ThrowPendingUpdates = true,
+            
         };
 
         _botClient.StartReceiving(
             updateHandler: HandleUpdateAsync,
-            pollingErrorHandler: HandlePollingErrorAsync,
+            errorHandler: HandlePollingErrorAsync,
             receiverOptions: receiverOptions,
             cancellationToken: stoppingToken
         );
 
-        var me = await _botClient.GetMeAsync(stoppingToken);
+        var me = await _botClient.GetMe(stoppingToken);
         _logger.LogInformation("Bot {BotName} started", me.Username);
 
         // Keep the service running

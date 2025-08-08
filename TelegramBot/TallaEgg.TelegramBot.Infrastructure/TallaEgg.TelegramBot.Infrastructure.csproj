@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,16 +8,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Telegram.Bot" Version="19.0.0" />
+    <PackageReference Include="Telegram.Bot" Version="22.6.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.7" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\TallaEgg.TelegramBot.Core\TallaEgg.TelegramBot.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.TelegramBot.Application\TallaEgg.TelegramBot.Application.csproj" />
+    <ProjectReference Include="..\TallaEgg.TelegramBot\TallaEgg.TelegramBot.csproj" />
   </ItemGroup>
 
   <ItemGroup>
