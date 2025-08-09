@@ -1,8 +1,11 @@
+using TallaEgg.Core.Enums.User;
+
 namespace Users.Core;
 
 public class User
 {
     public Guid Id { get; set; }
+    public Guid? CreatedByUserId { get; set; }
     public long TelegramId { get; set; }
     public string? PhoneNumber { get; set; }
     public string? Username { get; set; }
@@ -16,19 +19,4 @@ public class User
     public string? InvitationCode { get; set; } // کد دعوت
 }
 
-public enum UserStatus
-{
-    Pending,    // منتظر تایید
-    Active,     // فعال
-    Suspended,  // معلق
-    Blocked     // مسدود
-}
-
-public enum UserRole
-{
-    RegularUser,    // کاربر معمولی
-    Accountant,     // حسابدار
-    Admin,          // مدیر
-    SuperAdmin,      // مدیر ارشد
-    User
-} 
+ 

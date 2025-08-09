@@ -30,8 +30,8 @@ class Program
             var walletApiUrl = config["WalletApiUrl"];
             
             // Bot settings
-            var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "true");
-            var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "ADMIN2024";
+            var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "false");
+            var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "admin";
 
             Console.WriteLine($"Bot Token: {botToken?.Substring(0, Math.Min(10, botToken?.Length ?? 0))}...");
             Console.WriteLine($"Order API URL: {orderApiUrl}");

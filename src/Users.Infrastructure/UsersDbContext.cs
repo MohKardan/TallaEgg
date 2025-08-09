@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.Enums.User;
 using Users.Core;
 
 namespace Users.Infrastructure;

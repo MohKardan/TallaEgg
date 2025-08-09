@@ -1,7 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Enums.User;
+using TallaEgg.Core.Requests.User;
+using Users.Application;
+using Users.Application.Mappers;
 using Users.Core;
 using Users.Infrastructure;
-using Users.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +18,7 @@ builder.Services.AddDbContext<UsersDbContext>(options =>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserMapper>();
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -31,15 +37,17 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
     try
     {
         var user = await userService.RegisterUserAsync(
-            request.TelegramId, 
+            request.TelegramId,
+            request.InvitationCode,
             request.Username, 
             request.FirstName, 
             request.LastName);
-        return Results.Ok(new { success = true, userId = user.Id });
+
+        return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return ApiResponse<UserDto>.Fail(ex.Message);
     }
 });
 
@@ -47,12 +55,12 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
 {
     try
     {
-        var user = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
-        return Results.Ok(new { success = true, message = "شماره تلفن با موفقیت ثبت شد." });
+        var response = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
+        return ApiResponse<UserDto>.Ok(response, "Phone number updated successfully");
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return ApiResponse<UserDto>.Fail(ex.Message);
     }
 });
 
@@ -60,8 +68,9 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 {
     var user = await userService.GetUserByTelegramIdAsync(telegramId);
     if (user == null)
-        return Results.NotFound();
-    return Results.Ok(user);
+        return ApiResponse<UserDto>.Fail("User not found");
+
+    return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
 });
 
 app.MapPost("/api/user/update-status", async (UpdateStatusRequest request, UserService userService) =>
@@ -168,8 +177,6 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 app.Run();
 
 // Request models
-public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName);
-public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
 public record UpdateStatusRequest(long TelegramId, UserStatus Status);
 public record ValidateInvitationRequest(string InvitationCode);
 public record RegisterUserWithInvitationRequest(User User);

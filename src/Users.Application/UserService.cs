@@ -1,4 +1,9 @@
 using Affiliate.Core;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Enums.User;
+using TallaEgg.Core.Utilties;
+using Users.Application.Mappers;
 using Users.Core;
 
 namespace Users.Application;
@@ -6,14 +11,18 @@ namespace Users.Application;
 public class UserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly UserMapper _userMapper;
 
-    public UserService(IUserRepository userRepository)
+    public UserService(IUserRepository userRepository, UserMapper userMapper)
     {
         _userRepository = userRepository;
+        _userMapper = userMapper;
     }
 
-    public async Task<User> RegisterUserAsync(long telegramId, string? username, string? firstName, string? lastName)
+    public async Task<UserDto> RegisterUserAsync(long telegramId,string invitationCode, string? username, string? firstName, string? lastName)
     {
+        var createdByUserId = await GetUserIdByInvitationCode(invitationCode);
+        if (createdByUserId == null) throw new Exception("کد دعوت معتبر نیست.");
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -24,18 +33,23 @@ public class UserService
             CreatedAt = DateTime.UtcNow,
             LastActiveAt = DateTime.UtcNow,
             IsActive = true,
-            Status = UserStatus.Pending
+            Status = UserStatus.Pending,
+            Role = UserRole.RegularUser,
+            CreatedByUserId =  createdByUserId,
+            InvitationCode = Utils.GenerateSecureRandomString(5), 
         };
 
-        return await _userRepository.CreateAsync(user);
+        await _userRepository.CreateAsync(user);
+        return _userMapper.Map(user);
     }
 
-    public async Task<User?> GetUserByTelegramIdAsync(long telegramId)
+    public async Task<UserDto?> GetUserByTelegramIdAsync(long telegramId)
     {
-        return await _userRepository.GetByTelegramIdAsync(telegramId);
+        var user = await _userRepository.GetByTelegramIdAsync(telegramId);
+        return _userMapper.Map(user);
     }
 
-    public async Task<User> UpdateUserPhoneAsync(long telegramId, string phoneNumber)
+    public async Task<UserDto> UpdateUserPhoneAsync(long telegramId, string phoneNumber)
     {
         var user = await _userRepository.GetByTelegramIdAsync(telegramId);
         if (user == null)
@@ -45,9 +59,10 @@ public class UserService
 
         user.PhoneNumber = phoneNumber;
         user.LastActiveAt = DateTime.UtcNow;
+        user.IsActive = true;
         user.Status = UserStatus.Active; // فعال کردن کاربر پس از ثبت شماره تلفن
-
-        return await _userRepository.UpdateAsync(user);
+         await _userRepository.UpdateAsync(user);
+        return _userMapper.Map(user);
     }
 
     public async Task<bool> UserExistsAsync(long telegramId)
@@ -55,7 +70,7 @@ public class UserService
         return await _userRepository.ExistsByTelegramIdAsync(telegramId);
     }
 
-    public async Task<User> UpdateUserStatusAsync(long telegramId, UserStatus status)
+    public async Task<UserDto> UpdateUserStatusAsync(long telegramId, UserStatus status)
     {
         var user = await _userRepository.GetByTelegramIdAsync(telegramId);
         if (user == null)
@@ -65,28 +80,29 @@ public class UserService
 
         user.Status = status;
         user.LastActiveAt = DateTime.UtcNow;
-
-        return await _userRepository.UpdateAsync(user);
+        return _userMapper.Map(user);
+        //return await _userRepository.UpdateAsync(user);
     }
 
-    public async Task<object?> GetUserIdByInvitationCode(string invitationCode)
+    public async Task<Guid?> GetUserIdByInvitationCode(string invitationCode)
     {
         if (string.IsNullOrWhiteSpace(invitationCode))
             return null;
 
         // ابتدا در جدول Users جستجو می‌کنیم
-        var user = await _userRepository.GetByInvitationCodeAsync(invitationCode);
-        if (user != null)
+        var id = await _userRepository.GetUserIdByInvitationCodeAsync(invitationCode);
+        if (id != null)
         {
-            return user.Id;
+            return id;
         }
 
         // اگر در جدول Users پیدا نشد، در جدول Invitations جستجو می‌کنیم
-        var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
-        if (invitation != null)
-        {
-            return invitation.CreatedByUserId;
-        }
+        
+        //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
+        //if (invitation != null)
+        //{
+        //    return invitation.CreatedByUserId;
+        //}
 
         return null;
     }
@@ -133,11 +149,11 @@ public class UserService
 
     // اگر جایی در این فایل یا پروژه متدی دارید که آرگومان دوم آن باید از نوع Users.Core.UserRole باشد، 
     // باید مقدار رشته را به Enum تبدیل کنید. مثال:
-    public Users.Core.UserRole ParseUserRole(string roleString)
+    public UserRole ParseUserRole(string roleString)
     {
-        if (Enum.TryParse<Users.Core.UserRole>(roleString, true, out var role))
+        if (Enum.TryParse<UserRole>(roleString, true, out var role))
             return role;
-        return Users.Core.UserRole.User; // مقدار پیش‌فرض
+        return UserRole.User; // مقدار پیش‌فرض
     }
 
     // سپس هنگام فراخوانی متد، به جای رشته، مقدار Enum را ارسال کنید:

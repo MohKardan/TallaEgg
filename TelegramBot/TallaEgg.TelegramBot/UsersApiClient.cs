@@ -2,6 +2,9 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Requests.User;
+using Telegram.Bot.Types;
 
 namespace TallaEgg.TelegramBot;
 
@@ -15,11 +18,12 @@ public class UsersApiClient
         _apiUrl = apiUrl;
     }
 
-    public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string? username, string? firstName, string? lastName)
+    public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
     {
-        var request = new
+        RegisterUserRequest request = new RegisterUserRequest()
         {
             TelegramId = telegramId,
+            InvitationCode = invitationCode,
             Username = username,
             FirstName = firstName,
             LastName = lastName
@@ -35,12 +39,12 @@ public class UsersApiClient
             
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(respText);
-                if (result.success)
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
+                if (result.Success)
                 {
-                    return (true, "ثبت‌نام با موفقیت انجام شد.", Guid.Parse(result.userId.ToString()));
+                    return (true, "ثبت‌نام با موفقیت انجام شد.", Guid.Parse(result.Data.Id.ToString()));
                 }
-                return (false, result.message.ToString(), null);
+                return (false, result.Message.ToString(), null);
             }
             return (false, $"خطا در ثبت‌نام: {respText}", null);
         }
@@ -52,7 +56,7 @@ public class UsersApiClient
 
     public async Task<(bool success, string message)> UpdatePhoneAsync(long telegramId, string phoneNumber)
     {
-        var request = new
+        UpdatePhoneRequest request = new UpdatePhoneRequest()
         {
             TelegramId = telegramId,
             PhoneNumber = phoneNumber
@@ -68,8 +72,8 @@ public class UsersApiClient
             
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<dynamic>(respText);
-                return (result.success, result.message.ToString());
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
+                return (result.Success, result.Message.ToString());
             }
             return (false, $"خطا در ثبت شماره تلفن: {respText}");
         }
@@ -79,7 +83,7 @@ public class UsersApiClient
         }
     }
 
-    public async Task<(bool success, UserDto? user)> GetUserAsync(long telegramId)
+    public async Task<UserDto?> GetUserAsync(long telegramId)
     {
         try
         {
@@ -88,28 +92,15 @@ public class UsersApiClient
             
             if (response.IsSuccessStatusCode)
             {
-                var user = JsonConvert.DeserializeObject<UserDto>(respText);
-                return (true, user);
+                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
+                return res.Data;
             }
-            return (false, null);
+            return null;
         }
         catch (Exception ex)
         {
-            return (false, null);
+            return null;
         }
     }
 }
 
-public class UserDto
-{
-    public Guid Id { get; set; }
-    public long TelegramId { get; set; }
-    public string? PhoneNumber { get; set; }
-    public string? Username { get; set; }
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? LastActiveAt { get; set; }
-    public bool IsActive { get; set; }
-    public string Status { get; set; } = "";
-} 

@@ -41,7 +41,7 @@ var host = Host.CreateDefaultBuilder(args)
         
         // API Clients - Concrete class registrations for BotHandler
         services.AddScoped<TallaEgg.TelegramBot.OrderApiClient>(provider => 
-            new TallaEgg.TelegramBot.OrderApiClient(configuration["OrderApiUrl"] ?? "http://localhost:5000"));
+            new TallaEgg.TelegramBot.OrderApiClient(configuration["OrderApiUrl"] /*?? "http://localhost:5000"*/));
         services.AddScoped<TallaEgg.TelegramBot.UsersApiClient>(provider => 
             new TallaEgg.TelegramBot.UsersApiClient(configuration["UsersApiUrl"] ?? "http://localhost:5001"));
         services.AddScoped<TallaEgg.TelegramBot.AffiliateApiClient>(provider => 

@@ -1,5 +1,7 @@
 using Affiliate.Core;
 using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Enums.User;
 using Users.Core;
 
 namespace Users.Infrastructure;
@@ -66,10 +68,10 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
-    public async Task<User?> GetByInvitationCodeAsync(string invitationCode)
+    public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
-        return await _context.Users
-            .FirstOrDefaultAsync(u => u.InvitationCode == invitationCode);
+        return await _context.Users.Where(u => u.InvitationCode == invitationCode).Select(u => u.Id)
+            .FirstOrDefaultAsync();
     }
 
     Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)

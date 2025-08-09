@@ -1,8 +1,10 @@
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.TelegramBot.Core.Interfaces;
+using TallaEgg.TelegramBot.Keyboards;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using TallaEgg.TelegramBot.Core.Interfaces;
 
 namespace TallaEgg.TelegramBot
 {
@@ -75,16 +77,20 @@ namespace TallaEgg.TelegramBot
         {
             var update = (Update)updateObj;
 
-            if (update.Message is not { } message || message.Text is not { } msgText)
+            if (update.Message is not { } message)
                 return;
+
+            if (message.Type != MessageType.Contact && message.Type != MessageType.Text)
+                return;
+            
 
             var chatId = message.Chat.Id;
             var telegramId = message.From?.Id ?? 0;
 
             // Check if user exists
-            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            var user = await _usersApi.GetUserAsync(telegramId);
 
-            if (!userExists)
+            if (user == null)
             {
                 await HandleNewUserAsync(chatId, telegramId, message);
                 return;
@@ -111,7 +117,7 @@ namespace TallaEgg.TelegramBot
 
             if (msgText.StartsWith("/start"))
             {
-                var parts = msgText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var parts = msgText.Split('?', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length > 1)
                 {
                     var invitationCode = parts[1];
@@ -130,35 +136,30 @@ namespace TallaEgg.TelegramBot
                         await HandleInvitationCodeAsync(chatId, telegramId, _defaultReferralCode, message);
                     }
                 }
+
+
+
             }
         }
 
         private async Task HandleInvitationCodeAsync(long chatId, long telegramId, string invitationCode, Message message)
         {
             // First register the user
-            var (regSuccess, regMessage, userId) = await _usersApi.RegisterUserAsync(telegramId, message.From?.Username, message.From?.FirstName, message.From?.LastName);
+            var (regSuccess, regMessage, userId) = await _usersApi.RegisterUserAsync(telegramId, invitationCode, message.From?.Username, message.From?.FirstName, message.From?.LastName);
 
             if (regSuccess && userId.HasValue)
             {
                 // Then use the invitation
-                var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
+                //   var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
 
-                if (useSuccess)
-                {
-                    var sharePhoneButton = new KeyboardButton(BotTexts.BtnSharePhone) { RequestContact = true };
-                    await _botClient.SendMessage(chatId, BotTexts.MsgWelcome,
-                        replyMarkup: new ReplyKeyboardMarkup(new[]
-                        {
-                            new KeyboardButton[] { sharePhoneButton }
-                        })
-                        {
-                            ResizeKeyboard = true
-                        });
-                }
-                else
-                {
-                    await _botClient.SendMessage(chatId, $"خطا در استفاده از کد دعوت: {useMessage}");
-                }
+                //if (useSuccess)
+                //{
+                        await _botClient.SendContactKeyboardAsync(chatId);
+
+                //else
+                //{
+                //    await _botClient.SendMessage(chatId, $"خطا در استفاده از کد دعوت: {useMessage}");
+                //}
             }
             else
             {
@@ -185,15 +186,7 @@ namespace TallaEgg.TelegramBot
             }
             else
             {
-                var sharePhoneButton = new KeyboardButton(BotTexts.BtnSharePhone) { RequestContact = true };
-                await _botClient.SendMessage(chatId, BotTexts.MsgPhoneRequest,
-                    replyMarkup: new ReplyKeyboardMarkup(new[]
-                    {
-                        new KeyboardButton[] { sharePhoneButton }
-                    })
-                    {
-                        ResizeKeyboard = true
-                    });
+               await _botClient.SendContactKeyboardAsync(chatId);
             }
         }
 
@@ -287,116 +280,119 @@ namespace TallaEgg.TelegramBot
 
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message)
         {
-            var msgText = message.Text ?? "";
+            return true;
+            //var msgText = message.Text ?? "";
 
-            // Check if user is admin
-            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
-            if (!userExists || user == null || (!IsUserAdmin(user)))
-            {
-                return false; // Not an admin, continue with normal processing
-            }
+            //// Check if user is admin
+            //var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            //if (!userExists || user == null || (!IsUserAdmin(user)))
+            //{
+            //    return false; // Not an admin, continue with normal processing
+            //}
 
-            switch (msgText.ToLower())
-            {
-                case "/admin_referral_on":
-                    _requireReferralCode = true;
-                    await _botClient.SendMessage(chatId,
-                        "✅ اجباری بودن کد دعوت فعال شد.\n" +
-                        "کاربران جدید باید کد دعوت داشته باشند.");
-                    return true;
+            //switch (msgText.ToLower())
+            //{
+            //    case "/admin_referral_on":
+            //        _requireReferralCode = true;
+            //        await _botClient.SendMessage(chatId,
+            //            "✅ اجباری بودن کد دعوت فعال شد.\n" +
+            //            "کاربران جدید باید کد دعوت داشته باشند.");
+            //        return true;
 
-                case "/admin_referral_off":
-                    _requireReferralCode = false;
-                    await _botClient.SendMessage(chatId,
-                        "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
-                        $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
-                    return true;
+            //    case "/admin_referral_off":
+            //        _requireReferralCode = false;
+            //        await _botClient.SendMessage(chatId,
+            //            "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
+            //            $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
+            //        return true;
 
-                case "/admin_referral_status":
-                    var status = _requireReferralCode ? "فعال" : "غیرفعال";
-                    await _botClient.SendMessage(chatId,
-                        $"📊 وضعیت فعلی:\n" +
-                        $"اجباری بودن کد دعوت: {status}\n" +
-                        $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
-                        $"دستورات مدیریتی:\n" +
-                        $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
-                        $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
-                        $"/admin_referral_status - نمایش وضعیت فعلی");
-                    return true;
+            //    case "/admin_referral_status":
+            //        var status = _requireReferralCode ? "فعال" : "غیرفعال";
+            //        await _botClient.SendMessage(chatId,
+            //            $"📊 وضعیت فعلی:\n" +
+            //            $"اجباری بودن کد دعوت: {status}\n" +
+            //            $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
+            //            $"دستورات مدیریتی:\n" +
+            //            $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
+            //            $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
+            //            $"/admin_referral_status - نمایش وضعیت فعلی");
+            //        return true;
 
-                default:
-                    return false; // Not an admin command, continue with normal processing
-            }
+            //    default:
+            //        return false; // Not an admin command, continue with normal processing
+            //}
         }
 
         private bool IsUserAdmin(UserDto user)
         {
             // Check if user has admin status or is a known admin Telegram ID
-            var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
-            return user.Status?.ToLower().Contains("admin") == true ||
-                   user.Status?.ToLower().Contains("root") == true ||
-                   adminTelegramIds.Contains(user.TelegramId);
+            //var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
+            //return user.Status?.ToLower().Contains("admin") == true ||
+            //       user.Status?.ToLower().Contains("root") == true ||
+            //       adminTelegramIds.Contains(user.TelegramId);
+
+            return true;
         }
 
         private async Task HandlePlaceOrderAsync(long chatId, long telegramId)
         {
-            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
-            if (!userExists || user == null)
-            {
-                await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
-                return;
-            }
+            //var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            //if (!userExists || user == null)
+            //{
+            //    await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
+            //    return;
+            //}
 
-            // Show trading type selection
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnCash, "trading_spot"),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnFutures, "trading_futures")
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-                }
-            });
+            //// Show trading type selection
+            //var keyboard = new InlineKeyboardMarkup(new[]
+            //{
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnCash, "trading_spot"),
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnFutures, "trading_futures")
+            //    },
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+            //    }
+            //});
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectTradingType, replyMarkup: keyboard);
+            //await _botClient.SendMessage(chatId, BotTexts.MsgSelectTradingType, replyMarkup: keyboard);
         }
 
         private async Task HandleTradingTypeSelectionAsync(long chatId, long telegramId, string tradingType)
         {
-            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
-            if (!userExists || user == null)
-            {
-                await _botClient.SendMessage(chatId, "کاربر یافت نشد.");
-                return;
-            }
+            //var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            //if (!userExists || user == null)
+            //{
+            //    await _botClient.SendMessage(chatId, "کاربر یافت نشد.");
+            //    return;
+            //}
 
-            // Create order state
-            var orderState = new OrderState
-            {
-                TradingType = tradingType,
-                UserId = user.Id
-            };
+            //// Create order state
+            //var orderState = new OrderState
+            //{
+            //    TradingType = tradingType,
+            //    UserId = user.Id
+            //};
 
-            _userOrderStates[telegramId] = orderState;
+            //_userOrderStates[telegramId] = orderState;
 
-            // Show order type selection
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBuy, "order_buy"),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnSell, "order_sell")
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-                }
-            });
+            //// Show order type selection
+            //var keyboard = new InlineKeyboardMarkup(new[]
+            //{
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBuy, "order_buy"),
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnSell, "order_sell")
+            //    },
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+            //    }
+            //});
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
+            //await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
         }
 
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, string orderType)
@@ -581,32 +577,32 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandleChargeWalletAsync(long chatId, long telegramId)
         {
-            var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
-            if (!userExists || user == null)
-            {
-                await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
-                return;
-            }
+            //var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
+            //if (!userExists || user == null)
+            //{
+            //    await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
+            //    return;
+            //}
 
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("💳 کارت بانکی", "charge_card"),
-                    InlineKeyboardButton.WithCallbackData("🏦 بانک", "charge_bank")
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-                }
-            });
+            //var keyboard = new InlineKeyboardMarkup(new[]
+            //{
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData("💳 کارت بانکی", "charge_card"),
+            //        InlineKeyboardButton.WithCallbackData("🏦 بانک", "charge_bank")
+            //    },
+            //    new InlineKeyboardButton[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+            //    }
+            //});
 
-            await _botClient.SendMessage(chatId,
-                "💳 شارژ کیف پول\n\n" +
-                "لطفاً روش پرداخت خود را انتخاب کنید:\n\n" +
-                "💳 کارت بانکی: شارژ از طریق کارت بانکی\n" +
-                "🏦 بانک: واریز به حساب بانکی",
-                replyMarkup: keyboard);
+            //await _botClient.SendMessage(chatId,
+            //    "💳 شارژ کیف پول\n\n" +
+            //    "لطفاً روش پرداخت خود را انتخاب کنید:\n\n" +
+            //    "💳 کارت بانکی: شارژ از طریق کارت بانکی\n" +
+            //    "🏦 بانک: واریز به حساب بانکی",
+            //    replyMarkup: keyboard);
         }
 
         public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)

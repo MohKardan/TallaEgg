@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.TelegramBot.Core\TallaEgg.TelegramBot.Core.csproj" />
   </ItemGroup>
 

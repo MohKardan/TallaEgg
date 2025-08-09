@@ -12,8 +12,8 @@ using Users.Infrastructure;
 namespace Users.Api.Migrations
 {
     [DbContext(typeof(UsersDbContext))]
-    [Migration("20250807151723_seed-user")]
-    partial class seeduser
+    [Migration("20250809212523_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,6 +33,9 @@ namespace Users.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("FirstName")
                         .HasColumnType("nvarchar(max)");
@@ -80,7 +83,7 @@ namespace Users.Api.Migrations
                             InvitationCode = "admin",
                             IsActive = true,
                             LastName = "کل",
-                            Role = 0,
+                            Role = 3,
                             Status = 0,
                             TelegramId = 0L
                         });
