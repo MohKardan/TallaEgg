@@ -29,5 +29,46 @@ namespace TallaEgg.TelegramBot.Keyboards
 
         }
 
+        public static async Task SendMainKeyboardAsync(this ITelegramBotClient _botClient, long chatId)
+        {
+            var keyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnCash), new KeyboardButton(BotTexts.BtnFutures) },
+                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnAccounting), new KeyboardButton(BotTexts.BtnHelp) }
+            })
+            {
+                ResizeKeyboard = true
+            };
+
+            await _botClient.SendMessage(chatId, BotTexts.MsgMainMenu, replyMarkup: keyboard);
+
+        }
+
+        public static async Task SendCashMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        {
+
+            var keyboard = new ReplyKeyboardMarkup(
+           new[]
+           {
+                new[] { new KeyboardButton(BotTexts.MakeOrderSpot), new KeyboardButton(BotTexts.TakeOrder) },
+                new[] { new KeyboardButton(BotTexts.MainMenu)},
+           }
+                        )
+            {
+                ResizeKeyboard = true,
+            };
+
+
+            await _botClient.SendMessage(
+                chatId,
+                "🎯 منوی معاملات نقدی\n" +
+    "لطفاً یکی از گزینه‌های را انتخاب کنید:",
+            replyMarkup: keyboard);
+
+        }
+
+
+
+
     }
 }
