@@ -32,6 +32,22 @@ namespace TallaEgg.Core.Utilties
             return new string(result);
         }
 
+        public static string ConvertPersianDigitsToEnglish(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            var persianDigits = new[] { '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹' };
+            var arabicDigits = new[] { '٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩' };
+
+            for (int i = 0; i < 10; i++)
+            {
+                input = input.Replace(persianDigits[i], (char)('0' + i));
+                input = input.Replace(arabicDigits[i], (char)('0' + i));
+            }
+
+            return input;
+        }
 
     }
 }
