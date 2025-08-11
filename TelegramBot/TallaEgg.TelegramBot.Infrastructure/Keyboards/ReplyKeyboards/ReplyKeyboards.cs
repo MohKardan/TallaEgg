@@ -122,7 +122,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             var keyboard = new ReplyKeyboardMarkup(
                new[]
                {
-                    new[] { new KeyboardButton(BotTexts.MakeOrderSpot), new KeyboardButton(BotTexts.TakeOrder) },
+                    new[] { new KeyboardButton(BotTexts.BtnMakeOrderSpot), new KeyboardButton(BotTexts.BtnTakeOrder) },
                     new[] { new KeyboardButton(BotTexts.MainMenu)},
                }
                             )

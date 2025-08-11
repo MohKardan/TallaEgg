@@ -34,7 +34,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
-        public const string BtnPlaceOrder = "📝 ثبت سفارش";
+        /// <summary>
+        /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
+        /// </summary>
+        //public const string BtnPlaceOrder = "📝 ثبت سفارش";
         public const string BtnBuy = "🛒 خرید";
         public const string BtnSell = "🛍️ فروش";
         public const string BtnConfirm = "✅ تایید";
@@ -52,13 +55,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgInsufficientBalance = "موجودی کافی نیست. موجودی شما: {0} واحد";
         public const string MsgOrderSuccess = "✅ سفارش شما با موفقیت ثبت شد!";
         public const string MsgOrderFailed = "❌ خطا در ثبت سفارش: {0}";
-        public const string MakeOrderSpot = "📋 ثبت سفارش";
-        public const string TakeOrder = "📋 بازار";
+        /// <summary>
+        /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
+        /// </summary>
+        public const string BtnMakeOrderSpot = "📝 ثبت سفارش";
+        public const string BtnTakeOrder = "📋 بازار";
     }
-    public static class inlineCallBackData
+    public static class InlineCallBackData
     {
         public const string buy_futures = "buy_futures";
         public const string sell_futures = "sell_futures";
+        public const string buy_spot = "buy_spot";
+        public const string sell_spot = "sell_spot";
         public const string trading_spot = "trading_spot";
         public const string trading_futures = "trading_futures";
         public const string order_buy = "order_buy";
