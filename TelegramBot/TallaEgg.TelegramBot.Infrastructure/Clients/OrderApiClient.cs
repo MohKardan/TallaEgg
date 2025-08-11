@@ -1,6 +1,6 @@
+﻿using Microsoft.Extensions.Configuration;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using TallaEgg.TelegramBot.Core.Models;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -29,7 +29,7 @@ public class OrderApiClient : IOrderApiClient
                 Type = type
             };
             
-            var json = JsonSerializer.Serialize(request);
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/order", content);
@@ -37,7 +37,7 @@ public class OrderApiClient : IOrderApiClient
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<Order>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return System.Text.Json.JsonSerializer.Deserialize<Order>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
 
             return null;
@@ -67,4 +67,30 @@ public class OrderApiClient : IOrderApiClient
             return Enumerable.Empty<Order>();
         }
     }
-} 
+    public async Task<(bool success, string message)> SubmitOrderAsync(OrderDto order)
+    {
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(order);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        try
+        {
+            var response = await _httpClient.PostAsync(_baseUrl, content);
+            var respText = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+                return (true, "سفارش شما ثبت شد.");
+            return (false, $"خطا در ثبت سفارش: {respText}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+}
+public class OrderDto
+{
+    public string Asset { get; set; } = "";
+    public decimal Amount { get; set; }
+    public decimal Price { get; set; }
+    public Guid UserId { get; set; }
+    public string Type { get; set; } = "Buy"; // "Buy" or "Sell"
+    public string TradingType { get; set; } = "Spot"; // "Spot" or "Futures"
+}

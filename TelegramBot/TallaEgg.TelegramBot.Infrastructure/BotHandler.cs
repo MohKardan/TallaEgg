@@ -1,45 +1,17 @@
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
-using TallaEgg.TelegramBot.Keyboards;
+using TallaEgg.TelegramBot.Infrastructure;
+using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static TallaEgg.TelegramBot.Infrastructure.Clients.OrderApiClient;
 
 namespace TallaEgg.TelegramBot
 {
-    public static class BotTexts
-    {
-        public const string MainMenu = "💰 منوی اصلی";
-        public const string BtnCash = "💰 نقدی";
-        public const string BtnFutures = "📈 آتی";
-        public const string BtnAccounting = "📊 حسابداری";
-        public const string BtnHelp = "❓ راهنما";
-        public const string BtnBack = "🔙 بازگشت";
-        public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
-        public const string BtnPlaceOrder = "📝 ثبت سفارش";
-        public const string BtnBuy = "🛒 خرید";
-        public const string BtnSell = "🛍️ فروش";
-        public const string BtnConfirm = "✅ تایید";
-        public const string BtnCancel = "❌ لغو";
-        public const string MsgEnterInvite = "برای شروع، لطفاً کد دعوت خود را وارد کنید:\n/start [کد_دعوت]";
-        public const string MsgPhoneRequest = "لطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
-        public const string MsgWelcome = "🎉 خوش آمدید!\nثبت‌نام شما با موفقیت انجام شد.\n\nلطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
-        public const string MsgPhoneSuccess = "✅ شماره تلفن شما با موفقیت ثبت شد!\n\nحالا می‌توانید از خدمات ربات استفاده کنید.";
-        public const string MsgMainMenu = "🎯 منوی اصلی\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:";
-        public const string MsgSelectTradingType = "نوع معامله خود را انتخاب کنید:";
-        public const string MsgSelectOrderType = "نوع سفارش خود را انتخاب کنید:";
-        public const string MsgSelectAsset = "نماد معاملاتی مورد نظر را انتخاب کنید:";
-        public const string MsgEnterAmount = "لطفاً مقدار واحد را وارد کنید:";
-        public const string MsgOrderConfirmation = "📋 تایید سفارش\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";
-        public const string MsgInsufficientBalance = "موجودی کافی نیست. موجودی شما: {0} واحد";
-        public const string MsgOrderSuccess = "✅ سفارش شما با موفقیت ثبت شد!";
-        public const string MsgOrderFailed = "❌ خطا در ثبت سفارش: {0}";
-        public const string MakeOrderSpot = "📋 ثبت سفارش";
-        public const string TakeOrder = "📋 بازار";
-    }
-
     public class OrderState
     {
         public string TradingType { get; set; } = ""; // "Spot" or "Futures"
@@ -52,7 +24,7 @@ namespace TallaEgg.TelegramBot
         public string State { get; internal set; }
     }
 
-    public class BotHandler: IBotHandler
+    public class BotHandler : IBotHandler
     {
         private readonly ITelegramBotClient _botClient;
         private readonly OrderApiClient _orderApi;
@@ -77,12 +49,12 @@ namespace TallaEgg.TelegramBot
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
         }
-        
+
         public async Task HandleUpdateAsync(object updateObj)
         {
             var update = (Update)updateObj;
 
-            if(update.Type == UpdateType.CallbackQuery)
+            if (update.Type == UpdateType.CallbackQuery)
             {
                 await HandleCallbackQueryAsync(update.CallbackQuery);
                 return;
@@ -93,7 +65,7 @@ namespace TallaEgg.TelegramBot
 
             if (message.Type != MessageType.Contact && message.Type != MessageType.Text)
                 return;
-            
+
 
             var chatId = message.Chat.Id;
             var telegramId = message.From?.Id ?? 0;
@@ -116,7 +88,7 @@ namespace TallaEgg.TelegramBot
             }
 
             // Check for admin commands first
-            if (await HandleAdminCommandsAsync(chatId, telegramId, message,user))
+            if (await HandleAdminCommandsAsync(chatId, telegramId, message, user))
             {
                 return;
             }
@@ -167,7 +139,7 @@ namespace TallaEgg.TelegramBot
 
                 //if (useSuccess)
                 //{
-                        await _botClient.SendContactKeyboardAsync(chatId);
+                await _botClient.SendContactKeyboardAsync(chatId);
 
                 //else
                 //{
@@ -199,7 +171,7 @@ namespace TallaEgg.TelegramBot
             }
             else
             {
-               await _botClient.SendContactKeyboardAsync(chatId);
+                await _botClient.SendContactKeyboardAsync(chatId);
             }
         }
 
@@ -213,8 +185,8 @@ namespace TallaEgg.TelegramBot
                     await HandlePlaceOrderAsync(chatId, telegramId);
                     break;
 
-                case BotTexts.BtnCash:
-                    await HandleCashMenuAsync(chatId);
+                case BotTexts.BtnSpot:
+                    await HandleSpotMenuAsync(chatId);
                     break;
 
                 case BotTexts.BtnFutures:
@@ -257,7 +229,7 @@ namespace TallaEgg.TelegramBot
 
         private async Task ShowMainMenuAsync(long chatId)
         {
-          await _botClient.SendMainKeyboardAsync(chatId);
+            await _botClient.SendMainKeyboardAsync(chatId);
         }
 
         private async Task HandleMakeOrderSpotMenuAsync(long chatId)
@@ -288,8 +260,8 @@ namespace TallaEgg.TelegramBot
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🛒 خرید آتی", "buy_futures"),
-                    InlineKeyboardButton.WithCallbackData("🛍️ فروش آتی", "sell_futures")
+                    InlineKeyboardButton.WithCallbackData("🛒 خرید آتی", inlineCallBackData.buy_futures),
+                    InlineKeyboardButton.WithCallbackData("🛍️ فروش آتی", inlineCallBackData.sell_futures)
                 },
                 new InlineKeyboardButton[]
                 {
@@ -300,10 +272,10 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendMessage(chatId, "📈 معاملات آتی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
-        private async Task HandleCashMenuAsync(long chatId)
+        private async Task HandleSpotMenuAsync(long chatId)
         {
 
-            await _botClient.SendCashMenuKeyboard(chatId);
+            await _botClient.SendSpotMenuKeyboard(chatId);
         }
 
         private async Task ShowHelpAsync(long chatId)
@@ -318,7 +290,7 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendMessage(chatId, helpText);
         }
 
-        private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message,UserDto user)
+        private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
 
@@ -363,8 +335,8 @@ namespace TallaEgg.TelegramBot
 
         private bool IsUserAdmin(UserDto user)
         {
-          //  Check if user has admin status or is a known admin Telegram ID
-          // var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
+            //  Check if user has admin status or is a known admin Telegram ID
+            // var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
             //return user.Status?.ToLower().Contains("admin") == true ||
             //       user.Status?.ToLower().Contains("root") == true ||
             //       adminTelegramIds.Contains(user.TelegramId);
@@ -386,7 +358,7 @@ namespace TallaEgg.TelegramBot
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnCash, "trading_spot"),
+                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnSpot, "trading_spot"),
                     InlineKeyboardButton.WithCallbackData(BotTexts.BtnFutures, "trading_futures")
                 },
                 new InlineKeyboardButton[]
@@ -401,7 +373,7 @@ namespace TallaEgg.TelegramBot
         private async Task HandleTradingTypeSelectionAsync(long chatId, long telegramId, string tradingType)
         {
             var user = await _usersApi.GetUserAsync(telegramId);
-           
+
 
             // Create order state
             var orderState = new OrderState
@@ -684,35 +656,35 @@ namespace TallaEgg.TelegramBot
 
             switch (data)
             {
-                case "buy_futures":
+                case inlineCallBackData.buy_futures:
                     await _botClient.SendMessage(chatId, "بخش خرید آتی در حال توسعه است...");
                     break;
 
-                case "sell_futures":
+                case inlineCallBackData.sell_futures:
                     await _botClient.SendMessage(chatId, "بخش فروش آتی در حال توسعه است...");
                     break;
 
-                case "trading_spot":
+                case inlineCallBackData.trading_spot:
                     await HandleTradingTypeSelectionAsync(chatId, telegramId, "Spot");
                     break;
 
-                case "trading_futures":
+                case inlineCallBackData.trading_futures:
                     await HandleTradingTypeSelectionAsync(chatId, telegramId, "Futures");
                     break;
 
-                case "order_buy":
+                case inlineCallBackData.order_buy:
                     await HandleOrderTypeSelectionAsync(chatId, telegramId, "Buy");
                     break;
 
-                case "order_sell":
+                case inlineCallBackData.order_sell:
                     await HandleOrderTypeSelectionAsync(chatId, telegramId, "Sell");
                     break;
 
-                case "confirm_order":
+                case inlineCallBackData.confirm_order:
                     await HandleOrderConfirmationAsync(chatId, telegramId);
                     break;
 
-                case "cancel_order":
+                case inlineCallBackData.cancel_order:
                     if (_userOrderStates.ContainsKey(telegramId))
                     {
                         _userOrderStates.Remove(telegramId);
@@ -720,14 +692,14 @@ namespace TallaEgg.TelegramBot
                     await ShowMainMenuAsync(chatId);
                     break;
 
-                case "charge_card":
+                case inlineCallBackData.charge_card:
                     await _botClient.SendMessage(chatId,
                         "💳 شارژ از طریق کارت بانکی\n\n" +
                         "لطفاً مبلغ مورد نظر را وارد کنید (به تومان):\n" +
                         "مثال: 100000");
                     break;
 
-                case "charge_bank":
+                case inlineCallBackData.charge_bank:
                     await _botClient.SendMessage(chatId,
                         "🏦 واریز به حساب بانکی\n\n" +
                         "شماره حساب: 1234567890\n" +
@@ -736,7 +708,7 @@ namespace TallaEgg.TelegramBot
                         "پس از واریز، رسید را برای ما ارسال کنید.");
                     break;
 
-                case "back_to_main":
+                case inlineCallBackData.back_to_main:
                     // Clear any order state
                     if (_userOrderStates.ContainsKey(telegramId))
                     {

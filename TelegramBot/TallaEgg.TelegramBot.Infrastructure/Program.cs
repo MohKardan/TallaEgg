@@ -1,74 +1,205 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using TallaEgg.TelegramBot;
-using TallaEgg.TelegramBot.Application.Services;
-using TallaEgg.TelegramBot.Core.Interfaces;
-using TallaEgg.TelegramBot.Infrastructure.Clients;
-//using TallaEgg.TelegramBot.Infrastructure.Handlers;
-using TallaEgg.TelegramBot.Infrastructure.Repositories;
-using TallaEgg.TelegramBot.Infrastructure.Services;
 using Telegram.Bot;
-//using TallaEgg.TelegramBot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using TallaEgg.TelegramBot.Core.Interfaces;
+using System.Net.Http;
+using TallaEgg.TelegramBot.Infrastructure.Clients;
 
-var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices((context, services) =>
+namespace TallaEgg.TelegramBot.Infrastructure;
+
+class Program
+{
+    static async Task Main(string[] args)
     {
-        // Configuration
-        var configuration = context.Configuration;
-        
-        // Telegram Bot Client
-        var botToken = configuration["TelegramBotToken"];
-        if (string.IsNullOrEmpty(botToken) || botToken == "YOUR_BOT_TOKEN_HERE")
+        try
         {
-            Console.WriteLine("⚠️  Warning: TelegramBotToken is not configured. Bot will not function properly.");
-            Console.WriteLine("   Please set a valid bot token in appsettings.json");
-            // Use a dummy token for development
-            services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient("dummy_token"));
+            Console.WriteLine("Starting Telegram Bot...");
+            
+            // خواندن تنظیمات
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", true)
+                .Build();
+
+            var botToken = config["TelegramBotToken"];
+            var orderApiUrl = config["OrderApiUrl"];
+            var usersApiUrl = config["UsersApiUrl"];
+            var affiliateApiUrl = config["AffiliateApiUrl"];
+            var pricesApiUrl = config["PricesApiUrl"];
+            var walletApiUrl = config["WalletApiUrl"];
+            
+            // Bot settings
+            var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "false");
+            var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "admin";
+
+            Console.WriteLine($"Bot Token: {botToken?.Substring(0, Math.Min(10, botToken?.Length ?? 0))}...");
+            Console.WriteLine($"Order API URL: {orderApiUrl}");
+            Console.WriteLine($"Users API URL: {usersApiUrl}");
+            Console.WriteLine($"Affiliate API URL: {affiliateApiUrl}");
+            Console.WriteLine($"Prices API URL: {pricesApiUrl}");
+            Console.WriteLine($"Wallet API URL: {walletApiUrl}");
+            Console.WriteLine($"Require Referral Code: {requireReferralCode}");
+            Console.WriteLine($"Default Referral Code: {defaultReferralCode}");
+
+            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(orderApiUrl) || 
+                string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl) ||
+                string.IsNullOrEmpty(walletApiUrl))
+            {
+                Console.WriteLine("❌ توکن یا آدرس‌های API تنظیم نشده است.");
+                return;
+            }
+
+            Console.WriteLine("✅ Configuration loaded successfully");
+
+            // Test network connectivity first
+            await NetworkTest.TestConnectivityAsync();
+
+            // Test HTTP vs HTTPS
+            await SimpleHttpTest.TestHttpRequestsAsync();
+
+            // Test with proxy settings
+            await ProxyTest.TestWithProxyAsync();
+
+            // Test bot token first
+            Console.WriteLine("🔍 Testing bot token...");
+            var tokenTestResult = await TestBotToken.TestTokenAsync(botToken);
+
+            // If network connectivity fails, run offline test
+            if (!tokenTestResult)
+            {
+                Console.WriteLine("\n⚠️ Network connectivity issues detected.");
+                Console.WriteLine("Running offline test mode...");
+                await OfflineTestMode.RunOfflineTestAsync();
+                Console.WriteLine("\nPress any key to exit...");
+                Console.ReadKey();
+                return;
+            }
+
+            
+            // Setup Dependency Injection
+            var services = new ServiceCollection();
+
+            services.AddHttpClient();
+
+            // Register services
+            services.AddSingleton<ITelegramBotClient>(provider => ProxyBotClient.CreateWithProxy(botToken));
+            services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(provider.GetRequiredService<HttpClient>(), config));
+            services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(provider.GetRequiredService<HttpClient>(), config));
+            services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
+            services.AddSingleton<PriceApiClient>(provider => new PriceApiClient(provider.GetRequiredService<HttpClient>(), config));
+            services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
+            services.AddSingleton<IBotHandler>(provider => new BotHandler(
+                provider.GetRequiredService<ITelegramBotClient>(),
+                provider.GetRequiredService<OrderApiClient>(),
+                provider.GetRequiredService<UsersApiClient>(),
+                provider.GetRequiredService<AffiliateApiClient>(),
+                provider.GetRequiredService<PriceApiClient>(),
+                provider.GetRequiredService<WalletApiClient>(),
+                requireReferralCode,
+                defaultReferralCode
+            ));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var botClient = serviceProvider.GetRequiredService<ITelegramBotClient>();
+            var botHandler = serviceProvider.GetRequiredService<IBotHandler>();
+
+            Console.WriteLine("✅ API clients initialized");
+
+            // حذف webhook قبلی
+            try
+            {
+                await botClient.DeleteWebhook(dropPendingUpdates: true);
+                Console.WriteLine("✅ Webhook deleted successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Warning: Could not delete webhook: {ex.Message}");
+            }
+
+            // Test bot connection
+            try
+            {
+                var me = await botClient.GetMe();
+                Console.WriteLine($"✅ Bot connection successful: @{me.Username}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Bot connection failed: {ex.Message}");
+                Console.WriteLine("Please check your bot token and internet connection.");
+                return;
+            }
+
+            var receiverOptions = new Telegram.Bot.Polling.ReceiverOptions
+            {
+                AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery }
+            };
+
+            Console.WriteLine("🔄 Starting message polling...");
+
+            var cts = new CancellationTokenSource();
+
+            botClient.StartReceiving(
+                updateHandler: async (bot, update, ct) =>
+                {
+                    await HandleUpdateAsync(bot, update, botHandler);
+                },
+
+                errorHandler: async (bot, exception, source, ct) =>
+                {
+                    Console.WriteLine($"❌ Polling Error: {exception.Message}");
+                    Console.WriteLine($"Error Type: {exception.GetType().Name}");
+                    if (exception.InnerException != null)
+                    {
+                        Console.WriteLine($"Inner Error: {exception.InnerException.Message}");
+                    }
+                },
+
+                receiverOptions: receiverOptions,
+                cancellationToken: cts.Token
+            );
+
+            Console.WriteLine("✅ Bot is now running and listening for messages...");
+            Console.WriteLine("Press any key to stop...");
+            Console.ReadKey();
         }
-        else
+        catch (Exception ex)
         {
-            services.AddSingleton<ITelegramBotClient>(provider => new TelegramBotClient(botToken));
+            Console.WriteLine($"❌ Fatal Error: {ex.Message}");
+            Console.WriteLine($"Error Type: {ex.GetType().Name}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+            }
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
         }
+    }
 
-        // HTTP Client
-        services.AddHttpClient();
-        
-        // API Clients - Interface registrations
-        services.AddScoped<IUsersApiClient, TallaEgg.TelegramBot.Infrastructure.Clients.UsersApiClient>();
-        services.AddScoped<IPriceApiClient, TallaEgg.TelegramBot.Infrastructure.Clients.PriceApiClient>();
-        services.AddScoped<IOrderApiClient, TallaEgg.TelegramBot.Infrastructure.Clients.OrderApiClient>();
-        
-        // API Clients - Concrete class registrations for BotHandler
-        services.AddScoped<TallaEgg.TelegramBot.OrderApiClient>(provider => 
-            new TallaEgg.TelegramBot.OrderApiClient(configuration["OrderApiUrl"] /*?? "http://localhost:5000"*/));
-        services.AddScoped<TallaEgg.TelegramBot.UsersApiClient>(provider => 
-            new TallaEgg.TelegramBot.UsersApiClient(configuration["UsersApiUrl"] ?? "http://localhost:5001"));
-        services.AddScoped<TallaEgg.TelegramBot.AffiliateApiClient>(provider => 
-            new TallaEgg.TelegramBot.AffiliateApiClient(configuration["AffiliateApiUrl"] ?? "http://localhost:5002", 
-                provider.GetRequiredService<HttpClient>()));
-        services.AddScoped<TallaEgg.TelegramBot.PriceApiClient>(provider => 
-            new TallaEgg.TelegramBot.PriceApiClient(configuration["PricesApiUrl"] ?? "http://localhost:5003"));
-        services.AddScoped<TallaEgg.TelegramBot.WalletApiClient>(provider => 
-            new TallaEgg.TelegramBot.WalletApiClient(configuration["WalletApiUrl"] ?? "http://localhost:5004"));
-        
-        // Repositories
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IPriceRepository, PriceRepository>();
-        services.AddScoped<IOrderRepository, OrderRepository>();
-        
-        // Services
-        services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IPriceService, PriceService>();
-        services.AddScoped<IOrderService, OrderService>();
-        
-        // Bot Handler
-        services.AddScoped<IBotHandler, TallaEgg.TelegramBot.BotHandler>();
-        
-        // Background Service
-        services.AddHostedService<TelegramBotService>();
-        
-    })
-    .Build();
-
-await host.RunAsync(); 
+    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, IBotHandler botHandler)
+    {
+        try
+        {
+            if (update.Message != null)
+            {
+                Console.WriteLine($"📨 Received message from {update.Message.From?.Username ?? "Unknown"}: {update.Message.Text?.Substring(0, Math.Min(50, update.Message.Text?.Length ?? 0))}...");
+                await botHandler.HandleUpdateAsync(update);
+            }
+            else if (update.CallbackQuery != null)
+            {
+                Console.WriteLine($"🔘 Received callback query from {update.CallbackQuery.From?.Username ?? "Unknown"}: {update.CallbackQuery.Data}");
+                await botHandler.HandleCallbackQueryAsync(update.CallbackQuery);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error handling update: {ex.Message}");
+            Console.WriteLine($"Error Type: {ex.GetType().Name}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
+            }
+        }
+    }
+}

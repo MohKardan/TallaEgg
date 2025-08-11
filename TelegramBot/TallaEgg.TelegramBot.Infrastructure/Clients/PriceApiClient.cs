@@ -1,6 +1,8 @@
-using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using System.Text.Json;
 using TallaEgg.TelegramBot.Core.Models;
+using TallaEgg.Core;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
@@ -24,7 +26,7 @@ public class PriceApiClient : IPriceApiClient
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<Price>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return System.Text.Json.JsonSerializer.Deserialize<Price>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
 
             return null;
@@ -35,7 +37,7 @@ public class PriceApiClient : IPriceApiClient
         }
     }
 
-    public async Task<IEnumerable<Price>> GetAllPricesAsync()
+    public async Task<IEnumerable<Price>> GetAllPricesAsync0()
     {
         var prices = new List<Price>
         {
@@ -86,7 +88,7 @@ public class PriceApiClient : IPriceApiClient
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<IEnumerable<Price>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? Enumerable.Empty<Price>();
+                return System.Text.Json.JsonSerializer.Deserialize<IEnumerable<Price>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? Enumerable.Empty<Price>();
             }
 
             return Enumerable.Empty<Price>();
@@ -96,4 +98,38 @@ public class PriceApiClient : IPriceApiClient
             return Enumerable.Empty<Price>();
         }
     }
-} 
+
+    public async Task<(bool success, List<PriceDto>? prices)> GetAllPricesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/prices");
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var prices = JsonConvert.DeserializeObject<List<PriceDto>>(respText);
+                return (true, prices);
+            }
+            return (false, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, null);
+        }
+    }
+
+    Task<IEnumerable<Price>> IPriceApiClient.GetAllPricesAsync()
+    {
+        throw new NotImplementedException();
+    }
+}
+public class PriceDto
+{
+    public Guid Id { get; set; }
+    public string Asset { get; set; } = "";
+    public decimal BuyPrice { get; set; }
+    public decimal SellPrice { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public string Source { get; set; } = "";
+}
