@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\TallaEgg.Core\TallaEgg.Core.csproj" />
+  </ItemGroup>
+
 </Project>

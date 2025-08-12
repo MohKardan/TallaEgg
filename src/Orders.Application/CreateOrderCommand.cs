@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Orders.Core;
+using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Application;
 

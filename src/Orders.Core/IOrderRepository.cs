@@ -1,3 +1,7 @@
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Enums.Order;
+
 namespace Orders.Core;
 
 public interface IOrderRepository
@@ -8,7 +12,7 @@ public interface IOrderRepository
     // Read
     Task<Order?> GetByIdAsync(Guid id);
     Task<List<Order>> GetOrdersByAssetAsync(string asset);
-    Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
+    Task<PagedResult<OrderHistoryDto>> GetOrdersByUserIdAsync(Guid userId, int pageNumber,int pageSize);
     Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status);
     Task<List<Order>> GetOrdersByTypeAsync(OrderType type);
     Task<List<Order>> GetOrdersByTradingTypeAsync(TradingType tradingType);

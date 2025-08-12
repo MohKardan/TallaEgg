@@ -1,6 +1,9 @@
-using Orders.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Orders.Core;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Infrastructure;
 
@@ -61,21 +64,45 @@ public class OrderRepository : IOrderRepository
         }
     }
 
-    public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
+    public async Task<PagedResult<OrderHistoryDto>> GetOrdersByUserIdAsync(
+     Guid userId,
+     int pageNumber,
+     int pageSize)
     {
-        try
+        var query = _dbContext.Orders
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedAt)
+            .Select(o => new OrderHistoryDto
+            {
+                Id = o.Id,
+                Asset = o.Asset,
+                Amount = o.Amount,
+                Price = o.Price,
+                Type = o.Type,
+                Status = o.Status,
+                TradingType = o.TradingType,
+                Role = o.Role,
+                CreatedAt = o.CreatedAt,
+                UpdatedAt = o.UpdatedAt,
+                Notes = o.Notes
+            });
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<OrderHistoryDto>
         {
-            return await _dbContext.Orders
-                .Where(o => o.UserId == userId)
-                .OrderByDescending(o => o.CreatedAt)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving orders for user: {UserId}", userId);
-            throw new InvalidOperationException("خطا در بازیابی سفارشات کاربر", ex);
-        }
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
+
 
     public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)
     {

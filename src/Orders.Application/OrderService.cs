@@ -1,36 +1,39 @@
 using Orders.Core;
 using Microsoft.Extensions.Logging;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Application;
 
-public interface IOrderService
-{
-    Task<Order> CreateMakerOrderAsync(CreateOrderCommand command);
-    Task<Order> CreateTakerOrderAsync(CreateTakerOrderCommand command);
-    Task<Order?> GetOrderByIdAsync(Guid orderId);
-    Task<List<Order>> GetOrdersByAssetAsync(string asset);
-    Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
-    Task<List<Order>> GetActiveOrdersAsync();
-    Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);
-    Task<bool> UpdateOrderStatusAsync(Guid orderId, OrderStatus status, string? notes = null);
-    Task<bool> CancelOrderAsync(Guid orderId, string? reason = null);
-    Task<bool> ConfirmOrderAsync(Guid orderId);
-    Task<bool> CompleteOrderAsync(Guid orderId);
-    Task<bool> FailOrderAsync(Guid orderId, string reason);
-    Task<bool> AcceptTakerOrderAsync(Guid makerOrderId, Guid takerOrderId);
-    Task<(List<Order> Orders, int TotalCount)> GetOrdersPaginatedAsync(
-        int pageNumber, 
-        int pageSize, 
-        string? asset = null, 
-        OrderType? type = null, 
-        OrderStatus? status = null,
-        TradingType? tradingType = null,
-        OrderRole? role = null);
-    Task<decimal> GetTotalValueByAssetAsync(string asset);
-    Task<int> GetOrderCountByAssetAsync(string asset);
-}
+//public interface IOrderService
+//{
+//    Task<Order> CreateMakerOrderAsync(CreateOrderCommand command);
+//    Task<Order> CreateTakerOrderAsync(CreateTakerOrderCommand command);
+//    Task<Order?> GetOrderByIdAsync(Guid orderId);
+//    Task<List<Order>> GetOrdersByAssetAsync(string asset);
+//    Task<List<Order>> GetOrdersByUserIdAsync(Guid userId);
+//    Task<List<Order>> GetActiveOrdersAsync();
+//    Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);
+//    Task<bool> UpdateOrderStatusAsync(Guid orderId, OrderStatus status, string? notes = null);
+//    Task<bool> CancelOrderAsync(Guid orderId, string? reason = null);
+//    Task<bool> ConfirmOrderAsync(Guid orderId);
+//    Task<bool> CompleteOrderAsync(Guid orderId);
+//    Task<bool> FailOrderAsync(Guid orderId, string reason);
+//    Task<bool> AcceptTakerOrderAsync(Guid makerOrderId, Guid takerOrderId);
+//    Task<(List<Order> Orders, int TotalCount)> GetOrdersPaginatedAsync(
+//        int pageNumber, 
+//        int pageSize, 
+//        string? asset = null, 
+//        OrderType? type = null, 
+//        OrderStatus? status = null,
+//        TradingType? tradingType = null,
+//        OrderRole? role = null);
+//    Task<decimal> GetTotalValueByAssetAsync(string asset);
+//    Task<int> GetOrderCountByAssetAsync(string asset);
+//}
 
-public class OrderService : IOrderService
+public class OrderService /*: IOrderService*/
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IAuthorizationService _authorizationService;
@@ -161,17 +164,11 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task<List<Order>> GetOrdersByUserIdAsync(Guid userId)
+    public async Task<PagedResult<OrderHistoryDto>> GetOrdersByUserIdAsync(Guid userId, int pageNumber,int pageSize)
     {
-        try
-        {
-            return await _orderRepository.GetOrdersByUserIdAsync(userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving orders for user: {UserId}", userId);
-            throw new InvalidOperationException("خطا در بازیابی سفارشات کاربر", ex);
-        }
+       
+            return await _orderRepository.GetOrdersByUserIdAsync(userId,pageNumber,pageSize);
+       
     }
 
     public async Task<List<Order>> GetActiveOrdersAsync()

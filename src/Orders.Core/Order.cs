@@ -1,33 +1,9 @@
 using System.ComponentModel.DataAnnotations;
+using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Core;
 
-public enum OrderType
-{
-    Buy,
-    Sell
-}
 
-public enum OrderStatus
-{
-    Pending,
-    Confirmed,
-    Cancelled,
-    Completed,
-    Failed
-}
-
-public enum TradingType
-{
-    Spot,      // معاملات نقدی
-    Futures    // معاملات آتی
-}
-
-public enum OrderRole
-{
-    Maker,     // ایجاد کننده سفارش
-    Taker      // پذیرنده سفارش
-}
 
 public class Order
 {
