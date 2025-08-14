@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced `GetTotalValue()` method calls with direct calculation (`Amount * Price`) for SQL translation
   - Added proper error handling and validation throughout the order lifecycle
 
+- **API Documentation**: Comprehensive API documentation and Swagger integration
+  - Added Swagger/OpenAPI support with XML documentation comments
+  - Created detailed API_DOCUMENTATION.md with all endpoints, parameters, and examples
+  - Added XML documentation to all endpoints with summary, parameters, and response codes
+  - Added XML documentation to all request/response models
+  - Configured Swagger UI at `/api-docs` for interactive API testing
+  - Added comprehensive examples for all request/response scenarios
+  - Documented validation rules, error handling, and status codes
+  - Created SWAGGER_SETUP.md with usage guide and configuration details
+  - Generated XML documentation file for IDE integration
+  - Successfully tested all endpoints through Swagger UI interface
+
 ### Changed
 - **Order Entity**: Enhanced with limit order creation capability
   - Added `CreateLimitOrder` static factory method with comprehensive validation

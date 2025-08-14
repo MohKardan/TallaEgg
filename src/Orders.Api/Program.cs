@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
+using System.Reflection;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -19,9 +21,55 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
+// Add Swagger/OpenAPI support
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo 
+    { 
+        Title = "TallaEgg Orders API", 
+        Version = "v1",
+        Description = "API for managing trading orders in the TallaEgg platform",
+        Contact = new OpenApiContact
+        {
+            Name = "TallaEgg Development Team",
+            Email = "dev@tallaegg.com"
+        }
+    });
+
+    // Include XML comments for documentation
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
+
 var app = builder.Build();
 
+// Configure Swagger UI
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Orders API V1");
+        c.RoutePrefix = "api-docs";
+    });
+}
+
 // Order management endpoints
+
+/// <summary>
+/// Creates a new maker order
+/// </summary>
+/// <param name="request">Order creation request containing asset, amount, price, user ID, type, trading type, and optional notes</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Created order details with success status</returns>
+/// <response code="200">Order created successfully</response>
+/// <response code="400">Invalid request data or business rule violation</response>
+/// <response code="403">Unauthorized access</response>
 app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orderService) =>
 {
     try
@@ -49,6 +97,14 @@ app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService order
     }
 });
 
+/// <summary>
+/// Creates a new limit order
+/// </summary>
+/// <param name="request">Limit order request containing symbol, quantity, price, and user ID</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Created limit order details with success status</returns>
+/// <response code="200">Limit order created successfully</response>
+/// <response code="400">Invalid request data or validation error</response>
 app.MapPost("/api/orders/limit", async (CreateLimitOrderRequest request, OrderService orderService) =>
 {
     try
@@ -62,6 +118,14 @@ app.MapPost("/api/orders/limit", async (CreateLimitOrderRequest request, OrderSe
     }
 });
 
+/// <summary>
+/// Creates a new taker order
+/// </summary>
+/// <param name="request">Taker order request containing parent order ID, amount, user ID, and optional notes</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Created taker order details with success status</returns>
+/// <response code="200">Taker order created successfully</response>
+/// <response code="400">Invalid request data or business rule violation</response>
 app.MapPost("/api/orders/taker", async (CreateTakerOrderRequest request, OrderService orderService) =>
 {
     try
@@ -82,6 +146,15 @@ app.MapPost("/api/orders/taker", async (CreateTakerOrderRequest request, OrderSe
     }
 });
 
+/// <summary>
+/// Retrieves an order by its ID
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Order details if found</returns>
+/// <response code="200">Order found and returned successfully</response>
+/// <response code="404">Order not found</response>
+/// <response code="400">Invalid request or error occurred</response>
 app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -98,6 +171,16 @@ app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderServi
     }
 });
 
+/// <summary>
+/// Retrieves paginated orders for a specific user
+/// </summary>
+/// <param name="userId">Unique identifier of the user</param>
+/// <param name="pageNumber">Page number for pagination (default: 1)</param>
+/// <param name="pageSize">Number of items per page (default: 10, max: 100)</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Paginated list of user orders</returns>
+/// <response code="200">User orders retrieved successfully</response>
+/// <response code="400">Invalid request parameters</response>
 app.MapGet("/api/orders/userorders/{userId}",
     async (
         Guid userId,
@@ -122,6 +205,14 @@ app.MapGet("/api/orders/userorders/{userId}",
         return ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "User loaded successfully");
     });
 
+/// <summary>
+/// Retrieves all orders for a specific asset
+/// </summary>
+/// <param name="asset">Trading asset symbol (e.g., BTC, ETH)</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of orders for the specified asset</returns>
+/// <response code="200">Asset orders retrieved successfully</response>
+/// <response code="400">Invalid request or error occurred</response>
 app.MapGet("/api/orders/asset/{asset}", async (string asset, OrderService orderService) =>
 {
     try
@@ -135,6 +226,13 @@ app.MapGet("/api/orders/asset/{asset}", async (string asset, OrderService orderS
     }
 });
 
+/// <summary>
+/// Retrieves all active orders
+/// </summary>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of all active orders</returns>
+/// <response code="200">Active orders retrieved successfully</response>
+/// <response code="400">Error occurred while retrieving orders</response>
 app.MapGet("/api/orders/active", async (OrderService orderService) =>
 {
     try
@@ -148,6 +246,15 @@ app.MapGet("/api/orders/active", async (OrderService orderService) =>
     }
 });
 
+/// <summary>
+/// Retrieves available maker orders for a specific asset and trading type
+/// </summary>
+/// <param name="asset">Trading asset symbol</param>
+/// <param name="tradingType">Type of trading (Spot or Futures)</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of available maker orders</returns>
+/// <response code="200">Maker orders retrieved successfully</response>
+/// <response code="400">Invalid request or error occurred</response>
 app.MapGet("/api/orders/maker/{asset}", async (string asset, TradingType tradingType, OrderService orderService) =>
 {
     try
@@ -161,6 +268,15 @@ app.MapGet("/api/orders/maker/{asset}", async (string asset, TradingType trading
     }
 });
 
+/// <summary>
+/// Updates the status of an order
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="request">Status update request containing new status and optional notes</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the update operation</returns>
+/// <response code="200">Order status updated successfully</response>
+/// <response code="400">Invalid request or update failed</response>
 app.MapPut("/api/orders/{orderId}/status", async (Guid orderId, UpdateOrderStatusRequest request, OrderService orderService) =>
 {
     try
@@ -177,6 +293,15 @@ app.MapPut("/api/orders/{orderId}/status", async (Guid orderId, UpdateOrderStatu
     }
 });
 
+/// <summary>
+/// Cancels an order with optional reason
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="request">Cancel request containing optional reason</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the cancellation operation</returns>
+/// <response code="200">Order cancelled successfully</response>
+/// <response code="400">Invalid request or cancellation failed</response>
 app.MapPut("/api/orders/{orderId}/cancel", async (Guid orderId, CancelOrderRequest request, OrderService orderService) =>
 {
     try
@@ -193,6 +318,15 @@ app.MapPut("/api/orders/{orderId}/cancel", async (Guid orderId, CancelOrderReque
     }
 });
 
+/// <summary>
+/// Cancels an order (simple cancellation)
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Updated order details after cancellation</returns>
+/// <response code="200">Order cancelled successfully</response>
+/// <response code="404">Order not found</response>
+/// <response code="400">Invalid request or cancellation failed</response>
 app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -219,6 +353,14 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, OrderService or
     }
 });
 
+/// <summary>
+/// Confirms an order
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the confirmation operation</returns>
+/// <response code="200">Order confirmed successfully</response>
+/// <response code="400">Invalid request or confirmation failed</response>
 app.MapPut("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -235,6 +377,14 @@ app.MapPut("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService or
     }
 });
 
+/// <summary>
+/// Completes an order
+/// </summary>
+/// <param name="orderId">Unique identifier of the order</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the completion operation</returns>
+/// <response code="200">Order completed successfully</response>
+/// <response code="400">Invalid request or completion failed</response>
 app.MapPut("/api/orders/{orderId}/complete", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -251,6 +401,15 @@ app.MapPut("/api/orders/{orderId}/complete", async (Guid orderId, OrderService o
     }
 });
 
+/// <summary>
+/// Accepts a taker order for a maker order
+/// </summary>
+/// <param name="makerOrderId">Unique identifier of the maker order</param>
+/// <param name="takerOrderId">Unique identifier of the taker order</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the acceptance operation</returns>
+/// <response code="200">Taker order accepted successfully</response>
+/// <response code="400">Invalid request or acceptance failed</response>
 app.MapPost("/api/orders/{makerOrderId}/accept-taker/{takerOrderId}", async (Guid makerOrderId, Guid takerOrderId, OrderService orderService) =>
 {
     try
@@ -270,28 +429,101 @@ app.MapPost("/api/orders/{makerOrderId}/accept-taker/{takerOrderId}", async (Gui
 app.Run();
 
 // Request models
+
+/// <summary>
+/// Request model for creating a new maker order
+/// </summary>
 public record CreateOrderRequest(
+    /// <summary>
+    /// Trading asset symbol (e.g., BTC, ETH, USDT)
+    /// </summary>
     string Asset, 
+    /// <summary>
+    /// Order quantity/amount
+    /// </summary>
     decimal Amount, 
+    /// <summary>
+    /// Order price per unit
+    /// </summary>
     decimal Price, 
+    /// <summary>
+    /// Unique identifier of the user placing the order
+    /// </summary>
     Guid UserId, 
+    /// <summary>
+    /// Type of order (Buy or Sell)
+    /// </summary>
     OrderType Type,
+    /// <summary>
+    /// Trading type (Spot or Futures)
+    /// </summary>
     TradingType TradingType,
+    /// <summary>
+    /// Optional notes for the order
+    /// </summary>
     string? Notes = null);
 
+/// <summary>
+/// Request model for creating a new limit order
+/// </summary>
 public record CreateLimitOrderRequest(
+    /// <summary>
+    /// Trading symbol (e.g., BTC, ETH)
+    /// </summary>
     string Symbol,
+    /// <summary>
+    /// Order quantity
+    /// </summary>
     decimal Quantity,
+    /// <summary>
+    /// Limit price for the order
+    /// </summary>
     decimal Price,
+    /// <summary>
+    /// Unique identifier of the user placing the order
+    /// </summary>
     Guid UserId);
 
+/// <summary>
+/// Request model for creating a new taker order
+/// </summary>
 public record CreateTakerOrderRequest(
+    /// <summary>
+    /// Unique identifier of the parent maker order
+    /// </summary>
     Guid ParentOrderId,
+    /// <summary>
+    /// Order amount
+    /// </summary>
     decimal Amount,
+    /// <summary>
+    /// Unique identifier of the user placing the order
+    /// </summary>
     Guid UserId,
+    /// <summary>
+    /// Optional notes for the order
+    /// </summary>
     string? Notes = null);
 
-public record UpdateOrderStatusRequest(OrderStatus Status, string? Notes = null);
+/// <summary>
+/// Request model for updating order status
+/// </summary>
+public record UpdateOrderStatusRequest(
+    /// <summary>
+    /// New status for the order
+    /// </summary>
+    OrderStatus Status, 
+    /// <summary>
+    /// Optional notes for the status change
+    /// </summary>
+    string? Notes = null);
 
-public record CancelOrderRequest(string? Reason = null);
+/// <summary>
+/// Request model for cancelling an order
+/// </summary>
+public record CancelOrderRequest(
+    /// <summary>
+    /// Optional reason for cancellation
+    /// </summary>
+    string? Reason = null);
 
