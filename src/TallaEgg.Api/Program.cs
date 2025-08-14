@@ -1,36 +1,44 @@
 using Microsoft.EntityFrameworkCore;
-using Orders.Core;
-using Orders.Infrastructure;
-using Orders.Application;
-using Users.Application;
-using Users.Core;
-using Microsoft.AspNetCore.Mvc;
-using TallaEgg.Api.Clients;
-using ClientUserDto = TallaEgg.Api.Clients.UserDto;
-using ClientUserRole = TallaEgg.Api.Clients.UserRole;
-using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
-using ClientRegisterUserRequest = TallaEgg.Api.Clients.RegisterUserRequest;
-using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUserWithInvitationRequest;
+using TallaEgg.Api.Shared.Infrastructure;
+using TallaEgg.Api.Modules.Users.Endpoints;
+using TallaEgg.Api.Modules.Orders.Endpoints;
+using TallaEgg.Api.Modules.Affiliate.Endpoints;
+using TallaEgg.Api.Modules.Matching.Endpoints;
+using TallaEgg.Api.Modules.Wallet.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// تنظیم اتصال به دیتابیس SQL Server (در appsettings.json هم می‌توان قرار داد)
-builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
-        "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+// تنظیم اتصال به دیتابیس SQL Server واحد
+builder.Services.AddDbContext<TallaEggDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("TallaEggDb") ??
+        "Server=localhost;Database=TallaEggDb;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
-// فقط سرویس‌های مربوط به Orders و Price ثبت شوند
+// ثبت سرویس‌های ماژول Users
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<UserMapper>();
+
+// ثبت سرویس‌های ماژول Orders
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
-//builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<CreateTakerOrderCommandHandler>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
-// اضافه کردن HTTP Client برای ارتباط با Users microservice
-builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>();
+// ثبت سرویس‌های ماژول Affiliate
+builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
+builder.Services.AddScoped<AffiliateService>();
+
+// ثبت سرویس‌های ماژول Matching
+builder.Services.AddScoped<IMatchingRepository, MatchingRepository>();
+builder.Services.AddScoped<IWalletService, WalletService>();
+builder.Services.AddScoped<MatchingEngine>();
+
+// ثبت سرویس‌های ماژول Wallet
+builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+builder.Services.AddScoped<IWalletService, WalletService>();
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -42,6 +50,13 @@ app.UseCors(builder => builder
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
+
+// ثبت endpoint های همه ماژول‌ها
+app.MapUserEndpoints();
+app.MapOrderEndpoints();
+app.MapAffiliateEndpoints();
+app.MapMatchingEndpoints();
+app.MapWalletEndpoints();
 
 //// ثبت سفارش جدید توسط مشتری
 //app.MapPost("/api/order", async (OrderDto orderDto, CreateOrderCommandHandler handler) =>
