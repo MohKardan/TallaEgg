@@ -23,6 +23,21 @@ builder.Services.AddScoped<UserMapper>();
 // اضافه کردن CORS
 builder.Services.AddCors();
 
+// Add Swagger services
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "TallaEgg Users API", Version = "v1" });
+    
+    // Include XML comments
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
+
 var app = builder.Build();
 
 // تنظیم CORS
@@ -31,7 +46,22 @@ app.UseCors(builder => builder
     .AllowAnyMethod()
     .AllowAnyHeader());
 
-// User management endpoints
+// Add Swagger middleware
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
+    c.RoutePrefix = "api-docs";
+});
+
+/// <summary>
+/// Registers a new user in the system
+/// </summary>
+/// <param name="request">User registration request containing Telegram ID, invitation code, and user details</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Registered user details with success status</returns>
+/// <response code="200">User registered successfully</response>
+/// <response code="400">Invalid request data or validation error</response>
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
 {
     try
@@ -51,6 +81,15 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
     }
 });
 
+/// <summary>
+/// Updates the phone number for an existing user
+/// </summary>
+/// <param name="request">Phone update request containing Telegram ID and new phone number</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Updated user details with success status</returns>
+/// <response code="200">Phone number updated successfully</response>
+/// <response code="400">Invalid request data or validation error</response>
+/// <response code="404">User not found</response>
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
     try
@@ -64,6 +103,14 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
     }
 });
 
+/// <summary>
+/// Retrieves user information by Telegram ID
+/// </summary>
+/// <param name="telegramId">Telegram ID of the user</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>User details if found</returns>
+/// <response code="200">User found and returned successfully</response>
+/// <response code="404">User not found</response>
 app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userService) =>
 {
     var user = await userService.GetUserByTelegramIdAsync(telegramId);
@@ -73,6 +120,15 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
     return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
 });
 
+/// <summary>
+/// Updates the status of an existing user
+/// </summary>
+/// <param name="request">Status update request containing Telegram ID and new status</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Success status with confirmation message</returns>
+/// <response code="200">User status updated successfully</response>
+/// <response code="400">Invalid request data or validation error</response>
+/// <response code="404">User not found</response>
 app.MapPost("/api/user/update-status", async (UpdateStatusRequest request, UserService userService) =>
 {
     try
@@ -86,7 +142,15 @@ app.MapPost("/api/user/update-status", async (UpdateStatusRequest request, UserS
     }
 });
 
-// Invitation code endpoints
+/// <summary>
+/// Gets user ID by invitation code
+/// </summary>
+/// <param name="invitationCode">Invitation code to lookup</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>User ID associated with the invitation code</returns>
+/// <response code="200">User ID found and returned</response>
+/// <response code="400">Invalid invitation code or error occurred</response>
+/// <response code="404">Invitation code not found</response>
 app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
 {
     try
@@ -100,6 +164,14 @@ app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string
     }
 });
 
+/// <summary>
+/// Validates an invitation code
+/// </summary>
+/// <param name="request">Invitation validation request containing the code to validate</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Validation result with success status and message</returns>
+/// <response code="200">Invitation code validated successfully</response>
+/// <response code="400">Invalid invitation code or error occurred</response>
 app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
 {
     try
@@ -113,7 +185,14 @@ app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest re
     }
 });
 
-// User registration with invitation code
+/// <summary>
+/// Registers a new user with invitation code
+/// </summary>
+/// <param name="request">User registration request with invitation code</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Registered user details with success status</returns>
+/// <response code="200">User registered successfully with invitation</response>
+/// <response code="400">Invalid request data or validation error</response>
 app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitationRequest request, UserService userService) =>
 {
     try
@@ -127,7 +206,15 @@ app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitat
     }
 });
 
-// User role management endpoints
+/// <summary>
+/// Updates the role of an existing user
+/// </summary>
+/// <param name="request">Role update request containing user ID and new role</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Success status with confirmation message</returns>
+/// <response code="200">User role updated successfully</response>
+/// <response code="400">Invalid request data or validation error</response>
+/// <response code="404">User not found</response>
 app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
 {
     try
@@ -144,6 +231,14 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserS
     }
 });
 
+/// <summary>
+/// Gets all users by role
+/// </summary>
+/// <param name="role">Role to filter users by</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>List of users with the specified role</returns>
+/// <response code="200">Users found and returned successfully</response>
+/// <response code="400">Invalid role or error occurred</response>
 app.MapGet("/api/users/by-role/{role}", async (string role, UserService userService) =>
 {
     try
@@ -160,7 +255,14 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
     }
 });
 
-// User existence check
+/// <summary>
+/// Checks if a user exists by Telegram ID
+/// </summary>
+/// <param name="telegramId">Telegram ID to check</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>Boolean indicating if user exists</returns>
+/// <response code="200">User existence check completed</response>
+/// <response code="400">Error occurred during check</response>
 app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>
 {
     try
@@ -176,8 +278,22 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 
 app.Run();
 
-// Request models
+/// <summary>
+/// Request model for updating user status
+/// </summary>
 public record UpdateStatusRequest(long TelegramId, UserStatus Status);
+
+/// <summary>
+/// Request model for validating invitation codes
+/// </summary>
 public record ValidateInvitationRequest(string InvitationCode);
+
+/// <summary>
+/// Request model for registering users with invitation codes
+/// </summary>
 public record RegisterUserWithInvitationRequest(User User);
+
+/// <summary>
+/// Request model for updating user roles
+/// </summary>
 public record UpdateUserRoleRequest(Guid UserId, UserRole NewRole); 
