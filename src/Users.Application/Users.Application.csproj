@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\Affiliate.Core\Affiliate.Core.csproj" />
     <ProjectReference Include="..\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.Core\TallaEgg.Core.csproj" />

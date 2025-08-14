@@ -6,6 +6,10 @@ dotnet run
 cd src/Affiliate.Api
 dotnet run
 
+# Orders API (Port 5135)
+cd src/Orders.Api
+dotnet run
+
 # Matching API (Port 5138)
 cd src/Matching.Api
 dotnet run
@@ -14,7 +18,7 @@ dotnet run
 cd src/Wallet.Api
 dotnet run
 
-# Orders API (Port 5135)
+# Main API (Port 5140)
 cd src/TallaEgg.Api
 dotnet run
 ```

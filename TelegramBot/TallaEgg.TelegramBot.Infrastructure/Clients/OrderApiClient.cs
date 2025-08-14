@@ -26,18 +26,20 @@ public class OrderApiClient : IOrderApiClient
                 Amount = amount,
                 Price = price,
                 UserId = userId,
-                Type = type
+                Type = type,
+                TradingType = "Spot" // Default to Spot trading
             };
             
             var json = System.Text.Json.JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/order", content);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders", content);
             
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync();
-                return System.Text.Json.JsonSerializer.Deserialize<Order>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = System.Text.Json.JsonSerializer.Deserialize<OrderResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result?.Order;
             }
 
             return null;
@@ -52,12 +54,13 @@ public class OrderApiClient : IOrderApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/orders/{asset}");
+            var response = await _httpClient.GetAsync($"{_baseUrl}/orders/asset/{asset}");
             
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<IEnumerable<Order>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? Enumerable.Empty<Order>();
+                var result = JsonSerializer.Deserialize<OrdersResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result?.Orders ?? Enumerable.Empty<Order>();
             }
 
             return Enumerable.Empty<Order>();
@@ -73,7 +76,7 @@ public class OrderApiClient : IOrderApiClient
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         try
         {
-            var response = await _httpClient.PostAsync(_baseUrl, content);
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders", content);
             var respText = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
                 return (true, "سفارش شما ثبت شد.");
@@ -85,6 +88,7 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 }
+
 public class OrderDto
 {
     public string Asset { get; set; } = "";
@@ -93,4 +97,18 @@ public class OrderDto
     public Guid UserId { get; set; }
     public string Type { get; set; } = "Buy"; // "Buy" or "Sell"
     public string TradingType { get; set; } = "Spot"; // "Spot" or "Futures"
+}
+
+public class OrderResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
+    public Order? Order { get; set; }
+}
+
+public class OrdersResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
+    public IEnumerable<Order> Orders { get; set; } = Enumerable.Empty<Order>();
 }

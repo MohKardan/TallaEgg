@@ -88,6 +88,29 @@ public class OrderService /*: IOrderService*/
         }
     }
 
+    public async Task<Order> CreateLimitOrderAsync(string symbol, decimal quantity, decimal price, Guid userId)
+    {
+        try
+        {
+            _logger.LogInformation("Creating limit order for user {UserId} with symbol {Symbol}, quantity {Quantity}, price {Price}", 
+                userId, symbol, quantity, price);
+
+            // Create limit order using domain factory method
+            var order = Order.CreateLimitOrder(symbol, quantity, price, userId);
+
+            // Save to repository
+            var createdOrder = await _orderRepository.AddAsync(order);
+            
+            _logger.LogInformation("Limit order created successfully with ID: {OrderId}", createdOrder.Id);
+            return createdOrder;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating limit order for user {UserId}", userId);
+            throw new InvalidOperationException("خطا در ایجاد سفارش limit", ex);
+        }
+    }
+
     public async Task<Order> CreateTakerOrderAsync(CreateTakerOrderCommand command)
     {
         try

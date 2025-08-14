@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.Core\TallaEgg.Core.csproj" />
   </ItemGroup>
 

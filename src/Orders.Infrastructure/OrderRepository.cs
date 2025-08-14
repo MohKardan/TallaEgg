@@ -103,7 +103,6 @@ public class OrderRepository : IOrderRepository
         };
     }
 
-
     public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)
     {
         try
@@ -173,7 +172,7 @@ public class OrderRepository : IOrderRepository
         try
         {
             return await _dbContext.Orders
-                .Where(o => o.IsActive())
+                .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Confirmed)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
@@ -192,7 +191,7 @@ public class OrderRepository : IOrderRepository
                 .Where(o => o.Asset == asset && 
                            o.TradingType == tradingType && 
                            o.Role == OrderRole.Maker && 
-                           o.IsActive())
+                           (o.Status == OrderStatus.Pending || o.Status == OrderStatus.Confirmed))
                 .OrderBy(o => o.Price)
                 .ToListAsync();
         }
@@ -239,7 +238,7 @@ public class OrderRepository : IOrderRepository
         {
             return await _dbContext.Orders
                 .Where(o => o.Asset == asset)
-                .SumAsync(o => o.GetTotalValue());
+                .SumAsync(o => o.Amount * o.Price);
         }
         catch (Exception ex)
         {

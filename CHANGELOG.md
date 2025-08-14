@@ -5,7 +5,113 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2024-12-19
+
+### Added
+- **Orders Service Limit Order Implementation**: Implemented comprehensive limit order functionality in Orders service
+  - Added `POST /api/orders/limit` endpoint for placing limit orders with Symbol, Quantity, Price, and UserId
+  - Added `POST /api/orders/{orderId}/cancel` endpoint for canceling orders with proper status updates
+  - Implemented `CreateLimitOrder` factory method in Order entity with comprehensive validation
+  - Added `CreateLimitOrderAsync` method in OrderService for business logic handling
+  - Enhanced OrderRepository with fixed LINQ queries for better performance
+  - Updated database schema with missing columns (Notes, ParentOrderId, Role, Status, TradingType, UpdatedAt)
+  - Fixed LINQ translation issues by replacing `IsActive()` method calls with direct status comparisons
+  - Replaced `GetTotalValue()` method calls with direct calculation (`Amount * Price`) for SQL translation
+  - Added proper error handling and validation throughout the order lifecycle
+
+### Changed
+- **Order Entity**: Enhanced with limit order creation capability
+  - Added `CreateLimitOrder` static factory method with comprehensive validation
+  - Validates Symbol (non-empty), Quantity (> 0), Price (> 0), and UserId (non-empty)
+  - Sets default values: OrderType.Buy, OrderStatus.Pending, TradingType.Spot, OrderRole.Maker
+  - Initializes CreatedAt and UpdatedAt timestamps
+
+- **OrderService**: Extended with limit order business logic
+  - Added `CreateLimitOrderAsync` method for limit order creation
+  - Implemented proper logging and error handling
+  - Uses domain factory method for order creation
+  - Maintains Clean Architecture principles
+
+- **OrderRepository**: Fixed LINQ query translation issues
+  - Replaced `IsActive()` method calls with direct status comparisons
+  - Fixed `GetTotalValue()` method calls with direct calculation
+  - Enhanced query performance and SQL translation compatibility
+
+- **Database Schema**: Updated with comprehensive order management support
+  - Added missing columns: Notes, ParentOrderId, Role, Status, TradingType, UpdatedAt
+  - Applied proper database migrations for schema updates
+  - Maintained data integrity with proper constraints
+
+### Technical Details
+- **API Endpoints**:
+  - `POST /api/orders/limit`: Creates limit orders with validation
+  - `POST /api/orders/{orderId}/cancel`: Cancels orders with status updates
+  - `GET /api/orders/{orderId}`: Retrieves order details
+
+- **Validation Rules**:
+  - Symbol: Required, non-empty string
+  - Quantity: Required, greater than zero
+  - Price: Required, greater than zero
+  - UserId: Required, non-empty GUID
+
+- **Order Lifecycle**:
+  - Created with Status = Pending
+  - Can be cancelled to Status = Cancelled
+  - UpdatedAt timestamp updated on status changes
+
 ## [Unreleased]
+
+### Added
+- **Orders Service Limit Order Implementation**: Implemented comprehensive limit order functionality in Orders service
+  - Added `POST /api/orders/limit` endpoint for placing limit orders with Symbol, Quantity, Price, and UserId
+  - Added `POST /api/orders/{orderId}/cancel` endpoint for canceling orders with proper status updates
+  - Implemented `CreateLimitOrder` factory method in Order entity with comprehensive validation
+  - Added `CreateLimitOrderAsync` method in OrderService for business logic handling
+  - Enhanced OrderRepository with fixed LINQ queries for better performance
+  - Updated database schema with missing columns (Notes, ParentOrderId, Role, Status, TradingType, UpdatedAt)
+  - Fixed LINQ translation issues by replacing `IsActive()` method calls with direct status comparisons
+  - Replaced `GetTotalValue()` method calls with direct calculation (`Amount * Price`) for SQL translation
+  - Added proper error handling and validation throughout the order lifecycle
+
+### Changed
+- **Order Entity**: Enhanced with limit order creation capability
+  - Added `CreateLimitOrder` static factory method with comprehensive validation
+  - Validates Symbol (non-empty), Quantity (> 0), Price (> 0), and UserId (non-empty)
+  - Sets default values: OrderType.Buy, OrderStatus.Pending, TradingType.Spot, OrderRole.Maker
+  - Initializes CreatedAt and UpdatedAt timestamps
+
+- **OrderService**: Extended with limit order business logic
+  - Added `CreateLimitOrderAsync` method for limit order creation
+  - Implemented proper logging and error handling
+  - Uses domain factory method for order creation
+  - Maintains Clean Architecture principles
+
+- **OrderRepository**: Fixed LINQ query translation issues
+  - Replaced `IsActive()` method calls with direct status comparisons
+  - Fixed `GetTotalValue()` method calls with direct calculation
+  - Enhanced query performance and SQL translation compatibility
+
+- **Database Schema**: Updated with comprehensive order management support
+  - Added missing columns: Notes, ParentOrderId, Role, Status, TradingType, UpdatedAt
+  - Applied proper database migrations for schema updates
+  - Maintained data integrity with proper constraints
+
+### Technical Details
+- **API Endpoints**:
+  - `POST /api/orders/limit`: Creates limit orders with validation
+  - `POST /api/orders/{orderId}/cancel`: Cancels orders with status updates
+  - `GET /api/orders/{orderId}`: Retrieves order details
+
+- **Validation Rules**:
+  - Symbol: Required, non-empty string
+  - Quantity: Required, greater than zero
+  - Price: Required, greater than zero
+  - UserId: Required, non-empty GUID
+
+- **Order Lifecycle**:
+  - Created with Status = Pending
+  - Can be cancelled to Status = Cancelled
+  - UpdatedAt timestamp updated on status changes
 
 ### Fixed
 - **Telegram Bot Infrastructure DI**: Resolved OrderApiClient service resolution error in Infrastructure project

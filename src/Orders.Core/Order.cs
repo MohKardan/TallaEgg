@@ -61,6 +61,40 @@ public class Order
         };
     }
 
+    public static Order CreateLimitOrder(
+        string symbol, 
+        decimal quantity, 
+        decimal price, 
+        Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            throw new ArgumentException("Symbol cannot be empty", nameof(symbol));
+        
+        if (quantity <= 0)
+            throw new ArgumentException("Quantity must be greater than zero", nameof(quantity));
+        
+        if (price <= 0)
+            throw new ArgumentException("Price must be greater than zero", nameof(price));
+        
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty", nameof(userId));
+
+        return new Order
+        {
+            Id = Guid.NewGuid(),
+            Asset = symbol.Trim().ToUpperInvariant(),
+            Amount = quantity,
+            Price = price,
+            UserId = userId,
+            Type = OrderType.Buy, // Default to Buy for now
+            Status = OrderStatus.Pending,
+            TradingType = TradingType.Spot, // Default to Spot for now
+            Role = OrderRole.Maker,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
     public static Order CreateTakerOrder(
         Guid parentOrderId,
         decimal amount,
