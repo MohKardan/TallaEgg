@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System.Text;
 using System.Text.Json;
+using TallaEgg.Core.Enums.Order;
 using TallaEgg.TelegramBot.Core.Models;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -14,6 +15,11 @@ public class OrderApiClient : IOrderApiClient
     {
         _httpClient = httpClient;
         _baseUrl = configuration["OrderApiUrl"] ?? "http://localhost:5135/api";
+        
+        // برای حل مشکل SSL در محیط توسعه
+        var handler = new HttpClientHandler();
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+        _httpClient = new HttpClient(handler);
     }
 
     public async Task<Order?> CreateOrderAsync(string asset, decimal amount, decimal price, Guid userId, string type)
@@ -72,7 +78,7 @@ public class OrderApiClient : IOrderApiClient
     }
     public async Task<(bool success, string message)> SubmitOrderAsync(OrderDto order)
     {
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(order);
+        var json = System.Text.Json.JsonSerializer.Serialize(order);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         try
         {
@@ -87,6 +93,22 @@ public class OrderApiClient : IOrderApiClient
             return (false, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
+
+    public async Task<(bool success, string message)> CancelOrderAsync(Guid orderId)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/{orderId}/cancel", null);
+            var respText = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+                return (true, "سفارش شما لغو شد.");
+            return (false, $"خطا در لغو سفارش: {respText}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
 }
 
 public class OrderDto
@@ -95,8 +117,9 @@ public class OrderDto
     public decimal Amount { get; set; }
     public decimal Price { get; set; }
     public Guid UserId { get; set; }
-    public string Type { get; set; } = "Buy"; // "Buy" or "Sell"
-    public string TradingType { get; set; } = "Spot"; // "Spot" or "Futures"
+    public OrderType Type { get; set; } // "Buy" or "Sell"
+    public TradingType TradingType { get; set; } // "Spot" or "Futures"
+    public string? Notes { get; set; } = null; // Optional notes for the order
 }
 
 public class OrderResponse

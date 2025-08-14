@@ -30,7 +30,18 @@ builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
 // اضافه کردن HTTP Client برای ارتباط با Users microservice
-builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>();
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>()
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+        });
+}
+else
+{
+    builder.Services.AddHttpClient<IUsersApiClient, UsersApiClient>();
+}
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -97,7 +108,7 @@ app.UseCors(builder => builder
 //{
 //    try
 //    {
-//        var clientRequest = new ClientRegisterUserRequest(request.TelegramId, request.Username, request.FirstName, request.LastName);
+//        var clientRequest = new ClientRegisterUserRequest(request.TelegramId, request.Username, request.FirstName, request.LastName, request.InvitationCode);
 //        var user = await usersClient.RegisterUserAsync(clientRequest);
 //        if (user != null)
 //            return Results.Ok(new { success = true, userId = user.Id });
@@ -228,6 +239,21 @@ app.UseCors(builder => builder
 //    }
 //});
 
+// Health check endpoint to test Users API connection
+app.MapGet("/api/health/users", async ([FromServices] IUsersApiClient usersClient) =>
+{
+    try
+    {
+        // Try to get a user that doesn't exist to test the connection
+        var exists = await usersClient.UserExistsAsync(0);
+        return Results.Ok(new { success = true, message = "Users API is accessible", exists = exists });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = $"Users API connection failed: {ex.Message}" });
+    }
+});
+
 //// Price endpoints
 //app.MapGet("/api/prices/{asset}", async (string asset, PriceService priceService) =>
 //{
@@ -260,7 +286,7 @@ app.Run();
 
 // Request models
 public record ValidateInvitationRequest(string InvitationCode);
-public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName);
+public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName, string? InvitationCode = null);
 public record RegisterUserWithInvitationRequest(ClientUserDto User);
 public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
 public record UpdateStatusRequest(long TelegramId, ClientUserStatus Status);

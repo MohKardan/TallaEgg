@@ -455,3 +455,5 @@ The API is configured to allow CORS from any origin for development. In producti
 ## Database
 
 The API uses SQL Server with Entity Framework Core. Ensure the database is properly configured and migrations are applied before using the API.
+
+

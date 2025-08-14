@@ -13,6 +13,11 @@ public class WalletApiClient
     public WalletApiClient(string apiUrl)
     {
         _apiUrl = apiUrl;
+        
+        // برای حل مشکل SSL در محیط توسعه
+        var handler = new HttpClientHandler();
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+        _httpClient = new HttpClient(handler);
     }
 
     public async Task<(bool success, List<WalletDto>? wallets, string message)> GetUserWalletsAsync(Guid userId)

@@ -15,7 +15,7 @@ public interface IUsersApiClient
 }
 
 public record UserDto(Guid Id, long TelegramId, string? Username, string? FirstName, string? LastName, string? PhoneNumber, UserStatus Status, UserRole Role, DateTime CreatedAt, DateTime LastActiveAt, bool IsActive);
-public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName);
+public record RegisterUserRequest(long TelegramId, string? Username, string? FirstName, string? LastName, string? InvitationCode = null);
 public record RegisterUserWithInvitationRequest(UserDto User);
 public record UpdateUserRoleRequest(Guid UserId, UserRole NewRole);
 

@@ -133,7 +133,8 @@ class Program
 
             var receiverOptions = new Telegram.Bot.Polling.ReceiverOptions
             {
-                AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery }
+                AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery },
+                Limit = 100
             };
 
             Console.WriteLine("🔄 Starting message polling...");
@@ -153,6 +154,13 @@ class Program
                     if (exception.InnerException != null)
                     {
                         Console.WriteLine($"Inner Error: {exception.InnerException.Message}");
+                    }
+                    
+                    // اگر خطای timeout باشد، کمی صبر کنیم و دوباره تلاش کنیم
+                    if (exception.Message.Contains("timeout") || exception.Message.Contains("timed out"))
+                    {
+                        Console.WriteLine("⏳ Timeout detected. Waiting 10 seconds before retrying...");
+                        await Task.Delay(10000, ct);
                     }
                 },
 

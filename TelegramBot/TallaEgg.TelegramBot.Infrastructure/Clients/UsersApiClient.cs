@@ -21,7 +21,12 @@ public class UsersApiClient : IUsersApiClient
     public UsersApiClient(HttpClient httpClient, IConfiguration configuration)
     {
         _httpClient = httpClient;
-        _baseUrl = configuration["UsersApiUrl"] ?? "https://localhost:7296/api";
+        _baseUrl = configuration["UsersApiUrl"] ?? "http://localhost:5001/api";
+        
+        // برای حل مشکل SSL در محیط توسعه
+        var handler = new HttpClientHandler();
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+        _httpClient = new HttpClient(handler);
     }
 
     public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)

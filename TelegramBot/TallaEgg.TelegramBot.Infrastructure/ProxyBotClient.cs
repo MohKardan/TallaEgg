@@ -26,14 +26,16 @@ namespace TallaEgg.TelegramBot
                     };
                     
                     var httpClient = new HttpClient(handler);
-                    httpClient.Timeout = TimeSpan.FromSeconds(30);
+                    httpClient.Timeout = TimeSpan.FromSeconds(120); // افزایش timeout به 2 دقیقه
                     
                     return new TelegramBotClient(token, httpClient);
                 }
                 else
                 {
-                    // No proxy needed
-                    return new TelegramBotClient(token);
+                    // No proxy needed - create with extended timeout
+                    var httpClient = new HttpClient();
+                    httpClient.Timeout = TimeSpan.FromSeconds(120); // افزایش timeout به 2 دقیقه
+                    return new TelegramBotClient(token, httpClient);
                 }
             }
             catch (Exception ex)

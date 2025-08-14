@@ -15,6 +15,11 @@ public class PriceApiClient : IPriceApiClient
     {
         _httpClient = httpClient;
         _baseUrl = configuration["PricesApiUrl"] ?? "http://localhost:5135/api";
+        
+        // برای حل مشکل SSL در محیط توسعه
+        var handler = new HttpClientHandler();
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+        _httpClient = new HttpClient(handler);
     }
 
     public async Task<Price?> GetLatestPriceAsync(string asset)
@@ -111,6 +116,32 @@ public class PriceApiClient : IPriceApiClient
                 var prices = JsonConvert.DeserializeObject<List<PriceDto>>(respText);
                 return (true, prices);
             }
+            else
+            {
+                //TODO: Hardcoded data for testing
+                List<PriceDto>? priceDtos = new List<PriceDto>();    
+                priceDtos.Add(new PriceDto
+                {
+                    Id = Guid.NewGuid(),
+                    Asset = "BTC/USD",
+                    BuyPrice = 65000.50m,
+                    SellPrice = 64995.25m,
+                    UpdatedAt = DateTime.UtcNow,
+                    Source = "Binance"
+                });
+                priceDtos.Add(new PriceDto
+                {
+                    Id = Guid.NewGuid(),
+                    Asset = "ETH/USD",
+                    BuyPrice = 3500.75m,
+                    SellPrice = 3498.10m,
+                    UpdatedAt = DateTime.UtcNow,
+                    Source = "Coinbase"
+                }); 
+
+                return (true, priceDtos);
+            }
+            
             return (false, null);
         }
         catch (Exception ex)

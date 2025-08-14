@@ -5,6 +5,109 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2024-12-19
+
+### Added
+- **Users API Documentation**: Comprehensive API documentation and Swagger integration for Users service
+  - Added Swagger/OpenAPI support with XML documentation comments to all endpoints
+  - Created detailed USERS_API_DOCUMENTATION.md with all endpoints, parameters, and examples
+  - Added XML documentation to all endpoints with summary, parameters, and response codes
+  - Added XML documentation to all request/response models (RegisterUserRequest, UpdatePhoneRequest, UserDto)
+  - Configured Swagger UI at `/api-docs` for interactive API testing
+  - Added comprehensive examples for all request/response scenarios
+  - Documented validation rules, error handling, and status codes
+  - Created USERS_SWAGGER_SETUP.md with usage guide and configuration details
+  - Generated XML documentation file for IDE integration
+  - Added Swashbuckle.AspNetCore package to Users.Api project
+  - Enhanced project configuration with XML documentation generation
+
+### Technical Details
+- **Swagger Integration**: Complete Swagger UI setup with XML comments support
+- **API Documentation**: 10 endpoints documented with comprehensive examples
+- **Request/Response Models**: All models documented with property descriptions
+- **Testing Guide**: Step-by-step instructions for API testing via Swagger UI
+- **Error Handling**: Documented all possible error scenarios and status codes
+
+## [1.1.7] - 2024-12-19
+
+### Fixed
+- **Port Conflict Resolution**: Fixed port 5135 already in use error
+  - Changed Orders.Api port from 5135 to 5140 to avoid port conflicts
+  - Updated Telegram Bot appsettings.json to use new Orders API port
+  - Updated run.bat file to reflect new port configuration
+  - Maintained all existing functionality while resolving port conflicts
+  - Enhanced development environment stability
+
+## [1.1.6] - 2024-12-19
+
+### Fixed
+- **Telegram Bot SSL Connection Issues**: Fixed SSL certificate validation errors in API clients
+  - Added HttpClientHandler with ServerCertificateCustomValidationCallback to bypass SSL validation in development
+  - Updated all API clients (UsersApiClient, OrderApiClient, PriceApiClient, WalletApiClient, AffiliateApiClient) to handle SSL issues
+  - Changed UsersApiUrl from HTTPS to HTTP in appsettings.json to avoid SSL conflicts
+  - Enhanced error handling for SSL connection failures
+  - Improved network connectivity for development environment
+
+## [1.1.5] - 2024-12-19
+
+### Fixed
+- **Telegram Bot Compilation Errors**: Fixed compilation errors in polling configuration
+  - Removed invalid ReceiverOptions properties (ThrowPendingUpdates, Timeout) that don't exist in Telegram.Bot library
+  - Fixed OrderState.State property initialization to prevent CS8618 warning
+  - Simplified polling configuration to use only valid properties (AllowedUpdates, Limit)
+  - Maintained timeout handling through HttpClient configuration instead of polling options
+
+## [1.1.4] - 2024-12-19
+
+### Fixed
+- **Telegram Bot Connection Timeout Issues**: Fixed timeout errors in Telegram Bot connection
+  - Increased HttpClient timeout from 30 seconds to 120 seconds for better network stability
+  - Enhanced polling configuration with Limit setting for better performance
+  - Added automatic retry mechanism for timeout errors with 10-second delay
+  - Improved error handling for network connectivity issues
+  - Applied timeout settings to both proxy and direct connection scenarios
+  - Enhanced ProxyBotClient to handle timeout scenarios more gracefully
+
+## [1.1.3] - 2024-12-19
+
+### Fixed
+- **Telegram Bot JSON Serialization Consistency**: Fixed inconsistent JSON serialization in OrderApiClient
+  - Standardized all JSON serialization to use System.Text.Json instead of mixing Newtonsoft.Json and System.Text.Json
+  - Fixed SubmitOrderAsync method to use consistent serialization approach
+  - Ensured compatibility with Orders API endpoint expectations
+  - Prevented potential serialization format mismatches between client and server
+
+## [1.1.2] - 2024-12-19
+
+### Fixed
+- **Telegram Bot Code Structure Issues**: Fixed critical compilation and runtime issues
+  - Fixed incomplete code in ShowSpotOrderTypeSelectionAsync method that was causing compilation errors
+  - Removed duplicate HandleSpotMenuAsync method definition
+  - Fixed incorrect state management in HandleMakeOrderSpotMenuAsync and ShowSpotSymbolOptionsAsync
+  - Cleaned up redundant keyboard creation code that was causing runtime errors
+  - Ensured all methods have proper return statements and error handling
+  - Fixed method signatures and parameter usage consistency
+
+## [1.1.1] - 2024-12-19
+
+### Fixed
+- **Telegram Bot Order Flow Issues**: Fixed multiple issues in order placement and cancellation flow
+  - Fixed inconsistent state management using telegramId instead of chatId as key
+  - Added missing HandleSpotMenuAsync method to prevent runtime exceptions
+  - Fixed incorrect message in HandleOrderPriceInputAsync (was showing "enter price" instead of order confirmation)
+  - Added proper order cancellation endpoint integration with CancelOrderAsync method
+  - Added user validation in order flow to prevent null reference exceptions
+  - Enhanced error handling in order confirmation with try-catch blocks
+  - Added missing callback handler for "take_order_spot" to prevent unhandled callbacks
+  - Re-enabled balance validation for sell orders with proper error messages
+  - Fixed order state cleanup to ensure proper memory management
+
+### Technical Details
+- **State Management**: Consistent use of telegramId as dictionary key for order states
+- **Error Handling**: Added comprehensive error handling for API calls and user validation
+- **User Experience**: Fixed confusing messages and added proper order confirmation flow
+- **Memory Management**: Ensured proper cleanup of order states after completion or cancellation
+
 ## [1.1.0] - 2024-12-19
 
 ### Added
