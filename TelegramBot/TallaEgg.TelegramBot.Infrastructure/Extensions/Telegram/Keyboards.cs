@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Enums.Order;
 using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -142,6 +145,29 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
 
+        public static async Task SendAccountingMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        {
+
+            var keyboard = new ReplyKeyboardMarkup(
+               new[]
+               {
+                    new[] { new KeyboardButton(BotTexts.TradeHistory)},
+                    new[] { new KeyboardButton(BotTexts.MainMenu)},
+               }
+                            )
+            {
+                ResizeKeyboard = true,
+            };
+
+
+            await _botClient.SendMessage(
+                chatId,
+                "📑 منوی حسابداری\n" +
+                "لطفاً یکی از گزینه‌های را انتخاب کنید:",
+            replyMarkup: keyboard);
+
+        }
+
         public static async Task SendSpotMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
         {
             var keyboard = new InlineKeyboardMarkup(new[]
@@ -159,6 +185,74 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
             await _botClient.SendMessage(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
+
+
+        public static async Task SendUserOrdersWithPagingAsync(
+    this ITelegramBotClient bot,
+    long chatId,
+    PagedResult<OrderHistoryDto> page,
+    int currentPage,
+    Guid userId)
+        {
+            if (page == null || !page.Items.Any())
+            {
+                await bot.SendMessage(chatId, "هیچ سفارشی یافت نشد.");
+                return;
+            }
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"📋 *سفارشات شما – صفحه {currentPage} از {page.TotalPages}*\n");
+
+            foreach (var o in page.Items)
+            {
+                sb.AppendLine(
+                    $"📌 *سفارش #{o.Id.ToString()[..8]}…*\n" +
+                    $"🏷️ دارایی: *{o.Asset}*\n" +
+                    $"🔺 نوع: *{GetTypeIcon(o.Type)} {o.Type}*\n" +
+                    $"📊 حجم: *{o.Amount}* @ قیمت *{o.Price:#,0}*\n" +
+                    $"📈 بازار: *{o.TradingType}* | نقش: *{o.Role}*\n" +
+                    $"⚡ وضعیت: *{GetStatusEmoji(o.Status)} {o.Status}*\n" +
+                    $"🕓 ثبت: *{o.CreatedAt:yyyy/MM/dd HH:mm}* " +
+                    (o.UpdatedAt.HasValue ? $"| آخرین ویرایش: *{o.UpdatedAt:HH:mm}*" : "") +
+                    (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{o.Notes}_" : "") +
+                    "\n➖➖➖➖➖➖➖➖➖\n");
+            }
+
+            // ساخت کیبورد صفحه‌بندی
+            var buttons = new List<InlineKeyboardButton>();
+            if (currentPage > 1)
+                buttons.Add(InlineKeyboardButton.WithCallbackData("⬅️ قبلی", $"orders_{userId}_{currentPage - 1}"));
+            if (currentPage < page.TotalPages)
+                buttons.Add(InlineKeyboardButton.WithCallbackData("بعدی ➡️", $"orders_{userId}_{currentPage + 1}"));
+
+            var keyboard = buttons.Any()
+                ? new InlineKeyboardMarkup(buttons)
+                : null;
+
+            await bot.SendMessage(
+                chatId: chatId,
+                text: sb.ToString(),
+                parseMode: ParseMode.None,
+                replyMarkup: keyboard);
+        }
+
+        // -------------- کمکی -----------------
+        private static string GetTypeIcon(OrderType type) => type switch
+        {
+            OrderType.Buy => "🟢",
+            OrderType.Sell => "🔴",
+            _ => "⚪"
+        };
+
+        private static string GetStatusEmoji(OrderStatus status) => status switch
+        {
+            OrderStatus.Pending => "⏳",
+            OrderStatus.Completed => "✅",
+            OrderStatus.Cancelled => "❌",
+            OrderStatus.Failed => "⚠️",
+            _ => "❓"
+        };
+
 
         public static async Task SendApproveOrRejectUserToAdminsKeyboard(
      this ITelegramBotClient botClient,

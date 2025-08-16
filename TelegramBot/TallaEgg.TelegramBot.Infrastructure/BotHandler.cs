@@ -130,7 +130,7 @@ namespace TallaEgg.TelegramBot
                 else
                 {
 
-                    await HandleMainMenuAsync(chatId, telegramId, message);
+                    await HandleMainMenuAsync(chatId, telegramId, message,user.Id);
                 }
             }
             catch (Exception ex)
@@ -221,7 +221,7 @@ namespace TallaEgg.TelegramBot
             }
         }
 
-        private async Task HandleMainMenuAsync(long chatId, long telegramId, Message message)
+        private async Task HandleMainMenuAsync(long chatId, long telegramId, Message message,Guid userId)
         {
             var msgText = message.Text ?? "";
 
@@ -237,7 +237,10 @@ namespace TallaEgg.TelegramBot
                     break;
 
                 case BotTexts.BtnAccounting:
-                    await _botClient.SendMessage(chatId, "📊 بخش حسابداری در حال توسعه است...");
+                    await HandleAccountingMenuAsync(chatId);
+                    break;
+                case BotTexts.TradeHistory:
+                    await ShowTradeHistory(chatId,userId);
                     break;
 
                 case BotTexts.BtnHelp:
@@ -364,6 +367,12 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendMessage(chatId, "📈 معاملات آتی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
+        private async Task HandleAccountingMenuAsync(long chatId)
+        {
+
+           await _botClient.SendAccountingMenuKeyboard(chatId);
+        }
+
 
 
         private async Task ShowHelpAsync(long chatId)
@@ -376,6 +385,11 @@ namespace TallaEgg.TelegramBot
                           "برای پشتیبانی با تیم فنی تماس بگیرید.";
 
             await _botClient.SendMessage(chatId, helpText);
+        }
+        private async Task ShowTradeHistory(long chatId,Guid userId)
+        {
+           var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
+           await _botClient.SendUserOrdersWithPagingAsync(chatId, page.Data!, 1, userId);
         }
 
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
@@ -820,6 +834,32 @@ namespace TallaEgg.TelegramBot
 
                         await RejectUser(long.Parse(telegramUserId), telegramId, message);
 
+                    }
+                    else if (data.StartsWith("orders_"))
+                    {
+                        var parts = data.Split('_'); // orders_{userId}_{page}
+                        if (parts.Length == 3 &&
+                            Guid.TryParse(parts[1], out var uid) &&
+                            int.TryParse(parts[2], out var pageNum))
+                        {
+                            var orders = await _orderApi.GetUserOrdersAsync(uid, pageNum, pageSize: 5);
+                            await _botClient.EditMessageText(
+                                chatId: callbackQuery.Message!.Chat.Id,
+                                messageId: callbackQuery.Message.MessageId,
+                                text: "در حال بارگذاری...",
+                                parseMode: ParseMode.MarkdownV2);
+
+                            await _botClient.SendUserOrdersWithPagingAsync(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                page: orders.Data!,
+                                currentPage: pageNum,
+                                userId: uid);
+
+                            // پیام قبلی را حذف می‌کنیم تا تعداد پیام‌ها زیاد نشود
+                            await _botClient.DeleteMessage(
+                                callbackQuery.Message.Chat.Id,
+                                callbackQuery.Message.MessageId);
+                        }
                     }
 
                     break;

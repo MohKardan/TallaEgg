@@ -1,6 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.TelegramBot.Core.Models;
 
@@ -20,6 +23,29 @@ public class OrderApiClient : IOrderApiClient
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+    }
+
+    public async Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(
+    Guid userId,
+    int pageNumber = 1,
+    int pageSize = 10)
+    {
+        var uri = $"{_baseUrl}/orders/userorders/{userId}?pageNumber={pageNumber}&pageSize={pageSize}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(uri);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<OrderHistoryDto>>>(json)
+                : ApiResponse<PagedResult<OrderHistoryDto>>.Fail("دریافت سفارشات ناموفق بود");
+        }
+        catch (Exception ex)
+        {
+            // TODO: لاگ
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+        }
     }
 
     public async Task<Order?> CreateOrderAsync(string asset, decimal amount, decimal price, Guid userId, string type)
@@ -65,7 +91,7 @@ public class OrderApiClient : IOrderApiClient
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                var result = JsonSerializer.Deserialize<OrdersResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = System.Text.Json.JsonSerializer.Deserialize<OrdersResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                 return result?.Orders ?? Enumerable.Empty<Order>();
             }
 

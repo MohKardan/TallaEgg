@@ -188,21 +188,16 @@ app.MapGet("/api/orders/userorders/{userId}",
         int? pageSize,
         OrderService orderService) =>
     {
-        // مقادیر پیش‌فرض
-        var page = pageNumber.GetValueOrDefault(1);
-        var size = pageSize.GetValueOrDefault(10);
-
+    
         // اعتبارسنجی
-        if (page <= 0) page = 1;
-        if (size <= 0) size = 10;
-        if (size > 100) size = 100; // حداکثر سایز برای جلوگیری از فشار به دیتابیس
+        var page = pageNumber ?? 1;
+        var size = Math.Clamp(pageSize ?? 10, 1, 100);
 
         var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
 
-        if (orders == null || !orders.Items.Any())
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("User not found or no orders");
-
-        return ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "User loaded successfully");
+        return orders?.Items?.Any() == true
+            ? Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"))
+            : Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("کاربر یافت نشد یا سفارشی وجود ندارد"));
     });
 
 /// <summary>
