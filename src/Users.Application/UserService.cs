@@ -59,8 +59,6 @@ public class UserService
 
         user.PhoneNumber = phoneNumber;
         user.LastActiveAt = DateTime.UtcNow;
-        user.IsActive = true;
-        user.Status = UserStatus.Active; // فعال کردن کاربر پس از ثبت شماره تلفن
          await _userRepository.UpdateAsync(user);
         return _userMapper.Map(user);
     }
@@ -80,8 +78,8 @@ public class UserService
 
         user.Status = status;
         user.LastActiveAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user);
         return _userMapper.Map(user);
-        //return await _userRepository.UpdateAsync(user);
     }
 
     public async Task<Guid?> GetUserIdByInvitationCode(string invitationCode)

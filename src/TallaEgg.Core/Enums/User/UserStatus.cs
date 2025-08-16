@@ -9,7 +9,8 @@ namespace TallaEgg.Core.Enums.User
     public enum UserStatus
     {
         Pending,    // منتظر تایید
-        Active,     // فعال
+        Approved,     // فعال
+        Rejected,    // رد شده 
         Suspended,  // معلق
         Blocked     // مسدود
     }

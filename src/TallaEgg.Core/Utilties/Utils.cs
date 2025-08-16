@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace TallaEgg.Core.Utilties
@@ -49,5 +50,23 @@ namespace TallaEgg.Core.Utilties
             return input;
         }
 
+        /// <summary>
+        /// اگر متن شامل حروف فارسی باشد، آن را راست‌چین می‌کند.
+        /// از RLE و PDF برای کنترل جهت متن استفاده می‌شود.
+        /// </summary>
+        public static string AutoRtl(this string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            // چک می‌کنیم آیا متن شامل کاراکترهای فارسی/عربی هست یا نه
+            bool hasPersian = text.Any(c => c >= 0x0600 && c <= 0x06FF);
+
+            // اگر فارسی بود، متن را داخل RLE...PDF قرار می‌دهیم
+            if (hasPersian)
+                return $"\u202B{text}\u202C";
+
+            return text;
+        }
     }
 }

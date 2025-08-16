@@ -3,13 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
+namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 {
-    public static class ReplyKeyboards
+    public static class Keyboards
     {
         public static async Task RequestContactKeyboard(this ITelegramBotClient _botClient, long chatId)
         {
@@ -155,6 +158,56 @@ namespace TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards
             });
 
             await _botClient.SendMessage(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
+        }
+
+        public static async Task SendApproveOrRejectUserToAdminsKeyboard(
+     this ITelegramBotClient botClient,
+     UserDto user,
+     long groupId)
+        {
+            // 1) لیست ادمین‌ها
+            var adminIds = await botClient.GetAdminUserIdsAsync(groupId);
+
+            // 2) متن پیام
+            var text =
+     $"📌 درخواست عضویت جدید\n\n" +
+     $"👤 نام: {Utils.EscapeHtml(user.FirstName)} {Utils.EscapeHtml(user.LastName)}\n" +
+     $"🆔 Telegram ID: <code>{user.TelegramId}</code>\n" +
+     $"🔖 Username: {Utils.UsernameLink(user.Username)}\n" +
+     $"📞 Phone: {Utils.EscapeHtml(user.PhoneNumber ?? "-")}\n" +
+     $"📅 ثبت‌نام: <code>{user.CreatedAt:yyyy/MM/dd HH:mm}</code>";
+
+            // 3) ساخت اینلاین کیبورد
+            var keyboard = new InlineKeyboardMarkup(new[]
+            {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData(
+                "✅ تأیید",
+                $"approve_{user.TelegramId}"),         
+            InlineKeyboardButton.WithCallbackData(
+                "❌ رد",
+                $"reject_{user.TelegramId}")
+        }
+    });
+
+            // 4) ارسال به هر ادمین
+            foreach (var adminId in adminIds)
+            {
+                try
+                {
+                    await botClient.SendMessage(
+                        chatId: adminId,
+                        text: text,
+                        parseMode: ParseMode.Html,
+                        replyMarkup: keyboard);
+                }
+                catch (Exception ex)
+                {
+                    // لاگ خطا برای ادمینی که پیام نتوانست ارسال شود
+                    Console.WriteLine($"ارسال به ادمین {adminId} ناموفق: {ex.Message}");
+                }
+            }
         }
     }
 

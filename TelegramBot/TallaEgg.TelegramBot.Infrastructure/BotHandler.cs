@@ -1,10 +1,12 @@
+using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
+using TallaEgg.TelegramBot.Core.Utilties;
 using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
-using TallaEgg.TelegramBot.Infrastructure.Keyboards.ReplyKeyboards;
+using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -96,7 +98,7 @@ namespace TallaEgg.TelegramBot
                 var telegramId = message.From?.Id ?? 0;
 
                 if (message.Text == BotTexts.MainMenu) await _botClient.SendMainKeyboardAsync(chatId);
-                message.Text = Utils.ConvertPersianDigitsToEnglish(message.Text);
+                message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
                 // Check if user exists
                 var user = await _usersApi.GetUserAsync(telegramId);
 
@@ -113,12 +115,23 @@ namespace TallaEgg.TelegramBot
                 }
 
                 // Check for admin commands first
-                if (await HandleAdminCommandsAsync(chatId, telegramId, message, user))
-                {
-                    return;
-                }
+                //if (await HandleAdminCommandsAsync(chatId, telegramId, message, user))
+                //{
+                //    return;
+                //}
 
-                await HandleMainMenuAsync(chatId, telegramId, message);
+                if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved)
+                {
+                    await _botClient.SendMessage(
+                         chatId,
+                         $"عزیز اکانت کاربری شما فعال نیست {user.FirstName}".AutoRtl()
+                     );
+                }
+                else
+                {
+
+                    await HandleMainMenuAsync(chatId, telegramId, message);
+                }
             }
             catch (Exception ex)
             {
@@ -188,17 +201,18 @@ namespace TallaEgg.TelegramBot
         {
             if (message.Contact?.PhoneNumber != null)
             {
-                var (success, updateMessage) = await _usersApi.UpdatePhoneAsync(telegramId, message.Contact.PhoneNumber);
+                var response = await _usersApi.UpdatePhoneAsync(telegramId, message.Contact.PhoneNumber);
 
-                if (success)
+                if (response.Success)
                 {
                     await _botClient.SendMessage(chatId, BotTexts.MsgPhoneSuccess,
                         replyMarkup: new ReplyKeyboardRemove());
                     await ShowMainMenuAsync(chatId);
+                    await _botClient.SendApproveOrRejectUserToAdminsKeyboard(response.Data, Constants.GroupId);
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId, $"خطا در ثبت شماره تلفن: {updateMessage}");
+                    await _botClient.SendMessage(chatId, response.Message);
                 }
             }
             else
@@ -369,7 +383,7 @@ namespace TallaEgg.TelegramBot
             var msgText = message.Text ?? "";
 
             // Check if user is admin
-            if ((!IsUserAdmin(user)))
+            if (await IsUserAdmin(user))
             {
                 return false; // Not an admin, continue with normal processing
             }
@@ -407,8 +421,10 @@ namespace TallaEgg.TelegramBot
             }
         }
 
-        private bool IsUserAdmin(UserDto user)
+        private async Task<bool> IsUserAdmin(UserDto user)
         {
+            var ids = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
+            return ids.Contains(user.TelegramId);
             //  Check if user has admin status or is a known admin Telegram ID
             // var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
             //return user.Status?.ToLower().Contains("admin") == true ||
@@ -421,7 +437,7 @@ namespace TallaEgg.TelegramBot
         private async Task HandleTradingTypeSelectionAsync(long chatId, long telegramId, TradingType tradingType)
         {
             var user = await _usersApi.GetUserAsync(telegramId);
-            
+
             if (user == null)
             {
                 await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
@@ -706,9 +722,12 @@ namespace TallaEgg.TelegramBot
 
         public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
         {
+
             var chatId = callbackQuery.Message?.Chat.Id ?? 0;
             var telegramId = callbackQuery.From?.Id ?? 0;
+            var message = callbackQuery.Message;
             var data = callbackQuery.Data ?? "";
+
 
             switch (data)
             {
@@ -788,10 +807,54 @@ namespace TallaEgg.TelegramBot
                         var asset = data.Substring(6); // Remove "asset_" prefix
                         await HandleAssetSelectionAsync(chatId, telegramId, asset);
                     }
+                    else if (data.StartsWith("approve_"))
+                    {
+                        var telegramUserId = data["approve_".Length..];
+
+                        await ApproveUser(long.Parse(telegramUserId), telegramId, message);
+
+                    }
+                    else if (data.StartsWith("reject_"))
+                    {
+                        var telegramUserId = data["reject_".Length..];
+
+                        await RejectUser(long.Parse(telegramUserId), telegramId, message);
+
+                    }
+
                     break;
             }
 
             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
+        }
+
+        private async Task ApproveUser(long telegramUserId, long adminTgId, Message originalMsg)
+        {
+            await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Approved);
+
+            // ویرایش پیام ادمین
+            await _botClient.EditMessageText(
+                chatId: originalMsg.Chat.Id,
+                messageId: originalMsg.MessageId,
+                text: $"{originalMsg.Text}\n\n✅ توسط ادمین {adminTgId} تأیید شد.",
+                replyMarkup: null);
+
+            // اطلاع‌رسانی به کاربر
+            await _botClient.SendMessage(telegramUserId, "درخواست شما تأیید شد\n حالا میتوانید از خدمات ما استفاده کنید.");
+        }
+
+        private async Task RejectUser(long telegramUserId, long adminTgId, Message originalMsg)
+        {
+            await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Rejected);
+
+            await _botClient.EditMessageText(
+                chatId: originalMsg.Chat.Id,
+                messageId: originalMsg.MessageId,
+                text: $"{originalMsg.Text}\n\n❌ توسط ادمین {adminTgId} رد شد.",
+                replyMarkup: null);
+
+            // اطلاع‌رسانی به کاربر
+            await _botClient.SendMessage(telegramUserId, "درخواست شما رد شد.");
         }
 
         public Task HandleMessageAsync(object message)

@@ -32,6 +32,15 @@ namespace TallaEgg.TelegramBot.Core.Utilties
             return new string(result);
         }
 
+        public static string EscapeHtml(string? str) =>
+    string.IsNullOrEmpty(str) ? "-" :
+    str.Replace("&", "&amp;")
+       .Replace("<", "&lt;")
+       .Replace(">", "&gt;");
+
+        public static string UsernameLink(string? username) =>
+            string.IsNullOrEmpty(username) ? "-" :
+            $"<a href=\"https://t.me/{username}\">@{username}</a>";
 
     }
 }

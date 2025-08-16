@@ -195,7 +195,7 @@ public class UsersApiClient : IUsersApiClient
             return null;
         }
     }
-    public async Task<(bool success, string message)> UpdatePhoneAsync(long telegramId, string phoneNumber)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber)
     {
         UpdatePhoneRequest request = new UpdatePhoneRequest()
         {
@@ -214,15 +214,51 @@ public class UsersApiClient : IUsersApiClient
             if (response.IsSuccessStatusCode)
             {
                 var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                return (result.Success, result.Message.ToString());
+                return result;
             }
-            return (false, $"خطا در ثبت شماره تلفن: {respText}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطا در ثبت شماره تلفن");
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            // todo باید اکسپشن برای دولوپر فرستاده بشه
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+
         }
     }
+
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, TallaEgg.Core.Enums.User.UserStatus newStatus)
+    {
+        var request = new UpdateUserStatusRequest
+        {
+            TelegramId = telegramId,
+            NewStatus = newStatus
+        };
+
+        var json = JsonConvert.SerializeObject(request);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            // PUT: /user/status
+            var response = await _httpClient.PutAsync($"{_baseUrl}/user/status", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
+                return result;
+            }
+
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطا در به‌روزرسانی وضعیت کاربر");
+        }
+        catch (Exception ex)
+        {
+            // TODO: ارسال اکسپشن به لاگ یا سرویس مانیتورینگ
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
+
     public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
         try

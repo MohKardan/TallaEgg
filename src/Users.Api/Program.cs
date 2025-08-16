@@ -95,11 +95,11 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
     try
     {
         var response = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
-        return ApiResponse<UserDto>.Ok(response, "Phone number updated successfully");
+        return Results.Ok(ApiResponse<UserDto>.Ok(response, "Phone number updated successfully"));
     }
     catch (Exception ex)
     {
-        return ApiResponse<UserDto>.Fail(ex.Message);
+        return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
 });
 
@@ -115,9 +115,9 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 {
     var user = await userService.GetUserByTelegramIdAsync(telegramId);
     if (user == null)
-        return ApiResponse<UserDto>.Fail("User not found");
+        return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
 
-    return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
+    return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
 });
 
 /// <summary>
@@ -129,16 +129,16 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 /// <response code="200">User status updated successfully</response>
 /// <response code="400">Invalid request data or validation error</response>
 /// <response code="404">User not found</response>
-app.MapPost("/api/user/update-status", async (UpdateStatusRequest request, UserService userService) =>
+app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
     try
     {
-        var user = await userService.UpdateUserStatusAsync(request.TelegramId, request.Status);
-        return Results.Ok(new { success = true, message = "وضعیت کاربر با موفقیت به‌روزرسانی شد." });
+        var user = await userService.UpdateUserStatusAsync(request.TelegramId, request.NewStatus);
+        return Results.Ok(ApiResponse<UserDto>.Ok(user, "وضعیت کاربر با موفقیت به‌روزرسانی شد."));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
 });
 
@@ -278,10 +278,8 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 
 app.Run();
 
-/// <summary>
-/// Request model for updating user status
-/// </summary>
-public record UpdateStatusRequest(long TelegramId, UserStatus Status);
+
+
 
 /// <summary>
 /// Request model for validating invitation codes

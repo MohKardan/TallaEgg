@@ -8,6 +8,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class Constants
     {
+        public const long GroupId = -4956536821; 
         public const string DeveloperChatId = "-4777000333"; 
         public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
     }
@@ -45,7 +46,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgEnterInvite = "برای شروع، لطفاً کد دعوت خود را وارد کنید:\n/start [کد_دعوت]";
         public const string MsgPhoneRequest = "لطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
         public const string MsgWelcome = "🎉 خوش آمدید!\nثبت‌نام شما با موفقیت انجام شد.\n\nلطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
-        public const string MsgPhoneSuccess = "✅ شماره تلفن شما با موفقیت ثبت شد!\n\nحالا می‌توانید از خدمات ربات استفاده کنید.";
+        public const string MsgPhoneSuccess = "✅ شماره تلفن شما با موفقیت ثبت شد!\n\nلطفا منتظر تایید مدیر بمانید.";
         public const string MsgMainMenu = "🎯 منوی اصلی\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:";
         public const string MsgSelectTradingType = "نوع معامله خود را انتخاب کنید:";
         public const string MsgSelectOrderType = "نوع سفارش خود را انتخاب کنید:";

@@ -15,4 +15,5 @@
         /// </summary>
         public long TelegramId { get; set; }
     }
+
 }
