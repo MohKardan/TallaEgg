@@ -135,6 +135,75 @@ public class OrderApiClient : IOrderApiClient
             return (false, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
+
+    public async Task<BestBidAskResult?> GetBestBidAskAsync(string asset, TradingType tradingType)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/orders/market/{asset}/prices?tradingType={tradingType}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<BestBidAskResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result?.Data;
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    public async Task<ApiResponse<Order>> CreateMarketOrderAsync(CreateMarketOrderRequest request)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/market", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<Order>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result ?? ApiResponse<Order>.Fail("خطا در پردازش پاسخ");
+            }
+
+            return ApiResponse<Order>.Fail($"خطا در ایجاد سفارش بازار: {responseContent}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<Order>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/market/notify-matching", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<bool>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return result ?? ApiResponse<bool>.Fail("خطا در پردازش پاسخ");
+            }
+
+            return ApiResponse<bool>.Fail($"خطا در اطلاع‌رسانی به موتور تطبیق: {responseContent}");
+        }
+        catch (Exception ex)
+        {
+            return ApiResponse<bool>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
 }
 
 public class OrderDto
@@ -160,4 +229,38 @@ public class OrdersResponse
     public bool Success { get; set; }
     public string Message { get; set; } = "";
     public IEnumerable<Order> Orders { get; set; } = Enumerable.Empty<Order>();
+}
+
+public class BestBidAskResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
+    public BestBidAskResult? Data { get; set; }
+}
+
+public class CreateMarketOrderRequest
+{
+    public string Asset { get; set; } = "";
+    public decimal Amount { get; set; }
+    public Guid UserId { get; set; }
+    public OrderType Type { get; set; }
+    public TradingType TradingType { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class NotifyMatchingEngineRequest
+{
+    public Guid OrderId { get; set; }
+    public string Asset { get; set; } = "";
+    public OrderType Type { get; set; }
+}
+
+public class BestBidAskResult
+{
+    public string Asset { get; set; } = "";
+    public TradingType TradingType { get; set; }
+    public decimal? BestBid { get; set; }
+    public decimal? BestAsk { get; set; }
+    public decimal? Spread { get; set; }
+    public Guid? MatchingOrderId { get; set; }
 }

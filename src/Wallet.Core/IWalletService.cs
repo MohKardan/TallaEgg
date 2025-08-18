@@ -13,4 +13,8 @@ public interface IWalletService
     Task<(bool success, string message)> WithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<(bool success, string message)> TransferAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount);
     Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null);
+    
+    // Market order balance validation and update methods
+    Task<(bool success, string message, bool hasSufficientBalance)> ValidateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType);
+    Task<(bool success, string message)> UpdateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType, Guid orderId);
 } 

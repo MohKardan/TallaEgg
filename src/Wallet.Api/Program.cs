@@ -93,6 +93,23 @@ app.MapPost("/api/wallet/internal/debit", async (DebitRequest request, IWalletSe
         Results.BadRequest(new { success = false, message = "خطا در کاهش موجودی" });
 });
 
+// Market order balance validation and update endpoints
+app.MapPost("/api/wallet/market/validate-balance", async (ValidateBalanceRequest request, IWalletService walletService) =>
+{
+    var result = await walletService.ValidateBalanceForMarketOrderAsync(request.UserId, request.Asset, request.Amount, request.OrderType);
+    return result.success ? 
+        Results.Ok(new { success = true, message = result.message, hasSufficientBalance = result.hasSufficientBalance }) :
+        Results.BadRequest(new { success = false, message = result.message });
+});
+
+app.MapPost("/api/wallet/market/update-balance", async (UpdateBalanceRequest request, IWalletService walletService) =>
+{
+    var result = await walletService.UpdateBalanceForMarketOrderAsync(request.UserId, request.Asset, request.Amount, request.OrderType, request.OrderId);
+    return result.success ? 
+        Results.Ok(new { success = true, message = result.message }) :
+        Results.BadRequest(new { success = false, message = result.message });
+});
+
 app.Run();
 
 // Request models
@@ -101,4 +118,8 @@ public record WithdrawRequest(Guid UserId, string Asset, decimal Amount, string?
 public record ChargeRequest(Guid UserId, string Asset, decimal Amount, string? PaymentMethod = null);
 public record TransferRequest(Guid FromUserId, Guid ToUserId, string Asset, decimal Amount);
 public record CreditRequest(Guid UserId, string Asset, decimal Amount);
-public record DebitRequest(Guid UserId, string Asset, decimal Amount); 
+public record DebitRequest(Guid UserId, string Asset, decimal Amount);
+
+// Market order balance request models
+public record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, int OrderType); // 0 = Buy, 1 = Sell
+public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, int OrderType, Guid OrderId); // 0 = Buy, 1 = Sell 

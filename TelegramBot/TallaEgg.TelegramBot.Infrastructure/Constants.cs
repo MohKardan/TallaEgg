@@ -24,6 +24,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string History = "📋 تاریخچه";
         public const string MakeOrder = "📋 ثبت سفارش";
         public const string TakeOrder = "📋 بازار";
+        public const string Market = "📈 بازار";
         
     }
     public static class BotTexts
@@ -62,6 +63,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </summary>
         public const string BtnMakeOrderSpot = "📝 ثبت سفارش";
         public const string BtnTakeOrder = "📋 بازار";
+        public const string BtnMarket = "📈 بازار";
+        public const string BtnBuyMarket = "🛒 خرید";
+        public const string BtnSellMarket = "🛍️ فروش";
+        public const string MsgSelectSymbol = "نماد معاملاتی مورد نظر را انتخاب کنید:";
+        public const string MsgMarketPrices = "📊 قیمت‌های بازار\n\nنماد: {0}\nبهترین خرید: {1:N0} تومان\nبهترین فروش: {2:N0} تومان\nاسپرد: {3:N0} تومان\n\nعملیات مورد نظر را انتخاب کنید:";
+        public const string MsgEnterQuantity = "لطفاً مقدار {0} را وارد کنید:";
+        public const string MsgMarketOrderConfirmation = "📋 تایید سفارش بازار\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";
     }
     public static class InlineCallBackData
     {
@@ -78,6 +86,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string charge_card = "charge_card";
         public const string charge_bank = "charge_bank";
         public const string back_to_main = "back_to_main";
+        public const string market = "market";
+        public const string market_symbol = "market_symbol";
+        public const string market_buy = "market_buy";
+        public const string market_sell = "market_sell";
+        public const string confirm_market_order = "confirm_market_order";
     }
 
 }

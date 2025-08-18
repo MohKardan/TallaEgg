@@ -17,6 +17,10 @@
       {
         "Path": "src\\Orders.Api\\Orders.Api.csproj",
         "Action": "Start"
+      },
+      {
+        "Path": "src\\Wallet.Api\\Wallet.Api.csproj",
+        "Action": "Start"
       }
     ]
   }

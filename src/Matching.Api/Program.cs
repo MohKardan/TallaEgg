@@ -76,8 +76,64 @@ app.MapGet("/api/trades/recent/{asset}", async (string asset, int count, Matchin
     return Results.Ok(trades);
 });
 
+// Market order processing endpoints
+app.MapPost("/api/matching/market-order", async (ProcessMarketOrderRequest request, MatchingEngine matchingEngine) =>
+{
+    try
+    {
+        var result = await matchingEngine.ProcessMarketOrderAsync(
+            request.OrderId,
+            request.UserId,
+            request.Asset,
+            request.Amount,
+            request.Type,
+            request.TradingType);
+        
+        if (result.success)
+        {
+            return Results.Ok(new { success = true, message = result.message, trade = result.trade });
+        }
+        return Results.BadRequest(new { success = false, message = result.message });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+app.MapPost("/api/matching/notify-new-order", async (NotifyNewOrderRequest request, MatchingEngine matchingEngine) =>
+{
+    try
+    {
+        var result = await matchingEngine.NotifyNewOrderAsync(
+            request.OrderId,
+            request.Asset,
+            request.Type);
+        
+        return Results.Ok(new { success = true, message = result.message });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.Run();
 
 // Request models
 public record PlaceOrderRequest(Guid UserId, string Asset, decimal Amount, decimal Price, OrderType Type);
 public record CancelOrderRequest(Guid OrderId, Guid UserId);
+
+// Market order request models
+public record ProcessMarketOrderRequest(
+    Guid OrderId,
+    Guid UserId,
+    string Asset,
+    decimal Amount,
+    OrderType Type,
+    TradingType TradingType);
+
+public record NotifyNewOrderRequest(
+    Guid OrderId,
+    string Asset,
+    OrderType Type);

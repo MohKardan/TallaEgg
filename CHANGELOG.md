@@ -5,6 +5,96 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2024-12-19
+
+### Added
+- **Market Buy/Sell Flow - Step 4: Telegram Bot Market Button and Flow**: Implemented complete Market order flow in Telegram Bot
+  - Added Market button to main menu with "📈 بازار" text and proper keyboard layout
+  - Implemented Market menu with tradable symbols (BTC/USDT, ETH/USDT, ADA/USDT, DOT/USDT)
+  - Added Market symbol selection handler with best bid/ask price display
+  - Implemented Buy/Sell button handlers for Market orders with quantity input
+  - Added Market order confirmation flow with price calculation and validation
+  - Enhanced BotHandler with MarketOrderState management for user session tracking
+  - Added Market order quantity input handling with validation and confirmation
+  - Integrated with Order API for best bid/ask retrieval and Market order creation
+  - Integrated with Wallet API for balance validation and updates
+  - Integrated with Matching Engine for order processing and trade execution
+  - Enhanced OrderApiClient with Market order methods (GetBestBidAskAsync, CreateMarketOrderAsync, NotifyMatchingEngineAsync)
+  - Enhanced WalletApiClient with Market order methods (ValidateBalanceForMarketOrderAsync, UpdateBalanceForMarketOrderAsync)
+  - Added comprehensive error handling and user feedback for Market order flow
+  - Created Market order request/response models and proper API integration
+  - Updated Constants.cs with Market button texts and callback data
+  - Added Market order state management and cleanup for user sessions
+  - Implemented complete end-to-end Market Buy/Sell flow with proper validation and error handling
+
+- **Market Buy/Sell Flow - Step 2: Wallet Service Balance Check and Update**: Implemented balance validation and update functionality in Wallet service
+  - Added `POST /api/wallet/market/validate-balance` endpoint for checking user balance before Market orders
+  - Added `POST /api/wallet/market/update-balance` endpoint for updating balances after Market order execution
+  - Implemented `ValidateBalanceForMarketOrderAsync` method for balance validation with order type support
+  - Implemented `UpdateBalanceForMarketOrderAsync` method for balance updates with transaction records
+  - Added comprehensive balance validation logic for Buy orders (check USDT balance) and Sell orders (check asset balance)
+  - Enhanced WalletService with Market order specific balance operations and transaction tracking
+  - Added proper error handling and rollback mechanisms for failed balance updates
+  - Created `ValidateBalanceRequest` and `UpdateBalanceRequest` models for API communication
+  - Implemented transaction records for all Market order balance operations with order ID references
+
+### Technical Details
+- **Balance Validation Logic**:
+  - Buy orders: Check if user has sufficient USDT (base currency) for the purchase
+  - Sell orders: Check if user has sufficient asset quantity to sell
+  - Returns detailed balance information and validation status
+  - Supports both integer enum values (0 = Buy, 1 = Sell) for API compatibility
+
+- **Balance Update Logic**:
+  - Buy orders: Debit USDT balance, credit asset balance, create transaction records
+  - Sell orders: Debit asset balance, credit USDT balance, create transaction records
+  - Automatic rollback on partial failures to maintain data consistency
+  - Transaction records include order ID references for audit trail
+
+- **API Endpoints**:
+  - `POST /api/wallet/market/validate-balance`: Validates user balance for Market orders
+  - `POST /api/wallet/market/update-balance`: Updates balances after Market order execution
+
+## [1.1.9] - 2024-12-19
+
+### Added
+- **Market Buy/Sell Flow - Step 1: Order Service Market Order Endpoints**: Implemented Market order functionality in Orders service
+  - Added `POST /api/orders/market` endpoint for creating Market orders with automatic price determination
+  - Added `GET /api/orders/market/{asset}/prices` endpoint for retrieving best bid/ask prices
+  - Created `CreateMarketOrderCommand` for Market order creation with validation
+  - Implemented `CreateMarketOrderAsync` method in OrderService for Market order business logic
+  - Added `GetBestBidAskAsync` method to retrieve best bid (highest buy) and best ask (lowest sell) prices
+  - Created `BestBidAskResult` class to encapsulate bid/ask price information with spread calculation
+  - Enhanced OrderService with Market order price determination logic (Buy orders use best ask, Sell orders use best bid)
+  - Added comprehensive validation for Market orders including authorization checks and price availability
+  - Implemented proper error handling for cases where no buyers/sellers exist for an asset
+  - **Corrected Market Order Implementation**: Market orders are now properly created as Taker orders that remove liquidity from the order book
+
+### Technical Details
+- **Market Order Logic**: 
+  - Buy orders automatically use the best ask (lowest sell price) from existing Maker orders
+  - Sell orders automatically use the best bid (highest buy price) from existing Maker orders
+  - **Market orders are created as Taker orders** that immediately match against existing Maker orders
+  - Taker orders link to the matching Maker order via ParentOrderId
+  - Comprehensive validation ensures price availability before order creation
+
+- **Maker/Taker Relationship**:
+  - **Maker orders**: Add liquidity to the order book (Limit orders)
+  - **Taker orders**: Remove liquidity from the order book (Market orders)
+  - Market orders immediately match against the best available Maker orders
+  - Proper parent-child relationship between Maker and Taker orders
+
+- **Best Bid/Ask Calculation**:
+  - Filters active Maker orders by asset and trading type
+  - Best Bid: Highest price among pending Buy orders
+  - Best Ask: Lowest price among pending Sell orders
+  - Spread calculation: Best Ask - Best Bid
+  - Includes matching order ID for Taker order creation
+
+- **API Endpoints**:
+  - `POST /api/orders/market`: Creates Market orders (Taker orders) with automatic price determination
+  - `GET /api/orders/market/{asset}/prices`: Retrieves current best bid/ask prices
+
 ## [1.1.8] - 2024-12-19
 
 ### Added

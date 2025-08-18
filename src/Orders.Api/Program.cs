@@ -21,6 +21,13 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
+// Configure JSON serialization
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;
+    options.SerializerOptions.PropertyNamingPolicy = null;
+});
+
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -421,6 +428,63 @@ app.MapPost("/api/orders/{makerOrderId}/accept-taker/{takerOrderId}", async (Gui
     }
 });
 
+/// <summary>
+/// Creates a new market order
+/// </summary>
+/// <param name="request">Market order request containing asset, amount, user ID, type, trading type, and optional notes</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Created market order details with success status</returns>
+/// <response code="200">Market order created successfully</response>
+/// <response code="400">Invalid request data or business rule violation</response>
+/// <response code="403">Unauthorized access</response>
+app.MapPost("/api/orders/market", async (CreateMarketOrderRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var command = new CreateMarketOrderCommand(
+            request.Asset,
+            request.Amount,
+            request.UserId,
+            request.Type,
+            request.TradingType,
+            request.Notes
+        );
+
+        var order = await orderService.CreateMarketOrderAsync(command);
+        return Results.Ok(new { success = true, message = "سفارش بازار با موفقیت ثبت شد", order = order });
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Results.Forbid();
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// Gets best bid and ask prices for a specific asset
+/// </summary>
+/// <param name="asset">Trading asset symbol</param>
+/// <param name="tradingType">Type of trading (Spot or Futures)</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Best bid and ask prices</returns>
+/// <response code="200">Best bid/ask retrieved successfully</response>
+/// <response code="400">Invalid request or error occurred</response>
+app.MapGet("/api/orders/market/{asset}/prices", async (string asset, TradingType tradingType, OrderService orderService) =>
+{
+    try
+    {
+        var prices = await orderService.GetBestBidAskAsync(asset, tradingType);
+        return Results.Ok(new { success = true, prices = prices });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.Run();
 
 // Request models
@@ -521,4 +585,33 @@ public record CancelOrderRequest(
     /// Optional reason for cancellation
     /// </summary>
     string? Reason = null);
+
+/// <summary>
+/// Request model for creating a new market order
+/// </summary>
+public record CreateMarketOrderRequest(
+    /// <summary>
+    /// Trading asset symbol (e.g., BTC, ETH, USDT)
+    /// </summary>
+    string Asset, 
+    /// <summary>
+    /// Order quantity/amount
+    /// </summary>
+    decimal Amount, 
+    /// <summary>
+    /// Unique identifier of the user placing the order
+    /// </summary>
+    Guid UserId, 
+    /// <summary>
+    /// Type of order (Buy or Sell)
+    /// </summary>
+    OrderType Type,
+    /// <summary>
+    /// Trading type (Spot or Futures)
+    /// </summary>
+    TradingType TradingType,
+    /// <summary>
+    /// Optional notes for the order
+    /// </summary>
+    string? Notes = null);
 

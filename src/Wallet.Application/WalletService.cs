@@ -246,4 +246,174 @@ public class WalletService : IWalletService
 
         return success ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
     }
+
+    public async Task<(bool success, string message, bool hasSufficientBalance)> ValidateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType)
+    {
+        try
+        {
+            if (amount <= 0)
+                return (false, "مقدار سفارش باید بزرگتر از صفر باشد.", false);
+
+            var wallet = await _walletRepository.GetWalletAsync(userId, asset);
+            var currentBalance = wallet?.Balance ?? 0;
+
+            if (orderType == 0) // Buy order
+            {
+                // For buy orders, we need to check if user has enough USDT (or base currency)
+                // This is a simplified check - in real implementation, you'd need to get the price
+                var requiredAmount = amount; // This should be amount * price in real implementation
+                
+                if (currentBalance < requiredAmount)
+                {
+                    return (true, $"موجودی ناکافی. موجودی فعلی: {currentBalance}, مقدار مورد نیاز: {requiredAmount}", false);
+                }
+                
+                return (true, "موجودی کافی است.", true);
+            }
+            else if (orderType == 1) // Sell order
+            {
+                // For sell orders, we need to check if user has enough of the asset to sell
+                if (currentBalance < amount)
+                {
+                    return (true, $"موجودی ناکافی. موجودی فعلی: {currentBalance}, مقدار مورد نیاز: {amount}", false);
+                }
+                
+                return (true, "موجودی کافی است.", true);
+            }
+            else
+            {
+                return (false, "نوع سفارش نامعتبر است.", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در بررسی موجودی: {ex.Message}", false);
+        }
+    }
+
+    public async Task<(bool success, string message)> UpdateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType, Guid orderId)
+    {
+        try
+        {
+            if (amount <= 0)
+                return (false, "مقدار سفارش باید بزرگتر از صفر باشد.");
+
+            if (orderType == 0) // Buy order
+            {
+                // For buy orders, debit the base currency (e.g., USDT) and credit the asset
+                var baseCurrency = "USDT"; // This should be configurable
+                var price = 45000; // This should come from the order or price service
+                var totalCost = amount * price;
+
+                // Debit base currency
+                var debitSuccess = await DebitAsync(userId, baseCurrency, totalCost);
+                if (!debitSuccess)
+                    return (false, "موجودی ناکافی برای خرید.");
+
+                // Credit the asset
+                var creditSuccess = await CreditAsync(userId, asset, amount);
+                if (!creditSuccess)
+                {
+                    // Rollback - credit back the base currency
+                    await CreditAsync(userId, baseCurrency, totalCost);
+                    return (false, "خطا در به‌روزرسانی موجودی دارایی.");
+                }
+
+                // Create transaction records
+                var buyTransaction = new WalletTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Asset = asset,
+                    Amount = amount,
+                    Type = TransactionType.Deposit,
+                    Status = TransactionStatus.Completed,
+                    Description = $"Market buy order {orderId} - Received {amount} {asset}",
+                    ReferenceId = orderId.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow
+                };
+                await _walletRepository.CreateTransactionAsync(buyTransaction);
+
+                var costTransaction = new WalletTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Asset = baseCurrency,
+                    Amount = totalCost,
+                    Type = TransactionType.Withdrawal,
+                    Status = TransactionStatus.Completed,
+                    Description = $"Market buy order {orderId} - Paid {totalCost} {baseCurrency}",
+                    ReferenceId = orderId.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow
+                };
+                await _walletRepository.CreateTransactionAsync(costTransaction);
+
+                return (true, "موجودی با موفقیت به‌روزرسانی شد.");
+            }
+            else if (orderType == 1) // Sell order
+            {
+                // For sell orders, debit the asset and credit the base currency
+                var baseCurrency = "USDT"; // This should be configurable
+                var price = 45000; // This should come from the order or price service
+                var totalValue = amount * price;
+
+                // Debit the asset
+                var debitSuccess = await DebitAsync(userId, asset, amount);
+                if (!debitSuccess)
+                    return (false, "موجودی ناکافی برای فروش.");
+
+                // Credit base currency
+                var creditSuccess = await CreditAsync(userId, baseCurrency, totalValue);
+                if (!creditSuccess)
+                {
+                    // Rollback - credit back the asset
+                    await CreditAsync(userId, asset, amount);
+                    return (false, "خطا در به‌روزرسانی موجودی ارز پایه.");
+                }
+
+                // Create transaction records
+                var sellTransaction = new WalletTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Asset = asset,
+                    Amount = amount,
+                    Type = TransactionType.Withdrawal,
+                    Status = TransactionStatus.Completed,
+                    Description = $"Market sell order {orderId} - Sold {amount} {asset}",
+                    ReferenceId = orderId.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow
+                };
+                await _walletRepository.CreateTransactionAsync(sellTransaction);
+
+                var valueTransaction = new WalletTransaction
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Asset = baseCurrency,
+                    Amount = totalValue,
+                    Type = TransactionType.Deposit,
+                    Status = TransactionStatus.Completed,
+                    Description = $"Market sell order {orderId} - Received {totalValue} {baseCurrency}",
+                    ReferenceId = orderId.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    CompletedAt = DateTime.UtcNow
+                };
+                await _walletRepository.CreateTransactionAsync(valueTransaction);
+
+                return (true, "موجودی با موفقیت به‌روزرسانی شد.");
+            }
+            else
+            {
+                return (false, "نوع سفارش نامعتبر است.");
+            }
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در به‌روزرسانی موجودی: {ex.Message}");
+        }
+    }
 } 

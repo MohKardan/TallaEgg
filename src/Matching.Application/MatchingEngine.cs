@@ -211,6 +211,94 @@ public class MatchingEngine
         return await _matchingRepository.GetRecentTradesAsync(asset, count);
     }
 
+    public async Task<(bool success, string message, Trade? trade)> ProcessMarketOrderAsync(
+        Guid orderId, Guid userId, string asset, decimal amount, OrderType type, TradingType tradingType)
+    {
+        try
+        {
+            // Find the best matching order in the order book
+            var oppositeType = type == OrderType.Buy ? OrderType.Sell : OrderType.Buy;
+            var bestOrders = await _matchingRepository.GetPendingOrdersAsync(asset, oppositeType);
+            
+            if (!bestOrders.Any())
+            {
+                return (false, "هیچ سفارش مطابقی در دفتر سفارشات وجود ندارد.", null);
+            }
+
+            // Get the best price order (lowest for sell, highest for buy)
+            var bestOrder = type == OrderType.Buy 
+                ? bestOrders.OrderBy(o => o.Price).First() 
+                : bestOrders.OrderByDescending(o => o.Price).First();
+
+            // Calculate trade amount (minimum of both orders)
+            var tradeAmount = Math.Min(amount, bestOrder.Amount);
+            var tradePrice = bestOrder.Price; // Market order takes the price of the existing order
+
+            // Create trade
+            var trade = new Trade
+            {
+                Id = Guid.NewGuid(),
+                BuyOrderId = type == OrderType.Buy ? orderId : bestOrder.Id,
+                SellOrderId = type == OrderType.Sell ? orderId : bestOrder.Id,
+                BuyerUserId = type == OrderType.Buy ? userId : bestOrder.UserId,
+                SellerUserId = type == OrderType.Sell ? userId : bestOrder.UserId,
+                Asset = asset,
+                Amount = tradeAmount,
+                Price = tradePrice,
+                ExecutedAt = DateTime.UtcNow,
+                Fee = tradeAmount * tradePrice * _tradingFee,
+                TradeId = GenerateTradeId()
+            };
+
+            await _matchingRepository.CreateTradeAsync(trade);
+
+            // Update wallet balances
+            await UpdateWalletBalancesAsync(trade);
+
+            // Update the existing order (Maker order)
+            bestOrder.Amount -= tradeAmount;
+            if (bestOrder.Amount <= 0)
+            {
+                bestOrder.Status = OrderStatus.Filled;
+                bestOrder.ExecutedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                bestOrder.Status = OrderStatus.Partial;
+                bestOrder.ExecutedAmount = (bestOrder.ExecutedAmount ?? 0) + tradeAmount;
+            }
+            await _matchingRepository.UpdateOrderAsync(bestOrder);
+
+            return (true, "سفارش بازار با موفقیت اجرا شد.", trade);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در پردازش سفارش بازار: {ex.Message}", null);
+        }
+    }
+
+    public async Task<(bool success, string message)> NotifyNewOrderAsync(Guid orderId, string asset, OrderType type)
+    {
+        try
+        {
+            // This method can be used to notify other systems about new orders
+            // For now, we'll just log the notification
+            Console.WriteLine($"New order notification: OrderId={orderId}, Asset={asset}, Type={type}");
+            
+            // In a real implementation, this could:
+            // - Send WebSocket notifications to clients
+            // - Update order book cache
+            // - Trigger market data updates
+            // - Notify risk management systems
+            
+            return (true, "اعلان سفارش جدید با موفقیت ارسال شد.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارسال اعلان: {ex.Message}");
+        }
+    }
+
     private string GenerateOrderId()
     {
         return $"ORD{DateTime.UtcNow:yyyyMMddHHmmss}{Random.Shared.Next(1000, 9999)}";

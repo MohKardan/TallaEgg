@@ -61,6 +61,77 @@ public class WalletApiClient
             return (false, null, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
+
+    public async Task<BalanceValidationResult> ValidateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType)
+    {
+        try
+        {
+            var request = new
+            {
+                UserId = userId,
+                Asset = asset,
+                Amount = amount,
+                OrderType = orderType
+            };
+
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_apiUrl}/api/wallet/market/validate-balance", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonConvert.DeserializeObject<BalanceValidationResult>(respText);
+                return result ?? new BalanceValidationResult { Success = false, Message = "خطا در پردازش پاسخ" };
+            }
+
+            return new BalanceValidationResult { Success = false, Message = $"خطا در بررسی موجودی: {respText}" };
+        }
+        catch (Exception ex)
+        {
+            return new BalanceValidationResult { Success = false, Message = $"خطا در ارتباط با سرور: {ex.Message}" };
+        }
+    }
+
+    public async Task<(bool success, string message)> UpdateBalanceForMarketOrderAsync(UpdateBalanceForMarketOrderRequest request)
+    {
+        try
+        {
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_apiUrl}/api/wallet/market/update-balance", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, "موجودی با موفقیت به‌روزرسانی شد.");
+            }
+
+            return (false, $"خطا در به‌روزرسانی موجودی: {respText}");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+}
+
+public class BalanceValidationResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = "";
+    public bool HasSufficientBalance { get; set; }
+}
+
+public class UpdateBalanceForMarketOrderRequest
+{
+    public Guid UserId { get; set; }
+    public string Asset { get; set; } = "";
+    public decimal Amount { get; set; }
+    public int OrderType { get; set; }
+    public Guid OrderId { get; set; }
 }
 
 public class WalletDto

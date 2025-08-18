@@ -17,7 +17,11 @@ public class Order
     public decimal? ExecutedPrice { get; set; }
     public string? OrderId { get; set; } // External order ID
 }
-
+public enum TradingType
+{
+    Spot,      // معاملات نقدی
+    Futures    // معاملات آتی
+}
 public enum OrderType
 {
     Buy,   // خرید

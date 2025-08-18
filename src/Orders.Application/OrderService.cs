@@ -6,6 +6,16 @@ using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Application;
 
+public class BestBidAskResult
+{
+    public string Asset { get; set; } = string.Empty;
+    public TradingType TradingType { get; set; }
+    public decimal? BestBid { get; set; }
+    public decimal? BestAsk { get; set; }
+    public decimal? Spread { get; set; }
+    public Guid? MatchingOrderId { get; set; } // ID of the order that would be matched
+}
+
 //public interface IOrderService
 //{
 //    Task<Order> CreateMakerOrderAsync(CreateOrderCommand command);
@@ -158,6 +168,170 @@ public class OrderService /*: IOrderService*/
         {
             _logger.LogError(ex, "Error creating taker order for user {UserId}", command.UserId);
             throw new InvalidOperationException("خطا در ایجاد سفارش taker", ex);
+        }
+    }
+
+    public async Task<Order> CreateMarketOrderAsync(CreateMarketOrderCommand command)
+    {
+        try
+        {
+            _logger.LogInformation("Creating market order for user {UserId} with asset {Asset} and trading type {TradingType}", 
+                command.UserId, command.Asset, command.TradingType);
+
+            // Check authorization
+            var canCreateOrder = await _authorizationService.CanCreateOrderAsync(command.UserId);
+            if (!canCreateOrder)
+            {
+                _logger.LogWarning("User {UserId} is not authorized to create orders", command.UserId);
+                throw new UnauthorizedAccessException("شما مجوز ثبت سفارش ندارید. فقط مدیران می‌توانند سفارش ثبت کنند.");
+            }
+
+            // Get best bid/ask prices to determine market price
+            var bestPrices = await GetBestBidAskAsync(command.Asset, command.TradingType);
+            decimal marketPrice = 0;
+            Guid? matchingOrderId = null;
+
+            if (command.Type == OrderType.Buy)
+            {
+                // For buy orders, use the best ask (lowest sell price)
+                marketPrice = bestPrices.BestAsk ?? 0;
+                if (marketPrice <= 0)
+                {
+                    throw new InvalidOperationException("هیچ فروشنده‌ای برای این نماد در بازار وجود ندارد");
+                }
+                // Find the matching sell order (Maker order) to link to
+                // We need to get the order ID for the best ask
+                var sellOrders = await _orderRepository.GetOrdersByAssetAsync(command.Asset);
+                var bestAskOrder = sellOrders
+                    .Where(o => o.IsMaker() && o.IsActive() && o.TradingType == command.TradingType && 
+                               o.Type == OrderType.Sell && o.Status == OrderStatus.Pending)
+                    .OrderBy(o => o.Price)
+                    .FirstOrDefault();
+                matchingOrderId = bestAskOrder?.Id;
+            }
+            else // Sell order
+            {
+                // For sell orders, use the best bid (highest buy price)
+                marketPrice = bestPrices.BestBid ?? 0;
+                if (marketPrice <= 0)
+                {
+                    throw new InvalidOperationException("هیچ خریداری برای این نماد در بازار وجود ندارد");
+                }
+                // Find the matching buy order (Maker order) to link to
+                // We need to get the order ID for the best bid
+                var buyOrders = await _orderRepository.GetOrdersByAssetAsync(command.Asset);
+                var bestBidOrder = buyOrders
+                    .Where(o => o.IsMaker() && o.IsActive() && o.TradingType == command.TradingType && 
+                               o.Type == OrderType.Buy && o.Status == OrderStatus.Pending)
+                    .OrderByDescending(o => o.Price)
+                    .FirstOrDefault();
+                matchingOrderId = bestBidOrder?.Id;
+            }
+
+            // Create market order as Taker order (removes liquidity)
+            if (matchingOrderId.HasValue)
+            {
+                // Create Taker order that links to the existing Maker order
+                var order = Order.CreateTakerOrder(
+                    matchingOrderId.Value,
+                    command.Amount,
+                    command.UserId,
+                    command.Notes
+                );
+
+                // Save to repository
+                var createdOrder = await _orderRepository.AddAsync(order);
+                
+                _logger.LogInformation("Market order (Taker) created successfully with ID: {OrderId} at price: {Price}", createdOrder.Id, marketPrice);
+                return createdOrder;
+            }
+            else
+            {
+                // Fallback: Create a Maker order if no matching order found
+                // This should not happen if validation is working correctly
+                var order = Order.CreateMakerOrder(
+                    command.Asset,
+                    command.Amount,
+                    marketPrice,
+                    command.UserId,
+                    command.Type,
+                    command.TradingType,
+                    command.Notes
+                );
+
+                // Save to repository
+                var createdOrder = await _orderRepository.AddAsync(order);
+                
+                _logger.LogWarning("Market order created as Maker (fallback) with ID: {OrderId} at price: {Price}", createdOrder.Id, marketPrice);
+                return createdOrder;
+            }
+
+
+        }
+        catch (Exception ex) when (ex is not UnauthorizedAccessException)
+        {
+            _logger.LogError(ex, "Error creating market order for user {UserId}", command.UserId);
+            throw new InvalidOperationException("خطا در ایجاد سفارش بازار", ex);
+        }
+    }
+
+    public async Task<BestBidAskResult> GetBestBidAskAsync(string asset, TradingType tradingType)
+    {
+        try
+        {
+            _logger.LogInformation("Getting best bid/ask for asset {Asset} and trading type {TradingType}", asset, tradingType);
+
+            var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
+            
+            // Filter active maker orders for the specific trading type
+            var activeOrders = orders.Where(o => 
+                o.IsMaker() && 
+                o.IsActive() && 
+                o.TradingType == tradingType)
+                .ToList();
+
+            decimal? bestBid = null;
+            decimal? bestAsk = null;
+            Guid? matchingBidOrderId = null;
+            Guid? matchingAskOrderId = null;
+
+            // Find best bid (highest buy price) and its order ID
+            var buyOrders = activeOrders.Where(o => o.Type == OrderType.Buy && o.Status == OrderStatus.Pending).ToList();
+            if (buyOrders.Any())
+            {
+                var bestBidOrder = buyOrders.OrderByDescending(o => o.Price).First();
+                bestBid = bestBidOrder.Price;
+                matchingBidOrderId = bestBidOrder.Id;
+            }
+
+            // Find best ask (lowest sell price) and its order ID
+            var sellOrders = activeOrders.Where(o => o.Type == OrderType.Sell && o.Status == OrderStatus.Pending).ToList();
+            if (sellOrders.Any())
+            {
+                var bestAskOrder = sellOrders.OrderBy(o => o.Price).First();
+                bestAsk = bestAskOrder.Price;
+                matchingAskOrderId = bestAskOrder.Id;
+            }
+
+            var result = new BestBidAskResult
+            {
+                Asset = asset,
+                TradingType = tradingType,
+                BestBid = bestBid,
+                BestAsk = bestAsk,
+                Spread = bestBid.HasValue && bestAsk.HasValue ? bestAsk.Value - bestBid.Value : null,
+                MatchingOrderId = null // Will be set based on order type when used
+            };
+
+            _logger.LogInformation("Best bid/ask for {Asset}: Bid={BestBid}, Ask={BestAsk}, Spread={Spread}", 
+                asset, bestBid, bestAsk, result.Spread);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting best bid/ask for asset: {Asset}", asset);
+            throw new InvalidOperationException("خطا در دریافت بهترین قیمت‌های خرید و فروش", ex);
         }
     }
 

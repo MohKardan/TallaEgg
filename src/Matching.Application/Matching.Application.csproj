@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Matching.Core\Matching.Core.csproj" />
+    <ProjectReference Include="..\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\Wallet.Application\Wallet.Application.csproj" />
   </ItemGroup>
 
