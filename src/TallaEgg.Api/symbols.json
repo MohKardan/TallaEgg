@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    {
+      "name": "BTC/USDT",
+      "displayName": "Bitcoin",
+      "isActive": true
+    },
+    {
+      "name": "ETH/USDT", 
+      "displayName": "Ethereum",
+      "isActive": true
+    }
+  ]
+}

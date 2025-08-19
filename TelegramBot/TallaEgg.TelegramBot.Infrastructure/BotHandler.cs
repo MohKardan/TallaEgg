@@ -47,6 +47,7 @@ namespace TallaEgg.TelegramBot
         private readonly AffiliateApiClient _affiliateApi;
         private readonly PriceApiClient _priceApi;
         private readonly WalletApiClient _walletApi;
+        
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
         private readonly Dictionary<long, MarketOrderState> _userMarketOrderStates = new();
         private bool _requireReferralCode;

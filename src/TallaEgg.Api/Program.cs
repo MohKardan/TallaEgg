@@ -1,11 +1,15 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
-using Orders.Application;
+using System.Text.Json;
+using TallaEgg.Api.Clients;
+using TallaEgg.Core.Models;
 using Users.Application;
 using Users.Core;
-using Microsoft.AspNetCore.Mvc;
-using TallaEgg.Api.Clients;
+using ClientRegisterUserRequest = TallaEgg.Api.Clients.RegisterUserRequest;
+using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUserWithInvitationRequest;
 // using TallaEgg.Core.Interfaces;
 // using TallaEgg.Application.Interfaces;
 // using TallaEgg.Application.Services;
@@ -15,8 +19,6 @@ using TallaEgg.Api.Clients;
 using ClientUserDto = TallaEgg.Api.Clients.UserDto;
 using ClientUserRole = TallaEgg.Api.Clients.UserRole;
 using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
-using ClientRegisterUserRequest = TallaEgg.Api.Clients.RegisterUserRequest;
-using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUserWithInvitationRequest;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +72,12 @@ app.UseCors(builder => builder
     .AllowAnyMethod()
     .AllowAnyHeader());
 
+
+app.MapGet("/api/symbols", () => {
+    var symbols = JsonSerializer.Deserialize<List<Symbol>>(File.ReadAllText("symbols.json"));
+    return Results.Ok(symbols);
+});
+
 //// ثبت سفارش جدید توسط مشتری
 //app.MapPost("/api/order", async (OrderDto orderDto, CreateOrderCommandHandler handler) =>
 //{
@@ -114,7 +122,7 @@ app.UseCors(builder => builder
 //{
 //    if (!Enum.TryParse<TradingType>(tradingType, true, out var tradingTypeEnum))
 //        return Results.BadRequest(new { message = "نوع معامله نامعتبر است" });
-    
+
 //    var orders = await orderService.GetAvailableMakerOrdersAsync(asset, tradingTypeEnum);
 //    return Results.Ok(orders);
 //});
@@ -213,7 +221,7 @@ app.UseCors(builder => builder
 //        var user = await usersClient.UpdateUserRoleAsync(request.UserId, request.NewRole);
 //        if (user == null)
 //            return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
-        
+
 //        return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد.", user });
 //    }
 //    catch (Exception ex)
