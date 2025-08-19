@@ -22,7 +22,7 @@ public class Order
     public Guid? ParentOrderId { get; private set; } // برای Taker orders که به Maker order متصل می‌شوند
 
     // Private constructor for EF Core
-    private Order() { }
+    //private Order() { }
 
     public static Order CreateMakerOrder(
         string asset, 
