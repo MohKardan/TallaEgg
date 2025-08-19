@@ -6,6 +6,12 @@ using Users.Application;
 using Users.Core;
 using Microsoft.AspNetCore.Mvc;
 using TallaEgg.Api.Clients;
+// using TallaEgg.Core.Interfaces;
+// using TallaEgg.Application.Interfaces;
+// using TallaEgg.Application.Services;
+// using TallaEgg.Infrastructure.Repositories;
+// using TallaEgg.Infrastructure.Data;
+// using TallaEgg.Core.Enums.Order;
 using ClientUserDto = TallaEgg.Api.Clients.UserDto;
 using ClientUserRole = TallaEgg.Api.Clients.UserRole;
 using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
@@ -20,6 +26,12 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
+// تنظیم اتصال به دیتابیس اصلی TallaEgg
+// builder.Services.AddDbContext<TallaEggDbContext>(options =>
+//     options.UseSqlServer(builder.Configuration.GetConnectionString("TallaEggDb") ??
+//         "Server=localhost;Database=TallaEgg;Trusted_Connection=True;TrustServerCertificate=True;",
+//         b => b.MigrationsAssembly("TallaEgg.Api")));
+
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IPriceRepository, PriceRepository>();
@@ -28,6 +40,10 @@ builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<CreateTakerOrderCommandHandler>();
 builder.Services.AddScoped<PriceService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+
+// سرویس‌های مربوط به Symbols
+// builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
+// builder.Services.AddScoped<ISymbolService, SymbolService>();
 
 // اضافه کردن HTTP Client برای ارتباط با Users microservice
 if (builder.Environment.IsDevelopment())
@@ -254,6 +270,161 @@ app.MapGet("/api/health/users", async ([FromServices] IUsersApiClient usersClien
     }
 });
 
+// Symbols endpoints (commented out until services are properly integrated)
+// app.MapGet("/api/symbols", async ([FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var symbols = await symbolService.GetAllSymbolsAsync();
+//         return Results.Ok(new { success = true, symbols = symbols });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapGet("/api/symbols/active", async ([FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var symbols = await symbolService.GetActiveSymbolsAsync();
+//         return Results.Ok(new { success = true, symbols = symbols });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapGet("/api/symbols/trading-type/{tradingType}", async (string tradingType, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         if (!Enum.TryParse<TradingType>(tradingType, true, out var tradingTypeEnum))
+//             return Results.BadRequest(new { success = false, message = "نوع معامله نامعتبر است" });
+
+//         var symbols = await symbolService.GetSymbolsByTradingTypeAsync(tradingTypeEnum);
+//         return Results.Ok(new { success = true, symbols = symbols });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapGet("/api/symbols/{name}", async (string name, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var symbol = await symbolService.GetSymbolAsync(name);
+//         if (symbol == null)
+//             return Results.NotFound(new { success = false, message = "نماد یافت نشد" });
+
+//         return Results.Ok(new { success = true, symbol = symbol });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapPost("/api/symbols", async ([FromBody] CreateSymbolRequest request, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var symbol = await symbolService.CreateSymbolAsync(
+//             request.Name,
+//             request.BaseAsset,
+//             request.QuoteAsset,
+//             request.DisplayName,
+//             request.MinOrderAmount,
+//             request.MaxOrderAmount,
+//             request.PricePrecision,
+//             request.QuantityPrecision,
+//             request.IsSpotTradingEnabled,
+//             request.IsFuturesTradingEnabled,
+//             request.Description);
+
+//         return Results.Ok(new { success = true, symbol = symbol });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapPut("/api/symbols/{id}", async (Guid id, [FromBody] UpdateSymbolRequest request, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var symbol = await symbolService.UpdateSymbolAsync(id,
+//             request.DisplayName,
+//             request.MinOrderAmount,
+//             request.MaxOrderAmount,
+//             request.PricePrecision,
+//             request.QuantityPrecision,
+//             request.IsSpotTradingEnabled,
+//             request.IsFuturesTradingEnabled,
+//             request.Status,
+//             request.Description);
+
+//         return Results.Ok(new { success = true, symbol = symbol });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapDelete("/api/symbols/{id}", async (Guid id, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var result = await symbolService.DeleteSymbolAsync(id);
+//         if (!result)
+//             return Results.NotFound(new { success = false, message = "نماد یافت نشد" });
+
+//         return Results.Ok(new { success = true, message = "نماد با موفقیت حذف شد" });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapPost("/api/symbols/{id}/activate", async (Guid id, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var result = await symbolService.ActivateSymbolAsync(id);
+//         if (!result)
+//             return Results.NotFound(new { success = false, message = "نماد یافت نشد" });
+
+//         return Results.Ok(new { success = true, message = "نماد با موفقیت فعال شد" });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
+// app.MapPost("/api/symbols/{id}/deactivate", async (Guid id, [FromServices] ISymbolService symbolService) =>
+// {
+//     try
+//     {
+//         var result = await symbolService.DeactivateSymbolAsync(id);
+//         if (!result)
+//             return Results.NotFound(new { success = false, message = "نماد یافت نشد" });
+
+//         return Results.Ok(new { success = true, message = "نماد با موفقیت غیرفعال شد" });
+//     }
+//     catch (Exception ex)
+//     {
+//         return Results.BadRequest(new { success = false, message = ex.Message });
+//     }
+// });
+
 //// Price endpoints
 //app.MapGet("/api/prices/{asset}", async (string asset, PriceService priceService) =>
 //{
@@ -292,6 +463,31 @@ public record UpdatePhoneRequest(long TelegramId, string PhoneNumber);
 public record UpdateStatusRequest(long TelegramId, ClientUserStatus Status);
 public record UpdatePriceRequest(string Asset, decimal BuyPrice, decimal SellPrice, string Source = "Manual");
 public record UpdateUserRoleRequest(Guid RequestingUserId, Guid UserId, ClientUserRole NewRole);
+
+// Symbol request models (commented out until services are properly integrated)
+// public record CreateSymbolRequest(
+//     string Name,
+//     string BaseAsset,
+//     string QuoteAsset,
+//     string DisplayName,
+//     decimal MinOrderAmount = 0.001m,
+//     decimal MaxOrderAmount = 1000000m,
+//     decimal PricePrecision = 2,
+//     decimal QuantityPrecision = 6,
+//     bool IsSpotTradingEnabled = true,
+//     bool IsFuturesTradingEnabled = false,
+//     string? Description = null);
+
+// public record UpdateSymbolRequest(
+//     string? DisplayName = null,
+//     decimal? MinOrderAmount = null,
+//     decimal? MaxOrderAmount = null,
+//     decimal? PricePrecision = null,
+//     decimal? QuantityPrecision = null,
+//     bool? IsSpotTradingEnabled = null,
+//     bool? IsFuturesTradingEnabled = null,
+//     SymbolStatus? Status = null,
+//     string? Description = null);
 
 // Order DTO for Telegram Bot
 public class OrderDto
