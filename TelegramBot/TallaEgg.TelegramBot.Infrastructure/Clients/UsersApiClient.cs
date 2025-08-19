@@ -4,12 +4,11 @@ using System.Text;
 using System.Text.Json;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Requests.User;
-using TallaEgg.TelegramBot.Core.Models;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
-public class UsersApiClient : IUsersApiClient
+public class UsersApiClient
 {
     private readonly HttpClient _httpClient;
 
@@ -54,44 +53,6 @@ public class UsersApiClient : IUsersApiClient
             return (false, $"خطا در ارتباط: {ex.Message}");
         }
     }
-
-    public async Task<User?> RegisterUserAsync_0(long telegramId, string? username, string? firstName, string? lastName, string invitationCode)
-    {
-        try
-        {
-            var request = new
-            {
-                TelegramId = telegramId,
-                Username = username,
-                FirstName = firstName,
-                LastName = lastName,
-                InvitationCode = invitationCode,
-            };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<RegisterUserResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (result?.Success == true)
-                {
-                    return await GetUserByTelegramIdAsync(telegramId);
-                }
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            // Log exception here if needed
-            return null;
-        }
-    }
     public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
     {
         RegisterUserRequest request = new RegisterUserRequest()
@@ -128,26 +89,6 @@ public class UsersApiClient : IUsersApiClient
         }
     }
 
-    public async Task<User?> GetUserByTelegramIdAsync(long telegramId)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/{telegramId}");
-
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<User>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            // Log exception here if needed
-            return null;
-        }
-    }
     public async Task<UserDto?> GetUserAsync(long telegramId)
     {
         try
@@ -164,34 +105,6 @@ public class UsersApiClient : IUsersApiClient
         }
         catch (Exception ex)
         {
-            return null;
-        }
-    }
-    public async Task<User?> UpdateUserPhoneAsync(long telegramId, string phoneNumber)
-    {
-        try
-        {
-            var request = new
-            {
-                TelegramId = telegramId,
-                PhoneNumber = phoneNumber
-            };
-
-            var json = JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/update-phone", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await GetUserByTelegramIdAsync(telegramId);
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            // Log exception here if needed
             return null;
         }
     }
@@ -278,40 +191,6 @@ public class UsersApiClient : IUsersApiClient
             // Log exception here if needed
             return null;
         }
-    }
-
-    public async Task<User?> RegisterUserAsync(User user)
-    {
-        try
-        {
-            var json = JsonSerializer.Serialize(user);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var result = JsonSerializer.Deserialize<RegisterUserResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (result?.Success == true)
-                {
-                    return user;
-                }
-            }
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            // Log exception here if needed
-            return null;
-        }
-    }
-
-    Task<User?> IUsersApiClient.RegisterUserAsync(long telegramId, string? username, string? firstName, string? lastName, string invitationCode)
-    {
-        throw new NotImplementedException();
     }
 
     private class ValidateInvitationResponse

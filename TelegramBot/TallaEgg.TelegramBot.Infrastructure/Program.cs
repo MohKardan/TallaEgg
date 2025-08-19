@@ -88,14 +88,12 @@ class Program
             services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(provider.GetRequiredService<HttpClient>(), config));
             services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(provider.GetRequiredService<HttpClient>(), config));
             services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
-            services.AddSingleton<PriceApiClient>(provider => new PriceApiClient(provider.GetRequiredService<HttpClient>(), config));
             services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
             services.AddSingleton<IBotHandler>(provider => new BotHandler(
                 provider.GetRequiredService<ITelegramBotClient>(),
                 provider.GetRequiredService<OrderApiClient>(),
                 provider.GetRequiredService<UsersApiClient>(),
                 provider.GetRequiredService<AffiliateApiClient>(),
-                provider.GetRequiredService<PriceApiClient>(),
                 provider.GetRequiredService<WalletApiClient>(),
                 requireReferralCode,
                 defaultReferralCode

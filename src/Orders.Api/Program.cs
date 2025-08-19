@@ -7,6 +7,7 @@ using System.Reflection;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Requests.Order;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -440,17 +441,10 @@ app.MapPost("/api/orders/market", async (CreateMarketOrderRequest request, Order
 {
     try
     {
-        var command = new CreateMarketOrderCommand(
-            request.Asset,
-            request.Amount,
-            request.UserId,
-            request.Type,
-            request.TradingType,
-            request.Notes
-        );
-
-        var order = await orderService.CreateMarketOrderAsync(command);
-        return Results.Ok(new { success = true, message = "سفارش بازار با موفقیت ثبت شد", order = order });
+        
+        var order = await orderService.CreateMarketOrderAsync(request);
+        //return Results.Ok(new { success = true, message = "سفارش بازار با موفقیت ثبت شد", data = order });
+        return Results.Ok(ApiResponse<Order>.Ok(order, "سفارش بازار با موفقیت ثبت شد"));
     }
     catch (UnauthorizedAccessException ex)
     {
@@ -476,7 +470,7 @@ app.MapGet("/api/orders/market/{asset}/prices", async (string asset, TradingType
     try
     {
         var prices = await orderService.GetBestBidAskAsync(asset, tradingType);
-        return Results.Ok(new { success = true, prices = prices });
+        return Results.Ok(new { success = true, data = prices });
     }
     catch (Exception ex)
     {
@@ -585,32 +579,4 @@ public record CancelOrderRequest(
     /// </summary>
     string? Reason = null);
 
-/// <summary>
-/// Request model for creating a new market order
-/// </summary>
-public record CreateMarketOrderRequest(
-    /// <summary>
-    /// Trading asset symbol (e.g., BTC, ETH, USDT)
-    /// </summary>
-    string Asset, 
-    /// <summary>
-    /// Order quantity/amount
-    /// </summary>
-    decimal Amount, 
-    /// <summary>
-    /// Unique identifier of the user placing the order
-    /// </summary>
-    Guid UserId, 
-    /// <summary>
-    /// Type of order (Buy or Sell)
-    /// </summary>
-    OrderType Type,
-    /// <summary>
-    /// Trading type (Spot or Futures)
-    /// </summary>
-    TradingType TradingType,
-    /// <summary>
-    /// Optional notes for the order
-    /// </summary>
-    string? Notes = null);
 

@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Core.Utilties;
@@ -45,7 +46,6 @@ namespace TallaEgg.TelegramBot
         private readonly OrderApiClient _orderApi;
         private readonly UsersApiClient _usersApi;
         private readonly AffiliateApiClient _affiliateApi;
-        private readonly PriceApiClient _priceApi;
         private readonly WalletApiClient _walletApi;
         
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
@@ -54,14 +54,13 @@ namespace TallaEgg.TelegramBot
         private string _defaultReferralCode;
 
         public BotHandler(ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi,
-                         AffiliateApiClient affiliateApi, PriceApiClient priceApi, WalletApiClient walletApi,
+                         AffiliateApiClient affiliateApi, WalletApiClient walletApi,
                          bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
             _botClient = botClient;
             _orderApi = orderApi;
             _usersApi = usersApi;
             _affiliateApi = affiliateApi;
-            _priceApi = priceApi;
             _walletApi = walletApi;
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
@@ -538,41 +537,41 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
         {
-            if (!_userOrderStates.ContainsKey(telegramId))
-            {
-                await _botClient.SendMessage(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
-                return;
-            }
+            //if (!_userOrderStates.ContainsKey(telegramId))
+            //{
+            //    await _botClient.SendMessage(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+            //    return;
+            //}
 
-            var orderState = _userOrderStates[telegramId];
-            orderState.OrderType = orderType;
+            //var orderState = _userOrderStates[telegramId];
+            //orderState.OrderType = orderType;
 
-            // Get available assets from prices
-            var (success, prices) = await _priceApi.GetAllPricesAsync();
-            if (!success || prices == null || !prices.Any())
-            {
-                await _botClient.SendMessage(chatId, "در حال حاضر قیمت‌ها در دسترس نیست.");
-                return;
-            }
+            //// Get available assets from prices
+            //var (success, prices) = await _priceApi.GetAllPricesAsync();
+            //if (!success || prices == null || !prices.Any())
+            //{
+            //    await _botClient.SendMessage(chatId, "در حال حاضر قیمت‌ها در دسترس نیست.");
+            //    return;
+            //}
 
-            // Show available assets
-            var assetButtons = new List<InlineKeyboardButton[]>();
-            foreach (var price in prices)
-            {
-                assetButtons.Add(new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(price.Asset, $"asset_{price.Asset}")
-                });
-            }
+            //// Show available assets
+            //var assetButtons = new List<InlineKeyboardButton[]>();
+            //foreach (var price in prices)
+            //{
+            //    assetButtons.Add(new[]
+            //    {
+            //        InlineKeyboardButton.WithCallbackData(price.Asset, $"asset_{price.Asset}")
+            //    });
+            //}
 
-            assetButtons.Add(new[]
-            {
-                InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-            });
+            //assetButtons.Add(new[]
+            //{
+            //    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+            //});
 
-            var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
+            //var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectAsset, replyMarkup: keyboard);
+            //await _botClient.SendMessage(chatId, BotTexts.MsgSelectAsset, replyMarkup: keyboard);
         }
 
         private async Task HandleAssetSelectionAsync(long chatId, long telegramId, string asset)
@@ -1075,15 +1074,15 @@ namespace TallaEgg.TelegramBot
 
                 marketState.UserId = user.Id;
 
-                // Validate balance
-                var balanceValidation = await _walletApi.ValidateBalanceForMarketOrderAsync(
-                    user.Id, marketState.Symbol, marketState.Amount, (int)marketState.OrderType);
+                //TODO Validate balance
+                //var balanceValidation = await _walletApi.ValidateBalanceForMarketOrderAsync(
+                //    user.Id, marketState.Symbol, marketState.Amount, (int)marketState.OrderType);
 
-                if (!balanceValidation.HasSufficientBalance)
-                {
-                    await _botClient.SendMessage(chatId, $"موجودی ناکافی: {balanceValidation.Message}");
-                    return;
-                }
+                //if (!balanceValidation.HasSufficientBalance)
+                //{
+                //    await _botClient.SendMessage(chatId, $"موجودی ناکافی: {balanceValidation.Message}");
+                //    return;
+                //}
 
                 // Create market order
                 var orderResult = await _orderApi.CreateMarketOrderAsync(new CreateMarketOrderRequest

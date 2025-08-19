@@ -1,8 +1,9 @@
-using Orders.Core;
 using Microsoft.Extensions.Logging;
+using Orders.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Requests.Order;
 
 namespace Orders.Application;
 
@@ -168,7 +169,7 @@ public class OrderService /*: IOrderService*/
         }
     }
 
-    public async Task<Order> CreateMarketOrderAsync(CreateMarketOrderCommand command)
+    public async Task<Order> CreateMarketOrderAsync(CreateMarketOrderRequest command)
     {
         try
         {

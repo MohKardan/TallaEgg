@@ -1,11 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Orders.Core;
 using System.Text;
 using System.Text.Json;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
-using TallaEgg.TelegramBot.Core.Models;
+using TallaEgg.Core.Requests.Order;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
@@ -236,16 +237,6 @@ public class BestBidAskResponse
     public bool Success { get; set; }
     public string Message { get; set; } = "";
     public BestBidAskResult? Data { get; set; }
-}
-
-public class CreateMarketOrderRequest
-{
-    public string Asset { get; set; } = "";
-    public decimal Amount { get; set; }
-    public Guid UserId { get; set; }
-    public OrderType Type { get; set; }
-    public TradingType TradingType { get; set; }
-    public string? Notes { get; set; }
 }
 
 public class NotifyMatchingEngineRequest
