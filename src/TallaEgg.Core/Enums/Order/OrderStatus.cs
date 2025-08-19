@@ -6,10 +6,7 @@
         Confirmed,
         Cancelled,
         Completed,
-        Failed
+        Failed,
+        Partially,
     }
-
-
-
-
 }
