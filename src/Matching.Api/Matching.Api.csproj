@@ -19,7 +19,7 @@
     <ProjectReference Include="..\Matching.Core\Matching.Core.csproj" />
     <ProjectReference Include="..\Matching.Infrastructure\Matching.Infrastructure.csproj" />
     <ProjectReference Include="..\Matching.Application\Matching.Application.csproj" />
-    <ProjectReference Include="..\Wallet.Application\Wallet.Application.csproj" />
+    <ProjectReference Include="..\Wallet\Wallet.Application\Wallet.Application.csproj" />
   </ItemGroup>
 
 </Project> 
