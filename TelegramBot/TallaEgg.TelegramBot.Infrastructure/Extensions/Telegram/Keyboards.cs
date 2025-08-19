@@ -112,8 +112,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(new[]
             {
                 new KeyboardButton[] { new KeyboardButton(BotTexts.BtnSpot), new KeyboardButton(BotTexts.BtnFutures) },
-                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnMarket), new KeyboardButton(BotTexts.BtnAccounting) },
-                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnHelp) }
+                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnHelp), new KeyboardButton(BotTexts.BtnAccounting) }
             })
             {
                 ResizeKeyboard = true
@@ -129,7 +128,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                new[]
                {
-                    new[] { new KeyboardButton(BotTexts.BtnMakeOrderSpot), new KeyboardButton(BotTexts.BtnTakeOrder) },
+                    new[] { new KeyboardButton(BotTexts.BtnMakeOrderSpot), new KeyboardButton(BotTexts.BtnMarket) },
                     new[] { new KeyboardButton(BotTexts.MainMenu)},
                }
                             )

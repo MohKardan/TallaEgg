@@ -343,7 +343,7 @@ namespace TallaEgg.TelegramBot
                 new InlineKeyboardButton[]
                 {
                     InlineKeyboardButton.WithCallbackData(BotTexts.BtnMakeOrderSpot, "trading_spot"),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnTakeOrder, "take_order_spot")
+                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnMarket, InlineCallBackData.market_spot)
                 },
                 new InlineKeyboardButton[]
                 {
@@ -836,7 +836,9 @@ namespace TallaEgg.TelegramBot
                     await ShowMainMenuAsync(chatId);
                     break;
 
-                case "take_order_spot":
+                //case "take_order_spot":
+                case InlineCallBackData.market_spot:
+                    await HandleMarketMenuAsync(chatId);
                     await _botClient.SendMessage(chatId, "بخش بازار در حال توسعه است...");
                     break;
 

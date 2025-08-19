@@ -62,7 +62,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
         /// </summary>
         public const string BtnMakeOrderSpot = "📝 ثبت سفارش";
-        public const string BtnTakeOrder = "📋 بازار";
+        //public const string BtnTakeOrder = "📋 بازار";
         public const string BtnMarket = "📈 بازار";
         public const string BtnBuyMarket = "🛒 خرید";
         public const string BtnSellMarket = "🛍️ فروش";
@@ -87,6 +87,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string charge_bank = "charge_bank";
         public const string back_to_main = "back_to_main";
         public const string market = "market";
+        public const string market_spot = "market_spot";
         public const string market_symbol = "market_symbol";
         public const string market_buy = "market_buy";
         public const string market_sell = "market_sell";
