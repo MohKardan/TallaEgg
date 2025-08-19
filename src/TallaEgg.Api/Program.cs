@@ -36,12 +36,9 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IPriceRepository, PriceRepository>();
 //builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<CreateOrderCommandHandler>();
 builder.Services.AddScoped<CreateTakerOrderCommandHandler>();
-builder.Services.AddScoped<PriceService>();
-builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
 // سرویس‌های مربوط به Symbols
 // builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();

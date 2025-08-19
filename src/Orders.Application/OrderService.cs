@@ -46,16 +46,13 @@ public class BestBidAskResult
 public class OrderService /*: IOrderService*/
 {
     private readonly IOrderRepository _orderRepository;
-    private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
         IOrderRepository orderRepository,
-        IAuthorizationService authorizationService,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
-        _authorizationService = authorizationService ?? throw new ArgumentNullException(nameof(authorizationService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -66,8 +63,8 @@ public class OrderService /*: IOrderService*/
             _logger.LogInformation("Creating maker order for user {UserId} with asset {Asset} and trading type {TradingType}", 
                 command.UserId, command.Asset, command.TradingType);
 
-            // Check authorization
-            var canCreateOrder = await _authorizationService.CanCreateOrderAsync(command.UserId);
+            //TODO Check authorization
+            var canCreateOrder = true;//await _authorizationService.CanCreateOrderAsync(command.UserId);
             if (!canCreateOrder)
             {
                 _logger.LogWarning("User {UserId} is not authorized to create orders", command.UserId);
@@ -178,8 +175,8 @@ public class OrderService /*: IOrderService*/
             _logger.LogInformation("Creating market order for user {UserId} with asset {Asset} and trading type {TradingType}", 
                 command.UserId, command.Asset, command.TradingType);
 
-            // Check authorization
-            var canCreateOrder = await _authorizationService.CanCreateOrderAsync(command.UserId);
+            //TODO Check authorization
+            var canCreateOrder = true;//await _authorizationService.CanCreateOrderAsync(command.UserId);
             if (!canCreateOrder)
             {
                 _logger.LogWarning("User {UserId} is not authorized to create orders", command.UserId);

@@ -19,7 +19,6 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<OrderService>();
-builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
 
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>

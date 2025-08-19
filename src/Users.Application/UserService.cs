@@ -123,12 +123,6 @@ public class UserService
         return (true, "کد دعوت معتبر است.", invitation);
     }
 
-    public async Task RegisterUserAsync(global::Orders.Core.User user)
-    {
-        ArgumentNullException.ThrowIfNull(user);
-        throw new NotImplementedException();
-    }
-
     public async Task<User> RegisterUserAsync(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
