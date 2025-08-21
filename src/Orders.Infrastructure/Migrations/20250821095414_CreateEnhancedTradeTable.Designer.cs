@@ -3,17 +3,20 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Orders.Infrastructure;
 
 #nullable disable
 
-namespace Orders.Api.Migrations
+namespace Orders.Infrastructure.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    partial class OrdersDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250821095414_CreateEnhancedTradeTable")]
+    partial class CreateEnhancedTradeTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -98,37 +101,99 @@ namespace Orders.Api.Migrations
                     b.ToTable("Orders");
                 });
 
-            modelBuilder.Entity("Orders.Core.Price", b =>
+            modelBuilder.Entity("Orders.Core.Trade", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("Asset")
+                    b.Property<Guid>("BuyOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BuyerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("FeeBuyer")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("FeeSeller")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal>("QuoteQuantity")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<Guid>("SellOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SellerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Symbol")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
-                    b.Property<decimal>("BuyPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("SellPrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Asset")
-                        .IsUnique();
+                    b.HasIndex("BuyOrderId");
 
-                    b.ToTable("Prices");
+                    b.HasIndex("BuyerUserId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SellOrderId");
+
+                    b.HasIndex("SellerUserId");
+
+                    b.HasIndex("Symbol");
+
+                    b.HasIndex("BuyOrderId", "CreatedAt");
+
+                    b.HasIndex("BuyerUserId", "CreatedAt");
+
+                    b.HasIndex("SellOrderId", "CreatedAt");
+
+                    b.HasIndex("SellerUserId", "CreatedAt");
+
+                    b.HasIndex("Symbol", "CreatedAt");
+
+                    b.ToTable("Trades");
+                });
+
+            modelBuilder.Entity("Orders.Core.Trade", b =>
+                {
+                    b.HasOne("Orders.Core.Order", "BuyOrder")
+                        .WithMany()
+                        .HasForeignKey("BuyOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Orders.Core.Order", "SellOrder")
+                        .WithMany()
+                        .HasForeignKey("SellOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BuyOrder");
+
+                    b.Navigation("SellOrder");
                 });
 #pragma warning restore 612, 618
         }

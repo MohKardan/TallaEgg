@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
-        b => b.MigrationsAssembly("Orders.Api")));
+        b => b.MigrationsAssembly("Orders.Infrastructure")));
 
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();

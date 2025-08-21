@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2024-12-19
+
+### Added
+- **Enhanced Trade Table Implementation in Order Service**: Completely redesigned Trade entity with comprehensive trading features
+  - Redesigned Trade entity with new structure: BuyOrderId, SellOrderId, Symbol, Price, Quantity, QuoteQuantity, BuyerUserId, SellerUserId, FeeBuyer, FeeSeller, CreatedAt, UpdatedAt
+  - Added navigation properties to BuyOrder and SellOrder for proper relationships
+  - Enhanced Create() factory method with comprehensive validation for all new fields
+  - Added UpdateFees() method for updating transaction fees
+  - Added business methods: GetTotalValue(), GetTotalQuoteValue(), GetTotalFees()
+  - Updated ITradeRepository interface with new query methods for BuyOrderId, SellOrderId, Symbol, BuyerUserId, SellerUserId
+  - Implemented TradeRepository with all new CRUD operations and pagination support
+  - Enhanced TradeConfiguration with proper foreign key relationships and comprehensive indexes
+  - Added proper validation for all fields including fee validation (non-negative values)
+  - Implemented pagination with multiple filtering options for comprehensive trade analysis
+
+### Technical Details
+- **Trade Entity**: Complete redesign for exchange trading operations
+  - Foreign key relationships with Order entity (BuyOrder and SellOrder)
+  - Comprehensive validation for all trading parameters
+  - Business methods for value calculations and fee management
+  - Proper encapsulation with private setters and domain methods
+
+- **Database Schema**: Optimized for trading operations
+  - Foreign key relationships with Restrict delete behavior
+  - Precision settings for decimal fields (18, 8)
+  - Comprehensive indexes for performance optimization
+  - Symbol field with max length constraint (20 characters)
+
+- **Repository Pattern**: Complete CRUD operations with advanced querying
+  - Query methods for all major trading scenarios
+  - Pagination support with multiple filtering options
+  - Performance-optimized database queries
+  - Proper error handling and logging
+
 ## [1.6.0] - 2024-12-19
 
 ### Added

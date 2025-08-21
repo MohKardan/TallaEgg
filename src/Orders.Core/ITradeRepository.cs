@@ -9,8 +9,11 @@ public interface ITradeRepository
     
     // Read
     Task<Trade?> GetByIdAsync(Guid id);
-    Task<List<Trade>> GetTradesByOrderIdAsync(Guid orderId);
-    Task<List<Trade>> GetTradesBySymbolIdAsync(Guid symbolId);
+    Task<List<Trade>> GetTradesByBuyOrderIdAsync(Guid buyOrderId);
+    Task<List<Trade>> GetTradesBySellOrderIdAsync(Guid sellOrderId);
+    Task<List<Trade>> GetTradesBySymbolAsync(string symbol);
+    Task<List<Trade>> GetTradesByBuyerUserIdAsync(Guid buyerUserId);
+    Task<List<Trade>> GetTradesBySellerUserIdAsync(Guid sellerUserId);
     Task<List<Trade>> GetTradesByDateRangeAsync(DateTime from, DateTime to);
     
     // Update
@@ -26,6 +29,9 @@ public interface ITradeRepository
     Task<(List<Trade> Trades, int TotalCount)> GetTradesPaginatedAsync(
         int pageNumber, 
         int pageSize, 
-        Guid? orderId = null, 
-        Guid? symbolId = null);
+        Guid? buyOrderId = null, 
+        Guid? sellOrderId = null,
+        string? symbol = null,
+        Guid? buyerUserId = null,
+        Guid? sellerUserId = null);
 }
