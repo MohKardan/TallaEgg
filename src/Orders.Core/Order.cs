@@ -204,4 +204,16 @@ public class Order
     public bool IsSpot() => TradingType == TradingType.Spot;
     
     public bool IsFutures() => TradingType == TradingType.Futures;
+
+    public void UpdateAmount(decimal newAmount)
+    {
+        if (newAmount < 0)
+            throw new ArgumentException("Amount cannot be negative", nameof(newAmount));
+        
+        if (Status == OrderStatus.Completed)
+            throw new InvalidOperationException("Cannot update amount of completed order");
+        
+        Amount = newAmount;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

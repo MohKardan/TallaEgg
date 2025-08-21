@@ -9,6 +9,9 @@ public class WalletEntity
     public Guid UserId { get; set; }
     public string Asset { get; set; } = "";
     public decimal Balance { get; set; }
+    /// <summary>
+    /// FrozenBalance برای مبالغ بلوکه شده
+    /// </summary>
     public decimal LockedBalance { get; set; } = 0; // For pending orders
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
