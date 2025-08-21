@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
@@ -12,6 +13,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using static System.Net.Mime.MediaTypeNames;
 using static TallaEgg.TelegramBot.Infrastructure.Clients.OrderApiClient;
 
 namespace TallaEgg.TelegramBot
@@ -47,7 +49,7 @@ namespace TallaEgg.TelegramBot
         private readonly UsersApiClient _usersApi;
         private readonly AffiliateApiClient _affiliateApi;
         private readonly WalletApiClient _walletApi;
-        
+
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
         private readonly Dictionary<long, MarketOrderState> _userMarketOrderStates = new();
         private bool _requireReferralCode;
@@ -111,6 +113,9 @@ namespace TallaEgg.TelegramBot
 
                 if (message.Text == BotTexts.MainMenu) await _botClient.SendMainKeyboardAsync(chatId);
                 message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
+
+
+
                 // Check if user exists
                 var user = await _usersApi.GetUserAsync(telegramId);
 
@@ -126,12 +131,6 @@ namespace TallaEgg.TelegramBot
                     return;
                 }
 
-                // Check for admin commands first
-                //if (await HandleAdminCommandsAsync(chatId, telegramId, message, user))
-                //{
-                //    return;
-                //}
-
                 if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved)
                 {
                     await _botClient.SendMessage(
@@ -141,8 +140,15 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
+                    // Check if user is admin
+                    if (await IsUserAdmin(user))
+                    {
+                        // Check for admin commands first
+                        bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
+                        if (isAdminCmd) return;
+                    }
 
-                    await HandleMainMenuAsync(chatId, telegramId, message,user.Id);
+                    await HandleMainMenuAsync(chatId, telegramId, message, user.Id);
                 }
             }
             catch (Exception ex)
@@ -213,7 +219,16 @@ namespace TallaEgg.TelegramBot
         {
             if (message.Contact?.PhoneNumber != null)
             {
-                var response = await _usersApi.UpdatePhoneAsync(telegramId, message.Contact.PhoneNumber);
+                var phoneNumber = message.Contact?.PhoneNumber;
+                if (phoneNumber.StartsWith("98"))//98938621990
+                {
+                    phoneNumber = phoneNumber.Replace("98", "0");
+                }
+                if (phoneNumber.StartsWith("+98"))//98938621990
+                {
+                    phoneNumber = phoneNumber.Replace("+98", "0");
+                }
+                var response = await _usersApi.UpdatePhoneAsync(telegramId, phoneNumber);
 
                 if (response.Success)
                 {
@@ -233,7 +248,7 @@ namespace TallaEgg.TelegramBot
             }
         }
 
-        private async Task HandleMainMenuAsync(long chatId, long telegramId, Message message,Guid userId)
+        private async Task HandleMainMenuAsync(long chatId, long telegramId, Message message, Guid userId)
         {
             var msgText = message.Text ?? "";
 
@@ -252,7 +267,7 @@ namespace TallaEgg.TelegramBot
                     await HandleAccountingMenuAsync(chatId);
                     break;
                 case BotTexts.TradeHistory:
-                    await ShowTradeHistory(chatId,userId);
+                    await ShowTradeHistory(chatId, userId);
                     break;
 
                 case BotTexts.BtnHelp:
@@ -421,7 +436,7 @@ namespace TallaEgg.TelegramBot
         private async Task HandleAccountingMenuAsync(long chatId)
         {
 
-           await _botClient.SendAccountingMenuKeyboard(chatId);
+            await _botClient.SendAccountingMenuKeyboard(chatId);
         }
 
 
@@ -437,53 +452,111 @@ namespace TallaEgg.TelegramBot
 
             await _botClient.SendMessage(chatId, helpText);
         }
-        private async Task ShowTradeHistory(long chatId,Guid userId)
+        private async Task ShowTradeHistory(long chatId, Guid userId)
         {
-           var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
-           await _botClient.SendUserOrdersWithPagingAsync(chatId, page.Data!, 1, userId);
+            var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
+            await _botClient.SendUserOrdersWithPagingAsync(chatId, page.Data!, 1, userId);
         }
 
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
-
-            // Check if user is admin
-            if (await IsUserAdmin(user))
+            msgText = msgText.ToLower().Trim();
+            if (msgText.StartsWith("ش"))
             {
-                return false; // Not an admin, continue with normal processing
+                // ش 09121234567 50000 دلاری
+                // ش 09121234567 50000
+                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                var match = regex.Match(msgText);
+                if (!match.Success)
+                {
+                    await _botClient.SendMessage(message.Chat.Id,
+                        "❌ فرمت دستور نادرست است.\nمثال: ش 09121234567 50000 [ریالی/دلاری]");
+                }
+
+                var phone = match.Groups["phone"].Value;
+                var amount = decimal.Parse(match.Groups["amount"].Value);
+                var currency = match.Groups["currency"].Success
+                    ? match.Groups["currency"].Value
+                    : "ریالی"; // مقدار پیش‌فرض
+
+                string response = $"📌 دستور ثبت شد:\n" +
+                                  $"👤 کاربر: {phone}\n" +
+                                  $"💰 مبلغ: {amount}\n" +
+                                  $"💵 نوع شارژ: {currency}";
+
+                    await _botClient.SendMessage(message.Chat.Id, response);
+                var userId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
+                if (userId.HasValue)
+                {
+                 var result =  await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.DepositRequest
+                    {
+                       Asset = "rial",
+                       Amount = amount,
+                       UserId = userId.Value
+                    });
+                    if (result.Success)
+                    {
+
+                    
+                    await _botClient.SendMessage(
+       message.Chat.Id,
+       $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+       $"💳 دارایی: `ریال`\n" +
+       $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+       $"🆔 تلفن: `{phone}`\n\n" +
+       $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.",parseMode: ParseMode.Html
+   );
+                    }
+                    else
+                    {
+                        await _botClient.SendMessage(message.Chat.Id, result.Message);
+
+                    }
+                }
+                else
+                {
+                    await _botClient.SendMessage(message.Chat.Id, "شماره تلفن معتبر نیست");
+
+                }
+
+                    return true;
+
             }
+            return false;
 
-            switch (msgText.ToLower())
-            {
-                case "/admin_referral_on":
-                    _requireReferralCode = true;
-                    await _botClient.SendMessage(chatId,
-                        "✅ اجباری بودن کد دعوت فعال شد.\n" +
-                        "کاربران جدید باید کد دعوت داشته باشند.");
-                    return true;
+            //switch (msgText.ToLower())
+            //{
+            //    case "/admin_referral_on":
+            //        _requireReferralCode = true;
+            //        await _botClient.SendMessage(chatId,
+            //            "✅ اجباری بودن کد دعوت فعال شد.\n" +
+            //            "کاربران جدید باید کد دعوت داشته باشند.");
+            //        return true;
 
-                case "/admin_referral_off":
-                    _requireReferralCode = false;
-                    await _botClient.SendMessage(chatId,
-                        "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
-                        $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
-                    return true;
+            //    case "/admin_referral_off":
+            //        _requireReferralCode = false;
+            //        await _botClient.SendMessage(chatId,
+            //            "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
+            //            $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
+            //        return true;
 
-                case "/admin_referral_status":
-                    var status = _requireReferralCode ? "فعال" : "غیرفعال";
-                    await _botClient.SendMessage(chatId,
-                        $"📊 وضعیت فعلی:\n" +
-                        $"اجباری بودن کد دعوت: {status}\n" +
-                        $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
-                        $"دستورات مدیریتی:\n" +
-                        $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
-                        $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
-                        $"/admin_referral_status - نمایش وضعیت فعلی");
-                    return true;
+            //    case "/admin_referral_status":
+            //        var status = _requireReferralCode ? "فعال" : "غیرفعال";
+            //        await _botClient.SendMessage(chatId,
+            //            $"📊 وضعیت فعلی:\n" +
+            //            $"اجباری بودن کد دعوت: {status}\n" +
+            //            $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
+            //            $"دستورات مدیریتی:\n" +
+            //            $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
+            //            $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
+            //            $"/admin_referral_status - نمایش وضعیت فعلی");
+            //        return true;
 
-                default:
-                    return false; // Not an admin command, continue with normal processing
-            }
+            //    default:
+            //        return false; // Not an admin command, continue with normal processing
+            //}
         }
 
         private async Task<bool> IsUserAdmin(UserDto user)
@@ -980,7 +1053,7 @@ namespace TallaEgg.TelegramBot
             {
                 // Get best bid/ask prices from Order service
                 var bestPrices = await _orderApi.GetBestBidAskAsync(symbol, TradingType.Spot);
-                
+
                 if (bestPrices == null)
                 {
                     await _botClient.SendMessage(chatId, "خطا در دریافت قیمت‌های بازار. لطفاً دوباره تلاش کنید.");
@@ -1061,7 +1134,7 @@ namespace TallaEgg.TelegramBot
             }
 
             var marketState = _userMarketOrderStates[telegramId];
-            
+
             try
             {
                 // Get user
@@ -1152,14 +1225,14 @@ namespace TallaEgg.TelegramBot
 
             // Get current market price
             var bestPrices = await _orderApi.GetBestBidAskAsync(marketState.Symbol, TradingType.Spot);
-            var marketPrice = marketState.OrderType == OrderType.Buy 
-                ? (bestPrices?.BestAsk ?? 0) 
+            var marketPrice = marketState.OrderType == OrderType.Buy
+                ? (bestPrices?.BestAsk ?? 0)
                 : (bestPrices?.BestBid ?? 0);
 
             var totalValue = quantity * marketPrice;
             var orderTypeText = marketState.OrderType == OrderType.Buy ? "خرید" : "فروش";
 
-            var confirmationMessage = string.Format(BotTexts.MsgMarketOrderConfirmation, 
+            var confirmationMessage = string.Format(BotTexts.MsgMarketOrderConfirmation,
                 marketState.Symbol, orderTypeText, quantity, marketPrice, totalValue);
 
             var keyboard = new InlineKeyboardMarkup(new[]

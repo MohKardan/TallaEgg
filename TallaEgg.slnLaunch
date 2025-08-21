@@ -19,7 +19,7 @@
         "Action": "Start"
       },
       {
-        "Path": "src\\Wallet.Api\\Wallet.Api.csproj",
+        "Path": "src\\Wallet\\Wallet.Api\\Wallet.Api.csproj",
         "Action": "Start"
       }
     ]

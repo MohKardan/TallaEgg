@@ -1,4 +1,6 @@
 
+using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
 
 namespace Wallet.Application;
@@ -18,52 +20,49 @@ public class WalletService : IWalletService
         return wallet?.Balance ?? 0;
     }
 
-    public async Task<bool> CreditAsync(Guid userId, string asset, decimal amount)
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> CreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
         if (amount <= 0)
-            return false;
+            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد");
 
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
-        
+
         if (wallet == null)
         {
             // Create new wallet
-            wallet = new WalletEntity
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Asset = asset,
-                Balance = amount,
-                LockedBalance = 0,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            wallet = WalletEntity.Create
+            (
+                 userId,
+                 asset       
+            );
             await _walletRepository.CreateWalletAsync(wallet);
+
         }
         else
         {
             // Update existing wallet
-            wallet.Balance += amount;
-            wallet.UpdatedAt = DateTime.UtcNow;
+            wallet.IncreaseBalance(amount);
             await _walletRepository.UpdateWalletAsync(wallet);
         }
 
         // Create transaction record
-        var transaction = new WalletTransaction
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Asset = asset,
-            Amount = amount,
-            Type = TransactionType.Deposit,
-            Status = TransactionStatus.Completed,
-            Description = "Credit transaction",
-            CreatedAt = DateTime.UtcNow,
-            CompletedAt = DateTime.UtcNow
-        };
+        var transaction = Transaction.Create(
+            wallet.Id,
+            amount,
+            asset,
+            TransactionType.Deposit,
+            wallet.Balance - amount,
+            wallet.Balance,
+            null,
+            TransactionStatus.Completed,
+            "Credit transaction",
+            refId,
+            null
+        );
+
         await _walletRepository.CreateTransactionAsync(transaction);
 
-        return true;
+        return (wallet, transaction);
     }
 
     public async Task<bool> DebitAsync(Guid userId, string asset, decimal amount)
@@ -93,7 +92,7 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-        await _walletRepository.CreateTransactionAsync(transaction);
+       // await _walletRepository.CreateTransactionAsync(transaction);
 
         return true;
     }
@@ -118,26 +117,23 @@ public class WalletService : IWalletService
         return await _walletRepository.GetUserTransactionsAsync(userId, asset);
     }
 
-    public async Task<(bool success, string message)> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
+    public async Task<WalletDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
         if (amount <= 0)
-            return (false, "مقدار باید بزرگتر از صفر باشد.");
+            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد");
 
-        var success = await CreditAsync(userId, asset, amount);
-        if (success)
+        var result = await CreditAsync(userId, asset, amount,referenceId);
+      
+
+        return new WalletDTO
         {
-            // Update transaction with reference
-            var transactions = await _walletRepository.GetUserTransactionsAsync(userId, asset);
-            var lastTransaction = transactions.FirstOrDefault();
-            if (lastTransaction != null && !string.IsNullOrEmpty(referenceId))
-            {
-                lastTransaction.ReferenceId = referenceId;
-                lastTransaction.Description = "Deposit transaction";
-                await _walletRepository.UpdateTransactionAsync(lastTransaction);
-            }
-        }
-
-        return success ? (true, "واریز با موفقیت انجام شد.") : (false, "خطا در واریز.");
+            Asset = result.walletEntity.Asset,
+            BalanceBefore = result.transactionEntity.BallanceBefore,
+            BalanceAfter = result.transactionEntity.BallanceAfter,
+            LockedBalance = result.walletEntity.LockedBalance,
+            UpdatedAt = result.walletEntity.UpdatedAt,
+            TrackingCode = result.transactionEntity.TrackingCode,
+        };
     }
 
     public async Task<(bool success, string message)> WithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
@@ -177,12 +173,12 @@ public class WalletService : IWalletService
 
         // Credit to destination user
         var creditSuccess = await CreditAsync(toUserId, asset, amount);
-        if (!creditSuccess)
-        {
-            // Rollback - credit back to source user
-            await CreditAsync(fromUserId, asset, amount);
-            return (false, "خطا در انتقال.");
-        }
+        //if (!creditSuccess)
+        //{
+        //    // Rollback - credit back to source user
+        //    await CreditAsync(fromUserId, asset, amount);
+        //    return (false, "خطا در انتقال.");
+        //}
 
         // Create transfer transaction records
         var fromTransaction = new WalletTransaction
@@ -197,7 +193,7 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-        await _walletRepository.CreateTransactionAsync(fromTransaction);
+      //  await _walletRepository.CreateTransactionAsync(fromTransaction);
 
         var toTransaction = new WalletTransaction
         {
@@ -211,7 +207,7 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-        await _walletRepository.CreateTransactionAsync(toTransaction);
+       // await _walletRepository.CreateTransactionAsync(toTransaction);
 
         return (true, "انتقال با موفقیت انجام شد.");
     }
@@ -226,25 +222,25 @@ public class WalletService : IWalletService
 
         // شارژ کیف پول
         var success = await CreditAsync(userId, asset, amount);
-        if (success)
-        {
-            // ایجاد تراکنش شارژ
-            var transaction = new WalletTransaction
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                Asset = asset,
-                Amount = amount,
-                Type = TransactionType.Deposit,
-                Status = TransactionStatus.Completed,
-                Description = $"شارژ کیف پول - روش پرداخت: {paymentMethod ?? "نامشخص"}",
-                CreatedAt = DateTime.UtcNow,
-                CompletedAt = DateTime.UtcNow
-            };
-            await _walletRepository.CreateTransactionAsync(transaction);
-        }
+        //if (success)
+        //{
+        //    // ایجاد تراکنش شارژ
+        //    var transaction = new WalletTransaction
+        //    {
+        //        Id = Guid.NewGuid(),
+        //        UserId = userId,
+        //        Asset = asset,
+        //        Amount = amount,
+        //        Type = TransactionType.Deposit,
+        //        Status = TransactionStatus.Completed,
+        //        Description = $"شارژ کیف پول - روش پرداخت: {paymentMethod ?? "نامشخص"}",
+        //        CreatedAt = DateTime.UtcNow,
+        //        CompletedAt = DateTime.UtcNow
+        //    };
+        //    await _walletRepository.CreateTransactionAsync(transaction);
+        //}
 
-        return success ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
+        return true ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
     }
 
     public async Task<(bool success, string message, bool hasSufficientBalance)> ValidateBalanceForMarketOrderAsync(Guid userId, string asset, decimal amount, int orderType)
@@ -262,12 +258,12 @@ public class WalletService : IWalletService
                 // For buy orders, we need to check if user has enough USDT (or base currency)
                 // This is a simplified check - in real implementation, you'd need to get the price
                 var requiredAmount = amount; // This should be amount * price in real implementation
-                
+
                 if (currentBalance < requiredAmount)
                 {
                     return (true, $"موجودی ناکافی. موجودی فعلی: {currentBalance}, مقدار مورد نیاز: {requiredAmount}", false);
                 }
-                
+
                 return (true, "موجودی کافی است.", true);
             }
             else if (orderType == 1) // Sell order
@@ -277,7 +273,7 @@ public class WalletService : IWalletService
                 {
                     return (true, $"موجودی ناکافی. موجودی فعلی: {currentBalance}, مقدار مورد نیاز: {amount}", false);
                 }
-                
+
                 return (true, "موجودی کافی است.", true);
             }
             else
@@ -312,12 +308,12 @@ public class WalletService : IWalletService
 
                 // Credit the asset
                 var creditSuccess = await CreditAsync(userId, asset, amount);
-                if (!creditSuccess)
-                {
-                    // Rollback - credit back the base currency
-                    await CreditAsync(userId, baseCurrency, totalCost);
-                    return (false, "خطا در به‌روزرسانی موجودی دارایی.");
-                }
+                //if (!creditSuccess)
+                //{
+                //    // Rollback - credit back the base currency
+                //    await CreditAsync(userId, baseCurrency, totalCost);
+                //    return (false, "خطا در به‌روزرسانی موجودی دارایی.");
+                //}
 
                 // Create transaction records
                 var buyTransaction = new WalletTransaction
@@ -333,7 +329,7 @@ public class WalletService : IWalletService
                     CreatedAt = DateTime.UtcNow,
                     CompletedAt = DateTime.UtcNow
                 };
-                await _walletRepository.CreateTransactionAsync(buyTransaction);
+               // await _walletRepository.CreateTransactionAsync(buyTransaction);
 
                 var costTransaction = new WalletTransaction
                 {
@@ -348,7 +344,7 @@ public class WalletService : IWalletService
                     CreatedAt = DateTime.UtcNow,
                     CompletedAt = DateTime.UtcNow
                 };
-                await _walletRepository.CreateTransactionAsync(costTransaction);
+             //   await _walletRepository.CreateTransactionAsync(costTransaction);
 
                 return (true, "موجودی با موفقیت به‌روزرسانی شد.");
             }
@@ -366,12 +362,12 @@ public class WalletService : IWalletService
 
                 // Credit base currency
                 var creditSuccess = await CreditAsync(userId, baseCurrency, totalValue);
-                if (!creditSuccess)
-                {
-                    // Rollback - credit back the asset
-                    await CreditAsync(userId, asset, amount);
-                    return (false, "خطا در به‌روزرسانی موجودی ارز پایه.");
-                }
+                //if (!creditSuccess)
+                //{
+                //    // Rollback - credit back the asset
+                //    await CreditAsync(userId, asset, amount);
+                //    return (false, "خطا در به‌روزرسانی موجودی ارز پایه.");
+                //}
 
                 // Create transaction records
                 var sellTransaction = new WalletTransaction
@@ -387,7 +383,7 @@ public class WalletService : IWalletService
                     CreatedAt = DateTime.UtcNow,
                     CompletedAt = DateTime.UtcNow
                 };
-                await _walletRepository.CreateTransactionAsync(sellTransaction);
+                //await _walletRepository.CreateTransactionAsync(sellTransaction);
 
                 var valueTransaction = new WalletTransaction
                 {
@@ -402,7 +398,7 @@ public class WalletService : IWalletService
                     CreatedAt = DateTime.UtcNow,
                     CompletedAt = DateTime.UtcNow
                 };
-                await _walletRepository.CreateTransactionAsync(valueTransaction);
+               // await _walletRepository.CreateTransactionAsync(valueTransaction);
 
                 return (true, "موجودی با موفقیت به‌روزرسانی شد.");
             }
@@ -416,4 +412,6 @@ public class WalletService : IWalletService
             return (false, $"خطا در به‌روزرسانی موجودی: {ex.Message}");
         }
     }
-} 
+
+    
+}

@@ -1,4 +1,5 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
+using TallaEgg.Core.Enums.Wallet;
 
 namespace Wallet.Core;
 
@@ -10,7 +11,10 @@ public class Transaction
     public string Currency { get; private set; } = "";
     public TransactionType Type { get; private set; }
     public TransactionStatus Status { get; private set; }
-    public long? ReferenceId { get; private set; } // Order ID, Trade ID, etc.
+    public string TrackingCode { get; private set; } = string.Empty;
+    public decimal BallanceBefore { get; set; }
+    public decimal BallanceAfter { get; set; }
+    public string? ReferenceId { get; private set; } // Order ID, Trade ID, etc.
     public string? Description { get; private set; }
     public string? Detail { get; private set; } // JSON data for additional transaction information
     public DateTime CreatedAt { get; private set; }
@@ -27,8 +31,12 @@ public class Transaction
         decimal amount,
         string currency,
         TransactionType type,
+        decimal ballanceBefore,
+        decimal ballanceAfter,
+        string? trackingCode,
+        TransactionStatus transactionStatus,
         string? description = null,
-        long? referenceId = null,
+        string? referenceId = null,
         string? detail = null)
     {
         if (walletId == Guid.Empty)
@@ -40,6 +48,9 @@ public class Transaction
         if (string.IsNullOrWhiteSpace(currency))
             throw new ArgumentException("Currency cannot be empty", nameof(currency));
 
+        if (string.IsNullOrWhiteSpace(trackingCode))
+            trackingCode = GenerateTrackingCode();
+
         return new Transaction
         {
             Id = Guid.NewGuid(),
@@ -47,12 +58,26 @@ public class Transaction
             Amount = amount,
             Currency = currency.Trim().ToUpperInvariant(),
             Type = type,
-            Status = TransactionStatus.Pending,
+            BallanceBefore = ballanceBefore,
+            BallanceAfter = ballanceAfter,
+            TrackingCode = trackingCode,
+            Status = transactionStatus,
             ReferenceId = referenceId,
             Description = description,
             Detail = detail,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    private static string GenerateTrackingCode()
+    {
+        // یک کد کوتاه یکتا (مثلاً ۱۲ کاراکتر)
+        return Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            .Replace("=", "")
+            .Replace("+", "")
+            .Replace("/", "")
+            .Substring(0, 12)
+            .ToUpperInvariant();
     }
 
     public void Complete()

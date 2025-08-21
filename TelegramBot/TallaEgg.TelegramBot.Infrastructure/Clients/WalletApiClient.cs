@@ -1,7 +1,9 @@
+using Newtonsoft.Json;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Requests.Wallet;
 
 namespace TallaEgg.TelegramBot;
 
@@ -116,6 +118,34 @@ public class WalletApiClient
             return (false, $"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
+
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletDto>> DepositeAsync(DepositRequest request)
+    {
+        try
+        {
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_apiUrl}/wallet/deposit", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletDto>>(respText);
+                return result;
+            }
+
+            return TallaEgg.Core.DTOs.ApiResponse<WalletDto>.Fail("خطا در بروزرسانی");
+
+        }
+        catch (Exception ex)
+        {
+            return TallaEgg.Core.DTOs.ApiResponse<WalletDto>.Fail("خطا در ارتباط با سرور");
+
+        }
+    }
+
+
 }
 
 public class BalanceValidationResult

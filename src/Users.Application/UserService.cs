@@ -105,6 +105,29 @@ public class UserService
         return null;
     }
 
+    public async Task<Guid?> GetUserIdByPhoneNumber(string phoneNumber)
+    {
+        if (string.IsNullOrWhiteSpace(phoneNumber))
+            return null;
+
+        // ابتدا در جدول Users جستجو می‌کنیم
+        var id = await _userRepository.GetUserIdByPhonenumberAsync(phoneNumber);
+        if (id != null)
+        {
+            return id;
+        }
+
+        // اگر در جدول Users پیدا نشد، در جدول Invitations جستجو می‌کنیم
+        
+        //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
+        //if (invitation != null)
+        //{
+        //    return invitation.CreatedByUserId;
+        //}
+
+        return null;
+    }
+
     public async Task<(bool isValid, string message, Invitation? invitation)> ValidateInvitationCodeAsync(string invitationCode)
     {
         if (string.IsNullOrWhiteSpace(invitationCode))

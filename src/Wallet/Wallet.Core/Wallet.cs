@@ -1,4 +1,5 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
+using TallaEgg.Core.Enums.Wallet;
 
 namespace Wallet.Core;
 
@@ -11,6 +12,41 @@ public class WalletEntity
     public decimal LockedBalance { get; set; } = 0; // For pending orders
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    // Private constructor for EF Core
+    private WalletEntity() { }
+
+    public static WalletEntity Create(
+        Guid userId,
+        string asset
+        )
+    {
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty", nameof(userId));
+
+        if (string.IsNullOrWhiteSpace(asset))
+            throw new ArgumentException("Asset cannot be empty", nameof(asset));
+
+        return new WalletEntity
+        {
+            Id = Guid.NewGuid(),
+            Asset = asset,
+            Balance = 0,
+            LockedBalance = 0,
+            UserId = userId,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+    }
+
+    public void IncreaseBalance(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+
+        Balance += amount;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }
 
 public class WalletTransaction
@@ -27,44 +63,3 @@ public class WalletTransaction
     public DateTime? CompletedAt { get; set; }
 }
 
-public enum TransactionType
-{
-    [Description("واریز")]
-    Deposit,
-    
-    [Description("برداشت")]
-    Withdraw,
-    
-    [Description("معامله")]
-    Trade,
-    
-    [Description("فریز کردن موجودی")]
-    Freeze,
-    
-    [Description("آزادسازی موجودی")]
-    Unfreeze,
-    
-    [Description("کارمزد")]
-    Fee,
-    
-    [Description("انتقال")]
-    Transfer,
-    
-    [Description("تعدیل")]
-    Adjustment
-}
-
-public enum TransactionStatus
-{
-    [Description("در انتظار")]
-    Pending,
-    
-    [Description("تکمیل شده")]
-    Completed,
-    
-    [Description("ناموفق")]
-    Failed,
-    
-    [Description("لغو شده")]
-    Canceled
-} 

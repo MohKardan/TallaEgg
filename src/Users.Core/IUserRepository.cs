@@ -16,4 +16,5 @@ public interface IUserRepository
     Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);
     Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
     Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode);
+    Task<Guid?> GetUserIdByPhonenumberAsync(string phoneNumber);
 }

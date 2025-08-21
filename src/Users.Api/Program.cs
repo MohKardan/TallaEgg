@@ -164,6 +164,19 @@ app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string
     }
 });
 
+app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phonenumber, UserService userService) =>
+{
+    try
+    {
+        var userId = await userService.GetUserIdByPhoneNumber(phonenumber);
+        return Results.Ok(userId);
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 /// <summary>
 /// Validates an invitation code
 /// </summary>

@@ -74,6 +74,12 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync();
     }
 
+    public async Task<Guid?> GetUserIdByPhonenumberAsync(string phoneNumber)
+    {
+        return await _context.Users.Where(u => u.PhoneNumber == phoneNumber).Select(u => u.Id)
+            .FirstOrDefaultAsync();
+    }
+
     Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)
     {
         throw new NotImplementedException();

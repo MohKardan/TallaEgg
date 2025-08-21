@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\Wallet.Core\Wallet.Core.csproj" />
     <ProjectReference Include="..\Wallet.Infrastructure\Wallet.Infrastructure.csproj" />
     <ProjectReference Include="..\Wallet.Application\Wallet.Application.csproj" />

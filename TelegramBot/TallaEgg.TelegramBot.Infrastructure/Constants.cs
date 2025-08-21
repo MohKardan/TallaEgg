@@ -8,7 +8,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class Constants
     {
-        public const long GroupId = -4956536821; 
+        public const long GroupId = -1002988196234;
         public const string DeveloperChatId = "-4777000333"; 
         public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
     }

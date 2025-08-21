@@ -193,6 +193,29 @@ public class UsersApiClient
         }
     }
 
+    public async Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByPhoneNumber/{phonenumber}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<Guid>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // Log exception here if needed
+            return null;
+        }
+    }
+
+
+
     private class ValidateInvitationResponse
     {
         public bool IsValid { get; set; }

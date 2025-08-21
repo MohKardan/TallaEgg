@@ -69,9 +69,9 @@ public class WalletRepository : IWalletRepository
         return true;
     }
 
-    public async Task<WalletTransaction> CreateTransactionAsync(WalletTransaction transaction)
+    public async Task<Transaction> CreateTransactionAsync(Transaction transaction)
     {
-        _context.WalletTransactions.Add(transaction);
+        _context.Transactions.Add(transaction);
         await _context.SaveChangesAsync();
         return transaction;
     }
@@ -104,4 +104,6 @@ public class WalletRepository : IWalletRepository
         await _context.SaveChangesAsync();
         return transaction;
     }
+
+   
 } 

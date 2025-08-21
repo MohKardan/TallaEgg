@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Wallet.Core;
 using Wallet.Infrastructure;
 using Wallet.Application;
+using TallaEgg.Core.Requests.Wallet;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Wallet;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,10 +43,17 @@ app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService w
 
 app.MapPost("/api/wallet/deposit", async (DepositRequest request, IWalletService walletService) =>
 {
-    var result = await walletService.DepositAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
-    return result.success ? 
-        Results.Ok(new { success = true, message = result.message }) :
-        Results.BadRequest(new { success = false, message = result.message });
+    try
+    {
+       var result = await walletService.DepositAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
+       return Results.Ok(ApiResponse<WalletDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
+    }
+  
 });
 
 app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, IWalletService walletService) =>
@@ -79,10 +89,10 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 // Internal wallet operations (for matching engine)
 app.MapPost("/api/wallet/internal/credit", async (CreditRequest request, IWalletService walletService) =>
 {
-    var success = await walletService.CreditAsync(request.UserId, request.Asset, request.Amount);
-    return success ? 
-        Results.Ok(new { success = true }) :
-        Results.BadRequest(new { success = false, message = "خطا در افزایش موجودی" });
+    //var success = await walletService.CreditAsync(request.UserId, request.Asset, request.Amount);
+    //return success ? 
+    //    Results.Ok(new { success = true }) :
+    //    Results.BadRequest(new { success = false, message = "خطا در افزایش موجودی" });
 });
 
 app.MapPost("/api/wallet/internal/debit", async (DebitRequest request, IWalletService walletService) =>
@@ -113,7 +123,6 @@ app.MapPost("/api/wallet/market/update-balance", async (UpdateBalanceRequest req
 app.Run();
 
 // Request models
-public record DepositRequest(Guid UserId, string Asset, decimal Amount, string? ReferenceId = null);
 public record WithdrawRequest(Guid UserId, string Asset, decimal Amount, string? ReferenceId = null);
 public record ChargeRequest(Guid UserId, string Asset, decimal Amount, string? PaymentMethod = null);
 public record TransferRequest(Guid FromUserId, Guid ToUserId, string Asset, decimal Amount);

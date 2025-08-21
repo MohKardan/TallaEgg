@@ -11,7 +11,7 @@ public interface IWalletRepository
     Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     
     // Transaction operations
-    Task<WalletTransaction> CreateTransactionAsync(WalletTransaction transaction);
+    Task<Transaction> CreateTransactionAsync(Transaction transaction);
     Task<WalletTransaction?> GetTransactionAsync(Guid transactionId);
     Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null);
     Task<IEnumerable<WalletTransaction>> GetTransactionsByReferenceAsync(string referenceId);
