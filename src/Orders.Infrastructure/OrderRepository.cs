@@ -172,7 +172,7 @@ public class OrderRepository : IOrderRepository
         try
         {
             return await _dbContext.Orders
-                .Where(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Confirmed)
+                .Where(o => o.Status == OrderStatus.Confirmed || o.Status == OrderStatus.Partially)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }

@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2024-12-19
+
+### Added
+- **Matching Engine Implementation**: Implemented comprehensive trading matching engine as Background Service
+  - Created IMatchingEngine interface for matching engine operations
+  - Implemented MatchingEngineService as BackgroundService with automatic order processing
+  - Added automatic order matching with price-time priority algorithm
+  - Implemented trade creation and order status management
+  - Added fee calculation and management (0.1% default fee rate)
+  - Enhanced Order entity with UpdateAmount() method for partial fills
+  - Integrated matching engine with existing Order and Trade repositories
+  - Added comprehensive logging for all matching operations
+  - Implemented cancellation token support for graceful shutdown
+
+### Technical Details
+- **Matching Engine Service**: High-performance background service for order matching
+  - **Background Service**: Implements IHostedService for automatic startup/shutdown
+  - **Price-Time Priority**: Orders matched by best price first, then by earliest timestamp
+  - **Automatic Processing**: Processes all pending orders every 1 second
+  - **Asset-Based Grouping**: Efficiently groups orders by asset for faster matching
+  - **Partial Fills**: Supports partial order fills with remaining amount tracking
+  - **Trade Creation**: Automatically creates Trade entities for matched orders
+  - **Status Management**: Updates order statuses (Completed, Partially) based on fills
+  - **Fee Calculation**: Calculates and applies trading fees for both buyer and seller
+
+- **Order Processing Logic**: Comprehensive order matching algorithm
+  - **Price Compatibility**: Ensures buy orders only match with sell orders at compatible prices
+  - **Amount Calculation**: Calculates trade amounts based on minimum of both orders
+  - **Order Updates**: Updates order amounts and statuses after each trade
+  - **Batch Processing**: Processes multiple orders efficiently in single database transactions
+  - **Error Handling**: Comprehensive error handling with detailed logging
+
+- **Integration**: Seamless integration with existing architecture
+  - **Dependency Injection**: Properly registered as scoped service and hosted service
+  - **Repository Pattern**: Uses existing IOrderRepository and ITradeRepository
+  - **Domain Entities**: Works with existing Order and Trade domain entities
+  - **Database Transactions**: Maintains data consistency across order and trade updates
+  - **Configuration**: Configurable processing interval and fee rates
+
+### Changed
+- **Order Entity**: Enhanced with amount update capability
+  - Added UpdateAmount() method for partial order fills
+  - Added validation for negative amounts and completed orders
+  - Maintains UpdatedAt timestamp for audit trail
+
+### Architecture Benefits
+- **Low Coupling**: Minimal dependencies on other services
+- **High Performance**: Efficient algorithms for order matching
+- **Scalability**: Designed for future microservice extraction
+- **Reliability**: Comprehensive error handling and logging
+- **Maintainability**: Clean separation of concerns and modular design
+
 ## [1.7.0] - 2024-12-19
 
 ### Added

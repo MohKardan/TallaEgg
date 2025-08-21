@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Orders.Application;
+using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
 using System.Reflection;
@@ -19,7 +20,13 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<ITradeRepository, TradeRepository>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<TradeService>();
+
+// Add Matching Engine as Background Service
+builder.Services.AddHostedService<MatchingEngineService>();
+builder.Services.AddScoped<IMatchingEngine, MatchingEngineService>();
 
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -478,6 +485,36 @@ app.MapGet("/api/orders/market/{asset}/prices", async (string asset, TradingType
     }
 });
 
+/// <summary>
+/// Notifies the matching engine about a new order for immediate processing
+/// </summary>
+/// <param name="request">Notification request containing order details</param>
+/// <param name="matchingEngine">Matching engine service</param>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>Success status of the notification</returns>
+/// <response code="200">Notification sent successfully</response>
+/// <response code="400">Invalid request or error occurred</response>
+/// <response code="404">Order not found</response>
+app.MapPost("/api/orders/market/notify-matching", async (NotifyMatchingEngineRequest request, IMatchingEngine matchingEngine, OrderService orderService) =>
+{
+    try
+    {
+        // Get the order from database
+        var order = await orderService.GetOrderByIdAsync(request.OrderId);
+        if (order == null)
+            return Results.NotFound(new { success = false, message = "سفارش یافت نشد" });
+
+        // Process the order through matching engine
+        await matchingEngine.ProcessOrderAsync(order);
+        
+        return Results.Ok(new { success = true, message = "موتور تطبیق اطلاع‌رسانی شد" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 app.Run();
 
 // Request models
@@ -578,5 +615,22 @@ public record CancelOrderRequest(
     /// Optional reason for cancellation
     /// </summary>
     string? Reason = null);
+
+/// <summary>
+/// Request model for notifying the matching engine about a new order
+/// </summary>
+public record NotifyMatchingEngineRequest(
+    /// <summary>
+    /// Unique identifier of the order to process
+    /// </summary>
+    Guid OrderId,
+    /// <summary>
+    /// Trading asset symbol
+    /// </summary>
+    string Asset,
+    /// <summary>
+    /// Type of order (Buy or Sell)
+    /// </summary>
+    OrderType Type);
 
 

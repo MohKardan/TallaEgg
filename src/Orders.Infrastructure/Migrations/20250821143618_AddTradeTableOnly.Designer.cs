@@ -12,8 +12,8 @@ using Orders.Infrastructure;
 namespace Orders.Infrastructure.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    [Migration("20250821095414_CreateEnhancedTradeTable")]
-    partial class CreateEnhancedTradeTable
+    [Migration("20250821143618_AddTradeTableOnly")]
+    partial class AddTradeTableOnly
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

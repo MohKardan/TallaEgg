@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Orders.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class CreateEnhancedTradeTable : Migration
+    public partial class AddTradeTableOnly : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
