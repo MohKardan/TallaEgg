@@ -1,12 +1,13 @@
-﻿namespace TallaEgg.Core.Enums.Order
+﻿using System.ComponentModel;
+
+namespace TallaEgg.Core.Enums.Order
 {
     public enum OrderRole
     {
-        Maker,     // ایجاد کننده سفارش
-        Taker      // پذیرنده سفارش
+        [Description("ایجاد کننده سفارش")]
+        Maker,
+        
+        [Description("پذیرنده سفارش")]
+        Taker
     }
-
-
-
-
 }

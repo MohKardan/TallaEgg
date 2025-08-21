@@ -5,6 +5,121 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2024-12-19
+
+### Added
+- **Transaction Detail Field Enhancement**: Added Detail field to Transaction entity for JSON data storage
+  - Added Detail property to Transaction entity for storing additional transaction information as JSON
+  - Added UpdateDetail() method for updating transaction details
+  - Enhanced Create() factory method to accept detail parameter
+  - Configured Detail field as nvarchar(max) in database for unlimited JSON storage
+  - Added proper validation and error handling for detail updates
+
+## [1.5.0] - 2024-12-19
+
+### Added
+- **Transaction Table Implementation in Wallet Service**: Implemented comprehensive Transaction entity and management system
+  - Created Transaction entity in Wallet.Core with properties: Id, WalletId, Amount, Currency, Type, Status, ReferenceId, Description, CreatedAt, UpdatedAt
+  - Added domain factory method `Transaction.Create()` with comprehensive validation
+  - Implemented ITransactionRepository interface with full CRUD operations and pagination support
+  - Created TransactionRepository implementation with proper error handling and logging
+  - Updated WalletDbContext to include Transaction entity with proper foreign key relationships
+  - Created ITransactionService and TransactionService for business logic handling
+  - Enhanced TransactionType enum with new types: Freeze, Unfreeze, Trade
+  - Updated TransactionStatus enum (Cancelled → Canceled for consistency)
+  - Added comprehensive business operations: Deposit, Withdraw, Freeze, Unfreeze
+  - Implemented transaction status management: Complete, Fail, Cancel
+  - Added pagination support with filtering by WalletId, UserId, Currency, Type, Status
+  - Enhanced database schema with performance-optimized indexes and foreign key constraints
+
+### Technical Details
+- **Transaction Entity**: Domain-driven design with proper encapsulation
+  - Private setters for encapsulation and data integrity
+  - Domain factory method with comprehensive validation
+  - Business methods for status transitions: Complete(), Fail(), Cancel()
+  - Helper methods: IsPending(), IsCompleted(), IsFailed(), IsCancelled(), CanBeModified()
+  - Navigation property to Wallet entity for proper relationships
+
+- **Business Operations**: Complete transaction lifecycle management
+  - **Deposit**: Credit wallet balance with transaction record
+  - **Withdraw**: Debit wallet balance with balance validation
+  - **Freeze**: Lock balance for pending orders with available balance check
+  - **Unfreeze**: Release locked balance with locked balance validation
+  - **Status Management**: Complete, Fail, Cancel with proper state transitions
+
+- **Repository Pattern**: Complete CRUD operations with performance optimization
+  - Create, Read, Update, Delete operations with proper error handling
+  - Pagination support with multiple filtering options
+  - Date range queries for historical analysis
+  - Performance-optimized database indexes for common query patterns
+
+- **Database Schema**: Optimized for wallet operations
+  - Foreign key relationship with Wallet entity (Restrict delete behavior)
+  - Precision settings for decimal fields (18, 8)
+  - Proper constraint validation and data types
+  - Comprehensive indexes for performance optimization
+  - Currency field with max length constraint (10 characters)
+  - Description field with max length constraint (256 characters)
+
+### Changed
+- **TransactionType Enum**: Enhanced with new transaction types and display names
+  - Added Freeze for locking balance during order placement
+  - Added Unfreeze for releasing locked balance after order completion/cancellation
+  - Changed Withdrawal to Withdraw for consistency
+  - Added Trade for trading-related transactions
+  - Added Description attributes with Persian display names for all transaction types
+
+- **TransactionStatus Enum**: Updated for consistency and display names
+  - Changed Cancelled to Canceled for naming consistency
+  - Added Description attributes with Persian display names for all transaction statuses
+
+- **Order Enums**: Enhanced with display names
+  - Added Description attributes to OrderType enum (Buy/Sell with Persian names)
+  - Added Description attributes to OrderStatus enum (Pending/Confirmed/Cancelled/etc. with Persian names)
+  - Added Description attributes to TradingType enum (Spot/Futures with Persian names)
+  - Added Description attributes to OrderRole enum (Maker/Taker with Persian names)
+  - Added Description attributes to SymbolStatus enum (Active/Inactive/Suspended with Persian names)
+
+- **Enum Extensions**: Added utility for display name retrieval
+  - Created EnumExtensions class with GetDisplayName() method
+  - Supports retrieving Description attribute values from any enum
+  - Provides fallback to enum name if no Description attribute is found
+
+## [1.4.0] - 2024-12-19
+
+### Added
+- **Trade Table Implementation in Order Service**: Implemented comprehensive Trade entity and management system
+  - Created Trade entity in Orders.Core with properties: Id, OrderId, SymbolId, Quantity, Price, CreatedAt
+  - Added domain factory method `Trade.Create()` with comprehensive validation
+  - Implemented ITradeRepository interface with full CRUD operations and pagination support
+  - Created TradeRepository implementation with proper error handling and logging
+  - Added TradeConfiguration for Entity Framework with proper constraints and indexes
+  - Updated OrdersDbContext to include Trade entity and configuration
+  - Created ITradeService and TradeService for business logic handling
+  - Added comprehensive validation for Trade creation (OrderId, SymbolId, Quantity, Price)
+  - Implemented pagination support with filtering by OrderId and SymbolId
+  - Added date range queries for trade history analysis
+  - Enhanced database schema with performance-optimized indexes
+
+### Technical Details
+- **Trade Entity**: Domain-driven design with proper encapsulation
+  - Private setters for encapsulation and data integrity
+  - Domain factory method with comprehensive validation
+  - Business method `GetTotalValue()` for trade value calculation
+  - Proper error handling for invalid input parameters
+
+- **Repository Pattern**: Complete CRUD operations with performance optimization
+  - Create, Read, Update, Delete operations with proper error handling
+  - Pagination support with filtering capabilities
+  - Date range queries for historical analysis
+  - Performance-optimized database indexes
+
+- **Database Schema**: Optimized for trading operations
+  - Precision settings for decimal fields (18, 8)
+  - Composite indexes for common query patterns
+  - Foreign key relationships with Order and Symbol entities
+  - Proper constraint validation
+
 ## [1.3.0] - 2024-12-19
 
 ### Added

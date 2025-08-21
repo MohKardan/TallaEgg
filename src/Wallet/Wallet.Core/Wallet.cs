@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace Wallet.Core;
 
 public class WalletEntity
@@ -27,19 +29,42 @@ public class WalletTransaction
 
 public enum TransactionType
 {
-    Deposit,        // واریز
-    Withdrawal,     // برداشت
-    Buy,           // خرید
-    Sell,          // فروش
-    Fee,           // کارمزد
-    Transfer,      // انتقال
-    Adjustment     // تعدیل
+    [Description("واریز")]
+    Deposit,
+    
+    [Description("برداشت")]
+    Withdraw,
+    
+    [Description("معامله")]
+    Trade,
+    
+    [Description("فریز کردن موجودی")]
+    Freeze,
+    
+    [Description("آزادسازی موجودی")]
+    Unfreeze,
+    
+    [Description("کارمزد")]
+    Fee,
+    
+    [Description("انتقال")]
+    Transfer,
+    
+    [Description("تعدیل")]
+    Adjustment
 }
 
 public enum TransactionStatus
 {
-    Pending,    // در انتظار
-    Completed,  // تکمیل شده
-    Failed,     // ناموفق
-    Cancelled   // لغو شده
+    [Description("در انتظار")]
+    Pending,
+    
+    [Description("تکمیل شده")]
+    Completed,
+    
+    [Description("ناموفق")]
+    Failed,
+    
+    [Description("لغو شده")]
+    Canceled
 } 

@@ -9,6 +9,7 @@ public class WalletDbContext : DbContext
 
     public DbSet<WalletEntity> Wallets => Set<WalletEntity>();
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -24,7 +25,7 @@ public class WalletDbContext : DbContext
         // Unique constraint for user and asset combination
         modelBuilder.Entity<WalletEntity>().HasIndex(w => new { w.UserId, w.Asset }).IsUnique();
 
-        // WalletTransaction configuration
+        // WalletTransaction configuration (legacy)
         modelBuilder.Entity<WalletTransaction>().HasKey(wt => wt.Id);
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.UserId).IsRequired();
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Asset).IsRequired();
@@ -37,5 +38,36 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<WalletTransaction>().HasIndex(wt => new { wt.UserId, wt.CreatedAt });
         modelBuilder.Entity<WalletTransaction>().HasIndex(wt => new { wt.Asset, wt.CreatedAt });
         modelBuilder.Entity<WalletTransaction>().HasIndex(wt => wt.ReferenceId);
+
+        // Transaction configuration (new)
+        modelBuilder.Entity<Transaction>().HasKey(t => t.Id);
+        modelBuilder.Entity<Transaction>().Property(t => t.WalletId).IsRequired();
+        modelBuilder.Entity<Transaction>().Property(t => t.Amount).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(10);
+        modelBuilder.Entity<Transaction>().Property(t => t.Type).IsRequired();
+        modelBuilder.Entity<Transaction>().Property(t => t.Status).IsRequired();
+        modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId);
+        modelBuilder.Entity<Transaction>().Property(t => t.Description).HasMaxLength(256);
+        modelBuilder.Entity<Transaction>().Property(t => t.Detail); // nvarchar(max) for JSON data
+        modelBuilder.Entity<Transaction>().Property(t => t.CreatedAt).IsRequired();
+        modelBuilder.Entity<Transaction>().Property(t => t.UpdatedAt);
+
+        // Foreign key relationship
+        modelBuilder.Entity<Transaction>()
+            .HasOne(t => t.Wallet)
+            .WithMany()
+            .HasForeignKey(t => t.WalletId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Indexes for performance
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.WalletId);
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.Currency);
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.Type);
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.Status);
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.ReferenceId);
+        modelBuilder.Entity<Transaction>().HasIndex(t => t.CreatedAt);
+        modelBuilder.Entity<Transaction>().HasIndex(t => new { t.WalletId, t.CreatedAt });
+        modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Currency, t.CreatedAt });
+        modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Type, t.Status });
     }
 } 

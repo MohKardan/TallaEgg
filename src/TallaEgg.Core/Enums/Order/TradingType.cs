@@ -1,12 +1,13 @@
-﻿namespace TallaEgg.Core.Enums.Order
+﻿using System.ComponentModel;
+
+namespace TallaEgg.Core.Enums.Order
 {
     public enum TradingType
     {
-        Spot,      // معاملات نقدی
-        Futures    // معاملات آتی
+        [Description("معاملات نقدی")]
+        Spot,
+        
+        [Description("معاملات آتی")]
+        Futures
     }
-
-
-
-
 }
