@@ -1,6 +1,7 @@
 
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Wallet;
+using Wallet.Application.Mappers;
 using Wallet.Core;
 
 namespace Wallet.Application;
@@ -8,16 +9,19 @@ namespace Wallet.Application;
 public class WalletService : IWalletService
 {
     private readonly IWalletRepository _walletRepository;
+    private readonly WalletMapper _walletMapper;
 
-    public WalletService(IWalletRepository walletRepository)
+    public WalletService(IWalletRepository walletRepository, WalletMapper walletMapper)
     {
         _walletRepository = walletRepository;
+        _walletMapper = walletMapper;
     }
 
-    public async Task<decimal> GetBalanceAsync(Guid userId, string asset)
+    public async Task<WalletDTO> GetBalanceAsync(Guid userId, string asset)
     {
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
-        return wallet?.Balance ?? 0;
+        if (wallet == null) throw new Exception("کیف پول پیدا نشد");
+        return _walletMapper.Map(wallet);
     }
 
     public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> CreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
@@ -107,9 +111,11 @@ public class WalletService : IWalletService
         return await _walletRepository.UnlockBalanceAsync(userId, asset, amount);
     }
 
-    public async Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId)
+    public async Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId)
     {
-        return await _walletRepository.GetUserWalletsAsync(userId);
+        var wallets = await _walletRepository.GetUserWalletsAsync(userId);
+        return _walletMapper.Map(wallets);
+
     }
 
     public async Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null)
@@ -117,7 +123,7 @@ public class WalletService : IWalletService
         return await _walletRepository.GetUserTransactionsAsync(userId, asset);
     }
 
-    public async Task<WalletDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
+    public async Task<WalletDepositDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
         if (amount <= 0)
             throw new ArgumentException("مقدار باید بزرگتر از صفر باشد");
@@ -125,7 +131,7 @@ public class WalletService : IWalletService
         var result = await CreditAsync(userId, asset, amount,referenceId);
       
 
-        return new WalletDTO
+        return new WalletDepositDTO
         {
             Asset = result.walletEntity.Asset,
             BalanceBefore = result.transactionEntity.BallanceBefore,

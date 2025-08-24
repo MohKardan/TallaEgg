@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Requests.Wallet;
 
 namespace TallaEgg.TelegramBot;
@@ -119,7 +120,7 @@ public class WalletApiClient
         }
     }
 
-    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletDto>> DepositeAsync(DepositRequest request)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>> DepositeAsync(DepositRequest request)
     {
         try
         {
@@ -131,16 +132,16 @@ public class WalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletDto>>(respText);
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>>(respText);
                 return result;
             }
 
-            return TallaEgg.Core.DTOs.ApiResponse<WalletDto>.Fail("خطا در بروزرسانی");
+            return TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>.Fail("خطا در بروزرسانی");
 
         }
         catch (Exception ex)
         {
-            return TallaEgg.Core.DTOs.ApiResponse<WalletDto>.Fail("خطا در ارتباط با سرور");
+            return TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>.Fail("خطا در ارتباط با سرور");
 
         }
     }
