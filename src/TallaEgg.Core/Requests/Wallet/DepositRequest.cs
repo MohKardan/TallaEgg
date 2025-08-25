@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace TallaEgg.Core.Requests.Wallet
 {
-    public class DepositRequest
+    public class DepositRequest: BaseWalletRequest
     {
-        public Guid UserId { get; set; }
-        public string Asset { get; set; }
-        public decimal Amount { get; set; }
         public string? ReferenceId { get; set; }
     }
 }

@@ -1,4 +1,5 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
 
 namespace Wallet.Infrastructure;
@@ -33,26 +34,37 @@ public class WalletRepository : IWalletRepository
         return wallet;
     }
 
-    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet)
+    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction = null)
     {
+        _context.Transactions.Add(transaction);
         wallet.UpdatedAt = DateTime.UtcNow;
         _context.Wallets.Update(wallet);
         await _context.SaveChangesAsync();
         return wallet;
     }
 
-    public async Task<bool> LockBalanceAsync(Guid userId, string asset, decimal amount)
+    public async Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await GetWalletAsync(userId, asset);
-        if (wallet == null || wallet.Balance < amount)
-            return false;
+        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
 
-        wallet.LockedBalance += amount;
-        wallet.Balance -= amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-        
-        await UpdateWalletAsync(wallet);
-        return true;
+        var transaction = Transaction.Create(
+          wallet.Id,
+          amount,
+          asset,
+          TransactionType.Freeze,
+          wallet.Balance - amount,
+          wallet.Balance,
+          null,
+          TransactionStatus.Completed,
+          "LockBalance transaction",
+          null,
+          null
+      );
+        wallet.LockBalance(amount);
+
+        await UpdateWalletAsync(wallet,transaction);
+        return wallet;
     }
 
     public async Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount)

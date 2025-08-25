@@ -88,6 +88,21 @@ app.MapPost("/api/wallet/deposit", async (DepositRequest request, IWalletService
   
 });
 
+app.MapPost("/api/wallet/lockBalance", async (BaseWalletRequest request, IWalletService walletService) =>
+{
+    try
+    {
+       var result = await walletService.LockBalanceAsync(request.UserId, request.Asset, request.Amount);
+       return Results.Ok(ApiResponse<WalletDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
+    }
+  
+});
+
 //app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, IWalletService walletService) =>
 //{
 //    var result = await walletService.WithdrawAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);

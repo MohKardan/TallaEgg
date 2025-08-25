@@ -37,36 +37,30 @@ public class WalletService : IWalletService
             wallet = WalletEntity.Create
             (
                  userId,
-                 asset       
+                 asset
             );
             await _walletRepository.CreateWalletAsync(wallet);
 
         }
-        else
-        {
             // Update existing wallet
+            // Create transaction record
+            var transaction = Transaction.Create(
+                wallet.Id,
+                amount,
+                asset,
+                TransactionType.Deposit,
+                wallet.Balance - amount,
+                wallet.Balance,
+                null,
+                TransactionStatus.Completed,
+                "Credit transaction",
+                refId,
+                null
+            );
             wallet.IncreaseBalance(amount);
-            await _walletRepository.UpdateWalletAsync(wallet);
-        }
-
-        // Create transaction record
-        var transaction = Transaction.Create(
-            wallet.Id,
-            amount,
-            asset,
-            TransactionType.Deposit,
-            wallet.Balance - amount,
-            wallet.Balance,
-            null,
-            TransactionStatus.Completed,
-            "Credit transaction",
-            refId,
-            null
-        );
-
-        await _walletRepository.CreateTransactionAsync(transaction);
-
+            await _walletRepository.UpdateWalletAsync(wallet,transaction);
         return (wallet, transaction);
+             
     }
 
     public async Task<bool> DebitAsync(Guid userId, string asset, decimal amount)
@@ -101,9 +95,11 @@ public class WalletService : IWalletService
         return true;
     }
 
-    public async Task<bool> LockBalanceAsync(Guid userId, string asset, decimal amount)
+    public async Task<WalletDTO> LockBalanceAsync(Guid userId, string asset, decimal amount)
     {
-        return await _walletRepository.LockBalanceAsync(userId, asset, amount);
+        var wallet = await _walletRepository.LockBalanceAsync(userId, asset, amount);
+        return _walletMapper.Map(wallet);
+
     }
 
     public async Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
