@@ -16,7 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
-        b => b.MigrationsAssembly("Orders.Infrastructure")));
+        b => b.MigrationsAssembly("Orders.Infrastructure"))
+    .LogTo(Console.WriteLine, LogLevel.None)); // Disable all EF Core logging
 
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -248,6 +249,86 @@ app.MapGet("/api/orders/active", async (OrderService orderService) =>
     {
         var orders = await orderService.GetActiveOrdersAsync();
         return Results.Ok(new { success = true, orders = orders });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// Gets all pending orders
+/// </summary>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of pending orders</returns>
+/// <response code="200">Pending orders retrieved successfully</response>
+/// <response code="400">Error occurred while retrieving orders</response>
+app.MapGet("/api/orders/pending", async (OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Pending);
+        return Results.Ok(new { success = true, orders });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// Gets all confirmed orders
+/// </summary>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of confirmed orders</returns>
+/// <response code="200">Confirmed orders retrieved successfully</response>
+/// <response code="400">Error occurred while retrieving orders</response>
+app.MapGet("/api/orders/confirmed", async (OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Confirmed);
+        return Results.Ok(new { success = true, orders });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// Gets all partially filled orders
+/// </summary>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of partially filled orders</returns>
+/// <response code="200">Partially filled orders retrieved successfully</response>
+/// <response code="400">Error occurred while retrieving orders</response>
+app.MapGet("/api/orders/partially", async (OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Partially);
+        return Results.Ok(new { success = true, orders });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// Gets all completed orders
+/// </summary>
+/// <param name="orderService">Order service for business logic</param>
+/// <returns>List of completed orders</returns>
+/// <response code="200">Completed orders retrieved successfully</response>
+/// <response code="400">Error occurred while retrieving orders</response>
+app.MapGet("/api/orders/completed", async (OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Completed);
+        return Results.Ok(new { success = true, orders });
     }
     catch (Exception ex)
     {

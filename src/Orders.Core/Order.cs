@@ -9,7 +9,8 @@ public class Order
 {
     public Guid Id { get; private set; }
     public string Asset { get; private set; }
-    public decimal Amount { get; private set; }
+    public decimal Amount { get; private set; } // مقدار اولیه سفارش - تغییر نمی‌کند
+    public decimal RemainingAmount { get; private set; } // مقدار باقی‌مانده سفارش
     public decimal Price { get; private set; }
     public Guid UserId { get; private set; }
     public OrderType Type { get; private set; }
@@ -50,6 +51,7 @@ public class Order
             Id = Guid.NewGuid(),
             Asset = asset.Trim().ToUpperInvariant(),
             Amount = amount,
+            RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = price,
             UserId = userId,
             Type = type,
@@ -84,6 +86,7 @@ public class Order
             Id = Guid.NewGuid(),
             Asset = symbol.Trim().ToUpperInvariant(),
             Amount = quantity,
+            RemainingAmount = quantity, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = price,
             UserId = userId,
             Type = OrderType.Buy, // Default to Buy for now
@@ -115,6 +118,7 @@ public class Order
             Id = Guid.NewGuid(),
             Asset = string.Empty, // Will be set from parent order
             Amount = amount,
+            RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = 0, // Will be set from parent order
             UserId = userId,
             Type = OrderType.Buy, // Will be opposite of parent order
@@ -176,14 +180,14 @@ public class Order
         if (takerOrder.Role != OrderRole.Taker)
             throw new ArgumentException("Only taker orders can be accepted");
         
-        if (takerOrder.Amount > Amount)
-            throw new ArgumentException("Taker order amount cannot exceed maker order amount");
+        if (takerOrder.Amount > RemainingAmount)
+            throw new ArgumentException("Taker order amount cannot exceed maker order remaining amount");
         
-        // Update amounts
-        Amount -= takerOrder.Amount;
+        // Update remaining amount
+        RemainingAmount -= takerOrder.Amount;
         
         // If maker order is fully filled, complete it
-        if (Amount <= 0)
+        if (RemainingAmount <= 0)
         {
             Complete();
         }
@@ -191,7 +195,7 @@ public class Order
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public decimal GetTotalValue() => Amount * Price;
+    public decimal GetTotalValue() => RemainingAmount * Price;
 
     public bool IsActive() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
 
@@ -205,15 +209,27 @@ public class Order
     
     public bool IsFutures() => TradingType == TradingType.Futures;
 
-    public void UpdateAmount(decimal newAmount)
+    public void UpdateRemainingAmount(decimal newRemainingAmount)
     {
-        if (newAmount < 0)
-            throw new ArgumentException("Amount cannot be negative", nameof(newAmount));
+        if (newRemainingAmount < 0)
+            throw new ArgumentException("Remaining amount cannot be negative", nameof(newRemainingAmount));
+        
+        if (newRemainingAmount > Amount)
+            throw new ArgumentException("Remaining amount cannot exceed original amount", nameof(newRemainingAmount));
         
         if (Status == OrderStatus.Completed)
-            throw new InvalidOperationException("Cannot update amount of completed order");
+            throw new InvalidOperationException("Cannot update remaining amount of completed order");
         
-        Amount = newAmount;
+        RemainingAmount = newRemainingAmount;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateStatus(OrderStatus newStatus)
+    {
+        if (Status == OrderStatus.Completed)
+            throw new InvalidOperationException("Cannot update status of completed order");
+        
+        Status = newStatus;
         UpdatedAt = DateTime.UtcNow;
     }
 }

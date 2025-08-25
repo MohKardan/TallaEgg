@@ -18,6 +18,10 @@ namespace Orders.Infrastructure.Configurations
                 .IsRequired()
                 .HasPrecision(18, 2);
             
+            builder.Property(o => o.RemainingAmount)
+                .IsRequired()
+                .HasPrecision(18, 2);
+            
             builder.Property(o => o.Price)
                 .IsRequired()
                 .HasPrecision(18, 2);

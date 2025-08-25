@@ -169,7 +169,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         ITradeRepository tradeRepository,
         CancellationToken cancellationToken)
     {
-        var remainingAmount = incomingOrder.Amount;
+        var remainingAmount = incomingOrder.RemainingAmount;
         var trades = new List<Trade>();
 
         foreach (var matchingOrder in matchingOrders)
@@ -177,17 +177,17 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             if (remainingAmount <= 0) break;
             if (cancellationToken.IsCancellationRequested) break;
 
-            var tradeAmount = Math.Min(remainingAmount, matchingOrder.Amount);
+            var tradeAmount = Math.Min(remainingAmount, matchingOrder.RemainingAmount);
             var tradePrice = DetermineTradePrice(incomingOrder, matchingOrder);
 
             // Create trade
             var trade = CreateTrade(incomingOrder, matchingOrder, tradeAmount, tradePrice);
             trades.Add(trade);
 
-            // Update order amounts
+            // Update order remaining amounts
             remainingAmount -= tradeAmount;
-            await UpdateOrderAmountAsync(incomingOrder, incomingOrder.Amount - remainingAmount, orderRepository);
-            await UpdateOrderAmountAsync(matchingOrder, matchingOrder.Amount - tradeAmount, orderRepository);
+            await UpdateOrderRemainingAmountAsync(incomingOrder, remainingAmount, orderRepository);
+            await UpdateOrderRemainingAmountAsync(matchingOrder, matchingOrder.RemainingAmount - tradeAmount, orderRepository);
 
             _logger.LogInformation("Created trade {TradeId} between orders {Order1Id} and {Order2Id} for {Amount} @ {Price}",
                 trade.Id, incomingOrder.Id, matchingOrder.Id, tradeAmount, tradePrice);
@@ -207,7 +207,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             var updatedOrder = await orderRepository.GetByIdAsync(matchingOrder.Id);
             if (updatedOrder != null)
             {
-                await UpdateOrderStatusesAsync(updatedOrder, updatedOrder.Amount, orderRepository);
+                await UpdateOrderStatusesAsync(updatedOrder, updatedOrder.RemainingAmount, orderRepository);
             }
         }
     }
@@ -240,7 +240,12 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 break; // No more matches possible
 
             // Create trade
-            var tradeAmount = Math.Min(buyOrder.Amount, sellOrder.Amount);
+            var tradeAmount = Math.Min(buyOrder.RemainingAmount, sellOrder.RemainingAmount);
+            
+            // Skip if no trade amount available
+            if (tradeAmount <= 0)
+                break;
+                
             var tradePrice = DetermineTradePrice(buyOrder, sellOrder);
 
             using var scope = _serviceProvider.CreateScope();
@@ -252,17 +257,25 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             _logger.LogInformation("Created trade {TradeId} for {Asset}: {Amount} @ {Price}",
                 trade.Id, asset, tradeAmount, tradePrice);
 
-            // Update order amounts
-            buyOrder = await UpdateOrderAmountAsync(buyOrder, buyOrder.Amount - tradeAmount, orderRepository);
-            sellOrder = await UpdateOrderAmountAsync(sellOrder, sellOrder.Amount - tradeAmount, orderRepository);
+            // Update order remaining amounts
+            buyOrder = await UpdateOrderRemainingAmountAsync(buyOrder, buyOrder.RemainingAmount - tradeAmount, orderRepository);
+            sellOrder = await UpdateOrderRemainingAmountAsync(sellOrder, sellOrder.RemainingAmount - tradeAmount, orderRepository);
+
+            // Update order statuses
+            await UpdateOrderStatusesAsync(buyOrder, buyOrder.RemainingAmount, orderRepository);
+            await UpdateOrderStatusesAsync(sellOrder, sellOrder.RemainingAmount, orderRepository);
 
             // Update local lists
             assetBuyOrders[buyIndex] = buyOrder;
             assetSellOrders[sellIndex] = sellOrder;
 
             // Move to next order if current one is fully filled
-            if (buyOrder.Amount <= 0) buyIndex++;
-            if (sellOrder.Amount <= 0) sellIndex++;
+            if (buyOrder.RemainingAmount <= 0) buyIndex++;
+            if (sellOrder.RemainingAmount <= 0) sellIndex++;
+
+            // Break if no more orders can be matched
+            if (buyIndex >= assetBuyOrders.Count || sellIndex >= assetSellOrders.Count)
+                break;
         }
     }
 
@@ -303,10 +316,10 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         );
     }
 
-    private async Task<Order> UpdateOrderAmountAsync(Order order, decimal newAmount, IOrderRepository orderRepository)
+    private async Task<Order> UpdateOrderRemainingAmountAsync(Order order, decimal newRemainingAmount, IOrderRepository orderRepository)
     {
-        // Use the UpdateAmount method on the existing order
-        order.UpdateAmount(newAmount);
+        // Use the UpdateRemainingAmount method on the existing order
+        order.UpdateRemainingAmount(newRemainingAmount);
         return await orderRepository.UpdateAsync(order);
     }
 

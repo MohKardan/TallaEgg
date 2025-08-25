@@ -5,6 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2025-08-25
+
+### Added
+- **Trading System Implementation**
+  - Added `RemainingAmount` field to `Order` entity for tracking remaining quantity
+  - Implemented `Trade` entity with comprehensive trading fields
+  - Added `Transaction` entity in Wallet service with detailed transaction tracking
+  - Implemented **Matching Engine** as Background Service in ASP.NET Core
+  - Added Persian display names to all enums using `[Description]` attributes
+  - Added `Detail` field (nvarchar(max)) to `Transaction` table for JSON data storage
+  - Added new status-based filtering endpoints:
+    - `GET /api/orders/pending`
+    - `GET /api/orders/confirmed`
+    - `GET /api/orders/partially`
+    - `GET /api/orders/completed`
+  - Added Swagger documentation for all new endpoints
+  - Implemented proper XML comments for API documentation
+
+### Changed
+- **Order Management**
+  - Modified `Order` entity to use `RemainingAmount` for quantity tracking
+  - Updated factory methods to initialize `RemainingAmount` with initial order amount
+  - Renamed `UpdateAmount` to `UpdateRemainingAmount` with validation logic
+  - Updated `GetTotalValue()` to use `RemainingAmount * Price`
+  - Modified `AcceptTakerOrder` to use `RemainingAmount` for checks and deductions
+
+- **Matching Engine Logic**
+  - Implemented Price-Time Priority matching algorithm
+  - Added exact price match requirement between buy and sell orders
+  - Implemented partial fills support with proper status updates
+  - Added comprehensive error handling for zero trade quantities
+  - Fixed order status updates to correctly transition between states
+
+- **API Endpoints**
+  - Added new status-based filtering endpoints with Swagger documentation
+  - Implemented proper XML comments for API documentation
+  - Enhanced error handling and validation throughout
+
+- **Database Schema**
+  - Added `RemainingAmount` column to `Orders` table with precision(18,2)
+  - Created migration to update existing orders' `RemainingAmount` values
+  - Added `Detail` field to `Transaction` table for flexible data storage
+
+- **OrderStatus Enum**
+  - Reordered enum values to match database expectations:
+    - `Pending = 0`
+    - `Confirmed = 1`
+    - `Partially = 2`
+    - `Completed = 3`
+    - `Cancelled = 4`
+    - `Failed = 5`
+
+### Fixed
+- **Matching Engine Issues**
+  - Fixed `ArgumentException: Quantity must be greater than zero` by adding trade amount validation
+  - Fixed order status updates not working due to missing `UpdateStatus` method
+  - Fixed `OrderStatus.Partially` not being handled in `OrderRepository.UpdateStatusAsync`
+  - Fixed out-of-bounds index errors in matching algorithm
+  - Fixed status mapping between enum values and database values
+
+- **API Response Issues**
+  - Fixed incorrect status values in API responses due to enum mapping
+  - Fixed missing `GetOrdersByStatusAsync` method implementation
+  - Fixed EF Core logging verbosity by configuring to show only warnings and errors
+
+### Technical Details
+- **Architecture**: Clean Architecture with microservices pattern
+- **Database**: Entity Framework Core with SQL Server
+- **Background Service**: `IHostedService` implementation for matching engine
+- **API**: RESTful endpoints with Swagger documentation
+- **Validation**: Comprehensive business rule validation in domain entities
+- **Error Handling**: Proper exception handling with meaningful error messages
+
+### Testing
+- Successfully tested order creation, confirmation, and matching
+- Verified partial fills work correctly with proper status transitions
+- Confirmed trade records are created in database
+- Validated API responses show correct status values
+- Tested background service runs continuously without errors
+
+### Files Modified
+- `src/Orders.Core/Order.cs` - Added RemainingAmount field and UpdateStatus method
+- `src/Orders.Application/Services/MatchingEngineService.cs` - Implemented matching logic
+- `src/Orders.Infrastructure/OrderRepository.cs` - Added Partially status handling
+- `src/Orders.Api/Program.cs` - Added new endpoints and EF Core logging configuration
+- `src/TallaEgg.Core/Enums/Order/OrderStatus.cs` - Reordered enum values
+- `src/Orders.Infrastructure/Configurations/OrderConfigurations.cs` - Added RemainingAmount configuration
+- Database migrations for schema changes
+
+### Next Steps
+- Implement Trade API endpoints for retrieving trade history
+- Add real-time notifications for order status changes
+- Implement fee calculation and wallet integration
+- Add order book depth and market data endpoints
+- Implement advanced order types (stop-loss, take-profit)
+
 ## [1.8.0] - 2024-12-19
 
 ### Added

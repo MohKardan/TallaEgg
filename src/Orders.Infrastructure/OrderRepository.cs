@@ -276,6 +276,9 @@ public class OrderRepository : IOrderRepository
                 case OrderStatus.Confirmed:
                     order.Confirm();
                     break;
+                case OrderStatus.Partially:
+                    order.UpdateStatus(OrderStatus.Partially);
+                    break;
                 case OrderStatus.Cancelled:
                     order.Cancel(notes);
                     break;

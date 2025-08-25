@@ -539,4 +539,18 @@ public class OrderService /*: IOrderService*/
             throw new InvalidOperationException("خطا در شمارش سفارشات", ex);
         }
     }
+
+    public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)
+    {
+        try
+        {
+            _logger.LogInformation("Retrieving orders with status: {Status}", status);
+            return await _orderRepository.GetOrdersByStatusAsync(status);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders with status: {Status}", status);
+            throw new InvalidOperationException("خطا در بازیابی سفارشات", ex);
+        }
+    }
 }
