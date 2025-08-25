@@ -590,10 +590,18 @@ namespace TallaEgg.TelegramBot
             };
 
             _userOrderStates[telegramId] = orderState;
+            bool isAdmin = await IsUserAdmin(user);
 
-            // Show order type selection
-            var keyboard = new InlineKeyboardMarkup(new[]
+            if (!isAdmin)
             {
+                await _botClient.SendMessage(chatId, "این بخش در حال توسعه است");
+
+            }
+            else
+            {
+                // Show order type selection
+                var keyboard = new InlineKeyboardMarkup(new[]
+                {
                 new InlineKeyboardButton[]
                 {
                     InlineKeyboardButton.WithCallbackData(BotTexts.BtnBuy, "order_buy"),
@@ -604,6 +612,8 @@ namespace TallaEgg.TelegramBot
                     InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
                 }
             });
+
+            }
 
             await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
         }
