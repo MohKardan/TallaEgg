@@ -630,7 +630,7 @@ namespace TallaEgg.TelegramBot
 
             if (!isAdmin)
             {
-                await _botClient.SendMessage(chatId, "این بخش در حال توسعه است");
+                await _botClient.SendMessage(chatId, "شما فقط میتوانید فقط با قیمت بازار اقدام به خرید یا فروش نمایید");
 
             }
             else
