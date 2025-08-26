@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Orders.Core;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Requests.User;
@@ -118,6 +120,29 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
         return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
 
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
+});
+
+
+app.MapGet("/api/users/list", async (
+        string? q,
+        int? pageNumber,
+        int? pageSize, UserService userService) =>
+{
+    // اعتبارسنجی
+    var page = pageNumber ?? 1;
+    var size = Math.Clamp(pageSize ?? 10, 1, 100);
+
+    try
+    {
+        var users = await userService.GetUsersAsync(q, page, size);
+       return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
+
+    }
+    catch (Exception ex)
+    {
+       return Results.BadRequest(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطا در دریافت اطلاعات"));
+    }
+
 });
 
 /// <summary>

@@ -1,4 +1,5 @@
 using Affiliate.Core;
+using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 
@@ -10,7 +11,7 @@ public interface IUserRepository
     Task<User> CreateAsync(User user);
     Task<User> UpdateAsync(User user);
     Task<bool> ExistsByTelegramIdAsync(long telegramId);
-    Task<IEnumerable<User>> GetAllAsync();
+    Task<PagedResult<UserDto>> GetAllAsync(string? q, int page, int size);
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> UpdateUserRoleAsync(Guid id, UserRole role);
     Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role);

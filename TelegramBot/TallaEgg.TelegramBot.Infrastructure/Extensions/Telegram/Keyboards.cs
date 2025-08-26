@@ -187,6 +187,68 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             await _botClient.SendMessage(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
+        public static async Task SendUsersWithPagingAsync(
+         this ITelegramBotClient bot,
+         long chatId,
+         PagedResult<UserDto> page,
+         int currentPage,
+         string? query = null)
+        {
+            if (page == null || !page.Items.Any())
+            {
+                await bot.SendMessage(chatId, "هیچ کاربری یافت نشد.");
+                return;
+            }
+
+            for (int i = 0; i < page.Items.Count(); i++)
+            {
+                var u = page.Items.ElementAt(i);
+
+                var sb = new StringBuilder();
+                sb.AppendLine($"👤 *{u.FirstName} {u.LastName}*");
+                if (!string.IsNullOrWhiteSpace(u.Username))
+                    sb.AppendLine($"🔗 یوزرنیم: @{u.Username}");
+                if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
+                    sb.AppendLine($"📞 تلفن: {u.PhoneNumber}");
+                sb.AppendLine($"🆔 TelegramId: `{u.TelegramId}`");
+                sb.AppendLine($"📅 ثبت‌نام: *{u.CreatedAt:yyyy/MM/dd HH:mm}*");
+                if (u.LastActiveAt.HasValue)
+                    sb.AppendLine($"🕓 آخرین فعالیت: *{u.LastActiveAt:yyyy/MM/dd HH:mm}*");
+                sb.AppendLine($"⚡ وضعیت: ({u.Status})");
+
+                // دکمه‌های مخصوص کاربر
+                var buttons = new List<InlineKeyboardButton[]>
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("💰 موجودی", $"user_balance_{u.Id}"),
+                InlineKeyboardButton.WithCallbackData("📋 سفارشات باز", $"user_openorders_{u.Id}")
+            }
+        };
+
+                // اگر آخرین کاربر لیست باشه → دکمه‌های صفحه‌بندی هم اضافه کن
+                if (i == page.Items.Count() - 1)
+                {
+                    var navButtons = new List<InlineKeyboardButton>();
+                    if (currentPage > 1)
+                        navButtons.Add(InlineKeyboardButton.WithCallbackData("⬅️ قبلی", $"users_{currentPage - 1}_{query}"));
+                    if (currentPage < page.TotalPages)
+                        navButtons.Add(InlineKeyboardButton.WithCallbackData("بعدی ➡️", $"users_{currentPage + 1}_{query}"));
+
+                    if (navButtons.Any())
+                        buttons.Add(navButtons.ToArray());
+                }
+
+                var keyboard = new InlineKeyboardMarkup(buttons);
+
+                await bot.SendMessage(
+                    chatId: chatId,
+                    text: sb.ToString(),
+                    replyMarkup: keyboard);
+            }
+        }
+
+
 
         public static async Task SendUserOrdersWithPagingAsync(
     this ITelegramBotClient bot,

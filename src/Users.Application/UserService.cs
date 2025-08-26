@@ -49,6 +49,12 @@ public class UserService
         return _userMapper.Map(user);
     }
 
+    public async Task<PagedResult<UserDto>> GetUsersAsync(string? q,int page,int size)
+    {
+        var users = await _userRepository.GetAllAsync(q,page,size);
+       return users;
+    }
+
     public async Task<UserDto> UpdateUserPhoneAsync(long telegramId, string phoneNumber)
     {
         var user = await _userRepository.GetByTelegramIdAsync(telegramId);

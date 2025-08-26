@@ -1,5 +1,7 @@
 using Affiliate.Core;
 using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 using Users.Core;
@@ -40,9 +42,44 @@ public class UserRepository : IUserRepository
         return await _context.Users.AnyAsync(u => u.TelegramId == telegramId);
     }
 
-    public async Task<IEnumerable<User>> GetAllAsync()
+    public async Task<PagedResult<UserDto>> GetAllAsync(string? q, int page, int size)
     {
-        return await _context.Users.ToListAsync();
+        var query = _context.Users
+           .OrderByDescending(o => o.CreatedAt)
+           .Select(o => new UserDto
+           {
+               Id = o.Id,
+              FirstName = o.FirstName,
+              LastName = o.LastName,
+              PhoneNumber = o.PhoneNumber,
+              Status = o.Status,
+              TelegramId = o.TelegramId,
+              Username = o.Username,
+              LastActiveAt = o.LastActiveAt
+
+           });
+        if (!string.IsNullOrEmpty(q))
+        {
+            query = query.Where(u =>
+            u.FirstName.Contains(q) ||
+            u.LastName.Contains(q) ||
+            u.PhoneNumber.Contains(q)
+            );
+        }
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToListAsync();
+
+        return new PagedResult<UserDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = size
+        };
     }
 
     public async Task<User?> GetByIdAsync(Guid id)

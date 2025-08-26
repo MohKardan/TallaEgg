@@ -522,28 +522,28 @@ namespace TallaEgg.TelegramBot
                                   $"💰 مبلغ: {amount}\n" +
                                   $"💵 نوع شارژ: {currency}";
 
-                    await _botClient.SendMessage(message.Chat.Id, response);
+                await _botClient.SendMessage(message.Chat.Id, response);
                 var userId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
                 if (userId.HasValue)
                 {
-                 var result =  await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.DepositRequest
+                    var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.DepositRequest
                     {
-                       Asset = "rial",
-                       Amount = amount,
-                       UserId = userId.Value
+                        Asset = "rial",
+                        Amount = amount,
+                        UserId = userId.Value
                     });
                     if (result.Success)
                     {
 
-                    
-                    await _botClient.SendMessage(
-       message.Chat.Id,
-       $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-       $"💳 دارایی: `ریال`\n" +
-       $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
-       $"🆔 تلفن: `{phone}`\n\n" +
-       $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.",parseMode: ParseMode.Html
-   );
+
+                        await _botClient.SendMessage(
+           message.Chat.Id,
+           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+           $"💳 دارایی: `ریال`\n" +
+           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+           $"🆔 تلفن: `{phone}`\n\n" +
+           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+       );
                     }
                     else
                     {
@@ -557,8 +557,19 @@ namespace TallaEgg.TelegramBot
 
                 }
 
-                    return true;
+                return true;
 
+            }
+
+            if (msgText.StartsWith("ک"))
+            {
+                var msgSplit = msgText.Split(" ");
+                string? q = null;
+                if(msgSplit.Length > 1) q = msgSplit[1];
+                var page = await _usersApi.GetUsersAsync(pageNumber: 1, pageSize: 5,q);
+                if (page.Success) await _botClient.SendUsersWithPagingAsync(chatId, page.Data!, 1, q);
+                else await _botClient.SendMessage(chatId, page.Message);
+                    return true;
             }
             return false;
 

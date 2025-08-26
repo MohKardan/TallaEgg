@@ -208,11 +208,17 @@ app.MapGet("/api/orders/userorders/{userId}",
         var page = pageNumber ?? 1;
         var size = Math.Clamp(pageSize ?? 10, 1, 100);
 
-        var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
+        try
+        {
+            var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
 
-        return orders?.Items?.Any() == true
-            ? Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"))
-            : Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("کاربر یافت نشد یا سفارشی وجود ندارد"));
+           return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"));
+        }
+        catch (Exception ex)
+        {
+
+            return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطا در دریافت اطلاعات"));
+        }
     });
 
 /// <summary>

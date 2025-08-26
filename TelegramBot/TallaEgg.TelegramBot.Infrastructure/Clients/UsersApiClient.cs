@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
+using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Requests.User;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -27,6 +29,30 @@ public class UsersApiClient
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
     }
+
+    public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(
+    int pageNumber = 1,
+    int pageSize = 10,
+    string? q = null)
+    {
+        var uri = $"{_baseUrl}/users/list?pageNumber={pageNumber}&pageSize={pageSize}&q={q}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(uri);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<UserDto>>>(json)
+                : ApiResponse<PagedResult<UserDto>>.Fail("دریافت کاربران ناموفق بود");
+        }
+        catch (Exception ex)
+        {
+            // TODO: لاگ
+            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای ارتباط: {ex.Message}");
+        }
+    }
+
 
     public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)
     {
