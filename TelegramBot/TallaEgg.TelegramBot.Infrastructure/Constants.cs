@@ -36,6 +36,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
         public const string TradeHistory = "📋 تاریخچه معاملات";
+        public const string WalletsBalance = "💵 موجودی";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
         /// <summary>
         /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است

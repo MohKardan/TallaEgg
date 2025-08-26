@@ -152,6 +152,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                new[]
                {
                     new[] { new KeyboardButton(BotTexts.TradeHistory)},
+                    new[] { new KeyboardButton(BotTexts.WalletsBalance)},
                     new[] { new KeyboardButton(BotTexts.MainMenu)},
                }
                             )

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Requests.Wallet;
+using Telegram.Bot.Requests.Abstractions;
 
 namespace TallaEgg.TelegramBot;
 
@@ -21,6 +22,30 @@ public class WalletApiClient
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+    }
+
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>> GetUserWalletsBalanceAsync(Guid userId)
+    {
+        try
+        {
+
+            var response = await _httpClient.GetAsync($"{_apiUrl}/wallet/balances/{userId}");
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>>(respText);
+                return result;
+            }
+
+            return TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در دریفات اطلاعات");
+
+        }
+        catch (Exception ex)
+        {
+            return TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در ارتباط با سرور");
+
+        }
     }
 
     public async Task<(bool success, List<WalletDto>? wallets, string message)> GetUserWalletsAsync(Guid userId)

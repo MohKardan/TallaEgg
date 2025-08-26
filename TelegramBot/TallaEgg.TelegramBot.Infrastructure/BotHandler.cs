@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.User;
@@ -269,6 +270,9 @@ namespace TallaEgg.TelegramBot
                 case BotTexts.TradeHistory:
                     await ShowTradeHistory(chatId, userId);
                     break;
+                case BotTexts.WalletsBalance:
+                    await ShowWalletsBalance(chatId,userId);
+                    break;
 
                 case BotTexts.BtnHelp:
                     await ShowHelpAsync(chatId);
@@ -458,6 +462,38 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendUserOrdersWithPagingAsync(chatId, page.Data!, 1, userId);
         }
 
+        private async Task ShowWalletsBalance(long chatId, Guid userId)
+        {
+            var res = await _walletApi.GetUserWalletsBalanceAsync(userId);
+            if (res.Success) 
+            {
+                if (res.Data.Any())
+                {
+                    StringBuilder stringBuilder = new StringBuilder();
+                    foreach (var item in res.Data)
+                    {
+                        stringBuilder.AppendLine($"نوع موجودی : {item.Asset}");
+                        stringBuilder.AppendLine($"موجودی قابل برداشت : {item.Balance}");
+                        stringBuilder.AppendLine($"موجودی فریز شده : {item.LockedBalance}");
+                        stringBuilder.AppendLine($"---------------------------------------- \n");
+                    }
+                    await _botClient.SendMessage(chatId, stringBuilder.ToString());
+                }
+                else
+                {
+                await _botClient.SendMessage(chatId, "کیف پولی برای شما ثبت نشده است. لطفا برای شارژ حساب با ادمین تماس بگیرید");
+
+                }
+            }
+            else
+            {
+
+                await _botClient.SendMessage(chatId, res.Message);
+            }
+
+
+        }
+
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
@@ -613,9 +649,9 @@ namespace TallaEgg.TelegramBot
                 }
             });
 
+            await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
             }
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
         }
 
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
