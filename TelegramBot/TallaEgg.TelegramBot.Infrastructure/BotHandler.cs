@@ -10,6 +10,7 @@ using TallaEgg.TelegramBot.Core.Utilties;
 using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
+using TallaEgg.TelegramBot.Infrastructure.Handlers;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -567,7 +568,18 @@ namespace TallaEgg.TelegramBot
                 string? q = null;
                 if(msgSplit.Length > 1) q = msgSplit[1];
                 var page = await _usersApi.GetUsersAsync(pageNumber: 1, pageSize: 5,q);
-                if (page.Success) await _botClient.SendUsersWithPagingAsync(chatId, page.Data!, 1, q);
+                if (page.Success)
+                {
+                    var text = await UserListHandler.BuildUsersListAsync(page.Data!, 1, q);
+
+                    // ویرایش پیام قبلی
+                    await _botClient.SendMessage(
+                        chatId: chatId,
+                        text: text,
+                        parseMode: ParseMode.MarkdownV2,
+                        replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, 1, q)
+                    );
+                }
                 else await _botClient.SendMessage(chatId, page.Message);
                     return true;
             }
@@ -1038,6 +1050,7 @@ namespace TallaEgg.TelegramBot
                     }
                     else if (data.StartsWith("orders_"))
                     {
+                        
                         var parts = data.Split('_'); // orders_{userId}_{page}
                         if (parts.Length == 3 &&
                             Guid.TryParse(parts[1], out var uid) &&
@@ -1063,6 +1076,31 @@ namespace TallaEgg.TelegramBot
                         }
                     }
 
+                   else if (data != null && data.StartsWith("users_"))
+                    {
+                        var parts = data.Split('_', 3); // users_{page}_{query}
+                        if (parts.Length >= 2 && int.TryParse(parts[1], out int newPage))
+                        {
+                            string? query = parts.Length == 3 ? parts[2] : null;
+
+                            // دیتای کاربران رو برای صفحه جدید بخون
+                            var page = await _usersApi.GetUsersAsync(newPage, 5, query); // (pageNumber, pageSize, query)
+
+                            var text = await UserListHandler.BuildUsersListAsync(page.Data!, newPage, query);
+
+                            // ویرایش پیام قبلی
+                            await _botClient.EditMessageText(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                messageId: callbackQuery.Message.MessageId,
+                                text: text,
+                                parseMode: ParseMode.MarkdownV2,
+                                replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, newPage, query)
+                            );
+
+                            // بستن "در حال فکر کردن..." روی دکمه
+                            await _botClient.AnswerCallbackQuery(callbackQuery.Id);
+                        }
+                    }
                     break;
             }
 
