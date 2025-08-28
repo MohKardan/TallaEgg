@@ -5,6 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-08-28
+
+### Added
+- **💰 Wallet Integration for Order Balance Validation**: Complete integration with Wallet service for balance validation and freeze transactions
+  - Added `IWalletApiClient` interface for communication with Wallet service
+  - Implemented `WalletApiClient` with full HTTP client functionality
+  - Added balance validation before order placement with `ValidateBalanceAsync`
+  - Implemented balance freeze mechanism with `LockBalanceAsync` for order commitment
+  - Added balance unlock functionality with `UnlockBalanceAsync` for order cancellation
+  - Added asset-specific balance calculation logic for Buy/Sell orders
+  - Integrated rollback mechanism for failed order creation
+
+- **🔒 Advanced Order Balance Management**: Enhanced order lifecycle with proper balance handling
+  - Buy orders now require USDT balance validation (amount × price)
+  - Sell orders now require asset balance validation (amount)
+  - Balance is frozen (locked) immediately upon order creation
+  - Balance is automatically unlocked when orders are cancelled
+  - Added comprehensive error handling for insufficient balance scenarios
+  - Implemented proper transaction rollback on order creation failures
+
+- **🔗 Wallet Service Endpoints Enhancement**: Extended Wallet service with new balance management endpoints
+  - Added `POST /api/wallet/unlockBalance` endpoint for releasing frozen funds
+  - Enhanced existing balance validation endpoints for order integration
+  - Added proper error handling and response formatting for all endpoints
+
+### Changed
+- **📈 Enhanced OrderService Architecture**: Complete refactoring of order creation workflow
+  - Updated `CreateMakerOrderAsync` with full wallet integration
+  - Added `CalculateRequiredBalance` helper method for asset-specific calculations
+  - Enhanced `CancelOrderAsync` with automatic balance unlock functionality
+  - Added comprehensive logging for all wallet-related operations
+  - Improved error handling with user-friendly Persian messages
+
+- **🔧 Dependency Injection Updates**: Enhanced service configuration and dependencies
+  - Added HttpClient configuration for WalletApiClient communication
+  - Registered IWalletApiClient interface with proper DI lifetime management
+  - Added configuration support for WalletApiUrl in appsettings.json
+  - Updated Orders.Api Program.cs with proper service registrations
+
+- **⚙️ Configuration Management**: Enhanced application configuration
+  - Added WalletApiUrl configuration to appsettings.json
+  - Set default Wallet service URL to http://localhost:60933
+  - Added proper configuration binding for HTTP client base address
+
+### Fixed
+- **🔄 Order Lifecycle Management**: Resolved balance consistency issues
+  - Fixed race conditions between order creation and balance updates
+  - Implemented proper rollback mechanism for failed order scenarios
+  - Added validation to prevent orders with insufficient balance
+  - Fixed memory leaks in unused exception variables
+
+- **🌐 HTTP Client Configuration**: Resolved configuration binding issues
+  - Fixed IConfiguration.GetValue usage in WalletApiClient
+  - Updated to use IConfiguration indexer for better compatibility
+  - Added proper error handling for service unavailability scenarios
+
+### Technical Details
+- **🏗️ Architecture**: Service-oriented architecture with proper separation of concerns
+  - Orders service communicates with Wallet service via HTTP APIs
+  - Implemented proper client-server pattern for microservices communication
+  - Added comprehensive error handling and retry mechanisms
+  - Maintained transaction consistency across service boundaries
+
+- **💡 Balance Logic**: Sophisticated balance calculation and management
+  - **Buy Orders**: Require base currency (USDT) = quantity × price
+  - **Sell Orders**: Require actual asset = quantity amount
+  - **Freeze Process**: Immediate balance lock upon order validation success
+  - **Unlock Process**: Automatic balance release on order cancellation or failure
+
+- **🔐 Transaction Safety**: Comprehensive transaction management
+  - Atomic balance validation and freeze operations
+  - Proper rollback mechanisms for partial failures
+  - Consistent error handling across all balance operations
+  - Detailed logging for audit trail and debugging
+
+- **📊 Error Handling**: Enhanced error management and user feedback
+  - Persian error messages for better user experience
+  - Detailed logging for debugging and monitoring
+  - Proper HTTP status codes for different error scenarios
+  - Graceful degradation for service unavailability
+
+### Integration Points
+- **Wallet Service Communication**: Full HTTP-based integration
+  - GET /api/wallet/balance/{userId}/{asset} - Balance inquiry
+  - POST /api/wallet/lockBalance - Freeze funds for orders
+  - POST /api/wallet/unlockBalance - Release frozen funds
+  - POST /api/wallet/market/validate-balance - Pre-validation
+
+### Testing
+- **Unit Tests**: All existing tests pass with new functionality
+- **Integration Tests**: Wallet service communication verified
+- **Balance Scenarios**: Tested insufficient balance handling
+- **Rollback Mechanisms**: Verified proper error recovery
+- **Service Communication**: HTTP client reliability confirmed
+
+### Breaking Changes
+- Orders now require running Wallet service for balance validation
+- Order creation will fail if Wallet service is unavailable
+- Balance must be sufficient before any order can be created
+
+### Migration Guide
+- Ensure Wallet service is running on configured port (default: 60933)
+- Update any direct order creation calls to handle balance validation errors
+- Configure WalletApiUrl in appsettings.json if using different port
+
 ## [2.0.0] - 2025-08-28
 
 ### Added

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Orders.Core;
+using Orders.Infrastructure.Clients;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -47,13 +48,16 @@ public class BestBidAskResult
 public class OrderService /*: IOrderService*/
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IWalletApiClient _walletApiClient;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
         IOrderRepository orderRepository,
+        IWalletApiClient walletApiClient,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
+        _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -72,24 +76,70 @@ public class OrderService /*: IOrderService*/
                 throw new UnauthorizedAccessException("شما مجوز ثبت سفارش ندارید. فقط مدیران می‌توانند سفارش ثبت کنند.");
             }
 
-            // Create maker order using domain factory method
-            var order = Order.CreateMakerOrder(
-                command.Asset,
-                command.Amount,
-                command.Price,
-                command.UserId,
-                command.Type,
-                command.TradingType,
-                command.Notes
-            );
+            // 1. Calculate required balance based on order type
+            var (requiredAsset, requiredAmount) = CalculateRequiredBalance(command.Type, command.Asset, command.Amount, command.Price);
 
-            // Save to repository
-            var createdOrder = await _orderRepository.AddAsync(order);
-            
-            _logger.LogInformation("Maker order created successfully with ID: {OrderId}", createdOrder.Id);
-            return createdOrder;
+            // 2. Validate user balance via Wallet service
+            var balanceValidation = await _walletApiClient.ValidateBalanceAsync(
+                command.UserId, 
+                requiredAsset, 
+                requiredAmount, 
+                (int)command.Type);
+
+            if (!balanceValidation.Success)
+            {
+                _logger.LogWarning("Failed to validate balance for user {UserId}: {Message}", command.UserId, balanceValidation.Message);
+                throw new InvalidOperationException($"خطا در بررسی موجودی: {balanceValidation.Message}");
+            }
+
+            if (!balanceValidation.HasSufficientBalance)
+            {
+                _logger.LogWarning("Insufficient balance for user {UserId} to create order", command.UserId);
+                throw new InvalidOperationException($"موجودی ناکافی: {balanceValidation.Message}");
+            }
+
+            // 3. Lock balance (freeze) for the order
+            var lockResult = await _walletApiClient.LockBalanceAsync(command.UserId, requiredAsset, requiredAmount);
+            if (!lockResult.Success)
+            {
+                _logger.LogError("Failed to lock balance for user {UserId}: {Message}", command.UserId, lockResult.Message);
+                throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockResult.Message}");
+            }
+
+            try
+            {
+                // 4. Create maker order using domain factory method
+                var order = Order.CreateMakerOrder(
+                    command.Asset,
+                    command.Amount,
+                    command.Price,
+                    command.UserId,
+                    command.Type,
+                    command.TradingType,
+                    command.Notes
+                );
+
+                // 5. Save to repository
+                var createdOrder = await _orderRepository.AddAsync(order);
+                
+                _logger.LogInformation("Maker order created successfully with ID: {OrderId}, Balance locked: {LockedAmount} {Asset}", 
+                    createdOrder.Id, requiredAmount, requiredAsset);
+                return createdOrder;
+            }
+            catch (Exception ex)
+            {
+                // Rollback: Unlock the balance if order creation fails
+                _logger.LogWarning("Order creation failed, attempting to unlock balance for user {UserId}", command.UserId);
+                var unlockResult = await _walletApiClient.UnlockBalanceAsync(command.UserId, requiredAsset, requiredAmount);
+                if (!unlockResult.Success)
+                {
+                    _logger.LogError("Failed to unlock balance during rollback for user {UserId}: {Message}", 
+                        command.UserId, unlockResult.Message);
+                }
+                throw;
+            }
         }
-        catch (Exception ex) when (ex is not UnauthorizedAccessException)
+        catch (Exception ex) when (ex is not UnauthorizedAccessException and not InvalidOperationException)
         {
             _logger.LogError(ex, "Error creating maker order for user {UserId}", command.UserId);
             throw new InvalidOperationException("خطا در ایجاد سفارش maker", ex);
@@ -103,6 +153,13 @@ public class OrderService /*: IOrderService*/
             _logger.LogInformation("Creating limit order for user {UserId} with symbol {Symbol}, quantity {Quantity}, price {Price}", 
                 userId, symbol, quantity, price);
 
+            // Note: For limit orders, we need to determine order type (Buy/Sell)
+            // This method signature doesn't include order type, so we'll assume this is a legacy method
+            // In production, this should be updated to include order type parameter
+
+            // For now, we'll create a simple limit order without balance validation
+            // In a real scenario, you'd need the order type to validate balance properly
+
             // Create limit order using domain factory method
             var order = Order.CreateLimitOrder(symbol, quantity, price, userId);
 
@@ -110,6 +167,7 @@ public class OrderService /*: IOrderService*/
             var createdOrder = await _orderRepository.AddAsync(order);
             
             _logger.LogInformation("Limit order created successfully with ID: {OrderId}", createdOrder.Id);
+            _logger.LogWarning("Limit order created without balance validation - consider updating method signature to include OrderType");
             return createdOrder;
         }
         catch (Exception ex)
@@ -417,7 +475,49 @@ public class OrderService /*: IOrderService*/
         try
         {
             _logger.LogInformation("Cancelling order {OrderId}", orderId);
-            return await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
+            
+            // 1. Get the order to determine what balance needs to be unlocked
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                _logger.LogWarning("Order {OrderId} not found for cancellation", orderId);
+                return false;
+            }
+
+            // 2. Check if order can be cancelled
+            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+            {
+                _logger.LogWarning("Order {OrderId} cannot be cancelled - current status: {Status}", orderId, order.Status);
+                throw new InvalidOperationException("فقط سفارشات در انتظار یا تایید شده قابل لغو هستند");
+            }
+
+            // 3. Calculate what balance was locked for this order
+            var (lockedAsset, lockedAmount) = CalculateRequiredBalance(order.Type, order.Asset, order.RemainingAmount, order.Price);
+
+            // 4. Cancel the order first
+            var cancelSuccess = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
+            if (!cancelSuccess)
+            {
+                _logger.LogError("Failed to update order {OrderId} status to cancelled", orderId);
+                return false;
+            }
+
+            // 5. Unlock the balance
+            var unlockResult = await _walletApiClient.UnlockBalanceAsync(order.UserId, lockedAsset, lockedAmount);
+            if (!unlockResult.Success)
+            {
+                _logger.LogError("Order {OrderId} cancelled but failed to unlock balance for user {UserId}: {Message}", 
+                    orderId, order.UserId, unlockResult.Message);
+                // Note: In production, you might want to implement a compensation mechanism
+                // or retry logic here, as the order is cancelled but balance is still locked
+            }
+            else
+            {
+                _logger.LogInformation("Order {OrderId} cancelled and {Amount} {Asset} unlocked for user {UserId}", 
+                    orderId, lockedAmount, lockedAsset, order.UserId);
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
@@ -537,6 +637,32 @@ public class OrderService /*: IOrderService*/
         {
             _logger.LogError(ex, "Error counting orders for asset: {Asset}", asset);
             throw new InvalidOperationException("خطا در شمارش سفارشات", ex);
+        }
+    }
+
+    /// <summary>
+    /// Calculate required balance and asset for order placement
+    /// محاسبه موجودی و دارایی مورد نیاز برای ثبت سفارش
+    /// </summary>
+    private static (string RequiredAsset, decimal RequiredAmount) CalculateRequiredBalance(
+        OrderType orderType, 
+        string tradingAsset, 
+        decimal orderAmount, 
+        decimal orderPrice)
+    {
+        if (orderType == OrderType.Buy)
+        {
+            // For buy orders, we need base currency (USDT) to purchase the asset
+            // برای سفارش خرید، نیاز به ارز پایه (USDT) برای خرید دارایی داریم
+            var baseCurrency = "USDT"; // This should be configurable or retrieved from trading pair
+            var requiredAmount = orderAmount * orderPrice;
+            return (baseCurrency, requiredAmount);
+        }
+        else // Sell order
+        {
+            // For sell orders, we need the actual asset to sell
+            // برای سفارش فروش، نیاز به دارایی واقعی برای فروش داریم
+            return (tradingAsset, orderAmount);
         }
     }
 

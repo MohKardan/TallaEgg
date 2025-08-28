@@ -26,6 +26,14 @@ builder.Services.AddScoped<OrderMatchingRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
 
+// Add Wallet API Client
+builder.Services.AddHttpClient<Orders.Infrastructure.Clients.IWalletApiClient, Orders.Infrastructure.Clients.WalletApiClient>(client =>
+{
+    var walletApiUrl = builder.Configuration.GetValue<string>("WalletApiUrl") ?? "http://localhost:60933";
+    client.BaseAddress = new Uri(walletApiUrl);
+});
+builder.Services.AddScoped<Orders.Infrastructure.Clients.IWalletApiClient, Orders.Infrastructure.Clients.WalletApiClient>();
+
 // Add Matching Engine as Background Service
 builder.Services.AddHostedService<MatchingEngineService>();
 builder.Services.AddScoped<IMatchingEngine, MatchingEngineService>();
