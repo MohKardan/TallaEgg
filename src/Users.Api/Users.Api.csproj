@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TallaEgg.Core\TallaEgg.Core.csproj" />
+    <ProjectReference Include="..\TallaEgg\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\Users.Core\Users.Core.csproj" />
     <ProjectReference Include="..\Users.Infrastructure\Users.Infrastructure.csproj" />
     <ProjectReference Include="..\Users.Application\Users.Application.csproj" />
