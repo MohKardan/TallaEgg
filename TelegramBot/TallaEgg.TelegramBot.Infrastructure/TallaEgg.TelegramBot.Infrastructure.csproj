@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Orders.Core\Orders.Core.csproj" />
+    <ProjectReference Include="..\..\src\Order\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\..\src\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.TelegramBot.Core\TallaEgg.TelegramBot.Core.csproj" />
     <ProjectReference Include="..\TallaEgg.TelegramBot.Application\TallaEgg.TelegramBot.Application.csproj" />

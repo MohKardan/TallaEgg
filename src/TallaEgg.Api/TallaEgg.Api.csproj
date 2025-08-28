@@ -17,9 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Orders.Infrastructure\Orders.Infrastructure.csproj" />
-    <ProjectReference Include="..\Orders.Application\Orders.Application.csproj" />
-    <ProjectReference Include="..\Orders.Core\Orders.Core.csproj" />
+    <ProjectReference Include="..\Order\Orders.Infrastructure\Orders.Infrastructure.csproj" />
+    <ProjectReference Include="..\Order\Orders.Application\Orders.Application.csproj" />
+    <ProjectReference Include="..\Order\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\Users.Application\Users.Application.csproj" />
     <ProjectReference Include="..\Users.Infrastructure\Users.Infrastructure.csproj" />
     <ProjectReference Include="..\TallaEgg.Core\TallaEgg.Core.csproj" />
