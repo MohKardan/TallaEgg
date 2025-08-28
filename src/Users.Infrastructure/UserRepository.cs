@@ -113,8 +113,15 @@ public class UserRepository : IUserRepository
 
     public async Task<Guid?> GetUserIdByPhonenumberAsync(string phoneNumber)
     {
-        return await _context.Users.Where(u => u.PhoneNumber == phoneNumber).Select(u => u.Id)
-            .FirstOrDefaultAsync();
+        try
+        {
+            return await _context.Users.Where(u => u.PhoneNumber == phoneNumber).Select(u => u.Id)
+            .FirstAsync();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)

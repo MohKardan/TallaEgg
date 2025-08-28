@@ -563,6 +563,38 @@ namespace TallaEgg.TelegramBot
                 else await _botClient.SendMessage(chatId, page.Message);
                 return true;
             }
+            if (msgText.StartsWith("م "))
+            {
+                var msgSplit = msgText.Split(" ");
+                string phone = "";
+                if (msgSplit.Length > 1) phone = msgSplit[1];
+                var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
+                if (useId.HasValue)
+                {
+                   await ShowWalletsBalance(chatId,useId.Value);
+                }
+                else
+                {
+                   await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                }
+                return true;
+            }
+            if (msgText.StartsWith("س "))
+            {
+                var msgSplit = msgText.Split(" ");
+                string phone = "";
+                if (msgSplit.Length > 1) phone = msgSplit[1];
+                var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
+                if (useId.HasValue)
+                {
+                   await ShowTradeHistory(chatId,useId.Value);
+                }
+                else
+                {
+                   await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                }
+                return true;
+            }
             return false;
 
             //switch (msgText.ToLower())
