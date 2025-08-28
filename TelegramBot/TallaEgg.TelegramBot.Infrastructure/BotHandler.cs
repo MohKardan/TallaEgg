@@ -268,7 +268,7 @@ namespace TallaEgg.TelegramBot
                 case BotTexts.BtnAccounting:
                     await HandleAccountingMenuAsync(chatId);
                     break;
-                case BotTexts.BtnTradeHistory:
+                case BotTexts.BtnOrderHistory:
                     await ShowTradeHistory(chatId, userId);
                     break;
                 case BotTexts.BtnWalletsBalance:
@@ -429,8 +429,19 @@ namespace TallaEgg.TelegramBot
         }
         private async Task ShowTradeHistory(long chatId, Guid userId)
         {
+
             var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
-            await _botClient.SendUserOrdersWithPagingAsync(chatId, page.Data!, 1, userId);
+            if (page.Success)
+            {
+                var text = await OrderListHandler.BuildOrdersListAsync(page.Data!, 1);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: text,
+                    parseMode: ParseMode.MarkdownV2,
+                    replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
+                );
+            }
         }
 
         private async Task ShowWalletsBalance(long chatId, Guid userId)
@@ -542,7 +553,6 @@ namespace TallaEgg.TelegramBot
                 {
                     var text = await UserListHandler.BuildUsersListAsync(page.Data!, 1, q);
 
-                    // ویرایش پیام قبلی
                     await _botClient.SendMessage(
                         chatId: chatId,
                         text: text,
@@ -1016,23 +1026,21 @@ namespace TallaEgg.TelegramBot
                             Guid.TryParse(parts[1], out var uid) &&
                             int.TryParse(parts[2], out var pageNum))
                         {
-                            var orders = await _orderApi.GetUserOrdersAsync(uid, pageNum, pageSize: 5);
+                            var page = await _orderApi.GetUserOrdersAsync(uid, pageNum, pageSize: 5);
+
+                            var text = await OrderListHandler.BuildOrdersListAsync(page.Data!, pageNum);
+
+                            // ویرایش پیام قبلی
                             await _botClient.EditMessageText(
-                                chatId: callbackQuery.Message!.Chat.Id,
-                                messageId: callbackQuery.Message.MessageId,
-                                text: "در حال بارگذاری...",
-                                parseMode: ParseMode.MarkdownV2);
-
-                            await _botClient.SendUserOrdersWithPagingAsync(
                                 chatId: callbackQuery.Message.Chat.Id,
-                                page: orders.Data!,
-                                currentPage: pageNum,
-                                userId: uid);
+                                messageId: callbackQuery.Message.MessageId,
+                                text: text,
+                                parseMode: ParseMode.MarkdownV2,
+                                replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum,uid)
+                            );
 
-                            // پیام قبلی را حذف می‌کنیم تا تعداد پیام‌ها زیاد نشود
-                            await _botClient.DeleteMessage(
-                                callbackQuery.Message.Chat.Id,
-                                callbackQuery.Message.MessageId);
+                            // بستن "در حال فکر کردن..." روی دکمه
+                            await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
 

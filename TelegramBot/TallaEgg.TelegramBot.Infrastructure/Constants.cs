@@ -21,7 +21,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
         public const string BtnHistory = "📋 تاریخچه";
-        public const string BtnTradeHistory = "📋 تاریخچه معاملات";
+        public const string BtnOrderHistory = "📋 تاریخچه سفارشات";
         public const string BtnWalletsBalance = "💵 موجودی";
         public const string BtnWallet = "💳 کیف پول";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
