@@ -9,8 +9,8 @@ using TallaEgg.Core.Enums.Order;
 namespace Orders.Application.Services;
 
 /// <summary>
-/// Thread-Safe Matching Engine with Database Locking
-/// موتور تطبیق ایمن با قفل پایگاه داده
+/// Thread-Safe Matching Engine with Database Locking and Maker/Taker Support
+/// موتور تطبیق ایمن با قفل پایگاه داده و پشتیبانی از Maker/Taker
 /// </summary>
 public class MatchingEngineService : BackgroundService, IMatchingEngine
 {
@@ -85,27 +85,74 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     }
 
     /// <summary>
-    /// Process single order (deprecated - use batch processing)
-    /// پردازش سفارش منفرد (منسوخ - از پردازش دسته‌ای استفاده کنید)
+    /// Process single order with immediate Maker/Taker identification
+    /// پردازش سفارش منفرد با تشخیص فوری Maker/Taker
     /// </summary>
-    public async Task ProcessOrderAsync(Order order, CancellationToken cancellationToken = default)
+    public async Task<bool> ProcessOrderForMatchingAsync(Guid orderId)
     {
-        _logger.LogWarning("⚠️ ProcessOrderAsync is deprecated. Use ProcessAllPendingOrdersAsync for better performance.");
-        
-        if (!_processingSemaphore.Wait(5000))
+        if (!await _processingSemaphore.WaitAsync(5000))
         {
-            _logger.LogWarning("⏰ Could not acquire processing lock for order {OrderId}", order.Id);
-            return;
+            _logger.LogWarning("⏰ Could not acquire processing lock for order {OrderId}", orderId);
+            return false;
         }
 
         try
         {
-            await ProcessSingleAssetAsync(order.Asset, cancellationToken);
+            using var scope = _serviceProvider.CreateScope();
+            var matchingRepository = scope.ServiceProvider.GetRequiredService<OrderMatchingRepository>();
+            var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+            
+            var order = await orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+            {
+                _logger.LogWarning("📭 Order {OrderId} not found", orderId);
+                return false;
+            }
+
+            // Get matching orders from order book
+            var matchingOrders = await GetMatchingOrdersAsync(matchingRepository, order);
+            
+            if (matchingOrders.Any())
+            {
+                // This order is TAKER (consumes liquidity)
+                _logger.LogInformation("🛍️ Order {OrderId} identified as TAKER - will match immediately", orderId);
+                
+                foreach (var makerOrder in matchingOrders)
+                {
+                    var matchQuantity = Math.Min(makerOrder.RemainingAmount, order.RemainingAmount);
+                    await ExecuteTradeWithMakerTakerLogic(matchingRepository, makerOrder, order, matchQuantity);
+                    
+                    if (order.RemainingAmount <= 0)
+                        break; // Taker order fully filled
+                }
+                
+                return true; // Order was matched immediately
+            }
+            else
+            {
+                // This order becomes MAKER (provides liquidity)
+                _logger.LogInformation("🏪 Order {OrderId} identified as MAKER - added to order book", orderId);
+                return false; // Order goes to order book
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Error processing order {OrderId} for matching", orderId);
+            return false;
         }
         finally
         {
             _processingSemaphore.Release();
         }
+    }
+
+    /// <summary>
+    /// Process single order (legacy method - enhanced with Maker/Taker)
+    /// پردازش سفارش منفرد (متد قدیمی - بهبود یافته با Maker/Taker)
+    /// </summary>
+    public async Task ProcessOrderAsync(Order order, CancellationToken cancellationToken = default)
+    {
+        await ProcessOrderForMatchingAsync(order.Id);
     }
 
     /// <summary>
@@ -183,16 +230,16 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                     break;
                 }
 
-                // Execute atomic match
-                // اجرای تطبیق اتمی
-                var result = await matchingRepository.ExecuteAtomicMatchAsync(
-                    buyOrder, sellOrder, matchQty);
+                // Execute atomic match with enhanced Maker/Taker logic
+                // اجرای تطبیق اتمی با منطق بهبود یافته Maker/Taker
+                var result = await ExecuteAtomicMatchWithMakerTakerAsync(
+                    matchingRepository, buyOrder, sellOrder, matchQty);
 
                 if (result.Success)
                 {
                     matchCount++;
                     _logger.LogInformation(
-                        "✅ Match #{MatchCount} for {Asset}: {Quantity} @ {Price}",
+                        "✅ Match #{MatchCount} for {Asset}: {Quantity} @ {Price} (Maker/Taker fees applied)",
                         matchCount, asset, matchQty, result.Trade?.Price ?? 0);
                 }
                 else
@@ -247,6 +294,135 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         }
 
         return (null, null, 0);
+    }
+
+    /// <summary>
+    /// Get matching orders for immediate execution (Taker identification)
+    /// دریافت سفارشات قابل تطبیق برای اجرای فوری (تشخیص Taker)
+    /// </summary>
+    private async Task<List<Order>> GetMatchingOrdersAsync(OrderMatchingRepository matchingRepository, Order incomingOrder)
+    {
+        try
+        {
+            if (incomingOrder.Type == OrderType.Buy)
+            {
+                // For buy orders, find sell orders with price <= buy price
+                var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(incomingOrder.Asset);
+                return sellOrders.Where(s => s.Price <= incomingOrder.Price && s.RemainingAmount > 0).ToList();
+            }
+            else
+            {
+                // For sell orders, find buy orders with price >= sell price
+                var buyOrders = await matchingRepository.GetBuyOrdersWithLockAsync(incomingOrder.Asset);
+                return buyOrders.Where(b => b.Price >= incomingOrder.Price && b.RemainingAmount > 0).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Error getting matching orders for {OrderId}", incomingOrder.Id);
+            return new List<Order>();
+        }
+    }
+
+    /// <summary>
+    /// Execute trade with proper Maker/Taker fee calculation
+    /// اجرای معامله با محاسبه صحیح کارمزد Maker/Taker
+    /// </summary>
+    private async Task ExecuteTradeWithMakerTakerLogic(
+        OrderMatchingRepository matchingRepository,
+        Order makerOrder,
+        Order takerOrder,
+        decimal quantity)
+    {
+        try
+        {
+            // Create trade with enhanced Maker/Taker logic
+            var trade = CreateMakerTakerTrade(makerOrder, takerOrder, quantity);
+            
+            // Execute atomic match (the method will create its own trade)
+            var result = await matchingRepository.ExecuteAtomicMatchAsync(makerOrder, takerOrder, quantity);
+            
+            if (result.Success)
+            {
+                _logger.LogInformation(
+                    "✅ Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
+                    makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
+            }
+            else
+            {
+                _logger.LogError("❌ Failed to execute Maker/Taker trade: {Error}", result.ErrorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Error executing Maker/Taker trade");
+        }
+    }
+
+    /// <summary>
+    /// Execute atomic match with enhanced Maker/Taker logic
+    /// اجرای تطبیق اتمی با منطق بهبود یافته Maker/Taker
+    /// </summary>
+    private async Task<(bool Success, Trade? Trade, string? ErrorMessage)> ExecuteAtomicMatchWithMakerTakerAsync(
+        OrderMatchingRepository matchingRepository,
+        Order buyOrder,
+        Order sellOrder,
+        decimal quantity)
+    {
+        try
+        {
+            // Determine Maker/Taker based on timestamp
+            var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;
+            var makerOrder = isBuyOrderMaker ? buyOrder : sellOrder;
+            var takerOrder = isBuyOrderMaker ? sellOrder : buyOrder;
+
+            // Execute with standard method (it will create trade internally)
+            return await matchingRepository.ExecuteAtomicMatchAsync(makerOrder, takerOrder, quantity);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "💥 Error in atomic Maker/Taker match");
+            return (false, null, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Create trade with proper Maker/Taker fee calculation
+    /// ایجاد معامله با محاسبه صحیح کارمزد Maker/Taker
+    /// </summary>
+    private Trade CreateMakerTakerTrade(Order makerOrder, Order takerOrder, decimal quantity)
+    {
+        // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
+        var makerFeeRate = 0.001m; // 0.1%
+        var takerFeeRate = 0.002m; // 0.2%
+        
+        var price = makerOrder.Price; // Execute at maker's price
+        var quoteQuantity = quantity * price;
+        
+        // Determine buy/sell roles
+        var (buyOrder, sellOrder, buyerUserId, sellerUserId) = 
+            takerOrder.Type == OrderType.Buy 
+                ? (takerOrder, makerOrder, takerOrder.UserId, makerOrder.UserId)
+                : (makerOrder, takerOrder, makerOrder.UserId, takerOrder.UserId);
+
+        return Trade.Create(
+            buyOrderId: buyOrder.Id,
+            sellOrderId: sellOrder.Id,
+            makerOrderId: makerOrder.Id,
+            takerOrderId: takerOrder.Id,
+            symbol: makerOrder.Asset,
+            price: price,
+            quantity: quantity,
+            quoteQuantity: quoteQuantity,
+            buyerUserId: buyerUserId,
+            sellerUserId: sellerUserId,
+            makerUserId: makerOrder.UserId,
+            takerUserId: takerOrder.UserId,
+            makerFeeRate: makerFeeRate,
+            takerFeeRate: takerFeeRate,
+            feeBuyer: buyerUserId == makerOrder.UserId ? makerFeeRate * quoteQuantity : takerFeeRate * quoteQuantity,
+            feeSeller: sellerUserId == makerOrder.UserId ? makerFeeRate * quoteQuantity : takerFeeRate * quoteQuantity
+        );
     }
 
 }
