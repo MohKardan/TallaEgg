@@ -59,7 +59,53 @@ public class OrderService
             var orderType = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy ? TallaEgg.Core.Enums.Order.OrderType.Buy : TallaEgg.Core.Enums.Order.OrderType.Sell;
             var tradingType = request.TradingType;
 
-            // 3. Create appropriate order command based on order type
+            // 3. Validate user balance before creating order
+            var userId = Guid.Parse(request.UserId);
+            var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy ? "USDT" : request.Symbol;
+            var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy 
+                ? (request.Type == OrderTypeEnum.Market ? request.Quantity * 50000m : request.Quantity * (request.Price ?? 50000m)) // Estimated calculation
+                : request.Quantity;
+
+            _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}", 
+                userId, amountToCheck, assetToCheck);
+
+            var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) = await _walletApiClient.ValidateBalanceAsync(
+                userId, 
+                assetToCheck, 
+                amountToCheck, 
+                (int)request.Side);
+
+            if (!balanceCheckSuccess)
+            {
+                _logger.LogWarning("Balance validation failed for user {UserId}: {Message}", userId, balanceMessage);
+                throw new InvalidOperationException($"خطا در بررسی موجودی: {balanceMessage}");
+            }
+
+            if (!hasSufficientBalance)
+            {
+                _logger.LogWarning("Insufficient balance for user {UserId}: {Message}", userId, balanceMessage);
+                throw new InvalidOperationException($"موجودی ناکافی: {balanceMessage}");
+            }
+
+            // 4. For limit orders, lock the balance
+            if (request.Type == OrderTypeEnum.Limit)
+            {
+                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.LockBalanceAsync(
+                    userId,
+                    assetToCheck,
+                    amountToCheck);
+
+                if (!lockSuccess)
+                {
+                    _logger.LogWarning("Failed to lock balance for user {UserId}: {Message}", userId, lockMessage);
+                    throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
+                }
+
+                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}", 
+                    amountToCheck, assetToCheck, userId);
+            }
+
+            // 5. Create appropriate order command based on order type
             Order order;
             OrderRole determinedRole;
             List<TradeDto> executedTrades = new();
@@ -71,7 +117,7 @@ public class OrderService
                 {
                     Asset = request.Symbol,
                     Amount = request.Quantity,
-                    UserId = Guid.Parse(request.UserId),
+                    UserId = userId,
                     Type = orderType,
                     TradingType = tradingType,
                     Notes = request.Notes
@@ -92,7 +138,7 @@ public class OrderService
                     request.Symbol,
                     request.Quantity,
                     request.Price.Value,
-                    Guid.Parse(request.UserId),
+                    userId,
                     orderType,
                     tradingType,
                     request.Notes
@@ -106,7 +152,7 @@ public class OrderService
                     : OrderRole.Maker;
             }
 
-            // 4. Build response
+            // 6. Build response
             var response = new CreateOrderResponse
             {
                 Order = new OrderHistoryDto
