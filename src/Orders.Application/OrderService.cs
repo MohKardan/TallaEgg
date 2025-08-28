@@ -98,7 +98,7 @@ public class OrderService
                     request.Notes
                 );
 
-                order = await CreateMakerOrderAsync(limitCommand);
+                order = await CreateOrderAsync(limitCommand);
                 
                 // Determine role based on order status
                 determinedRole = order.Status == OrderStatus.Completed || order.Status == OrderStatus.Partially 
@@ -139,7 +139,7 @@ public class OrderService
         }
     }
 
-    public async Task<Order> CreateMakerOrderAsync(CreateOrderCommand command)
+    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
     {
         // Simple implementation - in real scenario would include balance validation, etc.
         var order = Order.CreateMakerOrder(

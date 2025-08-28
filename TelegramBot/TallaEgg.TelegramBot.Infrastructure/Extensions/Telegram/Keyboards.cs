@@ -46,10 +46,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
            new[]
            {
-                new[] { new KeyboardButton(ButtonTextsConstants.Spot), new KeyboardButton(ButtonTextsConstants.Future) },
+                new[] { new KeyboardButton(BotTexts.BtnSpot), new KeyboardButton(BotTexts.BtnFutures) },
 
-                new[] { new KeyboardButton(ButtonTextsConstants.Accounting), new KeyboardButton(ButtonTextsConstants.Help) },
-                new[] { new KeyboardButton(ButtonTextsConstants.Wallet), new KeyboardButton(ButtonTextsConstants.History) },
+                new[] { new KeyboardButton(BotTexts.BtnAccounting), new KeyboardButton(BotTexts.BtnHelp) },
+                new[] { new KeyboardButton(BotTexts.BtnWallet), new KeyboardButton(BotTexts.BtnHistory) },
            }
             )
             {
@@ -61,29 +61,6 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 chatId,
                 "🎯 منوی اصلی\n" +
     "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-            replyMarkup: keyboard);
-
-        }
-
-        public static async Task SpotMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
-        {
-
-            var keyboard = new ReplyKeyboardMarkup(
-           new[]
-           {
-                new[] { new KeyboardButton(ButtonTextsConstants.MakeOrder), new KeyboardButton(ButtonTextsConstants.TakeOrder) },
-                new[] { new KeyboardButton(ButtonTextsConstants.MainMenu)},
-           }
-                        )
-            {
-                ResizeKeyboard = true,
-            };
-
-
-            await _botClient.SendMessage(
-                chatId,
-                "🎯 منوی معاملات نقدی\n" +
-    "لطفاً یکی از گزینه‌های را انتخاب کنید:",
             replyMarkup: keyboard);
 
         }
@@ -122,37 +99,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
 
-        public static async Task SendSpotMenuKeyboard_0(this ITelegramBotClient _botClient, long chatId)
-        {
-
-            var keyboard = new ReplyKeyboardMarkup(
-               new[]
-               {
-                    new[] { new KeyboardButton(BotTexts.BtnMakeOrderSpot), new KeyboardButton(BotTexts.BtnMarket) },
-                    new[] { new KeyboardButton(BotTexts.MainMenu)},
-               }
-                            )
-            {
-                ResizeKeyboard = true,
-            };
-
-
-            await _botClient.SendMessage(
-                chatId,
-                "🎯 منوی معاملات نقدی\n" +
-                "لطفاً یکی از گزینه‌های را انتخاب کنید:",
-            replyMarkup: keyboard);
-
-        }
-
         public static async Task SendAccountingMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
         {
 
             var keyboard = new ReplyKeyboardMarkup(
                new[]
                {
-                    new[] { new KeyboardButton(BotTexts.TradeHistory)},
-                    new[] { new KeyboardButton(BotTexts.WalletsBalance)},
+                    new[] { new KeyboardButton(BotTexts.BtnTradeHistory)},
+                    new[] { new KeyboardButton(BotTexts.BtnWalletsBalance)},
                     new[] { new KeyboardButton(BotTexts.MainMenu)},
                }
                             )

@@ -12,21 +12,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string DeveloperChatId = "-4777000333"; 
         public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
     }
-
-    public static class ButtonTextsConstants
-    {
-        public const string MainMenu = "💰 منوی اصلی";
-        public const string Spot = "💰 نقدی";
-        public const string Future = "📈 آتی";
-        public const string Accounting = "📊 حسابداری";
-        public const string Help = "❓ راهنما";
-        public const string Wallet = "💳 کیف پول";
-        public const string History = "📋 تاریخچه";
-        public const string MakeOrder = "📋 ثبت سفارش";
-        public const string TakeOrder = "📋 بازار";
-        public const string Market = "📈 بازار";
-        
-    }
     public static class BotTexts
     {
         public const string MainMenu = "💰 منوی اصلی";
@@ -35,8 +20,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnAccounting = "📊 حسابداری";
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
-        public const string TradeHistory = "📋 تاریخچه معاملات";
-        public const string WalletsBalance = "💵 موجودی";
+        public const string BtnHistory = "📋 تاریخچه";
+        public const string BtnTradeHistory = "📋 تاریخچه معاملات";
+        public const string BtnWalletsBalance = "💵 موجودی";
+        public const string BtnWallet = "💳 کیف پول";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
         /// <summary>
         /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
