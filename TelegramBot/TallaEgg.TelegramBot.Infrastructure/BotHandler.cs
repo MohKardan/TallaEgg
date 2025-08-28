@@ -272,7 +272,7 @@ namespace TallaEgg.TelegramBot
                     await ShowTradeHistory(chatId, userId);
                     break;
                 case BotTexts.BtnWalletsBalance:
-                    await ShowWalletsBalance(chatId,userId);
+                    await ShowWalletsBalance(chatId, userId);
                     break;
 
                 case BotTexts.BtnHelp:
@@ -342,6 +342,12 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
+            _userOrderStates.Add(chatId, new OrderState
+            {
+                UserId = user.Id,
+                TradingType = TradingType.Spot
+            });
+
             await _botClient.SendSpotMenuKeyboard(chatId);
         }
         private async Task HandleMarketMenuAsync(long chatId)
@@ -375,7 +381,7 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendMessage(chatId, "این گزینه در حال توسعه است. لطفاً از منوی اصلی استفاده کنید.");
             await ShowMainMenuAsync(chatId);
         }
-        
+
         private async Task ShowSpotSymbolOptionsAsync(long chatId)
         {
             // Note: This method should be called with telegramId, not chatId
@@ -430,7 +436,7 @@ namespace TallaEgg.TelegramBot
         private async Task ShowWalletsBalance(long chatId, Guid userId)
         {
             var res = await _walletApi.GetUserWalletsBalanceAsync(userId);
-            if (res.Success) 
+            if (res.Success)
             {
                 if (res.Data.Any())
                 {
@@ -446,7 +452,7 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                await _botClient.SendMessage(chatId, "کیف پولی برای شما ثبت نشده است. لطفا برای شارژ حساب با ادمین تماس بگیرید");
+                    await _botClient.SendMessage(chatId, "کیف پولی برای شما ثبت نشده است. لطفا برای شارژ حساب با ادمین تماس بگیرید");
 
                 }
             }
@@ -530,8 +536,8 @@ namespace TallaEgg.TelegramBot
             {
                 var msgSplit = msgText.Split(" ");
                 string? q = null;
-                if(msgSplit.Length > 1) q = msgSplit[1];
-                var page = await _usersApi.GetUsersAsync(pageNumber: 1, pageSize: 5,q);
+                if (msgSplit.Length > 1) q = msgSplit[1];
+                var page = await _usersApi.GetUsersAsync(pageNumber: 1, pageSize: 5, q);
                 if (page.Success)
                 {
                     var text = await UserListHandler.BuildUsersListAsync(page.Data!, 1, q);
@@ -545,7 +551,7 @@ namespace TallaEgg.TelegramBot
                     );
                 }
                 else await _botClient.SendMessage(chatId, page.Message);
-                    return true;
+                return true;
             }
             return false;
 
@@ -638,48 +644,46 @@ namespace TallaEgg.TelegramBot
                 }
             });
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
+                await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
             }
 
         }
 
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
         {
-            //if (!_userOrderStates.ContainsKey(telegramId))
-            //{
-            //    await _botClient.SendMessage(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
-            //    return;
-            //}
+            if (!_userOrderStates.ContainsKey(telegramId))
+            {
+                await _botClient.SendMessage(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+                return;
+            }
 
-            //var orderState = _userOrderStates[telegramId];
-            //orderState.OrderType = orderType;
+            var orderState = _userOrderStates[telegramId];
+            orderState.OrderType = orderType;
 
-            //// Get available assets from prices
-            //var (success, prices) = await _priceApi.GetAllPricesAsync();
-            //if (!success || prices == null || !prices.Any())
-            //{
-            //    await _botClient.SendMessage(chatId, "در حال حاضر قیمت‌ها در دسترس نیست.");
-            //    return;
-            //}
+            // Get available assets 
+            //TODO اینحا باید نمادهای معاملاتیرو از یجایی بحونیم
+            // فعلا نمادهای معاملاتی به صورت HardCode
+            var assets = new[] { "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
 
-            //// Show available assets
-            //var assetButtons = new List<InlineKeyboardButton[]>();
-            //foreach (var price in prices)
-            //{
-            //    assetButtons.Add(new[]
-            //    {
-            //        InlineKeyboardButton.WithCallbackData(price.Asset, $"asset_{price.Asset}")
-            //    });
-            //}
+            // Show available assets
+            var assetButtons = new List<InlineKeyboardButton[]>();
 
-            //assetButtons.Add(new[]
-            //{
-            //    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-            //});
+            foreach (var asset in assets)
+            {
+                assetButtons.Add(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(asset, $"asset_{asset}")
+                });
+            }
 
-            //var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
+            assetButtons.Add(new[]
+            {
+                InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+            });
 
-            //await _botClient.SendMessage(chatId, BotTexts.MsgSelectAsset, replyMarkup: keyboard);
+            var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
+
+            await _botClient.SendMessage(chatId, BotTexts.MsgSelectAsset, replyMarkup: keyboard);
         }
 
         private async Task HandleAssetSelectionAsync(long chatId, long telegramId, string asset)
@@ -794,8 +798,8 @@ namespace TallaEgg.TelegramBot
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnConfirm, "confirm_order"),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnCancel, "cancel_order")
+                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnConfirm, InlineCallBackData.confirm_order),
+                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnCancel, InlineCallBackData.cancel_order)
                 }
             });
 
@@ -906,16 +910,21 @@ namespace TallaEgg.TelegramBot
             {
                 case InlineCallBackData.buy_spot:
                 case InlineCallBackData.sell_spot:
-                    await ShowSpotSymbolOptionsAsync(chatId);
-                    break;
-                
-                case InlineCallBackData.order_buy:
-                    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Buy);
+                    //await ShowSpotSymbolOptionsAsync(chatId);
+
+                    OrderType orderType = data == InlineCallBackData.buy_spot ? OrderType.Buy : OrderType.Sell;
+                    
+                    await HandleOrderTypeSelectionAsync(chatId, telegramId, orderType);
+
                     break;
 
-                case InlineCallBackData.order_sell:
-                    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Sell);
-                    break;
+                //case InlineCallBackData.order_buy:
+                //    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Buy);
+                //    break;
+
+                //case InlineCallBackData.order_sell:
+                //    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Sell);
+                //    break;
 
                 case InlineCallBackData.confirm_order:
                     await HandleOrderConfirmationAsync(chatId, telegramId);
@@ -1001,7 +1010,7 @@ namespace TallaEgg.TelegramBot
                     }
                     else if (data.StartsWith("orders_"))
                     {
-                        
+
                         var parts = data.Split('_'); // orders_{userId}_{page}
                         if (parts.Length == 3 &&
                             Guid.TryParse(parts[1], out var uid) &&
@@ -1027,7 +1036,7 @@ namespace TallaEgg.TelegramBot
                         }
                     }
 
-                   else if (data != null && data.StartsWith("users_"))
+                    else if (data != null && data.StartsWith("users_"))
                     {
                         var parts = data.Split('_', 3); // users_{page}_{query}
                         if (parts.Length >= 2 && int.TryParse(parts[1], out int newPage))

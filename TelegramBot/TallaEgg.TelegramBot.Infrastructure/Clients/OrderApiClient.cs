@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Orders.Core;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -209,8 +210,28 @@ public class OrderApiClient : IOrderApiClient
 
 public class OrderDto
 {
+    [JsonPropertyName("symbol")]
     public string Asset { get; set; } = "";
+    /// <summary>
+    /// alias
+    /// </summary>
+    [JsonPropertyName("asset")]
+    public string Symbol
+    {
+        get => Asset;
+        set => Asset = value;
+    }
+    [JsonPropertyName("quantity")]
     public decimal Amount { get; set; }
+    /// <summary>
+    /// alias
+    /// </summary>
+    [JsonPropertyName("Amount")]
+    public decimal Quantity
+    {
+        get => Amount;
+        set => Amount = value;
+    }
     public decimal Price { get; set; }
     public Guid UserId { get; set; }
     public OrderType Type { get; set; } // "Buy" or "Sell"

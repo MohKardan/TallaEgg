@@ -63,6 +63,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         public const string buy_futures = "buy_futures";
         public const string sell_futures = "sell_futures";
+        /// <summary>
+        /// قبل این روی دکمه نقدی در منوی اصلی کلیک شده است
+        /// BotTexts.BtnSpot
+        /// دکمه شیشه ای خرید
+        /// </summary>
         public const string buy_spot = "buy_spot";
         public const string sell_spot = "sell_spot";
         public const string trading_spot = "trading_spot";
