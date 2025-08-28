@@ -110,34 +110,30 @@ app.MapPost("/api/orders", async (TallaEgg.Core.Requests.Order.CreateOrderReques
 
         var response = await orderService.CreateOrderAsync(request);
         
-        return Results.Ok(new { 
-            success = true, 
-            message = response.Message,
-            data = response
-        });
+        return Results.Ok(ApiResponse<CreateOrderResponse>.Ok(response, response.Message));
     }
     catch (UnauthorizedAccessException ex)
     {
-        return Results.Json(new { success = false, message = ex.Message }, statusCode: 401);
+        return Results.Json(ApiResponse<CreateOrderResponse>.Fail(ex.Message), statusCode: 401);
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.BadRequest(ApiResponse<CreateOrderResponse>.Fail(ex.Message));
     }
     catch (InvalidOperationException ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.BadRequest(ApiResponse<CreateOrderResponse>.Fail(ex.Message));
     }
     catch (Exception ex)
     {
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+        return Results.Json(ApiResponse<CreateOrderResponse>.Fail("خطای داخلی سرور"), statusCode: 500);
     }
 })
 .WithName("CreateOrder")
 .WithSummary("ایجاد سفارش واحد")
 .WithDescription("ایجاد سفارش Limit یا Market با تشخیص خودکار نقش Maker/Taker")
 .WithTags("Orders")
-.Produces<CreateOrderResponse>(200)
+.Produces<ApiResponse<CreateOrderResponse>>(200)
 .ProducesValidationProblem(400);
 
 /// <summary>
