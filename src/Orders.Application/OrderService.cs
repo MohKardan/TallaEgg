@@ -49,15 +49,18 @@ public class OrderService /*: IOrderService*/
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IWalletApiClient _walletApiClient;
+    private readonly IMatchingEngine _matchingEngine;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
+        IMatchingEngine matchingEngine,
         ILogger<OrderService> logger)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
+        _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -122,12 +125,19 @@ public class OrderService /*: IOrderService*/
                 // 5. Save to repository
                 var createdOrder = await _orderRepository.AddAsync(order);
                 
+                // 6. Process order through matching engine to check for immediate matches
+                // سفارش maker ممکن است بلافاصله با سفارشات taker موجود تطبیق یابد
+                await _matchingEngine.ProcessOrderAsync(createdOrder);
+                
                 _logger.LogInformation("Maker order created successfully with ID: {OrderId}, Balance locked: {LockedAmount} {Asset}", 
                     createdOrder.Id, requiredAmount, requiredAsset);
                 return createdOrder;
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Order creation failed for user {UserId}, asset {Asset}, amount {Amount}", 
+                    command.UserId, command.Asset, command.Amount);
+                    
                 // Rollback: Unlock the balance if order creation fails
                 _logger.LogWarning("Order creation failed, attempting to unlock balance for user {UserId}", command.UserId);
                 var unlockResult = await _walletApiClient.UnlockBalanceAsync(command.UserId, requiredAsset, requiredAmount);
@@ -227,104 +237,102 @@ public class OrderService /*: IOrderService*/
         }
     }
 
+    /// <summary>
+    /// Create a market order that immediately executes against existing maker orders
+    /// ایجاد سفارش بازار که فوراً در برابر سفارشات maker موجود اجرا می‌شود
+    /// </summary>
     public async Task<Order> CreateMarketOrderAsync(CreateMarketOrderRequest command)
     {
         try
         {
-            _logger.LogInformation("Creating market order for user {UserId} with asset {Asset} and trading type {TradingType}", 
+            _logger.LogInformation("Creating market order (Taker) for user {UserId} with asset {Asset} and trading type {TradingType}", 
                 command.UserId, command.Asset, command.TradingType);
 
             //TODO Check authorization
-            var canCreateOrder = true;//await _authorizationService.CanCreateOrderAsync(command.UserId);
+            var canCreateOrder = true;
             if (!canCreateOrder)
             {
                 _logger.LogWarning("User {UserId} is not authorized to create orders", command.UserId);
                 throw new UnauthorizedAccessException("شما مجوز ثبت سفارش ندارید. فقط مدیران می‌توانند سفارش ثبت کنند.");
             }
 
-            // Get best bid/ask prices to determine market price
-            var bestPrices = await GetBestBidAskAsync(command.Asset, command.TradingType);
-            decimal marketPrice = 0;
-            Guid? matchingOrderId = null;
-
-            if (command.Type == OrderType.Buy)
+            // 1. Get available maker orders to determine market execution feasibility
+            var availableOrders = await GetAvailableMakerOrdersForMarketOrderAsync(command.Asset, command.TradingType, command.Type);
+            
+            if (!availableOrders.Any())
             {
-                // For buy orders, use the best ask (lowest sell price)
-                marketPrice = bestPrices.BestAsk ?? 0;
-                if (marketPrice <= 0)
-                {
-                    throw new InvalidOperationException("هیچ فروشنده‌ای برای این نماد در بازار وجود ندارد");
-                }
-                // Find the matching sell order (Maker order) to link to
-                // We need to get the order ID for the best ask
-                var sellOrders = await _orderRepository.GetOrdersByAssetAsync(command.Asset);
-                var bestAskOrder = sellOrders
-                    .Where(o => o.IsMaker() && o.IsActive() && o.TradingType == command.TradingType && 
-                               o.Type == OrderType.Sell && o.Status == OrderStatus.Pending)
-                    .OrderBy(o => o.Price)
-                    .FirstOrDefault();
-                matchingOrderId = bestAskOrder?.Id;
-            }
-            else // Sell order
-            {
-                // For sell orders, use the best bid (highest buy price)
-                marketPrice = bestPrices.BestBid ?? 0;
-                if (marketPrice <= 0)
-                {
-                    throw new InvalidOperationException("هیچ خریداری برای این نماد در بازار وجود ندارد");
-                }
-                // Find the matching buy order (Maker order) to link to
-                // We need to get the order ID for the best bid
-                var buyOrders = await _orderRepository.GetOrdersByAssetAsync(command.Asset);
-                var bestBidOrder = buyOrders
-                    .Where(o => o.IsMaker() && o.IsActive() && o.TradingType == command.TradingType && 
-                               o.Type == OrderType.Buy && o.Status == OrderStatus.Pending)
-                    .OrderByDescending(o => o.Price)
-                    .FirstOrDefault();
-                matchingOrderId = bestBidOrder?.Id;
+                throw new InvalidOperationException(command.Type == OrderType.Buy 
+                    ? "هیچ فروشنده‌ای برای این نماد در بازار وجود ندارد"
+                    : "هیچ خریداری برای این نماد در بازار وجود ندارد");
             }
 
-            // Create market order as Taker order (removes liquidity)
-            if (matchingOrderId.HasValue)
-            {
-                // Create Taker order that links to the existing Maker order
-                var order = Order.CreateTakerOrder(
-                    matchingOrderId.Value,
-                    command.Amount,
-                    command.UserId,
-                    command.Notes
-                );
+            // 2. Calculate average execution price and required balance
+            var estimatedPrice = CalculateAverageExecutionPrice(availableOrders, command.Amount);
+            var (requiredAsset, requiredAmount) = CalculateRequiredBalance(command.Type, command.Asset, command.Amount, estimatedPrice);
 
-                // Save to repository
-                var createdOrder = await _orderRepository.AddAsync(order);
-                
-                _logger.LogInformation("Market order (Taker) created successfully with ID: {OrderId} at price: {Price}", createdOrder.Id, marketPrice);
-                return createdOrder;
-            }
-            else
+            // 3. Validate user balance
+            var balanceValidation = await _walletApiClient.ValidateBalanceAsync(
+                command.UserId, 
+                requiredAsset, 
+                requiredAmount, 
+                (int)command.Type);
+
+            if (!balanceValidation.Success || !balanceValidation.HasSufficientBalance)
             {
-                // Fallback: Create a Maker order if no matching order found
-                // This should not happen if validation is working correctly
-                var order = Order.CreateMakerOrder(
+                _logger.LogWarning("Insufficient balance for user {UserId} to create market order", command.UserId);
+                throw new InvalidOperationException($"موجودی ناکافی: {balanceValidation.Message}");
+            }
+
+            // 4. Lock balance for the order
+            var lockResult = await _walletApiClient.LockBalanceAsync(command.UserId, requiredAsset, requiredAmount);
+            if (!lockResult.Success)
+            {
+                _logger.LogError("Failed to lock balance for user {UserId}: {Message}", command.UserId, lockResult.Message);
+                throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockResult.Message}");
+            }
+
+            try
+            {
+                // 5. Create market order (acts as Taker - removes liquidity immediately)
+                var marketOrder = Order.CreateMarketOrder(
                     command.Asset,
                     command.Amount,
-                    marketPrice,
+                    estimatedPrice, // Use estimated price for the order
                     command.UserId,
                     command.Type,
                     command.TradingType,
                     command.Notes
                 );
 
-                // Save to repository
-                var createdOrder = await _orderRepository.AddAsync(order);
-                
-                _logger.LogWarning("Market order created as Maker (fallback) with ID: {OrderId} at price: {Price}", createdOrder.Id, marketPrice);
+                // 6. Save to repository
+                var createdOrder = await _orderRepository.AddAsync(marketOrder);
+
+                // 7. Immediately process through matching engine (Taker behavior)
+                // سفارش بازار فوراً باید با سفارشات maker موجود تطبیق یابد
+                await _matchingEngine.ProcessOrderAsync(createdOrder);
+
+                _logger.LogInformation("Market order (Taker) created and processed with ID: {OrderId}, Estimated price: {Price}", 
+                    createdOrder.Id, estimatedPrice);
+                    
                 return createdOrder;
             }
-
-
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Market order creation failed for user {UserId}, asset {Asset}, amount {Amount}", 
+                    command.UserId, command.Asset, command.Amount);
+                    
+                // Rollback: Unlock the balance if order creation fails
+                _logger.LogWarning("Market order creation failed, attempting to unlock balance for user {UserId}", command.UserId);
+                var unlockResult = await _walletApiClient.UnlockBalanceAsync(command.UserId, requiredAsset, requiredAmount);
+                if (!unlockResult.Success)
+                {
+                    _logger.LogError("Failed to unlock balance during rollback for user {UserId}: {Message}", 
+                        command.UserId, unlockResult.Message);
+                }
+                throw;
+            }
         }
-        catch (Exception ex) when (ex is not UnauthorizedAccessException)
+        catch (Exception ex) when (ex is not UnauthorizedAccessException and not InvalidOperationException)
         {
             _logger.LogError(ex, "Error creating market order for user {UserId}", command.UserId);
             throw new InvalidOperationException("خطا در ایجاد سفارش بازار", ex);
@@ -664,6 +672,82 @@ public class OrderService /*: IOrderService*/
             // برای سفارش فروش، نیاز به دارایی واقعی برای فروش داریم
             return (tradingAsset, orderAmount);
         }
+    }
+
+    /// <summary>
+    /// Get available maker orders that can be matched with a market order
+    /// دریافت سفارشات maker موجود که می‌توانند با سفارش بازار تطبیق یابند
+    /// </summary>
+    private async Task<List<Order>> GetAvailableMakerOrdersForMarketOrderAsync(string asset, TradingType tradingType, OrderType marketOrderType)
+    {
+        try
+        {
+            var allOrders = await _orderRepository.GetOrdersByAssetAsync(asset);
+            
+            // Get opposite side orders (if market order is Buy, get Sell orders and vice versa)
+            var oppositeOrderType = marketOrderType == OrderType.Buy ? OrderType.Sell : OrderType.Buy;
+            
+            var availableOrders = allOrders
+                .Where(o => o.IsMaker() && 
+                           o.IsActive() && 
+                           o.TradingType == tradingType &&
+                           o.Type == oppositeOrderType &&
+                           o.Status == OrderStatus.Pending &&
+                           o.RemainingAmount > 0)
+                .ToList();
+
+            // Sort by price priority
+            if (marketOrderType == OrderType.Buy)
+            {
+                // For buy market orders, prioritize cheapest sell orders
+                availableOrders = availableOrders
+                    .OrderBy(o => o.Price)
+                    .ThenBy(o => o.CreatedAt)
+                    .ToList();
+            }
+            else
+            {
+                // For sell market orders, prioritize highest buy orders
+                availableOrders = availableOrders
+                    .OrderByDescending(o => o.Price)
+                    .ThenBy(o => o.CreatedAt)
+                    .ToList();
+            }
+
+            return availableOrders;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting available maker orders for market order");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Calculate average execution price for a market order
+    /// محاسبه قیمت متوسط اجرا برای سفارش بازار
+    /// </summary>
+    private static decimal CalculateAverageExecutionPrice(List<Order> availableOrders, decimal requestedAmount)
+    {
+        if (!availableOrders.Any())
+            return 0;
+
+        decimal totalCost = 0;
+        decimal totalQuantity = 0;
+        decimal remainingAmount = requestedAmount;
+
+        foreach (var order in availableOrders)
+        {
+            if (remainingAmount <= 0)
+                break;
+
+            var quantityFromThisOrder = Math.Min(remainingAmount, order.RemainingAmount);
+            totalCost += quantityFromThisOrder * order.Price;
+            totalQuantity += quantityFromThisOrder;
+            remainingAmount -= quantityFromThisOrder;
+        }
+
+        return totalQuantity > 0 ? totalCost / totalQuantity : availableOrders.First().Price;
     }
 
     public async Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status)

@@ -98,6 +98,44 @@ public class Order
         };
     }
 
+    public static Order CreateMarketOrder(
+        string asset,
+        decimal amount,
+        decimal estimatedPrice,
+        Guid userId,
+        OrderType type,
+        TradingType tradingType,
+        string? notes = null)
+    {
+        if (string.IsNullOrWhiteSpace(asset))
+            throw new ArgumentException("Asset cannot be empty", nameof(asset));
+        
+        if (amount <= 0)
+            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
+        
+        if (estimatedPrice <= 0)
+            throw new ArgumentException("Estimated price must be greater than zero", nameof(estimatedPrice));
+        
+        if (userId == Guid.Empty)
+            throw new ArgumentException("UserId cannot be empty", nameof(userId));
+
+        return new Order
+        {
+            Id = Guid.NewGuid(),
+            Asset = asset.Trim().ToUpperInvariant(),
+            Amount = amount,
+            RemainingAmount = amount,
+            Price = estimatedPrice, // Market orders use estimated price for display purposes
+            UserId = userId,
+            Type = type,
+            Status = OrderStatus.Pending,
+            TradingType = tradingType,
+            Role = OrderRole.Taker, // Market orders are always Takers (remove liquidity)
+            CreatedAt = DateTime.UtcNow,
+            Notes = notes
+        };
+    }
+
     public static Order CreateTakerOrder(
         Guid parentOrderId,
         decimal amount,

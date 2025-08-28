@@ -213,22 +213,64 @@ public class OrderMatchingRepository
     private static Trade CreateTrade(Order buyOrder, Order sellOrder, decimal quantity, decimal price)
     {
         var quoteQuantity = quantity * price;
-        var feeRate = 0.001m; // 0.1% - should come from configuration
-        var feeBuyer = quoteQuantity * feeRate;
-        var feeSeller = quoteQuantity * feeRate;
-
-        return Trade.Create(
-            buyOrderId: buyOrder.Id,
-            sellOrderId: sellOrder.Id,
-            symbol: buyOrder.Asset,
-            price: price,
-            quantity: quantity,
-            quoteQuantity: quoteQuantity,
-            buyerUserId: buyOrder.UserId,
-            sellerUserId: sellOrder.UserId,
-            feeBuyer: feeBuyer,
-            feeSeller: feeSeller
-        );
+        
+        // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
+        var makerFeeRate = 0.001m; // 0.1%
+        var takerFeeRate = 0.002m; // 0.2%
+        
+        // Determine which order is Maker (older timestamp) and which is Taker (newer timestamp)
+        var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;
+        
+        if (isBuyOrderMaker)
+        {
+            // Buy order is Maker, Sell order is Taker
+            var makerFee = quoteQuantity * makerFeeRate;
+            var takerFee = quoteQuantity * takerFeeRate;
+            
+            return Trade.Create(
+                buyOrderId: buyOrder.Id,
+                sellOrderId: sellOrder.Id,
+                makerOrderId: buyOrder.Id,
+                takerOrderId: sellOrder.Id,
+                symbol: buyOrder.Asset,
+                price: price,
+                quantity: quantity,
+                quoteQuantity: quoteQuantity,
+                buyerUserId: buyOrder.UserId,
+                sellerUserId: sellOrder.UserId,
+                makerUserId: buyOrder.UserId,
+                takerUserId: sellOrder.UserId,
+                makerFeeRate: makerFeeRate,
+                takerFeeRate: takerFeeRate,
+                feeBuyer: makerFee,
+                feeSeller: takerFee
+            );
+        }
+        else
+        {
+            // Sell order is Maker, Buy order is Taker
+            var makerFee = quoteQuantity * makerFeeRate;
+            var takerFee = quoteQuantity * takerFeeRate;
+            
+            return Trade.Create(
+                buyOrderId: buyOrder.Id,
+                sellOrderId: sellOrder.Id,
+                makerOrderId: sellOrder.Id,
+                takerOrderId: buyOrder.Id,
+                symbol: buyOrder.Asset,
+                price: price,
+                quantity: quantity,
+                quoteQuantity: quoteQuantity,
+                buyerUserId: buyOrder.UserId,
+                sellerUserId: sellOrder.UserId,
+                makerUserId: sellOrder.UserId,
+                takerUserId: buyOrder.UserId,
+                makerFeeRate: makerFeeRate,
+                takerFeeRate: takerFeeRate,
+                feeBuyer: takerFee,
+                feeSeller: makerFee
+            );
+        }
     }
 
     /// <summary>

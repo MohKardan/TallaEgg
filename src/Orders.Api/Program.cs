@@ -34,9 +34,8 @@ builder.Services.AddHttpClient<Orders.Infrastructure.Clients.IWalletApiClient, O
 });
 builder.Services.AddScoped<Orders.Infrastructure.Clients.IWalletApiClient, Orders.Infrastructure.Clients.WalletApiClient>();
 
-// Add Matching Engine as Background Service
-builder.Services.AddHostedService<MatchingEngineService>();
-builder.Services.AddScoped<IMatchingEngine, MatchingEngineService>();
+// Add Matching Engine
+builder.Services.AddScoped<IMatchingEngine, Orders.Application.MatchingEngineService>();
 
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -111,7 +110,7 @@ app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService order
         var order = await orderService.CreateMakerOrderAsync(command);
         return Results.Ok(new { success = true, message = "سفارش با موفقیت ثبت شد", order = order });
     }
-    catch (UnauthorizedAccessException ex)
+    catch (UnauthorizedAccessException)
     {
         return Results.Forbid();
     }
@@ -225,7 +224,8 @@ app.MapGet("/api/orders/userorders/{userId}",
         }
         catch (Exception ex)
         {
-
+            // Log the exception for debugging purposes
+            Console.WriteLine($"Error getting user orders: {ex.Message}");
             return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطا در دریافت اطلاعات"));
         }
     });
@@ -549,7 +549,7 @@ app.MapPost("/api/orders/market", async (CreateMarketOrderRequest request, Order
         //return Results.Ok(new { success = true, message = "سفارش بازار با موفقیت ثبت شد", data = order });
         return Results.Ok(ApiResponse<Order>.Ok(order, "سفارش بازار با موفقیت ثبت شد"));
     }
-    catch (UnauthorizedAccessException ex)
+    catch (UnauthorizedAccessException)
     {
         return Results.Forbid();
     }

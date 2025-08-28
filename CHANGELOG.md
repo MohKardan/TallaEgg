@@ -5,6 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-08-28
+
+### Added
+- **🎯 Complete Maker/Taker Trading System**: Implemented comprehensive Maker/Taker identification and fee calculation system
+  - Added proper Maker/Taker role assignment based on order timing and liquidity provision
+  - Implemented differentiated fee structure: Makers (0.1%) vs Takers (0.2%)
+  - Enhanced Trade entity with MakerOrderId, TakerOrderId, MakerUserId, TakerUserId fields
+  - Added MakerFee, TakerFee, MakerFeeRate, TakerFeeRate properties for proper fee calculation
+  - Enhanced Order entity with CreateMarketOrder factory method for immediate execution (Taker orders)
+  - Implemented ProcessOrderForMatchingAsync method in MatchingEngineService for role determination
+  - Added comprehensive business logic for automatic Maker/Taker identification
+
+### Changed
+- **⚡ Enhanced Trade Entity**: Complete redesign with Maker/Taker specific fields
+  - Updated Trade.Create method signature to include all Maker/Taker parameters
+  - Added automatic fee calculation based on order roles and trade value
+  - Enhanced fee assignment logic: buyer/seller fees determined by Maker/Taker roles
+  - Improved validation with comprehensive parameter checking
+
+- **🔄 Advanced Order Matching Logic**: Revolutionary matching engine with proper role assignment
+  - **Maker Identification**: Orders that provide liquidity by waiting in order book
+  - **Taker Identification**: Orders that consume liquidity by matching immediately
+  - **Timing-Based Logic**: Earlier timestamp = Maker, Later timestamp = Taker
+  - **Market vs Limit Orders**: Market orders are always Takers, Limit orders can be either
+  - **Fee Optimization**: Makers get lower fees (0.1%) to incentivize liquidity provision
+
+- **💼 OrderService Architecture**: Enhanced with proper Maker/Taker workflow
+  - Refactored CreateMakerOrderAsync for limit orders that add liquidity
+  - Added CreateMarketOrderAsync for market orders that consume liquidity
+  - Implemented immediate matching detection for Taker role assignment
+  - Enhanced balance validation and wallet integration for different order types
+
+- **🏗️ Repository Layer Updates**: Updated OrderMatchingRepository with new Trade creation
+  - Fixed CreateTrade method to use enhanced Trade.Create signature
+  - Added proper Maker/Taker role determination logic
+  - Implemented fee calculation based on trade value and role-specific rates
+  - Enhanced thread-safe order matching with proper role assignment
+
+### Fixed
+- **🐛 Compilation Issues**: Resolved all build errors for complete Maker/Taker system
+  - Fixed Trade.Create method signature mismatch in OrderMatchingRepository
+  - Corrected OrderStatus enum usage (PartiallyFilled → Partially)
+  - Resolved Order entity method conflicts (FilledAmount removed, RemainingAmount used)
+  - Fixed unused variable warnings in exception handlers
+  - Removed unused Timer fields from MatchingEngineService
+
+- **⚙️ Interface Compliance**: Fixed IMatchingEngine interface implementation
+  - Added proper StartAsync and StopAsync method implementations
+  - Resolved service registration conflicts between multiple MatchingEngineService classes
+  - Fixed Program.cs DI registration with explicit namespace specification
+
+### Technical Details
+- **🎲 Maker/Taker Algorithm**: Sophisticated role determination system
+  ```csharp
+  // Determine roles based on order timestamp
+  var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;
+  
+  // Assign fees based on roles
+  var makerFeeRate = 0.001m; // 0.1% - Lower fee for liquidity providers
+  var takerFeeRate = 0.002m; // 0.2% - Higher fee for liquidity consumers
+  ```
+
+- **💰 Fee Structure**: Advanced fee calculation system
+  - **Maker Fee**: 0.1% to encourage liquidity provision
+  - **Taker Fee**: 0.2% standard trading fee
+  - **Dynamic Assignment**: Fees assigned based on actual trading role
+  - **Trade Value Based**: Fees calculated on quantity × price
+
+- **🔗 Order Relationships**: Comprehensive order linking system
+  - MakerOrderId/TakerOrderId for trade tracking
+  - MakerUserId/TakerUserId for user role identification  
+  - Proper parent-child relationships between orders
+  - Complete audit trail for regulatory compliance
+
+- **🚀 Performance Optimizations**: Enhanced matching engine efficiency
+  - Eliminated unused background processing for better performance
+  - Streamlined service dependencies and DI configuration
+  - Optimized database operations with proper LINQ queries
+  - Improved error handling and logging throughout
+
+### Architecture Benefits
+- **📈 Industry Standard**: Implements standard exchange trading model
+- **💡 Liquidity Incentives**: Lower fees for market makers encourage liquidity
+- **🔍 Transparency**: Clear role identification for all trades
+- **⚖️ Fair Pricing**: Market-driven price discovery through proper maker/taker mechanics
+- **📊 Comprehensive Tracking**: Full audit trail with role-based analytics
+
+### Breaking Changes
+- Trade.Create method signature updated - requires migration of existing trade creation code
+- OrderMatchingRepository.CreateTrade method updated - automatic role assignment implemented
+
+### Migration Guide
+- Update any direct Trade.Create calls to include new Maker/Taker parameters
+- Existing trades will continue to work with new fee calculation logic
+- No database schema changes required - new fields added with proper defaults
+
 ## [2.1.0] - 2025-08-28
 
 ### Added
