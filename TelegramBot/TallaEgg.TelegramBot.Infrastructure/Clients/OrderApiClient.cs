@@ -32,7 +32,7 @@ public class OrderApiClient : IOrderApiClient
     int pageNumber = 1,
     int pageSize = 10)
     {
-        var uri = $"{_baseUrl}/orders/userorders/{userId}?pageNumber={pageNumber}&pageSize={pageSize}";
+        var uri = $"{_baseUrl}/orders/user/{userId}?pageNumber={pageNumber}&pageSize={pageSize}";
 
         try
         {
