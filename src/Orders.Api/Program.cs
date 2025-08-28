@@ -9,6 +9,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Order;
+using TallaEgg.Core.Responses.Order;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -85,532 +86,200 @@ if (app.Environment.IsDevelopment())
 // Order management endpoints
 
 /// <summary>
-/// Creates a new maker order
+/// ایجاد سفارش واحد - پشتیبانی از تمام انواع سفارشات (Limit/Market) با تشخیص خودکار Maker/Taker
 /// </summary>
-/// <param name="request">Order creation request containing asset, amount, price, user ID, type, trading type, and optional notes</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Created order details with success status</returns>
-/// <response code="200">Order created successfully</response>
-/// <response code="400">Invalid request data or business rule violation</response>
-/// <response code="403">Unauthorized access</response>
-app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orderService) =>
+/// <param name="request">درخواست ایجاد سفارش</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>پاسخ جامع شامل سفارش، نقش، و معاملات اجرا شده</returns>
+/// <response code="200">سفارش با موفقیت ایجاد شد</response>
+/// <response code="400">داده‌های نامعتبر یا نقض قوانین تجاری</response>
+/// <response code="401">دسترسی غیرمجاز</response>
+app.MapPost("/api/orders", async (TallaEgg.Core.Requests.Order.CreateOrderRequest request, OrderService orderService) =>
 {
     try
     {
-        var command = new CreateOrderCommand(
-            request.Asset,
-            request.Amount,
-            request.Price,
-            request.UserId,
-            request.Type,
-            request.TradingType,
-            request.Notes
-        );
+        // Validate request
+        if (string.IsNullOrWhiteSpace(request.Symbol))
+            return Results.BadRequest(new { success = false, message = "نماد معاملاتی الزامی است" });
+        
+        if (request.Quantity <= 0)
+            return Results.BadRequest(new { success = false, message = "مقدار سفارش باید بیشتر از صفر باشد" });
+        
+        if (request.Type == OrderTypeEnum.Limit && (request.Price == null || request.Price <= 0))
+            return Results.BadRequest(new { success = false, message = "قیمت برای سفارش محدود الزامی است" });
 
-        var order = await orderService.CreateMakerOrderAsync(command);
-        return Results.Ok(new { success = true, message = "سفارش با موفقیت ثبت شد", order = order });
+        var response = await orderService.CreateOrderAsync(request);
+        
+        return Results.Ok(new { 
+            success = true, 
+            message = response.Message,
+            data = response
+        });
     }
-    catch (UnauthorizedAccessException)
+    catch (UnauthorizedAccessException ex)
     {
-        return Results.Forbid();
+        return Results.Json(new { success = false, message = ex.Message }, statusCode: 401);
     }
-    catch (Exception ex)
+    catch (ArgumentException ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
-});
-
-/// <summary>
-/// Creates a new limit order
-/// </summary>
-/// <param name="request">Limit order request containing symbol, quantity, price, and user ID</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Created limit order details with success status</returns>
-/// <response code="200">Limit order created successfully</response>
-/// <response code="400">Invalid request data or validation error</response>
-app.MapPost("/api/orders/limit", async (CreateLimitOrderRequest request, OrderService orderService) =>
-{
-    try
-    {
-        var order = await orderService.CreateLimitOrderAsync(request.Symbol, request.Quantity, request.Price, request.UserId);
-        return Results.Ok(new { success = true, message = "Limit order created successfully", order = order });
-    }
-    catch (Exception ex)
+    catch (InvalidOperationException ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
-});
-
-/// <summary>
-/// Creates a new taker order
-/// </summary>
-/// <param name="request">Taker order request containing parent order ID, amount, user ID, and optional notes</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Created taker order details with success status</returns>
-/// <response code="200">Taker order created successfully</response>
-/// <response code="400">Invalid request data or business rule violation</response>
-app.MapPost("/api/orders/taker", async (CreateTakerOrderRequest request, OrderService orderService) =>
-{
-    try
-    {
-        var command = new CreateTakerOrderCommand(
-            request.ParentOrderId,
-            request.Amount,
-            request.UserId,
-            request.Notes
-        );
-
-        var order = await orderService.CreateTakerOrderAsync(command);
-        return Results.Ok(new { success = true, message = "سفارش taker با موفقیت ثبت شد", order = order });
-    }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
-});
+})
+.WithName("CreateOrder")
+.WithSummary("ایجاد سفارش واحد")
+.WithDescription("ایجاد سفارش Limit یا Market با تشخیص خودکار نقش Maker/Taker")
+.WithTags("Orders")
+.Produces<CreateOrderResponse>(200)
+.ProducesValidationProblem(400);
 
 /// <summary>
-/// Retrieves an order by its ID
+/// دریافت اطلاعات سفارش با ID
 /// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Order details if found</returns>
-/// <response code="200">Order found and returned successfully</response>
-/// <response code="404">Order not found</response>
-/// <response code="400">Invalid request or error occurred</response>
+/// <param name="orderId">شناسه سفارش</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>اطلاعات سفارش در صورت یافتن</returns>
+/// <response code="200">سفارش یافت و بازگردانده شد</response>
+/// <response code="404">سفارش یافت نشد</response>
 app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderService) =>
 {
     try
     {
         var order = await orderService.GetOrderByIdAsync(orderId);
         if (order == null)
-            return Results.NotFound(new { success = false, message = "سفارش یافت نشد" });
+            return Results.NotFound(new { success = false, message = $"سفارش با شناسه {orderId} یافت نشد" });
 
-        return Results.Ok(new { success = true, order = order });
+        return Results.Ok(new { success = true, data = order });
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
-});
+})
+.WithName("GetOrderById")
+.WithSummary("دریافت سفارش با شناسه")
+.WithTags("Orders")
+.Produces(200)
+.Produces(404);
 
 /// <summary>
-/// Retrieves paginated orders for a specific user
+/// لغو سفارش
 /// </summary>
-/// <param name="userId">Unique identifier of the user</param>
-/// <param name="pageNumber">Page number for pagination (default: 1)</param>
-/// <param name="pageSize">Number of items per page (default: 10, max: 100)</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Paginated list of user orders</returns>
-/// <response code="200">User orders retrieved successfully</response>
-/// <response code="400">Invalid request parameters</response>
-app.MapGet("/api/orders/userorders/{userId}",
-    async (
-        Guid userId,
-        int? pageNumber,
-        int? pageSize,
-        OrderService orderService) =>
-    {
-    
-        // اعتبارسنجی
-        var page = pageNumber ?? 1;
-        var size = Math.Clamp(pageSize ?? 10, 1, 100);
-
-        try
-        {
-            var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
-
-           return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"));
-        }
-        catch (Exception ex)
-        {
-            // Log the exception for debugging purposes
-            Console.WriteLine($"Error getting user orders: {ex.Message}");
-            return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطا در دریافت اطلاعات"));
-        }
-    });
-
-/// <summary>
-/// Retrieves all orders for a specific asset
-/// </summary>
-/// <param name="asset">Trading asset symbol (e.g., BTC, ETH)</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of orders for the specified asset</returns>
-/// <response code="200">Asset orders retrieved successfully</response>
-/// <response code="400">Invalid request or error occurred</response>
-app.MapGet("/api/orders/asset/{asset}", async (string asset, OrderService orderService) =>
+/// <param name="orderId">شناسه سفارش</param>
+/// <param name="reason">دلیل لغو (اختیاری)</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>نتیجه عملیات لغو</returns>
+/// <response code="200">سفارش با موفقیت لغو شد</response>
+/// <response code="400">عملیات لغو ناموفق یا نامعتبر</response>
+/// <response code="404">سفارش یافت نشد</response>
+app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason, OrderService orderService) =>
 {
     try
     {
-        var orders = await orderService.GetOrdersByAssetAsync(asset);
-        return Results.Ok(new { success = true, orders = orders });
+        var success = await orderService.CancelOrderAsync(orderId, reason);
+        if (!success)
+            return Results.NotFound(new { success = false, message = $"سفارش با شناسه {orderId} یافت نشد یا قابل لغو نیست" });
+
+        return Results.Ok(new { success = true, message = "سفارش با موفقیت لغو شد", orderId });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
-});
+})
+.WithName("CancelOrder")
+.WithSummary("لغو سفارش")
+.WithTags("Orders")
+.Produces(200)
+.Produces(400)
+.Produces(404);
 
 /// <summary>
-/// Retrieves all active orders
+/// دریافت سفارشات کاربر با صفحه‌بندی
 /// </summary>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of all active orders</returns>
-/// <response code="200">Active orders retrieved successfully</response>
-/// <response code="400">Error occurred while retrieving orders</response>
-app.MapGet("/api/orders/active", async (OrderService orderService) =>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="pageNumber">شماره صفحه (پیش‌فرض: 1)</param>
+/// <param name="pageSize">تعداد آیتم در هر صفحه (پیش‌فرض: 10، حداکثر: 100)</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>لیست صفحه‌بندی شده سفارشات کاربر</returns>
+/// <response code="200">سفارشات کاربر با موفقیت دریافت شد</response>
+/// <response code="400">پارامترهای درخواست نامعتبر</response>
+app.MapGet("/api/orders/user/{userId}", async (
+    Guid userId,
+    int? pageNumber,
+    int? pageSize,
+    OrderService orderService) =>
 {
+    // Validation
+    var page = pageNumber ?? 1;
+    var size = Math.Clamp(pageSize ?? 10, 1, 100);
+
+    if (page < 1)
+        return Results.BadRequest(new { success = false, message = "شماره صفحه باید بیشتر از صفر باشد" });
+
     try
     {
-        var orders = await orderService.GetActiveOrdersAsync();
-        return Results.Ok(new { success = true, orders = orders });
+        var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
+        return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
-});
+})
+.WithName("GetUserOrders")
+.WithSummary("دریافت سفارشات کاربر")
+.WithTags("Orders")
+.Produces<ApiResponse<PagedResult<OrderHistoryDto>>>(200)
+.Produces(400);
 
 /// <summary>
-/// Gets all pending orders
+/// دریافت بهترین قیمت‌های خرید و فروش
 /// </summary>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of pending orders</returns>
-/// <response code="200">Pending orders retrieved successfully</response>
-/// <response code="400">Error occurred while retrieving orders</response>
-app.MapGet("/api/orders/pending", async (OrderService orderService) =>
+/// <param name="symbol">نماد معاملاتی (مثل BTC، ETH)</param>
+/// <param name="tradingType">نوع معامله (پیش‌فرض: استاندارد)</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>بهترین قیمت‌های Bid و Ask</returns>
+/// <response code="200">بهترین قیمت‌ها با موفقیت دریافت شد</response>
+/// <response code="400">درخواست نامعتبر</response>
+app.MapGet("/api/orders/{symbol}/best-prices", async (
+    string symbol, 
+    TradingType? tradingType,
+    OrderService orderService) =>
 {
     try
     {
-        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Pending);
-        return Results.Ok(new { success = true, orders });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
+        if (string.IsNullOrWhiteSpace(symbol))
+            return Results.BadRequest(new { success = false, message = "نماد معاملاتی الزامی است" });
 
-/// <summary>
-/// Gets all confirmed orders
-/// </summary>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of confirmed orders</returns>
-/// <response code="200">Confirmed orders retrieved successfully</response>
-/// <response code="400">Error occurred while retrieving orders</response>
-app.MapGet("/api/orders/confirmed", async (OrderService orderService) =>
-{
-    try
-    {
-        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Confirmed);
-        return Results.Ok(new { success = true, orders });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Gets all partially filled orders
-/// </summary>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of partially filled orders</returns>
-/// <response code="200">Partially filled orders retrieved successfully</response>
-/// <response code="400">Error occurred while retrieving orders</response>
-app.MapGet("/api/orders/partially", async (OrderService orderService) =>
-{
-    try
-    {
-        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Partially);
-        return Results.Ok(new { success = true, orders });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Gets all completed orders
-/// </summary>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of completed orders</returns>
-/// <response code="200">Completed orders retrieved successfully</response>
-/// <response code="400">Error occurred while retrieving orders</response>
-app.MapGet("/api/orders/completed", async (OrderService orderService) =>
-{
-    try
-    {
-        var orders = await orderService.GetOrdersByStatusAsync(OrderStatus.Completed);
-        return Results.Ok(new { success = true, orders });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Retrieves available maker orders for a specific asset and trading type
-/// </summary>
-/// <param name="asset">Trading asset symbol</param>
-/// <param name="tradingType">Type of trading (Spot or Futures)</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>List of available maker orders</returns>
-/// <response code="200">Maker orders retrieved successfully</response>
-/// <response code="400">Invalid request or error occurred</response>
-app.MapGet("/api/orders/maker/{asset}", async (string asset, TradingType tradingType, OrderService orderService) =>
-{
-    try
-    {
-        var orders = await orderService.GetAvailableMakerOrdersAsync(asset, tradingType);
-        return Results.Ok(new { success = true, orders = orders });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Updates the status of an order
-/// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="request">Status update request containing new status and optional notes</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the update operation</returns>
-/// <response code="200">Order status updated successfully</response>
-/// <response code="400">Invalid request or update failed</response>
-app.MapPut("/api/orders/{orderId}/status", async (Guid orderId, UpdateOrderStatusRequest request, OrderService orderService) =>
-{
-    try
-    {
-        var success = await orderService.UpdateOrderStatusAsync(orderId, request.Status, request.Notes);
-        if (success)
-            return Results.Ok(new { success = true, message = "وضعیت سفارش با موفقیت به‌روزرسانی شد" });
-        else
-            return Results.BadRequest(new { success = false, message = "خطا در به‌روزرسانی وضعیت سفارش" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Cancels an order with optional reason
-/// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="request">Cancel request containing optional reason</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the cancellation operation</returns>
-/// <response code="200">Order cancelled successfully</response>
-/// <response code="400">Invalid request or cancellation failed</response>
-app.MapPut("/api/orders/{orderId}/cancel", async (Guid orderId, CancelOrderRequest request, OrderService orderService) =>
-{
-    try
-    {
-        var success = await orderService.CancelOrderAsync(orderId, request.Reason);
-        if (success)
-            return Results.Ok(new { success = true, message = "سفارش با موفقیت لغو شد" });
-        else
-            return Results.BadRequest(new { success = false, message = "خطا در لغو سفارش" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Cancels an order (simple cancellation)
-/// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Updated order details after cancellation</returns>
-/// <response code="200">Order cancelled successfully</response>
-/// <response code="404">Order not found</response>
-/// <response code="400">Invalid request or cancellation failed</response>
-app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, OrderService orderService) =>
-{
-    try
-    {
-        // Load order by Id from DB
-        var order = await orderService.GetOrderByIdAsync(orderId);
-        if (order == null)
-            return Results.NotFound(new { success = false, message = "Order not found" });
-
-        // Cancel the order
-        var success = await orderService.CancelOrderAsync(orderId);
-        if (success)
-        {
-            // Get updated order
-            var updatedOrder = await orderService.GetOrderByIdAsync(orderId);
-            return Results.Ok(new { success = true, message = "Order cancelled successfully", order = updatedOrder });
-        }
-        else
-            return Results.BadRequest(new { success = false, message = "Error cancelling order" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Confirms an order
-/// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the confirmation operation</returns>
-/// <response code="200">Order confirmed successfully</response>
-/// <response code="400">Invalid request or confirmation failed</response>
-app.MapPut("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService orderService) =>
-{
-    try
-    {
-        var success = await orderService.ConfirmOrderAsync(orderId);
-        if (success)
-            return Results.Ok(new { success = true, message = "سفارش با موفقیت تایید شد" });
-        else
-            return Results.BadRequest(new { success = false, message = "خطا در تایید سفارش" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Completes an order
-/// </summary>
-/// <param name="orderId">Unique identifier of the order</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the completion operation</returns>
-/// <response code="200">Order completed successfully</response>
-/// <response code="400">Invalid request or completion failed</response>
-app.MapPut("/api/orders/{orderId}/complete", async (Guid orderId, OrderService orderService) =>
-{
-    try
-    {
-        var success = await orderService.CompleteOrderAsync(orderId);
-        if (success)
-            return Results.Ok(new { success = true, message = "سفارش با موفقیت تکمیل شد" });
-        else
-            return Results.BadRequest(new { success = false, message = "خطا در تکمیل سفارش" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Accepts a taker order for a maker order
-/// </summary>
-/// <param name="makerOrderId">Unique identifier of the maker order</param>
-/// <param name="takerOrderId">Unique identifier of the taker order</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the acceptance operation</returns>
-/// <response code="200">Taker order accepted successfully</response>
-/// <response code="400">Invalid request or acceptance failed</response>
-app.MapPost("/api/orders/{makerOrderId}/accept-taker/{takerOrderId}", async (Guid makerOrderId, Guid takerOrderId, OrderService orderService) =>
-{
-    try
-    {
-        var success = await orderService.AcceptTakerOrderAsync(makerOrderId, takerOrderId);
-        if (success)
-            return Results.Ok(new { success = true, message = "سفارش taker با موفقیت پذیرفته شد" });
-        else
-            return Results.BadRequest(new { success = false, message = "خطا در پذیرش سفارش taker" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Creates a new market order
-/// </summary>
-/// <param name="request">Market order request containing asset, amount, user ID, type, trading type, and optional notes</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Created market order details with success status</returns>
-/// <response code="200">Market order created successfully</response>
-/// <response code="400">Invalid request data or business rule violation</response>
-/// <response code="403">Unauthorized access</response>
-app.MapPost("/api/orders/market", async (CreateMarketOrderRequest request, OrderService orderService) =>
-{
-    try
-    {
+        var type = tradingType ?? TradingType.Spot;
+        var result = await orderService.GetBestBidAskAsync(symbol, type);
         
-        var order = await orderService.CreateMarketOrderAsync(request);
-        //return Results.Ok(new { success = true, message = "سفارش بازار با موفقیت ثبت شد", data = order });
-        return Results.Ok(ApiResponse<Order>.Ok(order, "سفارش بازار با موفقیت ثبت شد"));
-    }
-    catch (UnauthorizedAccessException)
-    {
-        return Results.Forbid();
+        return Results.Ok(new { success = true, data = result });
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(new { success = false, message = ex.Message });
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
-});
+})
+.WithName("GetBestPrices")
+.WithSummary("دریافت بهترین قیمت‌ها")
+.WithTags("Market Data")
+.Produces(200)
+.Produces(400);
 
-/// <summary>
-/// Gets best bid and ask prices for a specific asset
-/// </summary>
-/// <param name="asset">Trading asset symbol</param>
-/// <param name="tradingType">Type of trading (Spot or Futures)</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Best bid and ask prices</returns>
-/// <response code="200">Best bid/ask retrieved successfully</response>
-/// <response code="400">Invalid request or error occurred</response>
-app.MapGet("/api/orders/market/{asset}/prices", async (string asset, TradingType tradingType, OrderService orderService) =>
-{
-    try
-    {
-        var prices = await orderService.GetBestBidAskAsync(asset, tradingType);
-        return Results.Ok(new { success = true, data = prices });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
-/// <summary>
-/// Notifies the matching engine about a new order for immediate processing
-/// </summary>
-/// <param name="request">Notification request containing order details</param>
-/// <param name="matchingEngine">Matching engine service</param>
-/// <param name="orderService">Order service for business logic</param>
-/// <returns>Success status of the notification</returns>
-/// <response code="200">Notification sent successfully</response>
-/// <response code="400">Invalid request or error occurred</response>
-/// <response code="404">Order not found</response>
-app.MapPost("/api/orders/market/notify-matching", async (NotifyMatchingEngineRequest request, IMatchingEngine matchingEngine, OrderService orderService) =>
-{
-    try
-    {
-        // Get the order from database
-        var order = await orderService.GetOrderByIdAsync(request.OrderId);
-        if (order == null)
-            return Results.NotFound(new { success = false, message = "سفارش یافت نشد" });
-
-        // Process the order through matching engine
-        await matchingEngine.ProcessOrderAsync(order);
-        
-        return Results.Ok(new { success = true, message = "موتور تطبیق اطلاع‌رسانی شد" });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
-});
-
+// Remove all other endpoints - keeping only the essential unified ones
 app.Run();
 
 // Request models
