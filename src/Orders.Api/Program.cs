@@ -22,6 +22,7 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<ITradeRepository, TradeRepository>();
+builder.Services.AddScoped<OrderMatchingRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
 

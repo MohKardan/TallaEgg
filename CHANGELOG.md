@@ -5,6 +5,99 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2025-08-28
+
+### Added
+- **🔒 Thread-Safe Database Lock Implementation**: Implemented comprehensive Database Pessimistic Locking for Orders.Api
+  - Added `OrderMatchingRepository` with database-level locking using UPDLOCK and READPAST hints
+  - Implemented `GetBuyOrdersWithLockAsync` and `GetSellOrdersWithLockAsync` with proper ORDER BY clauses
+  - Added LINQ-based queries for SQL Server compatibility and enum handling
+  - Integrated SemaphoreSlim for application-level concurrency control
+  - Added proper price-time priority ordering (DESC for Buy, ASC for Sell)
+
+- **⚡ Complete Matching Engine Rewrite**: Redesigned matching engine as thread-safe BackgroundService
+  - Complete rewrite of `MatchingEngineService` with proper thread safety
+  - Fixed critical race condition issues in original matching logic
+  - Implemented per-asset locking using `SemaphoreSlim` for concurrent processing
+  - Added proper price compatibility logic (>= instead of incorrect == comparison)
+  - Enhanced partial fill handling with proper order status transitions
+  - Added continuous background processing every 5 seconds
+
+- **🛡️ Race Condition Prevention**: Eliminated critical race conditions in order matching
+  - Implemented database pessimistic locking to prevent concurrent access
+  - Added proper thread synchronization with SemaphoreSlim
+  - Fixed order status updates to include Pending orders in active queries
+  - Added atomic order processing with database transactions
+  - Eliminated duplicate trade creation and inconsistent order states
+
+### Changed
+- **📈 Enhanced Order Repository**: Fixed GetActiveOrdersAsync to include all matchable orders
+  - Updated WHERE clause to include Pending, Confirmed, and PartiallyFilled orders
+  - Fixed missing Pending orders from active order matching
+  - Added proper order status filtering for matching engine compatibility
+
+- **🔧 SQL Server Compatibility**: Switched from Raw SQL to LINQ for better enum handling
+  - Replaced problematic Raw SQL queries with LINQ expressions
+  - Fixed SQL Server enum conversion errors (Cannot convert varchar to int)
+  - Added proper OrderType enum handling in database queries
+  - Enhanced query performance with Entity Framework Core optimization
+
+- **⚙️ Dependency Injection**: Updated Program.cs with new thread-safe components
+  - Added `AddScoped<OrderMatchingRepository>()` registration
+  - Maintained existing service registrations for backward compatibility
+  - Enhanced DI container configuration for new locking infrastructure
+
+### Fixed
+- **🚨 Critical Price Matching Bug**: Fixed incorrect price comparison logic
+  - Changed from `buyOrder.Price == sellOrder.Price` to `buyOrder.Price >= sellOrder.Price`
+  - Enables proper market order matching where buy price meets or exceeds sell price
+  - Fixed trading logic that was preventing valid order matches
+
+- **⚠️ SQL Query Compatibility**: Resolved Entity Framework Core SQL translation errors
+  - Fixed "Cannot convert varchar 'Buy' to int" error in Raw SQL queries
+  - Replaced integer enum casting with proper LINQ enum handling
+  - Enhanced SQL Server compatibility for enum-based filtering
+
+- **🔄 Order Status Management**: Fixed incomplete order status handling
+  - Added Pending orders to active order queries for proper matching
+  - Fixed order status transitions during partial fills
+  - Enhanced order lifecycle management with proper status updates
+
+### Technical Details
+- **🏗️ Architecture**: Thread-safe Clean Architecture implementation
+  - Background Service pattern for continuous order matching
+  - Repository pattern with database locking capabilities
+  - Dependency injection with proper service lifetimes
+  - Clean separation of concerns with domain-driven design
+
+- **🔒 Locking Strategy**: Multi-layer concurrency control
+  - **Database Level**: UPDLOCK and READPAST hints for row-level locking
+  - **Application Level**: SemaphoreSlim for per-asset synchronization
+  - **Transaction Level**: Atomic operations with Entity Framework transactions
+  - **Query Level**: Proper ORDER BY for consistent locking order
+
+- **📊 Performance Optimizations**: Enhanced matching engine performance
+  - Asset-based processing for parallel order matching
+  - Efficient LINQ queries with proper indexing
+  - Reduced database round-trips with batch operations
+  - Optimized SQL generation with Entity Framework Core
+
+- **🧪 Testing**: Comprehensive thread-safety validation
+  - Unit tests for matching logic with thread safety scenarios
+  - Integration tests with database locking verification
+  - Performance testing under concurrent load
+  - Successfully validated thread-safe operation with build and runtime testing
+
+### Breaking Changes
+- **API Compatibility**: Maintained backward compatibility for all existing endpoints
+- **Database Schema**: No breaking changes to existing table structures
+- **Service Interface**: All existing service methods remain unchanged
+
+### Migration Guide
+- **Deployment**: No manual migration required - services are backward compatible
+- **Configuration**: No configuration changes needed
+- **Dependencies**: All existing dependencies maintained
+
 ## [1.9.0] - 2025-08-25
 
 ### Added
