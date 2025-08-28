@@ -3,23 +3,23 @@
     "Name": "New Profile",
     "Projects": [
       {
-        "Path": "src\\TallaEgg.Api\\TallaEgg.Api.csproj",
-        "Action": "Start"
-      },
-      {
         "Path": "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
         "Action": "Start"
       },
       {
-        "Path": "src\\Users.Api\\Users.Api.csproj",
-        "Action": "Start"
-      },
-      {
-        "Path": "src\\Orders.Api\\Orders.Api.csproj",
-        "Action": "Start"
-      },
-      {
         "Path": "src\\Wallet\\Wallet.Api\\Wallet.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\Order\\Orders.Api\\Orders.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\TallaEgg\\TallaEgg.Api\\TallaEgg.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "src\\User\\Users.Api\\Users.Api.csproj",
         "Action": "Start"
       }
     ]
