@@ -113,7 +113,7 @@ namespace TallaEgg.TelegramBot
                 var chatId = message.Chat.Id;
                 var telegramId = message.From?.Id ?? 0;
 
-                if (message.Text == BotTexts.MainMenu) await _botClient.SendMainKeyboardAsync(chatId);
+                if (message.Text == BotBtns.BtnMainMenu) await _botClient.SendMainKeyboardAsync(chatId);
                 message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
 
 
@@ -178,7 +178,7 @@ namespace TallaEgg.TelegramBot
                     // Check if referral code is required
                     if (_requireReferralCode)
                     {
-                        await _botClient.SendMessage(chatId, BotTexts.MsgEnterInvite);
+                        await _botClient.SendMessage(chatId, BotMsgs.MsgEnterInvite);
                     }
                     else
                     {
@@ -234,7 +234,7 @@ namespace TallaEgg.TelegramBot
 
                 if (response.Success)
                 {
-                    await _botClient.SendMessage(chatId, BotTexts.MsgPhoneSuccess,
+                    await _botClient.SendMessage(chatId, BotMsgs.MsgPhoneSuccess,
                         replyMarkup: new ReplyKeyboardRemove());
                     await ShowMainMenuAsync(chatId);
                     await _botClient.SendApproveOrRejectUserToAdminsKeyboard(response.Data, Constants.GroupId);
@@ -257,34 +257,34 @@ namespace TallaEgg.TelegramBot
             switch (msgText)
             {
 
-                case BotTexts.BtnSpot:
+                case BotBtns.BtnSpot:
                     await HandleSpotMenuAsync(chatId);
                     break;
 
-                case BotTexts.BtnFutures:
+                case BotBtns.BtnFutures:
                     await HandleFuturesMenuAsync(chatId);
                     break;
 
-                case BotTexts.BtnAccounting:
+                case BotBtns.BtnAccounting:
                     await HandleAccountingMenuAsync(chatId);
                     break;
-                case BotTexts.BtnOrderHistory:
+                case BotBtns.BtnOrderHistory:
                     await ShowTradeHistory(chatId, userId);
                     break;
-                case BotTexts.BtnWalletsBalance:
+                case BotBtns.BtnWalletsBalance:
                     await ShowWalletsBalance(chatId, userId);
                     break;
 
-                case BotTexts.BtnHelp:
+                case BotBtns.BtnHelp:
                     await ShowHelpAsync(chatId);
                     break;
 
-                case BotTexts.BtnMakeOrderSpot:
+                case BotBtns.BtnSpotCreateOrder:
                     //await HandleMakeOrderSpotMenuAsync(chatId);
                     await ShowSpotOrderTypeSelectionAsync(chatId);
                     break;
 
-                case BotTexts.BtnMarket:
+                case BotBtns.BtnSpotMarket:
                     await HandleMarketMenuAsync(chatId);
                     break;
 
@@ -367,11 +367,11 @@ namespace TallaEgg.TelegramBot
                 },
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
                 }
             });
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectSymbol, replyMarkup: keyboard);
+            await _botClient.SendMessage(chatId, BotMsgs.MsgSelectSymbol, replyMarkup: keyboard);
         }
 
         private async Task ShowSpotOrderTypeSelectionAsync(long chatId)
@@ -401,7 +401,7 @@ namespace TallaEgg.TelegramBot
                 },
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
                 }
             });
 
@@ -571,11 +571,11 @@ namespace TallaEgg.TelegramBot
                 var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
                 if (useId.HasValue)
                 {
-                   await ShowWalletsBalance(chatId,useId.Value);
+                    await ShowWalletsBalance(chatId, useId.Value);
                 }
                 else
                 {
-                   await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                    await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
                 }
                 return true;
             }
@@ -587,11 +587,11 @@ namespace TallaEgg.TelegramBot
                 var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
                 if (useId.HasValue)
                 {
-                   await ShowTradeHistory(chatId,useId.Value);
+                    await ShowTradeHistory(chatId, useId.Value);
                 }
                 else
                 {
-                   await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                    await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
                 }
                 return true;
             }
@@ -675,18 +675,18 @@ namespace TallaEgg.TelegramBot
                 {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBuy, InlineCallBackData.order_buy),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnSell, InlineCallBackData.order_sell)
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketBuy, InlineCallBackData.order_buy),
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketSell, InlineCallBackData.order_sell)
                     //TODO ننیاز به بررسی بیشتر
                     // چرا دکمه ها تغییر کرده است
                 },
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, InlineCallBackData.back_to_main)
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, InlineCallBackData.back_to_main)
                 }
             });
 
-                await _botClient.SendMessage(chatId, BotTexts.MsgSelectOrderType, replyMarkup: keyboard);
+                await _botClient.SendMessage(chatId, BotMsgs.MsgSelectOrderType, replyMarkup: keyboard);
             }
 
         }
@@ -705,7 +705,8 @@ namespace TallaEgg.TelegramBot
             // Get available assets 
             //TODO اینحا باید نمادهای معاملاتیرو از یجایی بحونیم
             // فعلا نمادهای معاملاتی به صورت HardCode
-            var assets = new[] { "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
+            // Mesqal Au Abshode
+            var assets = new[] { "MAUA/IRR", "XAU/IRR", "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
 
             // Show available assets
             var assetButtons = new List<InlineKeyboardButton[]>();
@@ -720,12 +721,12 @@ namespace TallaEgg.TelegramBot
 
             assetButtons.Add(new[]
             {
-                InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+                InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
             });
 
             var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgSelectAsset, replyMarkup: keyboard);
+            await _botClient.SendMessage(chatId, BotMsgs.MsgSelectAsset, replyMarkup: keyboard);
         }
 
         private async Task HandleAssetSelectionAsync(long chatId, long telegramId, string asset)
@@ -754,7 +755,7 @@ namespace TallaEgg.TelegramBot
             // Remove keyboard and ask for amount
             await _botClient.SendMessage(chatId,
                 //$"{BotTexts.MsgEnterAmount}\nنماد: {asset}\nقیمت: {orderState.Price:N0} تومان",
-                $"{BotTexts.MsgEnterAmount}",
+                $"{BotMsgs.MsgEnterAmount}",
                 replyMarkup: new ReplyKeyboardRemove());
         }
 
@@ -812,9 +813,9 @@ namespace TallaEgg.TelegramBot
                 if (!balanceSuccess || balance == null || balance < orderState.Amount)
                 {
                     var availableBalance = balance ?? 0;
-                    var backBtn = new KeyboardButton(BotTexts.BtnBack);
+                    var backBtn = new KeyboardButton(BotBtns.BtnBack);
                     await _botClient.SendMessage(chatId,
-                        string.Format(BotTexts.MsgInsufficientBalance, availableBalance),
+                        string.Format(BotMsgs.MsgInsufficientBalance, availableBalance),
                         replyMarkup: new ReplyKeyboardMarkup(new[]
                         {
                             new KeyboardButton[] { backBtn }
@@ -829,7 +830,7 @@ namespace TallaEgg.TelegramBot
 
 
             var totalValue = orderState.Amount * orderState.Price;
-            var confirmationMessage = string.Format(BotTexts.MsgOrderConfirmation,
+            var confirmationMessage = string.Format(BotMsgs.MsgOrderConfirmation,
                 orderState.Asset,
                 orderState.OrderType,
                 orderState.Amount,
@@ -840,8 +841,8 @@ namespace TallaEgg.TelegramBot
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnConfirm, InlineCallBackData.confirm_order),
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnCancel, InlineCallBackData.cancel_order)
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnConfirm, InlineCallBackData.confirm_order),
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnCancel, InlineCallBackData.cancel_order)
                 }
             });
 
@@ -874,10 +875,10 @@ namespace TallaEgg.TelegramBot
             {
                 var (orderSuccess, orderMessage) = await _orderApi.SubmitOrderAsync(order);
 
-                var backBtn = new KeyboardButton(BotTexts.BtnBack);
+                var backBtn = new KeyboardButton(BotBtns.BtnBack);
                 if (orderSuccess)
                 {
-                    await _botClient.SendMessage(chatId, BotTexts.MsgOrderSuccess,
+                    await _botClient.SendMessage(chatId, BotMsgs.MsgOrderSuccess,
                         replyMarkup: new ReplyKeyboardMarkup(new[]
                         {
                             new KeyboardButton[] { backBtn }
@@ -889,7 +890,7 @@ namespace TallaEgg.TelegramBot
                 else
                 {
                     await _botClient.SendMessage(chatId,
-                        string.Format(BotTexts.MsgOrderFailed, orderMessage),
+                        string.Format(BotMsgs.MsgOrderFailed, orderMessage),
                         replyMarkup: new ReplyKeyboardMarkup(new[]
                         {
                             new KeyboardButton[] { backBtn }
@@ -955,7 +956,7 @@ namespace TallaEgg.TelegramBot
                     //await ShowSpotSymbolOptionsAsync(chatId);
 
                     OrderType orderType = data == InlineCallBackData.buy_spot ? OrderType.Buy : OrderType.Sell;
-                    
+
                     await HandleOrderTypeSelectionAsync(chatId, telegramId, orderType);
 
                     break;
@@ -1068,7 +1069,7 @@ namespace TallaEgg.TelegramBot
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
                                 parseMode: ParseMode.MarkdownV2,
-                                replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum,uid)
+                                replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
                             // بستن "در حال فکر کردن..." روی دکمه
@@ -1159,18 +1160,18 @@ namespace TallaEgg.TelegramBot
                 var bestAsk = bestPrices.BestAsk ?? 0;
                 var spread = bestPrices.Spread ?? 0;
 
-                var message = string.Format(BotTexts.MsgMarketPrices, symbol, bestBid, bestAsk, spread);
+                var message = string.Format(BotMsgs.MsgMarketPrices, symbol, bestBid, bestAsk, spread);
 
                 var keyboard = new InlineKeyboardMarkup(new[]
                 {
                     new InlineKeyboardButton[]
                     {
-                        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBuyMarket, InlineCallBackData.market_buy),
-                        InlineKeyboardButton.WithCallbackData(BotTexts.BtnSellMarket, InlineCallBackData.market_sell)
+                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketBuy, InlineCallBackData.market_buy),
+                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketSell, InlineCallBackData.market_sell)
                     },
                     new InlineKeyboardButton[]
                     {
-                        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
                     }
                 });
 
@@ -1202,7 +1203,7 @@ namespace TallaEgg.TelegramBot
             marketState.OrderType = OrderType.Buy;
             marketState.State = "waiting_for_quantity";
 
-            await _botClient.SendMessage(chatId, string.Format(BotTexts.MsgEnterQuantity, "خرید"));
+            await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgEnterQuantity, "خرید"));
         }
 
         private async Task HandleMarketSellSelectionAsync(long chatId, long telegramId)
@@ -1217,7 +1218,7 @@ namespace TallaEgg.TelegramBot
             marketState.OrderType = OrderType.Sell;
             marketState.State = "waiting_for_quantity";
 
-            await _botClient.SendMessage(chatId, string.Format(BotTexts.MsgEnterQuantity, "فروش"));
+            await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgEnterQuantity, "فروش"));
         }
 
         private async Task HandleMarketOrderConfirmationAsync(long chatId, long telegramId)
@@ -1327,7 +1328,7 @@ namespace TallaEgg.TelegramBot
             var totalValue = quantity * marketPrice;
             var orderTypeText = marketState.OrderType == OrderType.Buy ? "خرید" : "فروش";
 
-            var confirmationMessage = string.Format(BotTexts.MsgMarketOrderConfirmation,
+            var confirmationMessage = string.Format(BotMsgs.MsgMarketOrderConfirmation,
                 marketState.Symbol, orderTypeText, quantity, marketPrice, totalValue);
 
             var keyboard = new InlineKeyboardMarkup(new[]

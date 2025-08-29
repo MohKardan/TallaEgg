@@ -9,12 +9,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
     public class Constants
     {
         public const long GroupId = -1002988196234;
-        public const string DeveloperChatId = "-4777000333"; 
-        public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید."; 
+        public const string DeveloperChatId = "-4777000333";
+        public const string SupportErrorMessage = "مشکلی پیش آمده لطفا با پشتیبانی تماس بگیرید.";
     }
-    public static class BotTexts
+    public static class BotBtns
     {
-        public const string MainMenu = "💰 منوی اصلی";
+        public const string BtnMainMenu = "💰 منوی اصلی";
         public const string BtnSpot = "💰 نقدی";
         public const string BtnFutures = "📈 آتی";
         public const string BtnAccounting = "📊 حسابداری";
@@ -25,14 +25,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnWalletsBalance = "💵 موجودی";
         public const string BtnWallet = "💳 کیف پول";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
+        public const string BtnConfirm = "✅ تایید";
+        public const string BtnCancel = "❌ لغو";
         /// <summary>
         /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
         /// </summary>
-        //public const string BtnPlaceOrder = "📝 ثبت سفارش";
-        public const string BtnBuy = "🛒 خرید";
-        public const string BtnSell = "🛍️ فروش";
-        public const string BtnConfirm = "✅ تایید";
-        public const string BtnCancel = "❌ لغو";
+        public const string BtnSpotCreateOrder = "📝 ثبت سفارش نقدی";
+        public const string BtnSpotMarket = "📈 بازار نقدی";
+        public const string BtnSpotMarketBuy = "🛒 خرید نقدی";
+        public const string BtnSpotMarketSell = "🛍️ فروش نقدی";
+    }
+    public static class BotMsgs
+    {
         public const string MsgEnterInvite = "برای شروع، لطفاً کد دعوت خود را وارد کنید:\n/start [کد_دعوت]";
         public const string MsgPhoneRequest = "لطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
         public const string MsgWelcome = "🎉 خوش آمدید!\nثبت‌نام شما با موفقیت انجام شد.\n\nلطفاً شماره تلفن خود را به اشتراک بگذارید تا بتوانید از خدمات ربات استفاده کنید.";
@@ -46,14 +50,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgInsufficientBalance = "موجودی کافی نیست. موجودی شما: {0} واحد";
         public const string MsgOrderSuccess = "✅ سفارش شما با موفقیت ثبت شد!";
         public const string MsgOrderFailed = "❌ خطا در ثبت سفارش: {0}";
-        /// <summary>
-        /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
-        /// </summary>
-        public const string BtnMakeOrderSpot = "📝 ثبت سفارش";
-        //public const string BtnTakeOrder = "📋 بازار";
-        public const string BtnMarket = "📈 بازار";
-        public const string BtnBuyMarket = "🛒 خرید";
-        public const string BtnSellMarket = "🛍️ فروش";
         public const string MsgSelectSymbol = "نماد معاملاتی مورد نظر را انتخاب کنید:";
         public const string MsgMarketPrices = "📊 قیمت‌های بازار\n\nنماد: {0}\nبهترین خرید: {1:N0} تومان\nبهترین فروش: {2:N0} تومان\nاسپرد: {3:N0} تومان\n\nعملیات مورد نظر را انتخاب کنید:";
         public const string MsgEnterQuantity = "لطفاً مقدار {0} را وارد کنید:";
