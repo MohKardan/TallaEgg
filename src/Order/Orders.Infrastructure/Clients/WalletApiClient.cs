@@ -187,7 +187,7 @@ public class WalletApiClient : IWalletApiClient
             var json = JsonSerializer.Serialize(request);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync("/api/wallet/market/validate-balance", stringContent);
+            var response = await _httpClient.GetAsync($"/api/wallet/balance/{userId}/{asset}");
             var responseContent = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -198,12 +198,13 @@ public class WalletApiClient : IWalletApiClient
             }
 
             // Parse the response which should be in the format: { success, message, hasSufficientBalance }
-            var validationResult = JsonSerializer.Deserialize<ValidationResponse>(responseContent,
+            var validationResult = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             if (validationResult != null)
             {
-                return (validationResult.Success, validationResult.Message ?? "", validationResult.HasSufficientBalance);
+                bool HasSufficientBalance = validationResult.Data.Balance >= amount;
+                return (validationResult.Success, validationResult.Message ?? "", HasSufficientBalance);
             }
             else
             {

@@ -61,15 +61,19 @@ public class OrderService
 
             // 3. Validate user balance before creating order
             var userId = Guid.Parse(request.UserId);
-            var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy ? "USDT" : request.Symbol;
+            var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy 
+                ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
+
             var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy 
-                ? (request.Type == OrderTypeEnum.Market ? request.Quantity * 50000m : request.Quantity * (request.Price ?? 50000m)) // Estimated calculation
+                ? (request.Type == OrderTypeEnum.Market ? request.Quantity * 50000m 
+                : request.Quantity * (request.Price ?? 50000m)) // Estimated calculation
                 : request.Quantity;
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}", 
                 userId, amountToCheck, assetToCheck);
 
-            var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) = await _walletApiClient.ValidateBalanceAsync(
+            var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) =
+                await _walletApiClient.ValidateBalanceAsync(
                 userId, 
                 assetToCheck, 
                 amountToCheck, 

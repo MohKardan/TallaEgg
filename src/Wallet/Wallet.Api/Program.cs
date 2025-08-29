@@ -163,23 +163,6 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 //        Results.BadRequest(new { success = false, message = "خطا در کاهش موجودی" });
 //});
 
-// Market order balance validation and update endpoints
-app.MapPost("/api/wallet/market/validate-balance", async (ValidateBalanceRequest request, IWalletService walletService) =>
-{
-    var result = await walletService.ValidateBalanceForMarketOrderAsync(request.UserId, request.Asset, request.Amount, request.OrderType);
-    return result.success ? 
-        Results.Ok(new { success = true, message = result.message, hasSufficientBalance = result.hasSufficientBalance }) :
-        Results.BadRequest(new { success = false, message = result.message });
-});
-
-app.MapPost("/api/wallet/market/update-balance", async (UpdateBalanceRequest request, IWalletService walletService) =>
-{
-    var result = await walletService.UpdateBalanceForMarketOrderAsync(request.UserId, request.Asset, request.Amount, request.OrderType, request.OrderId);
-    return result.success ? 
-        Results.Ok(new { success = true, message = result.message }) :
-        Results.BadRequest(new { success = false, message = result.message });
-});
-
 app.Run();
 
 // Request models

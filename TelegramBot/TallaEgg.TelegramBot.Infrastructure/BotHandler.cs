@@ -339,8 +339,8 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(chatId, "شما فقط میتوانید با قیمت بازار اقدام به خرید یا فروش نمایید");
                 return;
             }
-            ''''; ; ; ;
-            _userOrderStates.Add(chatId, new OrderState
+            
+            _userOrderStates.TryAdd(chatId, new OrderState
             {
                 UserId = user.Id,
                 TradingType = TradingType.Spot
