@@ -53,7 +53,7 @@ namespace TallaEgg.TelegramBot
         private readonly WalletApiClient _walletApi;
 
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
-        private readonly Dictionary<long, MarketOrderState> _userMarketOrderStates = new();
+        
         private bool _requireReferralCode;
         private string _defaultReferralCode;
 
@@ -296,17 +296,6 @@ namespace TallaEgg.TelegramBot
                         }
                     }
 
-                    // Check if user is in market order flow
-                    if (_userMarketOrderStates.ContainsKey(telegramId))
-                    {
-                        var marketState = _userMarketOrderStates[telegramId];
-                        if (!marketState.IsConfirmed && marketState.State == "waiting_for_quantity")
-                        {
-                            await HandleMarketQuantityInputAsync(chatId, telegramId, msgText);
-                            return;
-                        }
-                    }
-
                     await ShowMainMenuAsync(chatId);
                     break;
             }
@@ -350,7 +339,7 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(chatId, "شما فقط میتوانید با قیمت بازار اقدام به خرید یا فروش نمایید");
                 return;
             }
-
+            ''''; ; ; ;
             _userOrderStates.Add(chatId, new OrderState
             {
                 UserId = user.Id,
@@ -903,36 +892,6 @@ namespace TallaEgg.TelegramBot
             }
         }
 
-        private async Task HandleChargeWalletAsync(long chatId, long telegramId)
-        {
-            //var (userExists, user) = await _usersApi.GetUserAsync(telegramId);
-            //if (!userExists || user == null)
-            //{
-            //    await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
-            //    return;
-            //}
-
-            //var keyboard = new InlineKeyboardMarkup(new[]
-            //{
-            //    new InlineKeyboardButton[]
-            //    {
-            //        InlineKeyboardButton.WithCallbackData("💳 کارت بانکی", "charge_card"),
-            //        InlineKeyboardButton.WithCallbackData("🏦 بانک", "charge_bank")
-            //    },
-            //    new InlineKeyboardButton[]
-            //    {
-            //        InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
-            //    }
-            //});
-
-            //await _botClient.SendMessage(chatId,
-            //    "💳 شارژ کیف پول\n\n" +
-            //    "لطفاً روش پرداخت خود را انتخاب کنید:\n\n" +
-            //    "💳 کارت بانکی: شارژ از طریق کارت بانکی\n" +
-            //    "🏦 بانک: واریز به حساب بانکی",
-            //    replyMarkup: keyboard);
-        }
-
         public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
         {
 
@@ -978,24 +937,6 @@ namespace TallaEgg.TelegramBot
                 case InlineCallBackData.market_spot:
                     await HandleMarketMenuAsync(chatId);
                     await _botClient.SendMessage(chatId, "بخش بازار در حال توسعه است...");
-                    break;
-
-                // Market order callbacks
-                case var marketSymbol when marketSymbol.StartsWith($"{InlineCallBackData.market_symbol}_"):
-                    var symbol = marketSymbol.Substring($"{InlineCallBackData.market_symbol}_".Length);
-                    await HandleMarketSymbolSelectionAsync(chatId, telegramId, symbol);
-                    break;
-
-                case InlineCallBackData.market_buy:
-                    await HandleMarketBuySelectionAsync(chatId, telegramId);
-                    break;
-
-                case InlineCallBackData.market_sell:
-                    await HandleMarketSellSelectionAsync(chatId, telegramId);
-                    break;
-
-                case InlineCallBackData.confirm_market_order:
-                    await HandleMarketOrderConfirmationAsync(chatId, telegramId);
                     break;
 
                 case InlineCallBackData.charge_card:
@@ -1133,207 +1074,6 @@ namespace TallaEgg.TelegramBot
         public Task HandleMessageAsync(object message)
         {
             throw new NotImplementedException();
-        }
-
-        // Market order handlers
-        private async Task HandleMarketSymbolSelectionAsync(long chatId, long telegramId, string symbol)
-        {
-            try
-            {
-                // Get best bid/ask prices from Order service
-                var bestPrices = await _orderApi.GetBestBidAskAsync(symbol, TradingType.Spot);
-
-                if (bestPrices == null)
-                {
-                    await _botClient.SendMessage(chatId, "خطا در دریافت قیمت‌های بازار. لطفاً دوباره تلاش کنید.");
-                    return;
-                }
-
-                var bestBid = bestPrices.BestBid ?? 0;
-                var bestAsk = bestPrices.BestAsk ?? 0;
-                var spread = bestPrices.Spread ?? 0;
-
-                var message = string.Format(BotMsgs.MsgMarketPrices, symbol, bestBid, bestAsk, spread);
-
-                var keyboard = new InlineKeyboardMarkup(new[]
-                {
-                    new InlineKeyboardButton[]
-                    {
-                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketBuy, InlineCallBackData.market_buy),
-                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketSell, InlineCallBackData.market_sell)
-                    },
-                    new InlineKeyboardButton[]
-                    {
-                        InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
-                    }
-                });
-
-                await _botClient.SendMessage(chatId, message, replyMarkup: keyboard);
-
-                // Store market state
-                _userMarketOrderStates[telegramId] = new MarketOrderState
-                {
-                    Symbol = symbol,
-                    MarketPrice = bestAsk, // Default to best ask for display
-                    State = "symbol_selected"
-                };
-            }
-            catch (Exception ex)
-            {
-                await _botClient.SendMessage(chatId, $"خطا در دریافت قیمت‌های بازار: {ex.Message}");
-            }
-        }
-
-        private async Task HandleMarketBuySelectionAsync(long chatId, long telegramId)
-        {
-            if (!_userMarketOrderStates.ContainsKey(telegramId))
-            {
-                await _botClient.SendMessage(chatId, "خطا: لطفاً ابتدا نماد را انتخاب کنید.");
-                return;
-            }
-
-            var marketState = _userMarketOrderStates[telegramId];
-            marketState.OrderType = OrderType.Buy;
-            marketState.State = "waiting_for_quantity";
-
-            await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgEnterQuantity, "خرید"));
-        }
-
-        private async Task HandleMarketSellSelectionAsync(long chatId, long telegramId)
-        {
-            if (!_userMarketOrderStates.ContainsKey(telegramId))
-            {
-                await _botClient.SendMessage(chatId, "خطا: لطفاً ابتدا نماد را انتخاب کنید.");
-                return;
-            }
-
-            var marketState = _userMarketOrderStates[telegramId];
-            marketState.OrderType = OrderType.Sell;
-            marketState.State = "waiting_for_quantity";
-
-            await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgEnterQuantity, "فروش"));
-        }
-
-        private async Task HandleMarketOrderConfirmationAsync(long chatId, long telegramId)
-        {
-            if (!_userMarketOrderStates.ContainsKey(telegramId))
-            {
-                await _botClient.SendMessage(chatId, "خطا: لطفاً ابتدا سفارش را تنظیم کنید.");
-                return;
-            }
-
-            var marketState = _userMarketOrderStates[telegramId];
-
-            try
-            {
-                // Get user
-                var user = await _usersApi.GetUserAsync(telegramId);
-                if (user == null)
-                {
-                    await _botClient.SendMessage(chatId, "خطا: کاربر یافت نشد.");
-                    return;
-                }
-
-                marketState.UserId = user.Id;
-
-                //TODO Validate balance
-                //var balanceValidation = await _walletApi.ValidateBalanceForMarketOrderAsync(
-                //    user.Id, marketState.Symbol, marketState.Amount, (int)marketState.OrderType);
-
-                //if (!balanceValidation.HasSufficientBalance)
-                //{
-                //    await _botClient.SendMessage(chatId, $"موجودی ناکافی: {balanceValidation.Message}");
-                //    return;
-                //}
-
-                // Create market order
-                var orderResult = await _orderApi.CreateMarketOrderAsync(new CreateMarketOrderRequest
-                {
-                    Asset = marketState.Symbol,
-                    Amount = marketState.Amount,
-                    UserId = user.Id,
-                    Type = marketState.OrderType,
-                    TradingType = TradingType.Spot,
-                    Notes = "Market order from Telegram Bot"
-                });
-
-                if (orderResult.Success)
-                {
-                    // Update wallet balance
-                    await _walletApi.UpdateBalanceForMarketOrderAsync(new UpdateBalanceForMarketOrderRequest
-                    {
-                        UserId = user.Id,
-                        Asset = marketState.Symbol,
-                        Amount = marketState.Amount,
-                        OrderType = (int)marketState.OrderType,
-                        OrderId = orderResult.Data!.Id
-                    });
-
-                    // Notify matching engine
-                    await _orderApi.NotifyMatchingEngineAsync(new NotifyMatchingEngineRequest
-                    {
-                        OrderId = orderResult.Data.Id,
-                        Asset = marketState.Symbol,
-                        Type = marketState.OrderType
-                    });
-
-                    await _botClient.SendMessage(chatId, "✅ سفارش بازار با موفقیت ثبت و اجرا شد!");
-                }
-                else
-                {
-                    await _botClient.SendMessage(chatId, $"❌ خطا در ثبت سفارش: {orderResult.Message}");
-                }
-
-                // Clear market state
-                _userMarketOrderStates.Remove(telegramId);
-            }
-            catch (Exception ex)
-            {
-                await _botClient.SendMessage(chatId, $"خطا در اجرای سفارش: {ex.Message}");
-            }
-        }
-
-        // Handle market order quantity input
-        private async Task HandleMarketQuantityInputAsync(long chatId, long telegramId, string quantityText)
-        {
-            if (!_userMarketOrderStates.ContainsKey(telegramId))
-            {
-                await _botClient.SendMessage(chatId, "خطا: لطفاً ابتدا نماد را انتخاب کنید.");
-                return;
-            }
-
-            if (!decimal.TryParse(quantityText, out var quantity) || quantity <= 0)
-            {
-                await _botClient.SendMessage(chatId, "لطفاً مقدار معتبری وارد کنید.");
-                return;
-            }
-
-            var marketState = _userMarketOrderStates[telegramId];
-            marketState.Amount = quantity;
-            marketState.State = "ready_for_confirmation";
-
-            // Get current market price
-            var bestPrices = await _orderApi.GetBestBidAskAsync(marketState.Symbol, TradingType.Spot);
-            var marketPrice = marketState.OrderType == OrderType.Buy
-                ? (bestPrices?.BestAsk ?? 0)
-                : (bestPrices?.BestBid ?? 0);
-
-            var totalValue = quantity * marketPrice;
-            var orderTypeText = marketState.OrderType == OrderType.Buy ? "خرید" : "فروش";
-
-            var confirmationMessage = string.Format(BotMsgs.MsgMarketOrderConfirmation,
-                marketState.Symbol, orderTypeText, quantity, marketPrice, totalValue);
-
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("✅ تایید", InlineCallBackData.confirm_market_order),
-                    InlineKeyboardButton.WithCallbackData("❌ لغو", InlineCallBackData.cancel_order)
-                }
-            });
-
-            await _botClient.SendMessage(chatId, confirmationMessage, replyMarkup: keyboard);
         }
 
     }

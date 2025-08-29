@@ -138,51 +138,6 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    public async Task<BestBidAskResult?> GetBestBidAskAsync(string asset, TradingType tradingType)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/orders/market/{asset}/prices?tradingType={tradingType}");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<BestBidAskResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return result?.Data;
-            }
-
-            return null;
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-
-    public async Task<ApiResponse<Order>> CreateMarketOrderAsync(CreateMarketOrderRequest request)
-    {
-        try
-        {
-            var json = System.Text.Json.JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/market", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<Order>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return result ?? ApiResponse<Order>.Fail("خطا در پردازش پاسخ");
-            }
-
-            return ApiResponse<Order>.Fail($"خطا در ایجاد سفارش بازار: {responseContent}");
-        }
-        catch (Exception ex)
-        {
-            return ApiResponse<Order>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
-        }
-    }
-
     public async Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request)
     {
         try
