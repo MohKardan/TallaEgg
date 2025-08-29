@@ -46,10 +46,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
            new[]
            {
-                new[] { new KeyboardButton(BotTexts.BtnSpot), new KeyboardButton(BotTexts.BtnFutures) },
+                new[] { new KeyboardButton(BotBtns.BtnSpot), new KeyboardButton(BotBtns.BtnFutures) },
 
-                new[] { new KeyboardButton(BotTexts.BtnAccounting), new KeyboardButton(BotTexts.BtnHelp) },
-                new[] { new KeyboardButton(BotTexts.BtnWallet), new KeyboardButton(BotTexts.BtnHistory) },
+                new[] { new KeyboardButton(BotBtns.BtnAccounting), new KeyboardButton(BotBtns.BtnHelp) },
+                new[] { new KeyboardButton(BotBtns.BtnWallet), new KeyboardButton(BotBtns.BtnHistory) },
            }
             )
             {
@@ -67,7 +67,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         public static async Task SendContactKeyboardAsync(this ITelegramBotClient _botClient, long chatId)
         {
-            var sharePhoneButton = new KeyboardButton(BotTexts.BtnSharePhone) { RequestContact = true };
+            var sharePhoneButton = new KeyboardButton(BotBtns.BtnSharePhone) { RequestContact = true };
 
             var keyboard = new ReplyKeyboardMarkup(new[]
                     {
@@ -79,24 +79,47 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
             await _botClient.SendMessage(
                 chatId,
-                BotTexts.MsgPhoneRequest,
+                BotMsgs.MsgPhoneRequest,
             replyMarkup: keyboard);
 
         }
-
-        public static async Task SendMainKeyboardAsync(this ITelegramBotClient _botClient, long chatId)
+        /// <summary>
+        /// منوی اصلی برای کاربر عادی و مدیر فرق میکنه
+        /// </summary>
+        /// <param name="_botClient"></param>
+        /// <param name="chatId"></param>
+        /// <returns></returns>
+        public static async Task SendMainKeyboardForAdminAsync(this ITelegramBotClient _botClient, long chatId)
         {
             var keyboard = new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnSpot), new KeyboardButton(BotTexts.BtnFutures) },
-                new KeyboardButton[] { new KeyboardButton(BotTexts.BtnHelp), new KeyboardButton(BotTexts.BtnAccounting) }
+                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnSpotCreateOrder) },
+                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnHelp), new KeyboardButton(BotBtns.BtnAccounting) }
             })
             {
                 ResizeKeyboard = true
             };
 
-            await _botClient.SendMessage(chatId, BotTexts.MsgMainMenu, replyMarkup: keyboard);
+            await _botClient.SendMessage(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
+        }
+        /// <summary>
+        /// منوی اصلی برای کاربر عادی و مدیر فرق میکنه
+        /// </summary>
+        /// <param name="_botClient"></param>
+        /// <param name="chatId"></param>
+        /// <returns></returns>
+        public static async Task SendMainKeyboardForUserAsync(this ITelegramBotClient _botClient, long chatId)
+        {
+            var keyboard = new ReplyKeyboardMarkup(new[]
+            {
+                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnSpotMarket) },
+                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnHelp), new KeyboardButton(BotBtns.BtnAccounting) }
+            })
+            {
+                ResizeKeyboard = true
+            };
 
+            await _botClient.SendMessage(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
         }
 
         public static async Task SendAccountingMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
@@ -105,9 +128,9 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                new[]
                {
-                    new[] { new KeyboardButton(BotTexts.BtnOrderHistory)},
-                    new[] { new KeyboardButton(BotTexts.BtnWalletsBalance)},
-                    new[] { new KeyboardButton(BotTexts.MainMenu)},
+                    new[] { new KeyboardButton(BotBtns.BtnOrderHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnWalletsBalance)},
+                    new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                }
                             )
             {
@@ -134,7 +157,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 },
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotTexts.BtnBack, "back_to_main")
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
                 }
             });
 
@@ -232,7 +255,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         {
             InlineKeyboardButton.WithCallbackData(
                 "✅ تأیید",
-                $"approve_{user.TelegramId}"),         
+                $"approve_{user.TelegramId}"),
             InlineKeyboardButton.WithCallbackData(
                 "❌ رد",
                 $"reject_{user.TelegramId}")

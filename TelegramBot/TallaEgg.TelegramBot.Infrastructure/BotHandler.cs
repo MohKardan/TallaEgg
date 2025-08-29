@@ -113,7 +113,8 @@ namespace TallaEgg.TelegramBot
                 var chatId = message.Chat.Id;
                 var telegramId = message.From?.Id ?? 0;
 
-                if (message.Text == BotBtns.BtnMainMenu) await _botClient.SendMainKeyboardAsync(chatId);
+                if (message.Text == BotBtns.BtnMainMenu)
+                    await ShowMainMenuAsync(chatId);
                 message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
 
 
@@ -323,7 +324,25 @@ namespace TallaEgg.TelegramBot
 
         private async Task ShowMainMenuAsync(long chatId)
         {
-            await _botClient.SendMainKeyboardAsync(chatId);
+            var user = await _usersApi.GetUserAsync(chatId);
+
+            if (user == null)
+            {
+                await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
+                return;
+            }
+
+            bool isAdmin = await IsUserAdmin(user);
+            isAdmin = true; // for test
+
+            if (isAdmin)
+            {
+                await _botClient.SendMainKeyboardForAdminAsync(chatId);
+            }
+            else
+            {
+                await _botClient.SendMainKeyboardForUserAsync(chatId);
+            }
         }
         private async Task HandleSpotMenuAsync(long chatId)
         {
