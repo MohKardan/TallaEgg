@@ -258,12 +258,11 @@ namespace TallaEgg.TelegramBot
             switch (msgText)
             {
 
-                case BotBtns.BtnSpot:
+                case BotBtns.BtnSpotCreateOrder:
                     await HandleSpotMenuAsync(chatId);
                     break;
-
-                case BotBtns.BtnFutures:
-                    await HandleFuturesMenuAsync(chatId);
+                case BotBtns.BtnSpotMarket:
+                    await HandleMarketMenuAsync(chatId);
                     break;
 
                 case BotBtns.BtnAccounting:
@@ -278,15 +277,6 @@ namespace TallaEgg.TelegramBot
 
                 case BotBtns.BtnHelp:
                     await ShowHelpAsync(chatId);
-                    break;
-
-                case BotBtns.BtnSpotCreateOrder:
-                    //await HandleMakeOrderSpotMenuAsync(chatId);
-                    await ShowSpotOrderTypeSelectionAsync(chatId);
-                    break;
-
-                case BotBtns.BtnSpotMarket:
-                    await HandleMarketMenuAsync(chatId);
                     break;
 
                 default:
@@ -391,22 +381,6 @@ namespace TallaEgg.TelegramBot
             });
 
             await _botClient.SendMessage(chatId, BotMsgs.MsgSelectSymbol, replyMarkup: keyboard);
-        }
-
-        private async Task ShowSpotOrderTypeSelectionAsync(long chatId)
-        {
-            // Note: This method should be called with telegramId, not chatId
-            // The state should be managed with telegramId as key
-            await _botClient.SendMessage(chatId, "این گزینه در حال توسعه است. لطفاً از منوی اصلی استفاده کنید.");
-            await ShowMainMenuAsync(chatId);
-        }
-
-        private async Task ShowSpotSymbolOptionsAsync(long chatId)
-        {
-            // Note: This method should be called with telegramId, not chatId
-            // The state should be managed with telegramId as key
-            await _botClient.SendMessage(chatId, "این گزینه در حال توسعه است. لطفاً از منوی اصلی استفاده کنید.");
-            await ShowMainMenuAsync(chatId);
         }
 
         private async Task HandleFuturesMenuAsync(long chatId)
