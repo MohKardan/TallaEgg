@@ -1,6 +1,7 @@
 
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Wallet;
+using TallaEgg.Core.Utilties;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 
@@ -83,7 +84,7 @@ public class WalletService : IWalletService
             wallet.Balance - amount,
             null,
             TransactionStatus.Completed,
-            "Credit transaction",
+            "DeCredit transaction",
             refId,
             null
         );
@@ -185,6 +186,70 @@ public class WalletService : IWalletService
             TrackingCode = result.transactionEntity.TrackingCode,
         };
     }
+
+    public async Task<WalletBallanceDTO> MakeTradeAsync(Guid fromUserId, Guid toUserId,string asset, decimal amount, string referenceId)
+    {
+        
+        var fromWallet = await _walletRepository.GetWalletAsync(fromUserId, asset);
+        var toWallet = await _walletRepository.GetWalletAsync(toUserId, asset);
+
+        if (fromWallet == null || toWallet == null)
+            throw new ArgumentException("کیف پول یکی از طرفین وجود ندارد");
+
+        if (fromUserId == toUserId)
+            throw new ArgumentException("انتقال به خود امکان‌پذیر نیست.");
+
+        // var fromDebitTransaction = Transaction.Create(
+        //    fromWallet.Id,
+        //    amount,
+        //    asset,
+        //    TransactionType.Withdraw,
+        //    fromWallet.Balance,
+        //    fromWallet.Balance - amount,
+        //    null,
+        //    TransactionStatus.Completed,
+        //    "maker",
+        //    referenceId,
+        //    null
+        //);
+        // fromWallet.DecreaseBalance(amount);
+
+
+
+        // Update existing wallet
+        // Create transaction record
+        //var transaction = Transaction.Create(
+        //    wallet.Id,
+        //    amount,
+        //    asset,
+        //    TransactionType.Withdraw,
+        //    wallet.Balance,
+        //    wallet.Balance - amount,
+        //    Utils.GenerateSecureRandomString(9),
+        //    TransactionStatus.Completed,
+        //    "Credit transaction",
+        //    referenceId,
+        //    null
+        //);
+        // todo: بالانس باید چکار بشه؟؟
+
+        // wallet.DecreaseBalance(amount);
+        //await _walletRepository.UpdateWalletAsync(wallet, transaction);
+
+        //return new WalletBallanceDTO
+        //{
+        //    Asset = wallet.Asset,
+        //    BalanceBefore = transaction.BallanceBefore,
+        //    BalanceAfter = transaction.BallanceAfter,
+        //    LockedBalance = wallet.LockedBalance,
+        //    UpdatedAt = wallet.UpdatedAt,
+        //    TrackingCode = transaction.TrackingCode,
+        //};
+
+        return new WalletBallanceDTO();
+    }
+
+
 
     public async Task<(bool success, string message)> OldWithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {

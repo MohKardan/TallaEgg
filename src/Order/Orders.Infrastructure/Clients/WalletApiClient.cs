@@ -70,7 +70,7 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            var request = new BaseWalletRequest
+            var request = new WalletRequest
             {
                 UserId = userId,
                 Asset = asset,
@@ -136,7 +136,7 @@ public class WalletApiClient : IWalletApiClient
         {
             // Note: This endpoint might need to be implemented in Wallet service
             // فراخوانی endpoint آزادسازی موجودی (ممکن است نیاز به پیاده‌سازی در سرویس Wallet داشته باشد)
-            var request = new BaseWalletRequest
+            var request = new WalletRequest
             {
                 UserId = userId,
                 Asset = asset,

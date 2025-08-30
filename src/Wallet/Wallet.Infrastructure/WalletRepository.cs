@@ -81,7 +81,7 @@ public class WalletRepository : IWalletRepository
           wallet.Balance + amount,
           null,
           TransactionStatus.Completed,
-          "LockBalance transaction",
+          "UnLockBalance transaction",
           null,
           null
       );

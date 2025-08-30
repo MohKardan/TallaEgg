@@ -39,6 +39,9 @@ public class Transaction
         string? referenceId = null,
         string? detail = null)
     {
+        if(type == TransactionType.Trade && string.IsNullOrEmpty(referenceId))
+            throw new ArgumentException("ReferenceId cannot be empty", nameof(referenceId));
+
         if (walletId == Guid.Empty)
             throw new ArgumentException("WalletId cannot be empty", nameof(walletId));
         

@@ -490,7 +490,7 @@ namespace TallaEgg.TelegramBot
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
-                    var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletBallanceChangeRequest
+                    var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
                         Asset = "rial",
                         Amount = amount,
@@ -563,7 +563,7 @@ namespace TallaEgg.TelegramBot
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
-                    var result = await _walletApi.WithdrawalAsync(new TallaEgg.Core.Requests.Wallet.WalletBallanceChangeRequest
+                    var result = await _walletApi.WithdrawalAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
                         Asset = "rial",
                         Amount = amount,

@@ -145,7 +145,7 @@ public class WalletApiClient
         }
     }
 
-    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletBallanceChangeRequest request)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
     {
         try
         {
@@ -172,7 +172,7 @@ public class WalletApiClient
     }
 
 
-    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletBallanceChangeRequest request)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletRequest request)
     {
         try
         {

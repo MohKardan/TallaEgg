@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using Wallet.Core;
-using Wallet.Infrastructure;
-using Wallet.Application;
-using TallaEgg.Core.Requests.Wallet;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Requests.Trade;
+using TallaEgg.Core.Requests.Wallet;
+using Wallet.Application;
 using Wallet.Application.Mappers;
+using Wallet.Core;
+using Wallet.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,7 +74,7 @@ app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService w
     return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "لیست کیف پول های کاربر"));
 });
 
-app.MapPost("/api/wallet/deposit", async (WalletBallanceChangeRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService walletService) =>
 {
     try
     {
@@ -88,7 +89,7 @@ app.MapPost("/api/wallet/deposit", async (WalletBallanceChangeRequest request, I
   
 });
 
-app.MapPost("/api/wallet/withdrawal", async (WalletBallanceChangeRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletService walletService) =>
 {
     try
     {
@@ -103,7 +104,7 @@ app.MapPost("/api/wallet/withdrawal", async (WalletBallanceChangeRequest request
   
 });
 
-app.MapPost("/api/wallet/lockBalance", async (BaseWalletRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletService walletService) =>
 {
     try
     {
@@ -118,7 +119,7 @@ app.MapPost("/api/wallet/lockBalance", async (BaseWalletRequest request, IWallet
   
 });
 
-app.MapPost("/api/wallet/unlockBalance", async (BaseWalletRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletService walletService) =>
 {
     try
     {
@@ -128,6 +129,20 @@ app.MapPost("/api/wallet/unlockBalance", async (BaseWalletRequest request, IWall
     catch (Exception ex)
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
+    }
+});
+
+
+app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService) =>
+{
+    try
+    {
+        var result = await walletService.MakeTradeAsync(request.FromUserId,request.ToUserId, request.Asset, request.Amount,request.ReferenceId);
+        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
 });
 
