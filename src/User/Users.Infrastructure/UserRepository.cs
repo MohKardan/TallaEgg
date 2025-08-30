@@ -23,6 +23,12 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.TelegramId == telegramId);
     }
 
+    public async Task<User?> GetByPhoneNumberAsync(string phone)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+    }
+
     public async Task<User> CreateAsync(User user)
     {
         _context.Users.Add(user);

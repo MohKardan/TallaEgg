@@ -73,17 +73,32 @@ app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService w
     return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "لیست کیف پول های کاربر"));
 });
 
-app.MapPost("/api/wallet/deposit", async (DepositRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/deposit", async (WalletBallanceChangeRequest request, IWalletService walletService) =>
 {
     try
     {
        var result = await walletService.DepositAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
-       return Results.Ok(ApiResponse<WalletDepositDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+       return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
 
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(ApiResponse<WalletDepositDTO>.Fail(ex.Message));
+        return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
+    }
+  
+});
+
+app.MapPost("/api/wallet/withdrawal", async (WalletBallanceChangeRequest request, IWalletService walletService) =>
+{
+    try
+    {
+       var result = await walletService.WithdrawalAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
+       return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
   
 });

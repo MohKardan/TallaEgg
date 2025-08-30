@@ -123,6 +123,24 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 });
 
 
+/// <summary>
+/// Retrieves user information by phone number
+/// </summary>
+/// <param name="phone">phone of the user</param>
+/// <param name="userService">User service for business logic</param>
+/// <returns>User details if found</returns>
+/// <response code="200">User found and returned successfully</response>
+/// <response code="404">User not found</response>
+app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userService) =>
+{
+    var user = await userService.GetUserByPhoneNumberAsync(phone);
+    if (user == null)
+        return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
+
+    return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
+});
+
+
 app.MapGet("/api/users/list", async (
         string? q,
         int? pageNumber,

@@ -26,8 +26,7 @@ public class WalletService : IWalletService
 
     public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> CreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
-        if (amount <= 0)
-            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد");
+   
 
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
 
@@ -62,6 +61,39 @@ public class WalletService : IWalletService
         return (wallet, transaction);
              
     }
+
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> DeCreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
+    {
+
+
+        var wallet = await _walletRepository.GetWalletAsync(userId, asset);
+
+        if (wallet == null)
+            throw new ArgumentException("کیف پول وجود ندارد");
+       
+
+        // Update existing wallet
+        // Create transaction record
+        var transaction = Transaction.Create(
+            wallet.Id,
+            amount,
+            asset,
+            TransactionType.Withdraw,
+            wallet.Balance,
+            wallet.Balance - amount,
+            null,
+            TransactionStatus.Completed,
+            "Credit transaction",
+            refId,
+            null
+        );
+        wallet.DecreaseBalance(amount);
+        await _walletRepository.UpdateWalletAsync(wallet, transaction);
+        return (wallet, transaction);
+
+    }
+
+
 
     public async Task<bool> DebitAsync(Guid userId, string asset, decimal amount)
     {
@@ -119,15 +151,14 @@ public class WalletService : IWalletService
         return await _walletRepository.GetUserTransactionsAsync(userId, asset);
     }
 
-    public async Task<WalletDepositDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
+    public async Task<WalletBallanceDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
-        if (amount <= 0)
-            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد");
+        
 
         var result = await CreditAsync(userId, asset, amount,referenceId);
       
 
-        return new WalletDepositDTO
+        return new WalletBallanceDTO
         {
             Asset = result.walletEntity.Asset,
             BalanceBefore = result.transactionEntity.BallanceBefore,
@@ -138,7 +169,23 @@ public class WalletService : IWalletService
         };
     }
 
-    public async Task<(bool success, string message)> WithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
+    public async Task<WalletBallanceDTO> WithdrawalAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
+    {
+       
+        var result = await DeCreditAsync(userId, asset, amount,referenceId);
+      
+        return new WalletBallanceDTO
+        {
+            Asset = result.walletEntity.Asset,
+            BalanceBefore = result.transactionEntity.BallanceBefore,
+            BalanceAfter = result.transactionEntity.BallanceAfter,
+            LockedBalance = result.walletEntity.LockedBalance,
+            UpdatedAt = result.walletEntity.UpdatedAt,
+            TrackingCode = result.transactionEntity.TrackingCode,
+        };
+    }
+
+    public async Task<(bool success, string message)> OldWithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
         if (amount <= 0)
             return (false, "مقدار باید بزرگتر از صفر باشد.");

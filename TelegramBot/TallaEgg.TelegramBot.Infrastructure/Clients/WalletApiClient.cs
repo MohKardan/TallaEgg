@@ -145,7 +145,7 @@ public class WalletApiClient
         }
     }
 
-    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>> DepositeAsync(DepositRequest request)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletBallanceChangeRequest request)
     {
         try
         {
@@ -157,16 +157,43 @@ public class WalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>>(respText);
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>>(respText);
                 return result;
             }
 
-            return TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>.Fail("خطا در بروزرسانی");
+            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
 
         }
         catch (Exception ex)
         {
-            return TallaEgg.Core.DTOs.ApiResponse<WalletDepositDTO>.Fail("خطا در ارتباط با سرور");
+            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
+
+        }
+    }
+
+
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletBallanceChangeRequest request)
+    {
+        try
+        {
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_apiUrl}/wallet/withdrawal", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>>(respText);
+                return result;
+            }
+
+            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
+
+        }
+        catch (Exception ex)
+        {
+            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
 
         }
     }

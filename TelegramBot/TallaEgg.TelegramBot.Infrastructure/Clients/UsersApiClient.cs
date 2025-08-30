@@ -134,6 +134,26 @@ public class UsersApiClient
             return null;
         }
     }
+
+    public async Task<UserDto?> GetUserAsync(string phone)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/userByPhone/{phone}");
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
+                return res.Data;
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+    }
     public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber)
     {
         UpdatePhoneRequest request = new UpdatePhoneRequest()

@@ -51,6 +51,18 @@ public class WalletEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void DecreaseBalance(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+
+        if (Balance - amount < 0)
+            throw new ArgumentException("مقدار کسر از حساب بیشتر از حد مجاز است");
+
+        Balance -= amount;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void LockBalance(decimal amount)
     {
         if (Balance < amount) throw new ArgumentNullException("موجودی کافی نیست", nameof(amount));

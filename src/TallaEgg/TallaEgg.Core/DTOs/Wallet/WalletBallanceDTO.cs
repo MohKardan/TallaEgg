@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TallaEgg.Core.DTOs.Wallet
 {
-    public class WalletDepositDTO
+    public class WalletBallanceDTO
     {
         public string Asset { get; set; } = "";
         public decimal BalanceBefore { get; set; }

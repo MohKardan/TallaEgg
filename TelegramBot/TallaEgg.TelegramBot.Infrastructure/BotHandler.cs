@@ -481,20 +481,20 @@ namespace TallaEgg.TelegramBot
                     ? match.Groups["currency"].Value
                     : "ریالی"; // مقدار پیش‌فرض
 
-                string response = $"📌 دستور ثبت شد:\n" +
+                string response = $"📌 دستورافزایش موجودی ثبت شد:\n" +
                                   $"👤 کاربر: {phone}\n" +
                                   $"💰 مبلغ: {amount}\n" +
                                   $"💵 نوع شارژ: {currency}";
 
                 await _botClient.SendMessage(message.Chat.Id, response);
-                var userId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
-                if (userId.HasValue)
+                var userDto = await _usersApi.GetUserAsync(phone);
+                if (userDto != null)
                 {
-                    var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.DepositRequest
+                    var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletBallanceChangeRequest
                     {
                         Asset = "rial",
                         Amount = amount,
-                        UserId = userId.Value
+                        UserId = userDto.Id
                     });
                     if (result.Success)
                     {
@@ -506,6 +506,16 @@ namespace TallaEgg.TelegramBot
            $"💳 دارایی: `ریال`\n" +
            $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
            $"🆔 تلفن: `{phone}`\n\n" +
+           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+       );
+                        await _botClient.SendMessage(
+           userDto.TelegramId,
+           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+           $"💳 دارایی: `ریال`\n" +
+           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+           $"🆔 تلفن: `{phone}`\n\n" +
+           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
            $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
        );
                     }
@@ -524,6 +534,86 @@ namespace TallaEgg.TelegramBot
                 return true;
 
             }
+
+            if (msgText.StartsWith("د"))
+            {
+                // ش 09121234567 50000 دلاری
+                // ش 09121234567 50000
+                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                    RegexOptions.Compiled | RegexOptions.IgnoreCase);
+                var match = regex.Match(msgText);
+                if (!match.Success)
+                {
+                    await _botClient.SendMessage(message.Chat.Id,
+                        "❌ فرمت دستور نادرست است.\nمثال: د 09121234567 50000 [ریالی/دلاری]");
+                }
+
+                var phone = match.Groups["phone"].Value;
+                var amount = decimal.Parse(match.Groups["amount"].Value);
+                var currency = match.Groups["currency"].Success
+                    ? match.Groups["currency"].Value
+                    : "ریالی"; // مقدار پیش‌فرض
+
+                string response = $"📌 دستور کسر از موجودی ثبت شد:\n" +
+                                  $"👤 کاربر: {phone}\n" +
+                                  $"💰 مبلغ: {amount}\n" +
+                                  $"💵 نوع شارژ: {currency}";
+
+                await _botClient.SendMessage(message.Chat.Id, response);
+                var userDto = await _usersApi.GetUserAsync(phone);
+                if (userDto != null)
+                {
+                    var result = await _walletApi.WithdrawalAsync(new TallaEgg.Core.Requests.Wallet.WalletBallanceChangeRequest
+                    {
+                        Asset = "rial",
+                        Amount = amount,
+                        UserId = userDto.Id
+                    });
+                    if (result.Success)
+                    {
+                        
+
+                        await _botClient.SendMessage(
+           message.Chat.Id,
+           $"💰 *کسر از کیف‌پول با موفقیت انجام شد.*\n\n" +
+           $"💳 دارایی: `ریال`\n" +
+           $"💵 مبلغ کسر : `{amount:N0}` ریال\n" +
+           $"🆔 تلفن: `{phone}`\n\n" +
+           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+       );
+                        await _botClient.SendMessage(
+           userDto.TelegramId,
+           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+           $"💳 دارایی: `ریال`\n" +
+           $"💵 مبلغ کسر: `{amount:N0}` ریال\n" +
+           $"🆔 تلفن: `{phone}`\n\n" +
+           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+       );
+
+
+                    }
+                    else
+                    {
+                        await _botClient.SendMessage(message.Chat.Id, result.Message);
+
+                    }
+                }
+                else
+                {
+                    await _botClient.SendMessage(message.Chat.Id, "شماره تلفن معتبر نیست");
+
+                }
+
+                return true;
+
+            }
+
+
+
+
+
 
             if (msgText.StartsWith("ک"))
             {
