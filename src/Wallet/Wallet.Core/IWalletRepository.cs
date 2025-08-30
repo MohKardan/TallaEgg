@@ -8,7 +8,7 @@ public interface IWalletRepository
     Task<WalletEntity> CreateWalletAsync(WalletEntity wallet);
     Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction= null);
     Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount);
-    Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
+    Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     
     // Transaction operations
     Task<Transaction> CreateTransactionAsync(Transaction transaction);

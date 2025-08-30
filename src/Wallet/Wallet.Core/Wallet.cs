@@ -73,6 +73,15 @@ public class WalletEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UnLockBalance(decimal amount)
+    {
+        if(LockedBalance < amount) throw new ArgumentNullException("موجودی قفل شده کافی نیست", nameof(amount));
+
+        LockedBalance -= amount;
+        Balance += amount;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
 
 }
 

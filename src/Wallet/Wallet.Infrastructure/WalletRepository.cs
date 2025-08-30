@@ -53,8 +53,8 @@ public class WalletRepository : IWalletRepository
           amount,
           asset,
           TransactionType.Freeze,
-          wallet.Balance - amount,
           wallet.Balance,
+          wallet.Balance - amount,
           null,
           TransactionStatus.Completed,
           "LockBalance transaction",
@@ -67,19 +67,30 @@ public class WalletRepository : IWalletRepository
         return wallet;
     }
 
-    public async Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
+    public async Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await GetWalletAsync(userId, asset);
-        if (wallet == null || wallet.LockedBalance < amount)
-            return false;
+        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
 
-        wallet.LockedBalance -= amount;
-        wallet.Balance += amount;
-        wallet.UpdatedAt = DateTime.UtcNow;
-        
-        await UpdateWalletAsync(wallet);
-        return true;
+        var transaction = Transaction.Create(
+          wallet.Id,
+          amount,
+          asset,
+          TransactionType.Unfreeze,
+          wallet.Balance,
+          wallet.Balance + amount,
+          null,
+          TransactionStatus.Completed,
+          "LockBalance transaction",
+          null,
+          null
+      );
+        wallet.UnLockBalance(amount);
+
+        await UpdateWalletAsync(wallet,transaction);
+        return wallet;
     }
+
 
     public async Task<Transaction> CreateTransactionAsync(Transaction transaction)
     {

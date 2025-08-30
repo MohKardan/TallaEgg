@@ -134,9 +134,10 @@ public class WalletService : IWalletService
 
     }
 
-    public async Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
+    public async Task<WalletDTO> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
-        return await _walletRepository.UnlockBalanceAsync(userId, asset, amount);
+        var wallet = await _walletRepository.UnlockBalanceAsync(userId, asset, amount);
+        return _walletMapper.Map(wallet);
     }
 
     public async Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId)

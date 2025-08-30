@@ -9,7 +9,7 @@ public interface IWalletService
     Task<(WalletEntity walletEntity, Transaction transactionEntity)> DeCreditAsync(Guid userId, string asset, decimal amount, string? refId = null);
     Task<bool> DebitAsync(Guid userId, string asset, decimal amount);
     Task<WalletDTO> LockBalanceAsync(Guid userId, string asset, decimal amount);
-    Task<bool> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
+    Task<WalletDTO> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId);
     Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null);
     Task<WalletBallanceDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null);

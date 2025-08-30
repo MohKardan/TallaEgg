@@ -123,11 +123,11 @@ app.MapPost("/api/wallet/unlockBalance", async (BaseWalletRequest request, IWall
     try
     {
         var result = await walletService.UnlockBalanceAsync(request.UserId, request.Asset, request.Amount);
-        return Results.Ok(ApiResponse<bool>.Ok(result, "عملیات با موفقیت انجام شد"));
+        return Results.Ok(ApiResponse<WalletDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
     }
     catch (Exception ex)
     {
-        return Results.BadRequest(ApiResponse<bool>.Fail(ex.Message));
+        return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
 });
 
