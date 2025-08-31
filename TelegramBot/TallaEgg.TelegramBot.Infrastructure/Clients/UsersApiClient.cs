@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
@@ -28,6 +29,7 @@ public class UsersApiClient
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
 
     public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(

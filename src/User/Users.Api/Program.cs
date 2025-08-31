@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Orders.Core;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Requests.User;
+using Users.Api;
 using Users.Application;
 using Users.Application.Mappers;
 using Users.Core;
@@ -17,6 +20,29 @@ builder.Services.AddDbContext<UsersDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("UsersDb") ??
         "Server=localhost;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("Users.Api")));
+
+// فقط در production محافظت فعال شود
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddAuthentication("ApiKey")
+        .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
+        {
+            options.ApiKey = APIKeyConstant.TallaEggApiKey;
+        });
+
+    // Authorization Policy سراسری فقط برای production
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else
+{
+    // برای development فقط authorization اضافه کنید (بدون authentication)
+    builder.Services.AddAuthorization();
+}
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<UserService>();
@@ -40,7 +66,26 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+
+
 var app = builder.Build();
+
+// Authentication و Authorization فقط در production
+if (app.Environment.IsProduction())
+{
+    app.UseAuthentication();
+    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
+       .AllowAnonymous();
+}
+app.UseAuthorization();
+
+// Add Swagger middleware
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
+    c.RoutePrefix = "api-docs";
+});
 
 // تنظیم CORS
 app.UseCors(builder => builder
@@ -55,6 +100,8 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
     c.RoutePrefix = "api-docs";
 });
+
+
 
 /// <summary>
 /// Registers a new user in the system
