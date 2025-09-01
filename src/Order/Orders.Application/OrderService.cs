@@ -41,12 +41,12 @@ public class OrderService
     /// <summary>
     /// ایجاد سفارش واحد با تشخیص خودکار نقش (Maker/Taker)
     /// </summary>
-    public async Task<CreateOrderResponse> CreateOrderAsync(CreateOrderRequest request)
+    public async Task<CreateOrderResponse> CreateOrderAsync(OrderDto request)
     {
         try
         {
-            _logger.LogInformation("Creating unified order for user {UserId} with symbol {Symbol}, side {Side}, type {Type}", 
-                request.UserId, request.Symbol, request.Side, request.Type);
+            _logger.LogInformation("Creating unified order for user {UserId} with symbol {Symbol}, side {Side}, type {Type}",
+                request.UserId, request.Symbol, request.Type, request.Type);
 
             // 1. Validate authorization
             var canCreateOrder = true;
@@ -56,28 +56,27 @@ public class OrderService
             }
 
             // 2. Determine trading parameters
-            var orderType = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy ? TallaEgg.Core.Enums.Order.OrderType.Buy : TallaEgg.Core.Enums.Order.OrderType.Sell;
+            var orderType = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy ? TallaEgg.Core.Enums.Order.OrderType.Buy : TallaEgg.Core.Enums.Order.OrderType.Sell;
             var tradingType = request.TradingType;
 
             // 3. Validate user balance before creating order
-            var userId = Guid.Parse(request.UserId);
-            var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy 
+            var userId = request.UserId;
+            var assetToCheck = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy
                 ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
 
-            var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderType.Buy 
-                ? (request.Type == OrderTypeEnum.Market ? request.Quantity * 50000m 
-                : request.Quantity * (request.Price ?? 50000m)) // Estimated calculation
+            var amountToCheck = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy
+                ? request.Quantity * request.Price
                 : request.Quantity;
 
-            _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}", 
+            _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);
 
             var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) =
                 await _walletApiClient.ValidateBalanceAsync(
-                userId, 
-                assetToCheck, 
-                amountToCheck, 
-                (int)request.Side);
+                userId,
+                assetToCheck,
+                amountToCheck,
+                (int)request.Type);
 
             if (!balanceCheckSuccess)
             {
@@ -92,7 +91,7 @@ public class OrderService
             }
 
             // 4. For limit orders, lock the balance
-            if (request.Type == OrderTypeEnum.Limit)
+            //if (request.Type == OrderTypeEnum.Limit)
             {
                 var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.LockBalanceAsync(
                     userId,
@@ -105,7 +104,7 @@ public class OrderService
                     throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
                 }
 
-                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}", 
+                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}",
                     amountToCheck, assetToCheck, userId);
             }
 
@@ -114,47 +113,29 @@ public class OrderService
             OrderRole determinedRole;
             List<TradeDto> executedTrades = new();
 
-            if (request.Type == OrderTypeEnum.Market)
+
+            if (request.Price == null)
             {
-                // Market orders are always Takers
-                var marketCommand = new CreateMarketOrderRequest
-                {
-                    Asset = request.Symbol,
-                    Amount = request.Quantity,
-                    UserId = userId,
-                    Type = orderType,
-                    TradingType = tradingType,
-                    Notes = request.Notes
-                };
-
-                order = await CreateMarketOrderAsync(marketCommand);
-                determinedRole = OrderRole.Taker;
+                throw new ArgumentException("قیمت برای سفارش محدود الزامی است");
             }
-            else // Limit order
-            {
-                if (request.Price == null)
-                {
-                    throw new ArgumentException("قیمت برای سفارش محدود الزامی است");
-                }
 
-                // Limit orders start as Makers
-                var limitCommand = new CreateOrderCommand(
-                    request.Symbol,
-                    request.Quantity,
-                    request.Price.Value,
-                    userId,
-                    orderType,
-                    tradingType,
-                    request.Notes
-                );
+            // Limit orders start as Makers
+            var limitCommand = new CreateOrderCommand(
+                request.Symbol,
+                request.Quantity,
+                request.Price,
+                userId,
+                orderType,
+                tradingType,
+                request.Notes
+            );
 
-                order = await CreateOrderAsync(limitCommand);
-                
-                // Determine role based on order status
-                determinedRole = order.Status == OrderStatus.Completed || order.Status == OrderStatus.Partially 
-                    ? OrderRole.Mixed 
-                    : OrderRole.Maker;
-            }
+            order = await CreateOrderAsync(limitCommand);
+
+            // Determine role based on order status
+            determinedRole = order.Status == OrderStatus.Completed || order.Status == OrderStatus.Partially
+                ? OrderRole.Mixed
+                : OrderRole.Maker;
 
             // 6. Build response
             var response = new CreateOrderResponse
@@ -177,7 +158,7 @@ public class OrderService
                 Message = GetOrderCreationMessage(determinedRole, order.Status)
             };
 
-            _logger.LogInformation("Unified order created successfully with ID: {OrderId}, Role: {Role}", 
+            _logger.LogInformation("Unified order created successfully with ID: {OrderId}, Role: {Role}",
                 order.Id, determinedRole);
 
             return response;
@@ -204,7 +185,7 @@ public class OrderService
 
         var createdOrder = await _orderRepository.AddAsync(order);
         await _matchingEngine.ProcessOrderAsync(createdOrder);
-        
+
         return createdOrder;
     }
 
@@ -212,7 +193,7 @@ public class OrderService
     {
         // Get estimated price for market order
         var estimatedPrice = 50000m; // Simplified - would calculate from order book
-        
+
         var marketOrder = Order.CreateMarketOrder(
             command.Asset,
             command.Amount,
@@ -225,7 +206,7 @@ public class OrderService
 
         var createdOrder = await _orderRepository.AddAsync(marketOrder);
         await _matchingEngine.ProcessOrderAsync(createdOrder);
-        
+
         return createdOrder;
     }
 
@@ -242,10 +223,10 @@ public class OrderService
     public async Task<BestBidAskResult> GetBestBidAskAsync(string asset, TradingType tradingType)
     {
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
-        
-        var activeOrders = orders.Where(o => 
-            o.IsMaker() && 
-            o.IsActive() && 
+
+        var activeOrders = orders.Where(o =>
+            o.IsMaker() &&
+            o.IsActive() &&
             o.TradingType == tradingType)
             .ToList();
 
@@ -295,13 +276,13 @@ public class OrderService
     {
         return role switch
         {
-            OrderRole.Maker when status == OrderStatus.Pending => 
+            OrderRole.Maker when status == OrderStatus.Pending =>
                 "سفارش شما با موفقیت در Order Book قرار گرفت و منتظر تطبیق است",
-            OrderRole.Taker when status == OrderStatus.Completed => 
+            OrderRole.Taker when status == OrderStatus.Completed =>
                 "سفارش شما فوراً اجرا شد",
-            OrderRole.Mixed when status == OrderStatus.Partially => 
+            OrderRole.Mixed when status == OrderStatus.Partially =>
                 "بخشی از سفارش شما فوراً اجرا شد و بقیه در Order Book قرار گرفت",
-            OrderRole.Mixed when status == OrderStatus.Completed => 
+            OrderRole.Mixed when status == OrderStatus.Completed =>
                 "سفارش شما به طور کامل اجرا شد",
             _ => "سفارش شما با موفقیت ثبت شد"
         };

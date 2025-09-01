@@ -163,37 +163,6 @@ public class OrderApiClient : IOrderApiClient
     }
 }
 
-public class OrderDto
-{
-    [JsonPropertyName("symbol")]
-    public string Asset { get; set; } = "";
-    /// <summary>
-    /// alias
-    /// </summary>
-    [JsonPropertyName("asset")]
-    public string Symbol
-    {
-        get => Asset;
-        set => Asset = value;
-    }
-    [JsonPropertyName("quantity")]
-    public decimal Amount { get; set; }
-    /// <summary>
-    /// alias
-    /// </summary>
-    [JsonPropertyName("Amount")]
-    public decimal Quantity
-    {
-        get => Amount;
-        set => Amount = value;
-    }
-    public decimal Price { get; set; }
-    public Guid UserId { get; set; }
-    public OrderType Type { get; set; } // "Buy" or "Sell"
-    public TradingType TradingType { get; set; } // "Spot" or "Futures"
-    public string? Notes { get; set; } = null; // Optional notes for the order
-}
-
 public class OrderResponse
 {
     public bool Success { get; set; }

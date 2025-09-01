@@ -8,7 +8,6 @@ using System.Reflection;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
-using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Responses.Order;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -94,7 +93,7 @@ if (app.Environment.IsDevelopment())
 /// <response code="200">سفارش با موفقیت ایجاد شد</response>
 /// <response code="400">داده‌های نامعتبر یا نقض قوانین تجاری</response>
 /// <response code="401">دسترسی غیرمجاز</response>
-app.MapPost("/api/orders", async (TallaEgg.Core.Requests.Order.CreateOrderRequest request, OrderService orderService) =>
+app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, OrderService orderService) =>
 {
     try
     {
@@ -105,7 +104,7 @@ app.MapPost("/api/orders", async (TallaEgg.Core.Requests.Order.CreateOrderReques
         if (request.Quantity <= 0)
             return Results.BadRequest(new { success = false, message = "مقدار سفارش باید بیشتر از صفر باشد" });
         
-        if (request.Type == OrderTypeEnum.Limit && (request.Price == null || request.Price <= 0))
+        if ((request.Price == null || request.Price <= 0))
             return Results.BadRequest(new { success = false, message = "قیمت برای سفارش محدود الزامی است" });
 
         var response = await orderService.CreateOrderAsync(request);

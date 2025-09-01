@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Order;
@@ -12,6 +13,7 @@ using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
 using Telegram.Bot;
+using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -33,17 +35,6 @@ namespace TallaEgg.TelegramBot
         public string State { get; internal set; } = "";
     }
 
-    public class MarketOrderState
-    {
-        public string Symbol { get; set; } = "";
-        public OrderType OrderType { get; set; } // "Buy" or "Sell"
-        public decimal Amount { get; set; }
-        public decimal MarketPrice { get; set; }
-        public Guid UserId { get; set; }
-        public bool IsConfirmed { get; set; } = false;
-        public string State { get; set; } = "";
-    }
-
     public class BotHandler : IBotHandler
     {
         private readonly ITelegramBotClient _botClient;
@@ -53,7 +44,7 @@ namespace TallaEgg.TelegramBot
         private readonly WalletApiClient _walletApi;
 
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
-        
+
         private bool _requireReferralCode;
         private string _defaultReferralCode;
 
@@ -143,8 +134,10 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
+                    // احتمالا بهتره که در آینده این کار را رول حسابدار انجام دهد
                     // Check if user is admin
-                    if (await IsTelegramAdmin(user))
+                    //if (await IsTelegramAdmin(user))
+                    if (user.Role == TallaEgg.Core.Enums.User.UserRole.Admin)
                     {
                         // Check for admin commands first
                         bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
@@ -315,7 +308,7 @@ namespace TallaEgg.TelegramBot
             //isAdmin = true; // for test
             ////if (isAdmin)
 
-            if(user.Role == TallaEgg.Core.Enums.User.UserRole.Admin)
+            if (user.Role == TallaEgg.Core.Enums.User.UserRole.Admin)
             {
                 await _botClient.SendMainKeyboardForAdminAsync(chatId);
             }
@@ -333,14 +326,15 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
                 return;
             }
-            bool isAdmin = await IsTelegramAdmin(user);
-            isAdmin = true; // for test
-            if (!isAdmin)
+            //bool isAdmin = await IsTelegramAdmin(user);
+            //isAdmin = true; // for test
+            //if (!isAdmin)
+            if (user.Role != TallaEgg.Core.Enums.User.UserRole.Admin)
             {
                 await _botClient.SendMessage(chatId, "شما فقط میتوانید با قیمت بازار اقدام به خرید یا فروش نمایید");
                 return;
             }
-            
+
             _userOrderStates.TryAdd(chatId, new OrderState
             {
                 UserId = user.Id,
@@ -473,7 +467,9 @@ namespace TallaEgg.TelegramBot
                 if (!match.Success)
                 {
                     await _botClient.SendMessage(message.Chat.Id,
-                        "❌ فرمت دستور نادرست است.\nمثال: ش 09121234567 50000 [ریالی/دلاری]");
+                        "❌ فرمت دستور نادرست است." +
+                        "\nمثال 1 : ش 09121234567 50000 IRR" +
+                        "\nمثال 2 : ش 09121234567 50000 XAUM");
                 }
 
                 var phone = match.Groups["phone"].Value;
@@ -493,7 +489,7 @@ namespace TallaEgg.TelegramBot
                 {
                     var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = "rial",
+                        Asset = currency,
                         Amount = amount,
                         UserId = userDto.Id
                     });
@@ -504,7 +500,7 @@ namespace TallaEgg.TelegramBot
                         await _botClient.SendMessage(
            message.Chat.Id,
            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `ریال`\n" +
+           $"💳 دارایی: `{currency}`\n" +
            $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
            $"🆔 تلفن: `{phone}`\n\n" +
            $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
@@ -513,7 +509,7 @@ namespace TallaEgg.TelegramBot
                         await _botClient.SendMessage(
            userDto.TelegramId,
            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `ریال`\n" +
+           $"💳 دارایی: `{currency}`\n" +
            $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
            $"🆔 تلفن: `{phone}`\n\n" +
            $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
@@ -546,7 +542,11 @@ namespace TallaEgg.TelegramBot
                 if (!match.Success)
                 {
                     await _botClient.SendMessage(message.Chat.Id,
-                        "❌ فرمت دستور نادرست است.\nمثال: د 09121234567 50000 [ریالی/دلاری]");
+                        "❌ فرمت دستور نادرست است." +
+                        "\nمثال 1 : د 09121234567 50000 IRR" +
+                        "\nمثال 2 : د 09121234567 10 XAUM" +
+                        "\nمثال 3 : د 09121234567 3000 MAUA" +
+                        "\nمثال 4 : د 09121234567 500 TAIR");
                 }
 
                 var phone = match.Groups["phone"].Value;
@@ -566,18 +566,18 @@ namespace TallaEgg.TelegramBot
                 {
                     var result = await _walletApi.WithdrawalAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = "rial",
+                        Asset = currency,
                         Amount = amount,
                         UserId = userDto.Id
                     });
                     if (result.Success)
                     {
-                        
+
 
                         await _botClient.SendMessage(
            message.Chat.Id,
            $"💰 *کسر از کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `ریال`\n" +
+           $"💳 دارایی: `{currency}`\n" +
            $"💵 مبلغ کسر : `{amount:N0}` ریال\n" +
            $"🆔 تلفن: `{phone}`\n\n" +
            $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
@@ -586,7 +586,7 @@ namespace TallaEgg.TelegramBot
                         await _botClient.SendMessage(
            userDto.TelegramId,
            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `ریال`\n" +
+           $"💳 دارایی: `{currency}`\n" +
            $"💵 مبلغ کسر: `{amount:N0}` ریال\n" +
            $"🆔 تلفن: `{phone}`\n\n" +
            $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
@@ -704,7 +704,7 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// با این فقط چک میکنیم ببینیم تو پروه تلگرام ادمین هست یا نه
+        /// با این فقط چک میکنیم ببینیم تو گروه تلگرام ادمین هست یا نه
         /// 
         /// </summary>
         /// <param name="user"></param>
@@ -721,7 +721,7 @@ namespace TallaEgg.TelegramBot
 
             return false;
         }
-        
+
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
         {
             if (!_userOrderStates.ContainsKey(telegramId))
@@ -836,28 +836,30 @@ namespace TallaEgg.TelegramBot
             orderState.State = "";
 
 
-            // Check user's balance for the asset (for SELL orders)
-            if (orderState.OrderType == OrderType.Sell)
-            {
-                var (balanceSuccess, balance, balanceMessage) = await _walletApi.GetWalletBalanceAsync(orderState.UserId, orderState.Asset);
+            // Check user's balance for the asset
 
-                if (!balanceSuccess || balance == null || balance < orderState.Amount)
-                {
-                    var availableBalance = balance ?? 0;
-                    var backBtn = new KeyboardButton(BotBtns.BtnBack);
-                    await _botClient.SendMessage(chatId,
-                        string.Format(BotMsgs.MsgInsufficientBalance, availableBalance),
-                        replyMarkup: new ReplyKeyboardMarkup(new[]
-                        {
+            var assetToCheck = orderState.OrderType == OrderType.Buy
+                ? orderState.Asset.Split('/')[1] : orderState.Asset.Split('/')[0];
+
+            var (balanceSuccess, balance, balanceMessage) = await _walletApi.GetWalletBalanceAsync(orderState.UserId, assetToCheck);
+
+            if (!balanceSuccess || balance == null || balance < orderState.Amount)
+            {
+                var availableBalance = balance ?? 0;
+                var backBtn = new KeyboardButton(BotBtns.BtnBack);
+                await _botClient.SendMessage(chatId,
+                    string.Format(BotMsgs.MsgInsufficientBalance, availableBalance),
+                    replyMarkup: new ReplyKeyboardMarkup(new[]
+                    {
                             new KeyboardButton[] { backBtn }
-                        })
-                        {
-                            ResizeKeyboard = true
-                        });
-                    _userOrderStates.Remove(telegramId);
-                    return;
-                }
+                    })
+                    {
+                        ResizeKeyboard = true
+                    });
+                _userOrderStates.Remove(telegramId);
+                return;
             }
+
 
 
             var totalValue = orderState.Amount * orderState.Price;

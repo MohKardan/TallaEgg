@@ -16,7 +16,7 @@ public class WalletRepository : IWalletRepository
     public async Task<WalletEntity?> GetWalletAsync(Guid userId, string asset)
     {
         return await _context.Wallets
-            .FirstOrDefaultAsync(w => w.UserId == userId && w.Asset == asset);
+            .FirstOrDefaultAsync(w => w.UserId == userId && w.Asset.ToUpper() == asset.ToUpper());
     }
 
     public async Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId)
