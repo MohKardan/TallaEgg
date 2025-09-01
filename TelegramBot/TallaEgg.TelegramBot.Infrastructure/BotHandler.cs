@@ -144,7 +144,7 @@ namespace TallaEgg.TelegramBot
                 else
                 {
                     // Check if user is admin
-                    if (await IsUserAdmin(user))
+                    if (await IsTelegramAdmin(user))
                     {
                         // Check for admin commands first
                         bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
@@ -311,10 +311,11 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            bool isAdmin = await IsUserAdmin(user);
-            isAdmin = true; // for test
+            //bool isAdmin = await IsTelegramAdmin(user);
+            //isAdmin = true; // for test
+            ////if (isAdmin)
 
-            if (isAdmin)
+            if(user.Role == TallaEgg.Core.Enums.User.UserRole.Admin)
             {
                 await _botClient.SendMainKeyboardForAdminAsync(chatId);
             }
@@ -332,7 +333,7 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
                 return;
             }
-            bool isAdmin = await IsUserAdmin(user);
+            bool isAdmin = await IsTelegramAdmin(user);
             isAdmin = true; // for test
             if (!isAdmin)
             {
@@ -702,7 +703,13 @@ namespace TallaEgg.TelegramBot
             //}
         }
 
-        private async Task<bool> IsUserAdmin(UserDto user)
+        /// <summary>
+        /// با این فقط چک میکنیم ببینیم تو پروه تلگرام ادمین هست یا نه
+        /// 
+        /// </summary>
+        /// <param name="user"></param>
+        /// <returns></returns>
+        private async Task<bool> IsTelegramAdmin(UserDto user)
         {
             var ids = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
             return ids.Contains(user.TelegramId);
@@ -714,55 +721,7 @@ namespace TallaEgg.TelegramBot
 
             return false;
         }
-
-        private async Task HandleTradingTypeSelectionAsync(long chatId, long telegramId, TradingType tradingType)
-        {
-            var user = await _usersApi.GetUserAsync(telegramId);
-
-            if (user == null)
-            {
-                await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
-                return;
-            }
-
-            // Create order state
-            var orderState = new OrderState
-            {
-                TradingType = tradingType,
-                UserId = user.Id
-            };
-
-            _userOrderStates[telegramId] = orderState;
-            bool isAdmin = await IsUserAdmin(user);
-            isAdmin = true; // for test
-            if (!isAdmin)
-            {
-                await _botClient.SendMessage(chatId, "شما فقط میتوانید با قیمت بازار اقدام به خرید یا فروش نمایید");
-
-            }
-            else
-            {
-                // Show order type selection
-                var keyboard = new InlineKeyboardMarkup(new[]
-                {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketBuy, InlineCallBackData.order_buy),
-                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketSell, InlineCallBackData.order_sell)
-                    //TODO ننیاز به بررسی بیشتر
-                    // چرا دکمه ها تغییر کرده است
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, InlineCallBackData.back_to_main)
-                }
-            });
-
-                await _botClient.SendMessage(chatId, BotMsgs.MsgSelectOrderType, replyMarkup: keyboard);
-            }
-
-        }
-
+        
         private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
         {
             if (!_userOrderStates.ContainsKey(telegramId))

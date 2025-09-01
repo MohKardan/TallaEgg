@@ -61,5 +61,6 @@ namespace TallaEgg.Core.DTOs.User
         /// Current status of the user account
         /// </summary>
         public UserStatus Status { get; set; }
+        public UserRole Role { get; set; }
     }
 }

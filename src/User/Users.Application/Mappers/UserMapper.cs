@@ -26,7 +26,8 @@ namespace Users.Application.Mappers
                 IsActive = entity.IsActive,
                 CreatedAt = entity.CreatedAt,
                 LastActiveAt = entity.LastActiveAt,
-                PhoneNumber = entity.PhoneNumber
+                PhoneNumber = entity.PhoneNumber,
+                Role = entity.Role
             };
         }
 
@@ -46,8 +47,12 @@ namespace Users.Application.Mappers
                 Username = dto.Username,
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
+                Status = dto.Status,
+                IsActive = dto.IsActive,
+                CreatedAt = dto.CreatedAt,
+                LastActiveAt = dto.LastActiveAt,
                 PhoneNumber = dto.PhoneNumber,
-                LastActiveAt = dto.LastActiveAt
+                Role = dto.Role
             };
         }
     }
