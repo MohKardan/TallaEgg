@@ -251,13 +251,15 @@ app.MapGet("/api/orders/user/{userId}", async (
 /// <response code="400">درخواست نامعتبر</response>
 /// <response code="404">نماد معاملاتی یافت نشد</response>
 /// <response code="500">خطای داخلی سرور</response>
-app.MapGet("/api/orders/{symbol}/best-prices", async (
-    string symbol,
+app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
+    string Base,
+    string Quote,
     TradingType? tradingType,
     OrderService orderService) =>
 {
     try
     {
+        string symbol = $"{Base}/{Quote}";
         // Input validation
         if (string.IsNullOrWhiteSpace(symbol))
         {

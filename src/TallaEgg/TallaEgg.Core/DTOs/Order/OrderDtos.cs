@@ -86,7 +86,13 @@ namespace TallaEgg.Core.DTOs.Order
         public TradingType TradingType { get; set; }
         public OrderType OrderType { get; set; }
         public string Symbol { get; set; } = string.Empty;
+        /// <summary>
+        /// بهترین قیمت خرید (بالاترین قیمت پیشنهادی خریداران)
+        /// </summary>
         public decimal? BestBidPrice { get; set; }    // بهترین قیمت خرید (بالاترین قیمت پیشنهادی خریداران)
+        /// <summary>
+        /// بهترین قیمت فروش (پایین‌ترین قیمت پیشنهادی فروشندگان)
+        /// </summary>
         public decimal? BestAskPrice { get; set; }    // بهترین قیمت فروش (پایین‌ترین قیمت پیشنهادی فروشندگان)
         public decimal? BidVolume { get; set; }       // حجم موجود در بهترین قیمت خرید
         public decimal? AskVolume { get; set; }       // حجم موجود در بهترین قیمت فروش

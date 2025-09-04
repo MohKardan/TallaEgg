@@ -69,7 +69,7 @@ public class OrderApiClient : IOrderApiClient
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
             // Make HTTP request with timeout
-            response = await _httpClient.GetAsync($"{_baseUrl}/api/orders/{symbol}/best-prices", cts.Token);
+            response = await _httpClient.GetAsync($"{_baseUrl}/orders/{symbol}/best-prices", cts.Token);
 
             // Read response content
             responseContent = await response.Content.ReadAsStringAsync();

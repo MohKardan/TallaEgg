@@ -31,6 +31,8 @@ namespace TallaEgg.TelegramBot
         public string Asset { get; set; } = "";
         public decimal Amount { get; set; }
         public decimal Price { get; set; }
+        public decimal? BestBidPrice { get; set; }
+        public decimal? BestAskPrice { get; set; }
         public Guid UserId { get; set; }
         public bool IsConfirmed { get; set; } = false;
         public string? Notes { get; set; } = null;
@@ -365,6 +367,18 @@ namespace TallaEgg.TelegramBot
 
                         _userOrderStates[telegramId].State = "waiting_for_select_side";
 
+                        TallaEgg.Core.DTOs.ApiResponse<BestPricesDto> apiResponse = await _orderApi.GetBestPricesAsync(asset);
+                        if (apiResponse != null && apiResponse.Success)
+                        {
+                            await _botClient.SendMessage(chatId,
+                                $"بهترین قیمت خرید: {apiResponse.Data.BestBidPrice}" +
+                                "\n" +
+                                $"بهترین قیمت فروش: {apiResponse.Data.BestAskPrice}");
+
+                            _userOrderStates[telegramId].BestBidPrice = apiResponse.Data.BestBidPrice;
+                            _userOrderStates[telegramId].BestAskPrice = apiResponse.Data.BestAskPrice;
+                        }
+
                         await _botClient.SendSpotSideMenuKeyboard(chatId);
 
                     }
@@ -608,7 +622,22 @@ namespace TallaEgg.TelegramBot
             }
             else if (orderState.OrderType == OrderType.Market)
             {
-                await HandleOrderPriceInputAsync(chatId, telegramId, "333332");
+                if(orderState.OrderSide == OrderSide.Buy && orderState.BestAskPrice.HasValue)
+                {
+                    orderState.Price = orderState.BestAskPrice.Value;
+                }
+                else if(orderState.OrderSide == OrderSide.Sell && orderState.BestBidPrice.HasValue)
+                {
+                    orderState.Price = orderState.BestBidPrice.Value;
+                }
+                else
+                {
+                    await _botClient.SendMessage(chatId, "خطا در دریافت بهترین قیمت بازار. لطفاً دوباره تلاش کنید.");
+                    _userOrderStates.Remove(telegramId);
+                    return;
+                }
+
+                await HandleOrderPriceInputAsync(chatId, telegramId, orderState.Price.ToString());
             }
         }
 
