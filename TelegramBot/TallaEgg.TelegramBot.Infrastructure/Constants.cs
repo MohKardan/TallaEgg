@@ -61,8 +61,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
     }
     public static class InlineCallBackData
     {
-        public const string buy_futures = "buy_futures";
-        public const string sell_futures = "sell_futures";
         /// <summary>
         /// قبل این روی دکمه نقدی در منوی اصلی کلیک شده است
         /// BotTexts.BtnSpot
@@ -79,11 +77,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string charge_card = "charge_card";
         public const string charge_bank = "charge_bank";
         public const string back_to_main = "back_to_main";
-        public const string market = "market";
-        public const string market_spot = "market_spot";
-        public const string market_symbol = "market_symbol";
-        public const string market_buy = "market_buy";
-        public const string market_sell = "market_sell";
+        
         public const string confirm_market_order = "confirm_market_order";
     }
 
