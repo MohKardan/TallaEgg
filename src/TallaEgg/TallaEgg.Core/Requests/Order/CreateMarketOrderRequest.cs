@@ -13,7 +13,7 @@ namespace TallaEgg.Core.Requests.Order
         public string Asset { get; set; } = "";
         public decimal Amount { get; set; }
         public Guid UserId { get; set; }
-        public OrderType Type { get; set; }
+        public OrderSide Type { get; set; }
         public TradingType TradingType { get; set; }
         public string? Notes { get; set; }
     }
@@ -35,9 +35,9 @@ namespace TallaEgg.Core.Requests.Order
 //    /// </summary>
 //    Guid UserId,
 //    /// <summary>
-//    /// Type of order (Buy or Sell)
+//    /// Side of order (Buy or Sell)
 //    /// </summary>
-//    OrderType Type,
+//    OrderSide Side,
 //    /// <summary>
 //    /// Trading type (Spot or Futures)
 //    /// </summary>

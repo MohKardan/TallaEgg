@@ -25,7 +25,7 @@ namespace TallaEgg.TelegramBot
     public class OrderState
     {
         public TradingType TradingType { get; set; } // "Spot" or "Futures"
-        public OrderType OrderType { get; set; } // "Buy" or "Sell"
+        public OrderSide OrderSide { get; set; } // "Buy" or "Sell"
         public string Asset { get; set; } = "";
         public decimal Amount { get; set; }
         public decimal Price { get; set; }
@@ -350,7 +350,7 @@ namespace TallaEgg.TelegramBot
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData("طلای آبشده", $"{InlineCallBackData.market_symbol}_BTC"),
+                    InlineKeyboardButton.WithCallbackData("طلای آبشده", $"{InlineCallBackData.market_symbol}_MAUA"),
                     InlineKeyboardButton.WithCallbackData("سکه امام", $"{InlineCallBackData.market_symbol}_ETH")
                 },
                 new InlineKeyboardButton[]
@@ -364,25 +364,7 @@ namespace TallaEgg.TelegramBot
                 }
             });
 
-            await _botClient.SendMessage(chatId, BotMsgs.MsgSelectSymbol, replyMarkup: keyboard);
-        }
-
-        private async Task HandleFuturesMenuAsync(long chatId)
-        {
-            var keyboard = new InlineKeyboardMarkup(new[]
-            {
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData("🛒 خرید آتی", InlineCallBackData.buy_futures),
-                    InlineKeyboardButton.WithCallbackData("🛍️ فروش آتی", InlineCallBackData.sell_futures)
-                },
-                new InlineKeyboardButton[]
-                {
-                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
-                }
-            });
-
-            await _botClient.SendMessage(chatId, "📈 معاملات آتی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
+            await _botClient.SendMessage(chatId, BotMsgs.MsgSelectAsset, replyMarkup: keyboard);
         }
 
         private async Task HandleAccountingMenuAsync(long chatId)
@@ -390,8 +372,6 @@ namespace TallaEgg.TelegramBot
 
             await _botClient.SendAccountingMenuKeyboard(chatId);
         }
-
-
 
         private async Task ShowHelpAsync(long chatId)
         {
@@ -721,8 +701,14 @@ namespace TallaEgg.TelegramBot
 
             return false;
         }
-
-        private async Task HandleOrderTypeSelectionAsync(long chatId, long telegramId, OrderType orderType)
+        /// <summary>
+        /// بعد از این که خرید یا فروش انتخاب شد با این تابع نمادهای معاملاتی را برای کاربر ارسال میکنیم
+        /// </summary>
+        /// <param name="chatId"></param>
+        /// <param name="telegramId"></param>
+        /// <param name="orderSide"></param>
+        /// <returns></returns>
+        private async Task HandleOrderSideSelectionAsync(long chatId, long telegramId, OrderSide orderSide)
         {
             if (!_userOrderStates.ContainsKey(telegramId))
             {
@@ -731,7 +717,7 @@ namespace TallaEgg.TelegramBot
             }
 
             var orderState = _userOrderStates[telegramId];
-            orderState.OrderType = orderType;
+            orderState.OrderSide = orderSide;
 
             // Get available assets 
             //TODO اینحا باید نمادهای معاملاتیرو از یجایی بحونیم
@@ -771,17 +757,6 @@ namespace TallaEgg.TelegramBot
             var orderState = _userOrderStates[telegramId];
             orderState.Asset = asset;
             orderState.State = "waiting_for_amount";
-
-            //// Get current price for the asset
-            //var (success, prices) = await _priceApi.GetAllPricesAsync();
-            //if (success && prices != null)
-            //{
-            //    var price = prices.FirstOrDefault(p => p.Asset == asset);
-            //    if (price != null)
-            //    {
-            //        orderState.Price = orderState.OrderType == "Buy" ? price.BuyPrice : price.SellPrice;
-            //    }
-            //}
 
             // Remove keyboard and ask for amount
             await _botClient.SendMessage(chatId,
@@ -838,7 +813,7 @@ namespace TallaEgg.TelegramBot
 
             // Check user's balance for the asset
 
-            var assetToCheck = orderState.OrderType == OrderType.Buy
+            var assetToCheck = orderState.OrderSide == OrderSide.Buy
                 ? orderState.Asset.Split('/')[1] : orderState.Asset.Split('/')[0];
 
             var (balanceSuccess, balance, balanceMessage) = await _walletApi.GetWalletBalanceAsync(orderState.UserId, assetToCheck);
@@ -865,7 +840,7 @@ namespace TallaEgg.TelegramBot
             var totalValue = orderState.Amount * orderState.Price;
             var confirmationMessage = string.Format(BotMsgs.MsgOrderConfirmation,
                 orderState.Asset,
-                orderState.OrderType,
+                orderState.OrderSide,
                 orderState.Amount,
                 orderState.Price,
                 totalValue);
@@ -900,7 +875,7 @@ namespace TallaEgg.TelegramBot
                 Amount = orderState.Amount,
                 Price = orderState.Price,
                 UserId = orderState.UserId,
-                Type = orderState.OrderType,
+                Side = orderState.OrderSide,
                 TradingType = orderState.TradingType
             };
 
@@ -958,19 +933,11 @@ namespace TallaEgg.TelegramBot
                 case InlineCallBackData.sell_spot:
                     //await ShowSpotSymbolOptionsAsync(chatId);
 
-                    OrderType orderType = data == InlineCallBackData.buy_spot ? OrderType.Buy : OrderType.Sell;
+                    OrderSide orderSide = data == InlineCallBackData.buy_spot ? OrderSide.Buy : OrderSide.Sell;
 
-                    await HandleOrderTypeSelectionAsync(chatId, telegramId, orderType);
+                    await HandleOrderSideSelectionAsync(chatId, telegramId, orderSide);
 
                     break;
-
-                //case InlineCallBackData.order_buy:
-                //    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Buy);
-                //    break;
-
-                //case InlineCallBackData.order_sell:
-                //    await HandleOrderTypeSelectionAsync(chatId, telegramId, OrderType.Sell);
-                //    break;
 
                 case InlineCallBackData.confirm_order:
                     await HandleOrderConfirmationAsync(chatId, telegramId);

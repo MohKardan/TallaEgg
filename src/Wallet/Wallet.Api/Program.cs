@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Trade;
 using TallaEgg.Core.Requests.Wallet;
 using Wallet.Application;
@@ -203,5 +204,5 @@ public record CreditRequest(Guid UserId, string Asset, decimal Amount);
 public record DebitRequest(Guid UserId, string Asset, decimal Amount);
 
 // Market order balance request models
-public record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, int OrderType); // 0 = Buy, 1 = Sell
-public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, int OrderType, Guid OrderId); // 0 = Buy, 1 = Sell 
+public record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide); // 0 = Buy, 1 = Sell
+public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide, Guid OrderId); // 0 = Buy, 1 = Sell 

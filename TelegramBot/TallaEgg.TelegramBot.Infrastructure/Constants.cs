@@ -43,14 +43,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgPhoneSuccess = "✅ شماره تلفن شما با موفقیت ثبت شد!\n\nلطفا منتظر تایید مدیر بمانید.";
         public const string MsgMainMenu = "🎯 منوی اصلی\n\nلطفاً یکی از گزینه‌های زیر را انتخاب کنید:";
         public const string MsgSelectTradingType = "نوع معامله خود را انتخاب کنید:";
-        public const string MsgSelectOrderType = "نوع سفارش خود را انتخاب کنید:";
+        
+        //public const string MsgSelectOrderSide = "سمت و جهت سفارش خود را انتخاب کنید:";
+        
         public const string MsgSelectAsset = "نماد معاملاتی مورد نظر را انتخاب کنید:";
+        //public const string MsgSelectSymbol = "نماد معاملاتی مورد نظر را انتخاب کنید:";
+        
         public const string MsgEnterAmount = "لطفاً مقدار واحد را وارد کنید:";
         public const string MsgOrderConfirmation = "📋 تایید سفارش\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";
         public const string MsgInsufficientBalance = "موجودی کافی نیست. موجودی شما: {0} واحد";
         public const string MsgOrderSuccess = "✅ سفارش شما با موفقیت ثبت شد!";
         public const string MsgOrderFailed = "❌ خطا در ثبت سفارش: {0}";
-        public const string MsgSelectSymbol = "نماد معاملاتی مورد نظر را انتخاب کنید:";
+        
         public const string MsgMarketPrices = "📊 قیمت‌های بازار\n\nنماد: {0}\nبهترین خرید: {1:N0} تومان\nبهترین فروش: {2:N0} تومان\nاسپرد: {3:N0} تومان\n\nعملیات مورد نظر را انتخاب کنید:";
         public const string MsgEnterQuantity = "لطفاً مقدار {0} را وارد کنید:";
         public const string MsgMarketOrderConfirmation = "📋 تایید سفارش بازار\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";

@@ -34,6 +34,5 @@ public interface IWalletApiClient
     Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
         Guid userId, 
         string asset, 
-        decimal amount, 
-        int orderType);
+        decimal amount);
 }

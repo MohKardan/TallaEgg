@@ -177,16 +177,11 @@ public class WalletApiClient : IWalletApiClient
     public async Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
         Guid userId, 
         string asset, 
-        decimal amount, 
-        int orderType)
+        decimal amount)
     {
         try
         {
-            var request = new ValidateBalanceRequest(userId, asset, amount, orderType);
-
-            var json = JsonSerializer.Serialize(request);
-            var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
-
+            
             var response = await _httpClient.GetAsync($"/api/wallet/balance/{userId}/{asset}");
             var responseContent = await response.Content.ReadAsStringAsync();
 
@@ -218,21 +213,4 @@ public class WalletApiClient : IWalletApiClient
             return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", false);
         }
     }
-
-    /// <summary>
-    /// Response model for balance validation
-    /// مدل پاسخ برای اعتبارسنجی موجودی
-    /// </summary>
-    private class ValidationResponse
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = "";
-        public bool HasSufficientBalance { get; set; }
-    }
-
-    /// <summary>
-    /// Request model for balance validation (matching Wallet service)
-    /// مدل درخواست برای اعتبارسنجی موجودی (مطابق سرویس Wallet)
-    /// </summary>
-    private record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, int OrderType);
 }

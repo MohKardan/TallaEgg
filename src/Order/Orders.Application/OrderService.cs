@@ -46,7 +46,7 @@ public class OrderService
         try
         {
             _logger.LogInformation("Creating unified order for user {UserId} with symbol {Symbol}, side {Side}, type {Type}",
-                request.UserId, request.Symbol, request.Type, request.Type);
+                request.UserId, request.Symbol, request.Side, request.Side);
 
             // 1. Validate authorization
             var canCreateOrder = true;
@@ -56,15 +56,15 @@ public class OrderService
             }
 
             // 2. Determine trading parameters
-            var orderType = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy ? TallaEgg.Core.Enums.Order.OrderType.Buy : TallaEgg.Core.Enums.Order.OrderType.Sell;
+            var orderSide = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy ? TallaEgg.Core.Enums.Order.OrderSide.Buy : TallaEgg.Core.Enums.Order.OrderSide.Sell;
             var tradingType = request.TradingType;
 
             // 3. Validate user balance before creating order
             var userId = request.UserId;
-            var assetToCheck = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy
+            var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
 
-            var amountToCheck = request.Type == TallaEgg.Core.Enums.Order.OrderType.Buy
+            var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? request.Quantity * request.Price
                 : request.Quantity;
 
@@ -75,8 +75,7 @@ public class OrderService
                 await _walletApiClient.ValidateBalanceAsync(
                 userId,
                 assetToCheck,
-                amountToCheck,
-                (int)request.Type);
+                amountToCheck);
 
             if (!balanceCheckSuccess)
             {
@@ -125,7 +124,7 @@ public class OrderService
                 request.Quantity,
                 request.Price,
                 userId,
-                orderType,
+                orderSide,
                 tradingType,
                 request.Notes
             );
@@ -146,7 +145,7 @@ public class OrderService
                     Asset = order.Asset,
                     Amount = order.Amount,
                     Price = order.Price,
-                    Type = orderType,
+                    Type = orderSide,
                     Status = order.Status,
                     Role = determinedRole,
                     TradingType = order.TradingType,
@@ -189,27 +188,6 @@ public class OrderService
         return createdOrder;
     }
 
-    public async Task<Order> CreateMarketOrderAsync(CreateMarketOrderRequest command)
-    {
-        // Get estimated price for market order
-        var estimatedPrice = 50000m; // Simplified - would calculate from order book
-
-        var marketOrder = Order.CreateMarketOrder(
-            command.Asset,
-            command.Amount,
-            estimatedPrice,
-            command.UserId,
-            command.Type,
-            command.TradingType,
-            command.Notes
-        );
-
-        var createdOrder = await _orderRepository.AddAsync(marketOrder);
-        await _matchingEngine.ProcessOrderAsync(createdOrder);
-
-        return createdOrder;
-    }
-
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)
     {
         return await _orderRepository.GetByIdAsync(orderId);
@@ -233,13 +211,13 @@ public class OrderService
         decimal? bestBid = null;
         decimal? bestAsk = null;
 
-        var buyOrders = activeOrders.Where(o => o.Type == OrderType.Buy && o.Status == OrderStatus.Pending).ToList();
+        var buyOrders = activeOrders.Where(o => o.Type == OrderSide.Buy && o.Status == OrderStatus.Pending).ToList();
         if (buyOrders.Any())
         {
             bestBid = buyOrders.OrderByDescending(o => o.Price).First().Price;
         }
 
-        var sellOrders = activeOrders.Where(o => o.Type == OrderType.Sell && o.Status == OrderStatus.Pending).ToList();
+        var sellOrders = activeOrders.Where(o => o.Type == OrderSide.Sell && o.Status == OrderStatus.Pending).ToList();
         if (sellOrders.Any())
         {
             bestAsk = sellOrders.OrderBy(o => o.Price).First().Price;

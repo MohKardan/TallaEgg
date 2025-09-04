@@ -22,7 +22,7 @@ public record CreateOrderCommand
     public Guid UserId { get; init; }
     
     [Required]
-    public OrderType Type { get; init; }
+    public OrderSide Type { get; init; }
     
     [Required]
     public TradingType TradingType { get; init; }
@@ -35,7 +35,7 @@ public record CreateOrderCommand
         decimal amount, 
         decimal price, 
         Guid userId, 
-        OrderType type,
+        OrderSide type,
         TradingType tradingType,
         string? notes = null)
     {

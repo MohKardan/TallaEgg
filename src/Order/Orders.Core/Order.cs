@@ -13,7 +13,7 @@ public class Order
     public decimal RemainingAmount { get; private set; } // مقدار باقی‌مانده سفارش
     public decimal Price { get; private set; }
     public Guid UserId { get; private set; }
-    public OrderType Type { get; private set; }
+    public OrderSide Type { get; private set; }
     public OrderStatus Status { get; private set; }
     public TradingType TradingType { get; private set; }
     public OrderRole Role { get; private set; }
@@ -30,7 +30,7 @@ public class Order
         decimal amount, 
         decimal price, 
         Guid userId, 
-        OrderType type,
+        OrderSide type,
         TradingType tradingType,
         string? notes = null)
     {
@@ -89,7 +89,7 @@ public class Order
             RemainingAmount = quantity, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = price,
             UserId = userId,
-            Type = OrderType.Buy, // Default to Buy for now
+            Type = OrderSide.Buy, // Default to Buy for now
             Status = OrderStatus.Pending,
             TradingType = TradingType.Spot, // Default to Spot for now
             Role = OrderRole.Maker,
@@ -103,7 +103,7 @@ public class Order
         decimal amount,
         decimal estimatedPrice,
         Guid userId,
-        OrderType type,
+        OrderSide type,
         TradingType tradingType,
         string? notes = null)
     {
@@ -159,7 +159,7 @@ public class Order
             RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = 0, // Will be set from parent order
             UserId = userId,
-            Type = OrderType.Buy, // Will be opposite of parent order
+            Type = OrderSide.Buy, // Will be opposite of parent order
             Status = OrderStatus.Pending,
             TradingType = TradingType.Spot, // Will be set from parent order
             Role = OrderRole.Taker,

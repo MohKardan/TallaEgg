@@ -50,10 +50,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             return Utils.EscapeMarkdown(sb.ToString());
         }
 
-        private static string GetTypeIcon(OrderType type) => type switch
+        private static string GetTypeIcon(OrderSide type) => type switch
         {
-            OrderType.Buy => "🟢",
-            OrderType.Sell => "🔴",
+            OrderSide.Buy => "🟢",
+            OrderSide.Sell => "🔴",
             _ => "⚪"
         };
 

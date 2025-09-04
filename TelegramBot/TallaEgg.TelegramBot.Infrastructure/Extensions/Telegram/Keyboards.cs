@@ -214,10 +214,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         }
 
         // -------------- کمکی -----------------
-        private static string GetTypeIcon(OrderType type) => type switch
+        private static string GetTypeIcon(OrderSide type) => type switch
         {
-            OrderType.Buy => "🟢",
-            OrderType.Sell => "🔴",
+            OrderSide.Buy => "🟢",
+            OrderSide.Sell => "🔴",
             _ => "⚪"
         };
 

@@ -15,7 +15,7 @@ namespace TallaEgg.Core.DTOs.Order
         public string Asset { get; set; }
         public decimal Amount { get; set; }
         public decimal Price { get; set; }
-        public OrderType Type { get; set; }
+        public OrderSide Type { get; set; }
         public OrderStatus Status { get; set; }
         public TradingType TradingType { get; set; }
         public OrderRole Role { get; set; }
@@ -70,14 +70,8 @@ namespace TallaEgg.Core.DTOs.Order
         public decimal Price { get; set; }
         public Guid UserId { get; set; }
 
-        /// <summary>
-        /// نوع سفارش: خرید یا فروش
-        /// public OrderType Side { get; set; }
-        /// شاید ساید درست تر باشد چون بعدا اگر قصد داشته باشیم سفارشات با حد سود و ضرر اضافه کنیم شاید مفهوم اشتباهی برسونه
-        /// </summary>
-        [Required(ErrorMessage = "نوع سفارش الزامی است")]
-        //public OrderType Side { get; set; }
-        public OrderType Type { get; set; }
+        [Required(ErrorMessage = "سمت سفارش یا جهت سفارش (خرید یا فروش(")]
+        public OrderSide Side { get; set; }
         public OrderStatus Status { get; set; }
         public TradingType TradingType { get; set; }
         public OrderRole Role { get; set; }
@@ -86,5 +80,4 @@ namespace TallaEgg.Core.DTOs.Order
         public string? Notes { get; set; }
         public Guid? ParentOrderId { get; set; } // برای Taker orders که به Maker order متصل می‌شوند
     }
-    
 }

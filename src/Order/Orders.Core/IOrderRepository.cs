@@ -14,7 +14,7 @@ public interface IOrderRepository
     Task<List<Order>> GetOrdersByAssetAsync(string asset);
     Task<PagedResult<OrderHistoryDto>> GetOrdersByUserIdAsync(Guid userId, int pageNumber,int pageSize);
     Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status);
-    Task<List<Order>> GetOrdersByTypeAsync(OrderType type);
+    Task<List<Order>> GetOrdersByTypeAsync(OrderSide type);
     Task<List<Order>> GetOrdersByTradingTypeAsync(TradingType tradingType);
     Task<List<Order>> GetOrdersByRoleAsync(OrderRole role);
     Task<List<Order>> GetActiveOrdersAsync();
@@ -38,7 +38,7 @@ public interface IOrderRepository
         int pageNumber, 
         int pageSize, 
         string? asset = null, 
-        OrderType? type = null, 
+        OrderSide? type = null, 
         OrderStatus? status = null,
         TradingType? tradingType = null,
         OrderRole? role = null);

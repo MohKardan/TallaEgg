@@ -86,7 +86,7 @@ app.MapGet("/api/symbols", () => {
 //            orderDto.Amount,
 //            orderDto.Price,
 //            orderDto.UserId,
-//            Enum.Parse<OrderType>(orderDto.Type, true),
+//            Enum.Parse<OrderSide>(orderDto.Side, true),
 //            Enum.Parse<TradingType>(orderDto.TradingType, true),
 //            null
 //        );

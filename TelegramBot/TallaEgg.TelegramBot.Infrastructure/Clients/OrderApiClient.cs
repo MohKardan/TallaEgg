@@ -188,7 +188,7 @@ public class NotifyMatchingEngineRequest
 {
     public Guid OrderId { get; set; }
     public string Asset { get; set; } = "";
-    public OrderType Type { get; set; }
+    public OrderSide Type { get; set; }
 }
 
 public class BestBidAskResult

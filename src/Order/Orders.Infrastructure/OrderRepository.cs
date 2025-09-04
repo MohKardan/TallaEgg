@@ -119,7 +119,7 @@ public class OrderRepository : IOrderRepository
         }
     }
 
-    public async Task<List<Order>> GetOrdersByTypeAsync(OrderType type)
+    public async Task<List<Order>> GetOrdersByTypeAsync(OrderSide type)
     {
         try
         {
@@ -345,7 +345,7 @@ public class OrderRepository : IOrderRepository
         int pageNumber, 
         int pageSize, 
         string? asset = null, 
-        OrderType? type = null, 
+        OrderSide? type = null, 
         OrderStatus? status = null,
         TradingType? tradingType = null,
         OrderRole? role = null)

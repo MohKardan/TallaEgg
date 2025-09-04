@@ -302,7 +302,7 @@ public record CreateOrderRequest(
     /// <summary>
     /// Type of order (Buy or Sell)
     /// </summary>
-    OrderType Type,
+    OrderSide Type,
     /// <summary>
     /// Trading type (Spot or Futures)
     /// </summary>
@@ -391,6 +391,6 @@ public record NotifyMatchingEngineRequest(
     /// <summary>
     /// Type of order (Buy or Sell)
     /// </summary>
-    OrderType Type);
+    OrderSide Type);
 
 
