@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using Orders.Application;
 using Orders.Application.Services;
@@ -242,37 +243,103 @@ app.MapGet("/api/orders/user/{userId}", async (
 /// <summary>
 /// دریافت بهترین قیمت‌های خرید و فروش
 /// </summary>
-/// <param name="symbol">نماد معاملاتی (مثل BTC، ETH)</param>
+/// <param name="symbol">نماد معاملاتی (مثل BTC/USDT، ETH/USDT)</param>
 /// <param name="tradingType">نوع معامله (پیش‌فرض: استاندارد)</param>
 /// <param name="orderService">سرویس مدیریت سفارشات</param>
 /// <returns>بهترین قیمت‌های Bid و Ask</returns>
 /// <response code="200">بهترین قیمت‌ها با موفقیت دریافت شد</response>
 /// <response code="400">درخواست نامعتبر</response>
+/// <response code="404">نماد معاملاتی یافت نشد</response>
+/// <response code="500">خطای داخلی سرور</response>
 app.MapGet("/api/orders/{symbol}/best-prices", async (
-    string symbol, 
+    string symbol,
     TradingType? tradingType,
     OrderService orderService) =>
 {
     try
     {
+        // Input validation
         if (string.IsNullOrWhiteSpace(symbol))
-            return Results.BadRequest(new { success = false, message = "نماد معاملاتی الزامی است" });
+        {
+            return Results.BadRequest(ApiResponse<BestPricesDto>.Fail("نماد معاملاتی الزامی است."));
+        }
+
+        // Normalize symbol format (remove special characters, convert to uppercase)
+        var normalizedSymbol = symbol.Trim().ToUpperInvariant();
+
+        // Validate symbol format (basic validation for trading pairs like BTC/USDT)
+        if (!IsValidSymbolFormat(normalizedSymbol))
+        {
+            return Results.BadRequest(ApiResponse<BestPricesDto>.Fail("فرمت نماد معاملاتی نامعتبر است. (مثال صحیح: BTC/USDT)"));
+        }
 
         var type = tradingType ?? TradingType.Spot;
-        var result = await orderService.GetBestBidAskAsync(symbol, type);
-        
-        return Results.Ok(new { success = true, data = result });
+
+        // Get best bid/ask prices
+        var result = await orderService.GetBestBidAskAsync(normalizedSymbol, type);
+
+        if (result == null)
+        {
+            return Results.NotFound(ApiResponse<BestPricesDto>.Fail("نماد معاملاتی یافت نشد یا بازار برای این نماد فعال نیست."));
+        }
+
+        // Create response DTO
+        var bestPricesDto = new BestPricesDto
+        {
+            Symbol = normalizedSymbol,
+            BestBidPrice = result.BestBidPrice,
+            BestAskPrice = result.BestAskPrice,
+            BidVolume = result.BidVolume,
+            AskVolume = result.AskVolume,
+            Spread = result.BestAskPrice.HasValue && result.BestBidPrice.HasValue
+                ? result.BestAskPrice.Value - result.BestBidPrice.Value
+                : null,
+            Timestamp = DateTime.UtcNow
+        };
+
+        return Results.Ok(ApiResponse<BestPricesDto>.Ok(bestPricesDto, "بهترین قیمت‌ها با موفقیت دریافت شد."));
+    }
+    catch (ArgumentException argEx)
+    {
+        return Results.BadRequest(ApiResponse<BestPricesDto>.Fail($"پارامتر نامعتبر: {argEx.Message}"));
+    }
+    catch (InvalidOperationException invOpEx)
+    {
+        return Results.Json(ApiResponse<BestPricesDto>.Fail("سرویس قیمت‌گذاری در حال حاضر در دسترس نیست."), statusCode: 503);
+    }
+    catch (TimeoutException)
+    {
+        return Results.Json(ApiResponse<BestPricesDto>.Fail("زمان انتظار درخواست به پایان رسید."), statusCode: 408);
     }
     catch (Exception ex)
     {
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+        // Log the exception (در محیط واقعی باید لاگ شود)
+        // logger.LogError(ex, "Error getting best prices for symbol: {Symbol}", symbol);
+
+        return Results.Json(ApiResponse<BestPricesDto>.Fail("خطای داخلی سرور. لطفاً مجدداً تلاش کنید."), statusCode: 500);
     }
 })
 .WithName("GetBestPrices")
-.WithSummary("دریافت بهترین قیمت‌ها")
+.WithSummary("دریافت بهترین قیمت‌های خرید و فروش")
+.WithDescription("این endpoint بهترین قیمت‌های Bid (خرید) و Ask (فروش) را برای نماد معاملاتی مشخص شده بازمی‌گرداند.")
 .WithTags("Market Data")
-.Produces(200)
-.Produces(400);
+.Produces<ApiResponse<BestPricesDto>>(200, "application/json")
+.Produces<ApiResponse<BestPricesDto>>(400, "application/json")
+.Produces<ApiResponse<BestPricesDto>>(404, "application/json")
+.Produces<ApiResponse<BestPricesDto>>(408, "application/json")
+.Produces<ApiResponse<BestPricesDto>>(500, "application/json")
+.Produces<ApiResponse<BestPricesDto>>(503, "application/json");
+
+// Helper method for symbol validation
+static bool IsValidSymbolFormat(string symbol)
+{
+    if (string.IsNullOrWhiteSpace(symbol))
+        return false;
+
+    // Basic validation for trading pairs (e.g., BTC/USDT, ETH/BTC)
+    // Adjust regex pattern based on your symbol format requirements
+    return System.Text.RegularExpressions.Regex.IsMatch(symbol, @"^[A-Z]{2,10}(/[A-Z]{2,10})?$");
+}
 
 // Remove all other endpoints - keeping only the essential unified ones
 app.Run();

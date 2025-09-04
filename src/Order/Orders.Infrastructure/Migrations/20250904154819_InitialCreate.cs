@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Orders.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddTradeTableOnly : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,9 +18,11 @@ namespace Orders.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Asset = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
+                    RemainingAmount = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     Price = table.Column<decimal>(type: "decimal(18,2)", precision: 18, scale: 2, nullable: false),
                     UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Type = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Side = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     TradingType = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Role = table.Column<string>(type: "nvarchar(450)", nullable: false),
@@ -41,14 +43,22 @@ namespace Orders.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     BuyOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     SellOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MakerOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TakerOrderId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Symbol = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     Price = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
                     Quantity = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
                     QuoteQuantity = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
                     BuyerUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     SellerUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    MakerUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    TakerUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     FeeBuyer = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
                     FeeSeller = table.Column<decimal>(type: "decimal(18,8)", precision: 18, scale: 8, nullable: false),
+                    MakerFee = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TakerFee = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    MakerFeeRate = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    TakerFeeRate = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -62,8 +72,20 @@ namespace Orders.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_Trades_Orders_MakerOrderId",
+                        column: x => x.MakerOrderId,
+                        principalTable: "Orders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_Trades_Orders_SellOrderId",
                         column: x => x.SellOrderId,
+                        principalTable: "Orders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Trades_Orders_TakerOrderId",
+                        column: x => x.TakerOrderId,
                         principalTable: "Orders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -95,6 +117,11 @@ namespace Orders.Infrastructure.Migrations
                 column: "Role");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Orders_Side",
+                table: "Orders",
+                column: "Side");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Orders_Status",
                 table: "Orders",
                 column: "Status");
@@ -103,11 +130,6 @@ namespace Orders.Infrastructure.Migrations
                 name: "IX_Orders_TradingType",
                 table: "Orders",
                 column: "TradingType");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Orders_Type",
-                table: "Orders",
-                column: "Type");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_UserId",
@@ -145,6 +167,16 @@ namespace Orders.Infrastructure.Migrations
                 column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Trades_MakerOrderId",
+                table: "Trades",
+                column: "MakerOrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Trades_MakerOrderId_CreatedAt",
+                table: "Trades",
+                columns: new[] { "MakerOrderId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Trades_SellerUserId",
                 table: "Trades",
                 column: "SellerUserId");
@@ -173,6 +205,16 @@ namespace Orders.Infrastructure.Migrations
                 name: "IX_Trades_Symbol_CreatedAt",
                 table: "Trades",
                 columns: new[] { "Symbol", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Trades_TakerOrderId",
+                table: "Trades",
+                column: "TakerOrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Trades_TakerOrderId_CreatedAt",
+                table: "Trades",
+                columns: new[] { "TakerOrderId", "CreatedAt" });
         }
 
         /// <inheritdoc />

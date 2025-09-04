@@ -59,6 +59,10 @@ namespace Orders.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<string>("Side")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -67,9 +71,8 @@ namespace Orders.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -87,11 +90,11 @@ namespace Orders.Infrastructure.Migrations
 
                     b.HasIndex("Role");
 
+                    b.HasIndex("Side");
+
                     b.HasIndex("Status");
 
                     b.HasIndex("TradingType");
-
-                    b.HasIndex("Type");
 
                     b.HasIndex("UserId");
 
@@ -125,6 +128,18 @@ namespace Orders.Infrastructure.Migrations
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
 
+                    b.Property<decimal>("MakerFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MakerFeeRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("MakerOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MakerUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<decimal>("Price")
                         .HasPrecision(18, 8)
                         .HasColumnType("decimal(18,8)");
@@ -148,6 +163,18 @@ namespace Orders.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<decimal>("TakerFee")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("TakerFeeRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("TakerOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TakerUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -159,21 +186,29 @@ namespace Orders.Infrastructure.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("MakerOrderId");
+
                     b.HasIndex("SellOrderId");
 
                     b.HasIndex("SellerUserId");
 
                     b.HasIndex("Symbol");
 
+                    b.HasIndex("TakerOrderId");
+
                     b.HasIndex("BuyOrderId", "CreatedAt");
 
                     b.HasIndex("BuyerUserId", "CreatedAt");
+
+                    b.HasIndex("MakerOrderId", "CreatedAt");
 
                     b.HasIndex("SellOrderId", "CreatedAt");
 
                     b.HasIndex("SellerUserId", "CreatedAt");
 
                     b.HasIndex("Symbol", "CreatedAt");
+
+                    b.HasIndex("TakerOrderId", "CreatedAt");
 
                     b.ToTable("Trades");
                 });
@@ -186,15 +221,31 @@ namespace Orders.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Orders.Core.Order", "MakerOrder")
+                        .WithMany()
+                        .HasForeignKey("MakerOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Orders.Core.Order", "SellOrder")
                         .WithMany()
                         .HasForeignKey("SellOrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Orders.Core.Order", "TakerOrder")
+                        .WithMany()
+                        .HasForeignKey("TakerOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("BuyOrder");
 
+                    b.Navigation("MakerOrder");
+
                     b.Navigation("SellOrder");
+
+                    b.Navigation("TakerOrder");
                 });
 #pragma warning restore 612, 618
         }

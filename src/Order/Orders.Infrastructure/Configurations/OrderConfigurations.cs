@@ -29,7 +29,7 @@ namespace Orders.Infrastructure.Configurations
             builder.Property(o => o.UserId)
                 .IsRequired();
             
-            builder.Property(o => o.Type)
+            builder.Property(o => o.Side)
                 .IsRequired()
                 .HasConversion<string>();
             
@@ -59,7 +59,7 @@ namespace Orders.Infrastructure.Configurations
             builder.HasIndex(o => o.Asset);
             builder.HasIndex(o => o.UserId);
             builder.HasIndex(o => o.Status);
-            builder.HasIndex(o => o.Type);
+            builder.HasIndex(o => o.Side);
             builder.HasIndex(o => o.TradingType);
             builder.HasIndex(o => o.Role);
             builder.HasIndex(o => o.CreatedAt);

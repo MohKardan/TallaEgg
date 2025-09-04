@@ -9,16 +9,6 @@ using TallaEgg.Core.Responses.Order;
 
 namespace Orders.Application;
 
-public class BestBidAskResult
-{
-    public string Asset { get; set; } = string.Empty;
-    public TradingType TradingType { get; set; }
-    public decimal? BestBid { get; set; }
-    public decimal? BestAsk { get; set; }
-    public decimal? Spread { get; set; }
-    public Guid? MatchingOrderId { get; set; }
-}
-
 public class OrderService
 {
     private readonly IOrderRepository _orderRepository;
@@ -198,7 +188,7 @@ public class OrderService
         return await _orderRepository.GetOrdersByUserIdAsync(userId, pageNumber, pageSize);
     }
 
-    public async Task<BestBidAskResult> GetBestBidAskAsync(string asset, TradingType tradingType)
+    public async Task<BestPricesDto> GetBestBidAskAsync(string asset, TradingType tradingType)
     {
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
 
@@ -211,26 +201,25 @@ public class OrderService
         decimal? bestBid = null;
         decimal? bestAsk = null;
 
-        var buyOrders = activeOrders.Where(o => o.Type == OrderSide.Buy && o.Status == OrderStatus.Pending).ToList();
+        var buyOrders = activeOrders.Where(o => o.Side == OrderSide.Buy && o.Status == OrderStatus.Pending).ToList();
         if (buyOrders.Any())
         {
             bestBid = buyOrders.OrderByDescending(o => o.Price).First().Price;
         }
 
-        var sellOrders = activeOrders.Where(o => o.Type == OrderSide.Sell && o.Status == OrderStatus.Pending).ToList();
+        var sellOrders = activeOrders.Where(o => o.Side == OrderSide.Sell && o.Status == OrderStatus.Pending).ToList();
         if (sellOrders.Any())
         {
             bestAsk = sellOrders.OrderBy(o => o.Price).First().Price;
         }
 
-        return new BestBidAskResult
+        return new BestPricesDto
         {
-            Asset = asset,
+            Symbol = asset,
             TradingType = tradingType,
-            BestBid = bestBid,
-            BestAsk = bestAsk,
-            Spread = bestBid.HasValue && bestAsk.HasValue ? bestAsk.Value - bestBid.Value : null,
-            MatchingOrderId = null
+            BestBidPrice = bestBid,
+            BestAskPrice = bestAsk,
+            Spread = bestBid.HasValue && bestAsk.HasValue ? bestAsk.Value - bestBid.Value : null
         };
     }
 

@@ -72,6 +72,7 @@ namespace TallaEgg.Core.DTOs.Order
 
         [Required(ErrorMessage = "سمت سفارش یا جهت سفارش (خرید یا فروش(")]
         public OrderSide Side { get; set; }
+        public OrderType Type { get; set; }
         public OrderStatus Status { get; set; }
         public TradingType TradingType { get; set; }
         public OrderRole Role { get; set; }
@@ -79,5 +80,17 @@ namespace TallaEgg.Core.DTOs.Order
         public DateTime? UpdatedAt { get; set; }
         public string? Notes { get; set; }
         public Guid? ParentOrderId { get; set; } // برای Taker orders که به Maker order متصل می‌شوند
+    }
+    public class BestPricesDto
+    {
+        public TradingType TradingType { get; set; }
+        public OrderType OrderType { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public decimal? BestBidPrice { get; set; }    // بهترین قیمت خرید (بالاترین قیمت پیشنهادی خریداران)
+        public decimal? BestAskPrice { get; set; }    // بهترین قیمت فروش (پایین‌ترین قیمت پیشنهادی فروشندگان)
+        public decimal? BidVolume { get; set; }       // حجم موجود در بهترین قیمت خرید
+        public decimal? AskVolume { get; set; }       // حجم موجود در بهترین قیمت فروش
+        public decimal? Spread { get; set; }          // اختلاف قیمت (Ask - Bid)
+        public DateTime Timestamp { get; set; }      // زمان آخرین بروزرسانی
     }
 }

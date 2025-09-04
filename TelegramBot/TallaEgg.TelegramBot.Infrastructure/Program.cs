@@ -187,10 +187,11 @@ class Program
     {
         try
         {
+            
             if (update.Message != null)
             {
                 Console.WriteLine($"📨 Received message from {update.Message.From?.Username ?? "Unknown"}: {update.Message.Text?.Substring(0, Math.Min(50, update.Message.Text?.Length ?? 0))}...");
-                await botHandler.HandleUpdateAsync(update);
+                await botHandler.HandleMessageAsync(update.Message);
             }
             else if (update.CallbackQuery != null)
             {

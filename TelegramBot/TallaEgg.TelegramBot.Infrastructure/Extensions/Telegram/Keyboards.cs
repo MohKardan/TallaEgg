@@ -146,7 +146,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
 
-        public static async Task SendSpotMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendSpotSideMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
         {
             var keyboard = new InlineKeyboardMarkup(new[]
             {
@@ -165,11 +165,11 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         }
 
         public static async Task SendUserOrdersWithPagingAsync(
-    this ITelegramBotClient bot,
-    long chatId,
-    PagedResult<OrderHistoryDto> page,
-    int currentPage,
-    Guid userId)
+        this ITelegramBotClient bot,
+        long chatId,
+        PagedResult<OrderHistoryDto> page,
+        int currentPage,
+        Guid userId)
         {
             if (page == null || !page.Items.Any())
             {

@@ -304,7 +304,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     {
         try
         {
-            if (incomingOrder.Type == OrderSide.Buy)
+            if (incomingOrder.Side == OrderSide.Buy)
             {
                 // For buy orders, find sell orders with price <= buy price
                 var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(incomingOrder.Asset);
@@ -401,7 +401,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         
         // Determine buy/sell roles
         var (buyOrder, sellOrder, buyerUserId, sellerUserId) = 
-            takerOrder.Type == OrderSide.Buy 
+            takerOrder.Side == OrderSide.Buy 
                 ? (takerOrder, makerOrder, takerOrder.UserId, makerOrder.UserId)
                 : (makerOrder, takerOrder, makerOrder.UserId, takerOrder.UserId);
 

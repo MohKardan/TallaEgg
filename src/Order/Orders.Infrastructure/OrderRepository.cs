@@ -78,7 +78,7 @@ public class OrderRepository : IOrderRepository
                 Asset = o.Asset,
                 Amount = o.Amount,
                 Price = o.Price,
-                Type = o.Type,
+                Type = o.Side,
                 Status = o.Status,
                 TradingType = o.TradingType,
                 Role = o.Role,
@@ -124,7 +124,7 @@ public class OrderRepository : IOrderRepository
         try
         {
             return await _dbContext.Orders
-                .Where(o => o.Type == type)
+                .Where(o => o.Side == type)
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
@@ -358,7 +358,7 @@ public class OrderRepository : IOrderRepository
                 query = query.Where(o => o.Asset == asset);
 
             if (type.HasValue)
-                query = query.Where(o => o.Type == type.Value);
+                query = query.Where(o => o.Side == type.Value);
 
             if (status.HasValue)
                 query = query.Where(o => o.Status == status.Value);

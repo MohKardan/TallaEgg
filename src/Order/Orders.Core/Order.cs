@@ -3,8 +3,6 @@ using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Core;
 
-
-
 public class Order
 {
     public Guid Id { get; private set; }
@@ -13,7 +11,11 @@ public class Order
     public decimal RemainingAmount { get; private set; } // مقدار باقی‌مانده سفارش
     public decimal Price { get; private set; }
     public Guid UserId { get; private set; }
-    public OrderSide Type { get; private set; }
+    /// <summary>
+    /// جهت سفارش (خرید یا فروش)
+    /// </summary>
+    public OrderSide Side { get; private set; }
+    public OrderType Type { get; set; }
     public OrderStatus Status { get; private set; }
     public TradingType TradingType { get; private set; }
     public OrderRole Role { get; private set; }
@@ -54,7 +56,7 @@ public class Order
             RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = price,
             UserId = userId,
-            Type = type,
+            Side = type,
             Status = OrderStatus.Pending,
             TradingType = tradingType,
             Role = OrderRole.Maker,
@@ -89,7 +91,7 @@ public class Order
             RemainingAmount = quantity, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = price,
             UserId = userId,
-            Type = OrderSide.Buy, // Default to Buy for now
+            Side = OrderSide.Buy, // Default to Buy for now
             Status = OrderStatus.Pending,
             TradingType = TradingType.Spot, // Default to Spot for now
             Role = OrderRole.Maker,
@@ -127,7 +129,7 @@ public class Order
             RemainingAmount = amount,
             Price = estimatedPrice, // Market orders use estimated price for display purposes
             UserId = userId,
-            Type = type,
+            Side = type,
             Status = OrderStatus.Pending,
             TradingType = tradingType,
             Role = OrderRole.Taker, // Market orders are always Takers (remove liquidity)
@@ -159,7 +161,7 @@ public class Order
             RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
             Price = 0, // Will be set from parent order
             UserId = userId,
-            Type = OrderSide.Buy, // Will be opposite of parent order
+            Side = OrderSide.Buy, // Will be opposite of parent order
             Status = OrderStatus.Pending,
             TradingType = TradingType.Spot, // Will be set from parent order
             Role = OrderRole.Taker,

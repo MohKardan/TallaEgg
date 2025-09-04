@@ -50,60 +50,121 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    public async Task<Order?> CreateOrderAsync(string asset, decimal amount, decimal price, Guid userId, string type)
+    // ...existing code...
+
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol)
     {
+        // Input validation
+        if (string.IsNullOrWhiteSpace(symbol))
+        {
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("نماد ارز مشخص نشده است.");
+        }
+
+        HttpResponseMessage? response = null;
+        string? responseContent = null;
+
         try
         {
-            var request = new
-            {
-                Asset = asset,
-                Amount = amount,
-                Price = price,
-                UserId = userId,
-                Type = type,
-                TradingType = "Spot" // Default to Spot trading
-            };
-            
-            var json = System.Text.Json.JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            // Create cancellation token with timeout
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/orders", content);
-            
+            // Make HTTP request with timeout
+            response = await _httpClient.GetAsync($"{_baseUrl}/api/orders/{symbol}/best-prices", cts.Token);
+
+            // Read response content
+            responseContent = await response.Content.ReadAsStringAsync();
+
             if (response.IsSuccessStatusCode)
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<OrderResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return result?.Order;
+                // Handle successful response
+                try
+                {
+                    var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>>(responseContent);
+                    return result ?? TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("پاسخ سرور خالی است.");
+                }
+                catch (Newtonsoft.Json.JsonException)
+                {
+                    return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.");
+                }
             }
+            else
+            {
+                // Handle HTTP error status codes
+                var errorMessage = response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.NotFound => "نماد مورد نظر یافت نشد یا بازار برای این نماد وجود ندارد.",
+                    System.Net.HttpStatusCode.Unauthorized => "عدم دسترسی: احراز هویت نشده است.",
+                    System.Net.HttpStatusCode.Forbidden => "عدم دسترسی: دسترسی به این عملیات مجاز نیست.",
+                    System.Net.HttpStatusCode.BadRequest => "درخواست نامعتبر: نماد ارسالی صحیح نیست.",
+                    System.Net.HttpStatusCode.InternalServerError => "خطای داخلی سرور.",
+                    System.Net.HttpStatusCode.ServiceUnavailable => "سرویس قیمت‌گذاری در دسترس نیست.",
+                    System.Net.HttpStatusCode.RequestTimeout => "زمان انتظار درخواست به پایان رسید.",
+                    System.Net.HttpStatusCode.TooManyRequests => "تعداد درخواست‌های زیاد. لطفاً کمی صبر کنید.",
+                    _ => $"خطا در دریافت قیمت‌ها: کد خطا {(int)response.StatusCode}"
+                };
 
-            return null;
+                // Try to extract detailed error message from response if available
+                if (!string.IsNullOrWhiteSpace(responseContent))
+                {
+                    try
+                    {
+                        var errorResponse = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<object>>(responseContent);
+                        if (errorResponse != null && !string.IsNullOrWhiteSpace(errorResponse.Message))
+                        {
+                            errorMessage = errorResponse.Message;
+                        }
+                    }
+                    catch
+                    {
+                        // If parsing fails, use the default error message
+                    }
+                }
+
+                return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail(errorMessage);
+            }
         }
-        catch (Exception)
+        catch (HttpRequestException)
         {
-            return null;
+            // Network-related errors
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("خطا در ارتباط شبکه. لطفاً اتصال اینترنت خود را بررسی کنید.");
+        }
+        catch (TaskCanceledException tcEx) when (tcEx.InnerException is TimeoutException)
+        {
+            // Request timeout
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("زمان انتظار درخواست به پایان رسید. لطفاً مجدداً تلاش کنید.");
+        }
+        catch (TaskCanceledException)
+        {
+            // Request was cancelled
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("درخواست لغو شد.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Operation was cancelled
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("عملیات لغو شد.");
+        }
+        catch (ArgumentException)
+        {
+            // Invalid arguments
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("پارامتر ورودی نامعتبر است.");
+        }
+        catch (InvalidOperationException)
+        {
+            // Invalid operation state
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("عملیات در وضعیت فعلی مجاز نیست.");
+        }
+        catch (Exception ex)
+        {
+            // Catch-all for any other unexpected exceptions
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+        }
+        finally
+        {
+            // Cleanup resources if needed
+            response?.Dispose();
         }
     }
 
-    public async Task<IEnumerable<Order>> GetOrdersByAssetAsync(string asset)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/orders/asset/{asset}");
-            
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<OrdersResponse>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return result?.Orders ?? Enumerable.Empty<Order>();
-            }
-
-            return Enumerable.Empty<Order>();
-        }
-        catch (Exception)
-        {
-            return Enumerable.Empty<Order>();
-        }
-    }
     public async Task<(bool success, string message)> SubmitOrderAsync(OrderDto order)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(order);
@@ -177,26 +238,9 @@ public class OrdersResponse
     public IEnumerable<Order> Orders { get; set; } = Enumerable.Empty<Order>();
 }
 
-public class BestBidAskResponse
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = "";
-    public BestBidAskResult? Data { get; set; }
-}
-
 public class NotifyMatchingEngineRequest
 {
     public Guid OrderId { get; set; }
     public string Asset { get; set; } = "";
     public OrderSide Type { get; set; }
-}
-
-public class BestBidAskResult
-{
-    public string Asset { get; set; } = "";
-    public TradingType TradingType { get; set; }
-    public decimal? BestBid { get; set; }
-    public decimal? BestAsk { get; set; }
-    public decimal? Spread { get; set; }
-    public Guid? MatchingOrderId { get; set; }
 }

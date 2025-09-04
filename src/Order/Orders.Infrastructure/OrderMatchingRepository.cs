@@ -32,7 +32,7 @@ public class OrderMatchingRepository
             // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
             var orders = await _context.Orders
                 .Where(o => o.Asset == asset && 
-                           o.Type == OrderSide.Buy && 
+                           o.Side == OrderSide.Buy && 
                            (o.Status == OrderStatus.Pending || 
                             o.Status == OrderStatus.Confirmed || 
                             o.Status == OrderStatus.Partially) &&
@@ -63,7 +63,7 @@ public class OrderMatchingRepository
             // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
             var orders = await _context.Orders
                 .Where(o => o.Asset == asset && 
-                           o.Type == OrderSide.Sell && 
+                           o.Side == OrderSide.Sell && 
                            (o.Status == OrderStatus.Pending || 
                             o.Status == OrderStatus.Confirmed || 
                             o.Status == OrderStatus.Partially) &&
