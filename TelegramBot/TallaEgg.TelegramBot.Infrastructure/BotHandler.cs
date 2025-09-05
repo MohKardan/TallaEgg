@@ -371,9 +371,10 @@ namespace TallaEgg.TelegramBot
                         if (apiResponse != null && apiResponse.Success)
                         {
                             await _botClient.SendMessage(chatId,
-                                $"بهترین قیمت خرید: {apiResponse.Data.BestBidPrice}" +
-                                "\n" +
-                                $"بهترین قیمت فروش: {apiResponse.Data.BestAskPrice}");
+                                            $"📊 <b>بهترین قیمت‌های بازار</b>\n\n" +
+                                            $"💰 <b>خرید:</b> <code>{apiResponse.Data.BestBidPrice:N0}</code>\n" +
+                                            $"💸 <b>فروش:</b> <code>{apiResponse.Data.BestAskPrice:N0}</code>",
+                                            Telegram.Bot.Types.Enums.ParseMode.Html);
 
                             _userOrderStates[telegramId].BestBidPrice = apiResponse.Data.BestBidPrice;
                             _userOrderStates[telegramId].BestAskPrice = apiResponse.Data.BestAskPrice;
@@ -622,11 +623,11 @@ namespace TallaEgg.TelegramBot
             }
             else if (orderState.OrderType == OrderType.Market)
             {
-                if(orderState.OrderSide == OrderSide.Buy && orderState.BestAskPrice.HasValue)
+                if (orderState.OrderSide == OrderSide.Buy && orderState.BestAskPrice.HasValue)
                 {
                     orderState.Price = orderState.BestAskPrice.Value;
                 }
-                else if(orderState.OrderSide == OrderSide.Sell && orderState.BestBidPrice.HasValue)
+                else if (orderState.OrderSide == OrderSide.Sell && orderState.BestBidPrice.HasValue)
                 {
                     orderState.Price = orderState.BestBidPrice.Value;
                 }

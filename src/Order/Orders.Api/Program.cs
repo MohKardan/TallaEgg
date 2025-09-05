@@ -37,6 +37,7 @@ builder.Services.AddScoped<Orders.Infrastructure.Clients.IWalletApiClient, Order
 
 // Add Matching Engine
 builder.Services.AddScoped<IMatchingEngine, Orders.Application.Services.MatchingEngineService>();
+builder.Services.AddHostedService<Orders.Application.Services.MatchingEngineService>();
 
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>

@@ -147,6 +147,15 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     }
 
     /// <summary>
+    /// Process single order by ID (new method)
+    /// پردازش سفارش منفرد با شناسه
+    /// </summary>
+    public async Task ProcessOrderAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        await ProcessOrderForMatchingAsync(orderId);
+    }
+
+    /// <summary>
     /// Process single order (legacy method - enhanced with Maker/Taker)
     /// پردازش سفارش منفرد (متد قدیمی - بهبود یافته با Maker/Taker)
     /// </summary>
