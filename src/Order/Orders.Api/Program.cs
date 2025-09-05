@@ -203,6 +203,52 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 .Produces(404);
 
 /// <summary>
+/// تایید سفارش - تغییر وضعیت از Pending به Confirmed
+/// </summary>
+/// <param name="orderId">شناسه سفارش</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>نتیجه عملیات تایید</returns>
+/// <response code="200">سفارش با موفقیت تایید شد</response>
+/// <response code="400">سفارش قابل تایید نیست</response>
+/// <response code="404">سفارش یافت نشد</response>
+app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService orderService) =>
+{
+    try
+    {
+        var success = await orderService.ConfirmOrderIfPendingAsync(orderId);
+        
+        if (!success)
+        {
+            return Results.BadRequest(new { 
+                success = false, 
+                message = $"سفارش با شناسه {orderId} یافت نشد یا در وضعیت Pending نیست" 
+            });
+        }
+
+        return Results.Ok(new { 
+            success = true, 
+            message = "سفارش با موفقیت تایید شد", 
+            orderId,
+            newStatus = "Confirmed"
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { 
+            success = false, 
+            message = "خطای داخلی سرور در تایید سفارش" 
+        }, statusCode: 500);
+    }
+})
+.WithName("ConfirmOrder")
+.WithSummary("تایید سفارش")
+.WithDescription("تغییر وضعیت سفارش از Pending به Confirmed با حفظ ایمنی همزمانی")
+.WithTags("Orders")
+.Produces(200)
+.Produces(400)
+.Produces(404);
+
+/// <summary>
 /// دریافت سفارشات کاربر با صفحه‌بندی
 /// </summary>
 /// <param name="userId">شناسه کاربر</param>

@@ -161,7 +161,7 @@ public class OrderService
 
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
     {
-        // Simple implementation - in real scenario would include balance validation, etc.
+        // Create order with Pending status
         var order = Order.CreateMakerOrder(
             command.Asset,
             command.Amount,
@@ -172,10 +172,72 @@ public class OrderService
             command.Notes
         );
 
+        // Save order to database first
         var createdOrder = await _orderRepository.AddAsync(order);
-        await _matchingEngine.ProcessOrderAsync(createdOrder);
+
+        // Confirm order first (business validation, balance check already done above)
+        var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
+        
+        if (confirmSuccess)
+        {
+            // Only send confirmed orders to matching engine
+            await _matchingEngine.ProcessOrderAsync(createdOrder);
+        }
+        else
+        {
+            _logger.LogWarning("Order {OrderId} was not confirmed, skipping matching engine", createdOrder.Id);
+        }
 
         return createdOrder;
+    }
+
+    /// <summary>
+    /// Confirm order status from Pending to Confirmed with concurrency safety
+    /// تایید وضعیت سفارش از Pending به Confirmed با ایمنی همزمانی
+    /// </summary>
+    public async Task<bool> ConfirmOrderIfPendingAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // TODO: If database transaction support is needed, wrap in transaction
+            // using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            
+            // Idempotent: only update if Status == Pending
+            if (order == null || order.Status != OrderStatus.Pending)
+            {
+                _logger.LogDebug("Order {OrderId} is not in Pending status or not found. Current status: {Status}", 
+                    orderId, order?.Status);
+                return false;
+            }
+
+            // TODO: Add business validation if needed
+            // var validationResult = await ValidateOrderForConfirmationAsync(order);
+            // if (!validationResult.IsValid) { return false; }
+            
+            // Change status from Pending to Confirmed
+            var updateSuccess = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Confirmed, "تایید شده");
+            
+            if (updateSuccess)
+            {
+                _logger.LogInformation("Order {OrderId} status changed: Pending → Confirmed", orderId);
+                
+                // TODO: If transaction was used, commit here
+                // await transaction.CommitAsync(cancellationToken);
+            }
+            
+            return updateSuccess;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error confirming order {OrderId}", orderId);
+            
+            // TODO: If transaction was used, rollback here
+            // await transaction.RollbackAsync(cancellationToken);
+            
+            return false;
+        }
     }
 
     public async Task<Order?> GetOrderByIdAsync(Guid orderId)

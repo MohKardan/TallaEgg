@@ -109,6 +109,13 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 return false;
             }
 
+            // Only process Confirmed orders - skip Pending orders
+            if (order.Status != OrderStatus.Confirmed)
+            {
+                _logger.LogDebug("⏭️ Order {OrderId} is not Confirmed (Status: {Status}), skipping matching", orderId, order.Status);
+                return false;
+            }
+
             // Get matching orders from order book
             var matchingOrders = await GetMatchingOrdersAsync(matchingRepository, order);
             
@@ -130,7 +137,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             }
             else
             {
-                // This order becomes MAKER (provides liquidity)
+                // This order becomes MAKER (provides liquidity) - stays in order book
                 _logger.LogInformation("🏪 Order {OrderId} identified as MAKER - added to order book", orderId);
                 return false; // Order goes to order book
             }
