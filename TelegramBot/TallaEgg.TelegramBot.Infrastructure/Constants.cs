@@ -31,6 +31,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
         /// </summary>
         public const string BtnSpotCreateOrder = "📝 ثبت سفارش نقدی";
+        /// <summary>
+        /// ثبت قیمت نقدی با ثبت سفارش نقدی هیچ فرقی نمیکند
+        /// بخاطر اینکه برای مصطفی قابل درکتر باشه این اسمو روی دکمه ادمین نمایش میدم
+        /// </summary>
+        public const string BtnSpotSubmitPrice = "📝 ثبت قیمت نقدی";
         public const string BtnSpotMarket = "📈 بازار نقدی";
         public const string BtnSpotMarketBuy = "🛒 خرید نقدی";
         public const string BtnSpotMarketSell = "🛍️ فروش نقدی";
@@ -51,6 +56,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         
         public const string MsgEnterAmount = "لطفاً مقدار واحد را وارد کنید:";
         public const string MsgOrderConfirmation = "📋 تایید سفارش\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";
+        public const string MsgOrderConfirmation_MAUA_IRR = "📋 تایید سفارش\n\nنماد: {0}\nنوع: {1}\nمقدار: {2} واحد\nقیمت هر گرم: {3:N0} تومان\nمبلغ کل: {4:N0} تومان\n\nآیا سفارش را تایید می‌کنید؟";
         public const string MsgInsufficientBalance = "موجودی کافی نیست. موجودی شما: {0} واحد";
         public const string MsgOrderSuccess = "✅ سفارش شما با موفقیت ثبت شد!";
         public const string MsgOrderFailed = "❌ خطا در ثبت سفارش: {0}";

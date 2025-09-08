@@ -246,10 +246,14 @@ namespace TallaEgg.TelegramBot
                     await ShowMainMenuAsync(chatId);
                     break;
 
+                case BotBtns.BtnSpotSubmitPrice:
                 case BotBtns.BtnSpotCreateOrder:
                 case BotBtns.BtnSpotMarket:
 
-                    OrderType orderType = msgText == BotBtns.BtnSpotCreateOrder ? OrderType.Limit : OrderType.Market;
+                    OrderType orderType = (msgText == BotBtns.BtnSpotCreateOrder ||
+                                           msgText == BotBtns.BtnSpotSubmitPrice) ?
+                                           OrderType.Limit : OrderType.Market;
+
                     _userOrderStates[telegramId].OrderType = orderType;
 
                     await ShowSymbolsAsync(chatId, telegramId);
@@ -698,14 +702,21 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
+            var confirmationMsg = "";   
+
             // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
             if (orderState.Asset == "MAUA/IRR")
             {
                 orderState.Price /= 4.3318m;
+                confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
+            }
+            else
+            {
+                confirmationMsg = BotMsgs.MsgOrderConfirmation;
             }
             
             var totalValue = orderState.Amount * orderState.Price;
-            var confirmationMessage = string.Format(BotMsgs.MsgOrderConfirmation,
+            var confirmationMessage = string.Format(confirmationMsg,
                 orderState.Asset,
                 orderState.OrderSide,
                 orderState.Amount,
