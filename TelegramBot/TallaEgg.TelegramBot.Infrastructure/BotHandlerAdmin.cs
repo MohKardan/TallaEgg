@@ -240,6 +240,19 @@ namespace TallaEgg.TelegramBot
                 }
                 return true;
             }
+
+            // Handle price pair format: buyPrice-sellPrice (e.g., 8523690-8529630)
+            var pricePairRegex = new Regex(@"^(\d+)-(\d+)$", RegexOptions.Compiled);
+            var pricePairMatch = pricePairRegex.Match(msgText);
+            if (pricePairMatch.Success)
+            {
+                var buyPrice = decimal.Parse(pricePairMatch.Groups[1].Value);
+                var sellPrice = decimal.Parse(pricePairMatch.Groups[2].Value);
+                
+                await HandlePricePairOrdersAsync(chatId, user.Id, buyPrice, sellPrice);
+                return true;
+            }
+
             return false;
 
             //switch (msgText.ToLower())
@@ -321,6 +334,67 @@ namespace TallaEgg.TelegramBot
 
             // اطلاع‌رسانی به کاربر
             await _botClient.SendMessage(telegramUserId, "درخواست شما رد شد.");
+        }
+
+        private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, decimal buyPrice, decimal sellPrice)
+        {
+            try
+            {
+                const string defaultAsset = "MAUA/IRR"; // Default asset for admin price pair orders
+                const decimal defaultAmount = 1000m;    // Default amount
+
+                // First, cancel all existing orders for this user
+                // TODO: Need an API endpoint to cancel all user orders or get active orders by user
+                // For now, we'll proceed with creating new orders
+                
+                await _botClient.SendMessage(chatId, 
+                    $"⚠️ تلاش برای کنسل سفارشات قبلی...\n" +
+                    $"💡 نیاز به API جهت کنسل سفارشات فعال کاربر");
+
+                // Create buy order
+                var buyOrder = new OrderDto
+                {
+                    Asset = defaultAsset,
+                    Amount = defaultAmount,
+                    Price = buyPrice / 4.3318m, // Convert to grams for MAUA
+                    UserId = userId,
+                    Side = OrderSide.Buy,
+                    Type = OrderType.Limit,
+                    TradingType = TradingType.Spot
+                };
+
+                var (buySuccess, buyMessage) = await _orderApi.SubmitOrderAsync(buyOrder);
+
+                // Create sell order
+                var sellOrder = new OrderDto
+                {
+                    Asset = defaultAsset,
+                    Amount = defaultAmount,
+                    Price = sellPrice / 4.3318m, // Convert to grams for MAUA
+                    UserId = userId,
+                    Side = OrderSide.Sell,
+                    Type = OrderType.Limit,
+                    TradingType = TradingType.Spot
+                };
+
+                var (sellSuccess, sellMessage) = await _orderApi.SubmitOrderAsync(sellOrder);
+
+                // Send result message
+                var resultMessage = $"📊 نتیجه ثبت سفارشات:\n\n" +
+                                  $"🟢 سفارش خرید {buyPrice:N0}: {(buySuccess ? "✅ موفق" : "❌ ناموفق - " + buyMessage)}\n" +
+                                  $"🔴 سفارش فروش {sellPrice:N0}: {(sellSuccess ? "✅ موفق" : "❌ ناموفق - " + sellMessage)}\n\n" +
+                                  $"📋 جزئیات:\n" +
+                                  $"• نماد: {defaultAsset}\n" +
+                                  $"• مقدار: {defaultAmount} واحد\n" +
+                                  $"• قیمت خرید: {buyPrice:N0} تومان (هر گرم: {buyOrder.Price:N0})\n" +
+                                  $"• قیمت فروش: {sellPrice:N0} تومان (هر گرم: {sellOrder.Price:N0})";
+
+                await _botClient.SendMessage(chatId, resultMessage);
+            }
+            catch (Exception ex)
+            {
+                await _botClient.SendMessage(chatId, $"❌ خطا در ثبت سفارشات: {ex.Message}");
+            }
         }
     }
 }

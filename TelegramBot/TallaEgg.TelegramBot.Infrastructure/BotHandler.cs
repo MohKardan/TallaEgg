@@ -502,12 +502,20 @@ namespace TallaEgg.TelegramBot
 
         private async Task ShowHelpAsync(long chatId)
         {
+            var role = await GetUserRoleAsync(chatId);
+            
             var helpText = "❓ راهنما\n\n" +
                           "💰 نقدی: معاملات نقدی و فوری\n" +
                           "📈 آتی: معاملات آتی و قراردادهای آتی\n" +
                           "📊 حسابداری: مشاهده موجودی و تاریخچه معاملات\n" +
-                          "❓ راهنما: این صفحه\n\n" +
-                          "برای پشتیبانی با تیم فنی تماس بگیرید.";
+                          "❓ راهنما: این صفحه\n\n";
+
+            if (role == TallaEgg.Core.Enums.User.UserRole.Admin)
+            {
+                helpText += BotMsgs.MsgAdminHelp + "\n\n";
+            }
+
+            helpText += "برای پشتیبانی با تیم فنی تماس بگیرید.";
 
             await _botClient.SendMessage(chatId, helpText);
         }
