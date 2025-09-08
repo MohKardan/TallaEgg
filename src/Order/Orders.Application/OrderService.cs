@@ -263,13 +263,13 @@ public class OrderService
         decimal? bestBid = null;
         decimal? bestAsk = null;
 
-        var buyOrders = activeOrders.Where(o => o.Side == OrderSide.Buy && o.Status == OrderStatus.Pending).ToList();
+        var buyOrders = activeOrders.Where(o => o.Side == OrderSide.Buy && o.Status == OrderStatus.Confirmed).ToList();
         if (buyOrders.Any())
         {
             bestBid = buyOrders.OrderByDescending(o => o.Price).First().Price;
         }
 
-        var sellOrders = activeOrders.Where(o => o.Side == OrderSide.Sell && o.Status == OrderStatus.Pending).ToList();
+        var sellOrders = activeOrders.Where(o => o.Side == OrderSide.Sell && o.Status == OrderStatus.Confirmed).ToList();
         if (sellOrders.Any())
         {
             bestAsk = sellOrders.OrderBy(o => o.Price).First().Price;
