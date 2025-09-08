@@ -370,6 +370,9 @@ namespace TallaEgg.TelegramBot
                         TallaEgg.Core.DTOs.ApiResponse<BestPricesDto> apiResponse = await _orderApi.GetBestPricesAsync(asset);
                         if (apiResponse != null && apiResponse.Success)
                         {
+                            apiResponse.Data.BestBidPrice *= 4.3318m;
+                            apiResponse.Data.BestAskPrice *= 4.3318m;
+
                             await _botClient.SendMessage(chatId,
                                             $"📊 <b>بهترین قیمت‌های بازار</b>\n\n" +
                                             $"💰 <b>خرید:</b> <code>{apiResponse.Data.BestBidPrice:N0}</code>\n" +
@@ -572,7 +575,17 @@ namespace TallaEgg.TelegramBot
             //TODO اینحا باید نمادهای معاملاتیرو از یجایی بحونیم
             // فعلا نمادهای معاملاتی به صورت HardCode
             // Mesqal Au Abshode
-            var assets = new[] { "MAUA/IRR", "XAU/IRR", "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
+            //var assets = new[] { "MAUA/IRR", "XAU/IRR", "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
+
+            var assets = new[]
+            {
+                new { Symbol = "MAUA/IRR", DisplayName = "مثقال طلا آبشده / ریال" },
+                new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
+                new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
+                new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
+                new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
+                new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
+            };
 
             // Show available assets
             var assetButtons = new List<InlineKeyboardButton[]>();
@@ -581,7 +594,7 @@ namespace TallaEgg.TelegramBot
             {
                 assetButtons.Add(new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(asset, $"asset_{asset}")
+                    InlineKeyboardButton.WithCallbackData(asset.DisplayName, $"asset_{asset.Symbol}")
                 });
             }
 
@@ -685,8 +698,12 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-
-
+            // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
+            if (orderState.Asset == "MAUA/IRR")
+            {
+                orderState.Price /= 4.3318m;
+            }
+            
             var totalValue = orderState.Amount * orderState.Price;
             var confirmationMessage = string.Format(BotMsgs.MsgOrderConfirmation,
                 orderState.Asset,
