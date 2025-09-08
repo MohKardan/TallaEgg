@@ -12,5 +12,13 @@ public interface IOrderApiClient
     Task<(bool success, string message)> SubmitOrderAsync(OrderDto order);
     Task<(bool success, string message)> CancelOrderAsync(Guid orderId);
     
+    /// <summary>
+    /// کنسل کردن تمام سفارشات فعال یک کاربر
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <param name="reason">دلیل کنسل کردن (اختیاری)</param>
+    /// <returns>نتیجه عملیات شامل موفقیت، پیام و تعداد سفارشات کنسل شده</returns>
+    Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null);
+    
     Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request);
 } 

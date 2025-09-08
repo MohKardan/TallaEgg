@@ -336,6 +336,22 @@ namespace TallaEgg.TelegramBot
             await _botClient.SendMessage(telegramUserId, "درخواست شما رد شد.");
         }
 
+        /// <summary>
+        /// پردازش سفارشات جفت قیمت برای ادمین
+        /// </summary>
+        /// <param name="chatId">شناسه چت تلگرام برای ارسال پیام</param>
+        /// <param name="userId">شناسه کاربر در سیستم</param>
+        /// <param name="buyPrice">قیمت خرید وارد شده توسط ادمین</param>
+        /// <param name="sellPrice">قیمت فروش وارد شده توسط ادمین</param>
+        /// <returns>Task که عملیات async را نشان می‌دهد</returns>
+        /// <remarks>
+        /// این تابع:
+        /// 1. ابتدا تمام سفارشات فعال کاربر را کنسل می‌کند
+        /// 2. قیمت‌های ورودی را برای طلا (تقسیم بر 4.3318) تنظیم می‌کند
+        /// 3. یک سفارش خرید با قیمت پایین‌تر و 1000 واحد پیش‌فرض ایجاد می‌کند
+        /// 4. یک سفارش فروش با قیمت بالاتر و 1000 واحد پیش‌فرض ایجاد می‌کند
+        /// 5. نتیجه عملیات را به ادمین گزارش می‌دهد
+        /// </remarks>
         private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, decimal buyPrice, decimal sellPrice)
         {
             try
@@ -343,13 +359,20 @@ namespace TallaEgg.TelegramBot
                 const string defaultAsset = "MAUA/IRR"; // Default asset for admin price pair orders
                 const decimal defaultAmount = 1000m;    // Default amount
 
-                // First, cancel all existing orders for this user
-                // TODO: Need an API endpoint to cancel all user orders or get active orders by user
-                // For now, we'll proceed with creating new orders
+                // First, cancel all existing active orders for this user
+                await _botClient.SendMessage(chatId, "⏳ در حال کنسل سفارشات قبلی...");
                 
-                await _botClient.SendMessage(chatId, 
-                    $"⚠️ تلاش برای کنسل سفارشات قبلی...\n" +
-                    $"💡 نیاز به API جهت کنسل سفارشات فعال کاربر");
+                var cancelResults = await CancelUserActiveOrdersAsync(userId);
+                if (cancelResults.CancelledCount > 0)
+                {
+                    await _botClient.SendMessage(chatId, 
+                        $"✅ {cancelResults.CancelledCount} سفارش قبلی کنسل شد");
+                }
+                else if (cancelResults.HasError)
+                {
+                    await _botClient.SendMessage(chatId, 
+                        $"⚠️ خطا در کنسل سفارشات قبلی: {cancelResults.ErrorMessage}");
+                }
 
                 // Create buy order
                 var buyOrder = new OrderDto
@@ -396,5 +419,47 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(chatId, $"❌ خطا در ثبت سفارشات: {ex.Message}");
             }
         }
+
+        /// <summary>
+        /// کنسل کردن تمام سفارشات فعال یک کاربر
+        /// </summary>
+        /// <param name="userId">شناسه کاربر که سفارشاتش باید کنسل شوند</param>
+        /// <returns>نتیجه عملیات کنسل شامل تعداد سفارشات کنسل شده و وضعیت خطا</returns>
+        /// <remarks>
+        /// این تابع:
+        /// 1. از API endpoint مخصوص کنسل سفارشات فعال استفاده می‌کند
+        /// 2. دلیل کنسل را "کنسل شده توسط ادمین برای ثبت سفارش جدید" ثبت می‌کند
+        /// 3. تعداد سفارشات کنسل شده و وضعیت موفقیت/خطا را برمی‌گرداند
+        /// </remarks>
+        private async Task<CancelOrdersResult> CancelUserActiveOrdersAsync(Guid userId)
+        {
+            try
+            {
+                // Use the new API endpoint to cancel all active orders for the user
+                var (success, message, cancelledCount) = await _orderApi.CancelAllUserActiveOrdersAsync(userId, "کنسل شده توسط ادمین برای ثبت سفارش جدید");
+                
+                return new CancelOrdersResult
+                {
+                    CancelledCount = cancelledCount,
+                    HasError = !success,
+                    ErrorMessage = success ? null : message
+                };
+            }
+            catch (Exception ex)
+            {
+                return new CancelOrdersResult 
+                { 
+                    HasError = true, 
+                    ErrorMessage = ex.Message 
+                };
+            }
+        }
+    }
+
+    public class CancelOrdersResult
+    {
+        public int CancelledCount { get; set; }
+        public bool HasError { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 }

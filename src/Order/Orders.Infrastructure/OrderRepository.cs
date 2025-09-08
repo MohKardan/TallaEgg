@@ -186,6 +186,38 @@ public class OrderRepository : IOrderRepository
         }
     }
 
+    /// <summary>
+    /// دریافت تمام سفارشات فعال یک کاربر خاص
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <returns>لیست سفارشات فعال کاربر (وضعیت Pending، Confirmed یا Partially و مقدار باقی‌مانده بیشتر از صفر)</returns>
+    /// <remarks>
+    /// این تابع سفارشاتی را برمی‌گرداند که:
+    /// 1. متعلق به کاربر مشخص شده باشند
+    /// 2. وضعیت آنها Pending، Confirmed یا Partially باشد
+    /// 3. مقدار باقی‌مانده آنها بیشتر از صفر باشد
+    /// 4. به ترتیب تاریخ ایجاد نزولی مرتب شده باشند
+    /// </remarks>
+    public async Task<List<Order>> GetActiveOrdersByUserIdAsync(Guid userId)
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => o.UserId == userId && 
+                           (o.Status == OrderStatus.Pending || 
+                            o.Status == OrderStatus.Confirmed || 
+                            o.Status == OrderStatus.Partially) && 
+                           o.RemainingAmount > 0)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving active orders for user {UserId}", userId);
+            throw new InvalidOperationException($"خطا در بازیابی سفارشات فعال کاربر {userId}", ex);
+        }
+    }
+
     public async Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType)
     {
         try

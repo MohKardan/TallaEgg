@@ -203,6 +203,43 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 .Produces(404);
 
 /// <summary>
+/// لغو همه سفارشات فعال کاربر
+/// </summary>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="reason">دلیل لغو (اختیاری)</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>تعداد سفارشات لغو شده</returns>
+/// <response code="200">سفارشات با موفقیت لغو شدند</response>
+/// <response code="400">خطا در لغو سفارشات</response>
+/// <remarks>
+/// این endpoint:
+/// 1. تمام سفارشات فعال کاربر مشخص شده را پیدا می‌کند
+/// 2. آنها را با دلیل ارائه شده کنسل می‌کند
+/// 3. تعداد سفارشات کنسل شده را در پاسخ برمی‌گرداند
+/// 4. از الگوی ApiResponse برای پاسخ استاندارد استفاده می‌کند
+/// </remarks>
+app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, string? reason, OrderService orderService) =>
+{
+    try
+    {
+        var cancelledCount = await orderService.CancelAllActiveOrdersByUserIdAsync(userId, reason ?? "لغو همه سفارشات فعال");
+        
+        var response = new CancelActiveOrdersResponseDto { CancelledCount = cancelledCount };
+        
+        return Results.Ok(ApiResponse<CancelActiveOrdersResponseDto>.Ok(response, $"{cancelledCount} سفارش فعال لغو شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(ApiResponse<CancelActiveOrdersResponseDto>.Fail("خطای داخلی سرور"), statusCode: 500);
+    }
+})
+.WithName("CancelUserActiveOrders")
+.WithSummary("لغو همه سفارشات فعال کاربر")
+.WithTags("Orders")
+.Produces(200)
+.Produces(400);
+
+/// <summary>
 /// تایید سفارش - تغییر وضعیت از Pending به Confirmed
 /// </summary>
 /// <param name="orderId">شناسه سفارش</param>
@@ -504,9 +541,10 @@ public record NotifyMatchingEngineRequest(
     /// Trading asset symbol
     /// </summary>
     string Asset,
-    /// <summary>
-    /// Type of order (Buy or Sell)
-    /// </summary>
-    OrderSide Type);
+/// <summary>
+/// Type of order (Buy or Sell)
+/// </summary>
+OrderSide Type);
+
 
 

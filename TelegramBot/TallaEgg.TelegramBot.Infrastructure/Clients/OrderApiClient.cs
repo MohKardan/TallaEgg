@@ -199,6 +199,55 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    /// <summary>
+    /// کنسل کردن تمام سفارشات فعال یک کاربر از طریق API
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <param name="reason">دلیل کنسل کردن سفارشات (اختیاری)</param>
+    /// <returns>
+    /// Tuple شامل:
+    /// - success: آیا عملیات موفق بوده یا نه
+    /// - message: پیام توضیحی از سرور
+    /// - cancelledCount: تعداد سفارشات کنسل شده
+    /// </returns>
+    /// <remarks>
+    /// این تابع:
+    /// 1. درخواست POST به endpoint کنسل سفارشات ارسال می‌کند
+    /// 2. دلیل کنسل را در بدنه درخواست ارسال می‌کند
+    /// 3. پاسخ ApiResponse را پارس می‌کند
+    /// 4. تعداد سفارشات کنسل شده را استخراج و برمی‌گرداند
+    /// 5. خطاها را handle کرده و پیام مناسب برمی‌گرداند
+    /// </remarks>
+    public async Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null)
+    {
+        try
+        {
+            var requestBody = new { reason };
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/user/{userId}/cancel-active", content);
+            var respText = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var apiResponse = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<CancelActiveOrdersResponseDto>>(respText);
+                if (apiResponse?.Success == true && apiResponse.Data != null)
+                {
+                    return (true, apiResponse.Message ?? "سفارشات لغو شدند", apiResponse.Data.CancelledCount);
+                }
+                return (false, apiResponse?.Message ?? "خطا در پردازش پاسخ", 0);
+            }
+
+            var errorResponse = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<object>>(respText);
+            return (false, errorResponse?.Message ?? $"خطا در لغو سفارشات: {respText}", 0);
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}", 0);
+        }
+    }
+
     public async Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request)
     {
         try
@@ -243,4 +292,9 @@ public class NotifyMatchingEngineRequest
     public Guid OrderId { get; set; }
     public string Asset { get; set; } = "";
     public OrderSide Type { get; set; }
+}
+
+public class CancelActiveOrdersResponseDto
+{
+    public int CancelledCount { get; set; }
 }

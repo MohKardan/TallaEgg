@@ -99,4 +99,17 @@ namespace TallaEgg.Core.DTOs.Order
         public decimal? Spread { get; set; }          // اختلاف قیمت (Ask - Bid)
         public DateTime Timestamp { get; set; }      // زمان آخرین بروزرسانی
     }
+
+    /// <summary>
+    /// Response DTO for canceling active orders
+    /// DTO پاسخ برای کنسل کردن سفارشات فعال
+    /// </summary>
+    public class CancelActiveOrdersResponseDto
+    {
+        /// <summary>
+        /// Number of orders that were cancelled
+        /// تعداد سفارشاتی که کنسل شدند
+        /// </summary>
+        public int CancelledCount { get; set; }
+    }
 }
