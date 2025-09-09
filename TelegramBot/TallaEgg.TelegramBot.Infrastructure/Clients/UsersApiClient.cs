@@ -262,7 +262,35 @@ public class UsersApiClient
         }
     }
 
+    /// <summary>
+    /// دریافت اطلاعات کاربر بر اساس شناسه کاربر
+    /// </summary>
+    /// <param name="userId">شناسه یکتای کاربر</param>
+    /// <returns>اطلاعات کاربر یا null در صورت عدم وجود</returns>
+    /// <remarks>
+    /// این متد برای دریافت اطلاعات کامل کاربر شامل TelegramUserId استفاده می‌شود
+    /// که برای ارسال اطلاعیه‌های تطبیق معامله ضروری است
+    /// </remarks>
+    public async Task<UserDto?> GetUserByIdAsync(Guid userId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/user/{userId}");
 
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<UserDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // Log exception here if needed
+            return null;
+        }
+    }
 
     private class ValidateInvitationResponse
     {

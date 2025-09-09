@@ -112,4 +112,98 @@ namespace TallaEgg.Core.DTOs.Order
         /// </summary>
         public int CancelledCount { get; set; }
     }
+
+    /// <summary>
+    /// DTO برای اطلاعات تطبیق معامله
+    /// </summary>
+    /// <remarks>
+    /// این DTO شامل تمام اطلاعات لازم برای اطلاع‌رسانی موفقیت‌آمیز تطبیق سفارشات است
+    /// </remarks>
+    public class TradeMatchNotificationDto
+    {
+        /// <summary>
+        /// شناسه یکتای معامله
+        /// </summary>
+        public Guid TradeId { get; set; }
+
+        /// <summary>
+        /// شناسه سفارش خریدار
+        /// </summary>
+        public Guid BuyOrderId { get; set; }
+
+        /// <summary>
+        /// شناسه کاربر خریدار
+        /// </summary>
+        public Guid BuyerUserId { get; set; }
+
+        /// <summary>
+        /// شناسه سفارش فروشنده
+        /// </summary>
+        public Guid SellOrderId { get; set; }
+
+        /// <summary>
+        /// شناسه کاربر فروشنده
+        /// </summary>
+        public Guid SellerUserId { get; set; }
+
+        /// <summary>
+        /// نماد دارایی (مثل BTC/USDT، MAUA/IRR)
+        /// </summary>
+        public string Asset { get; set; } = string.Empty;
+
+        /// <summary>
+        /// قیمت تطبیق معامله
+        /// </summary>
+        public decimal Price { get; set; }
+
+        /// <summary>
+        /// حجم تطبیق یافته در این معامله
+        /// </summary>
+        public decimal MatchedVolume { get; set; }
+
+        /// <summary>
+        /// تاریخ و زمان انجام معامله
+        /// </summary>
+        public DateTime TradeDateTime { get; set; }
+
+        /// <summary>
+        /// درصد تکمیل شده سفارش خریدار
+        /// </summary>
+        public decimal BuyOrderCompletionPercentage { get; set; }
+
+        /// <summary>
+        /// درصد باقی‌مانده سفارش خریدار
+        /// </summary>
+        public decimal BuyOrderRemainingPercentage { get; set; }
+
+        /// <summary>
+        /// درصد تکمیل شده سفارش فروشنده
+        /// </summary>
+        public decimal SellOrderCompletionPercentage { get; set; }
+
+        /// <summary>
+        /// درصد باقی‌مانده سفارش فروشنده
+        /// </summary>
+        public decimal SellOrderRemainingPercentage { get; set; }
+
+        /// <summary>
+        /// حجم کل سفارش خریدار
+        /// </summary>
+        public decimal BuyOrderTotalVolume { get; set; }
+
+        /// <summary>
+        /// حجم باقی‌مانده سفارش خریدار
+        /// </summary>
+        public decimal BuyOrderRemainingVolume { get; set; }
+
+        /// <summary>
+        /// حجم کل سفارش فروشنده
+        /// </summary>
+        public decimal SellOrderTotalVolume { get; set; }
+
+        /// <summary>
+        /// حجم باقی‌مانده سفارش فروشنده
+        /// </summary>
+        public decimal SellOrderRemainingVolume { get; set; }
+    }
 }

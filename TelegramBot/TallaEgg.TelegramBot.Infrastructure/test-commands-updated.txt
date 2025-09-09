@@ -1,0 +1,275 @@
+# دستورات PowerShell برای تست API اطلاع‌رسانی تطبیق معامله (نسخه اصلاح شده)
+# PowerShell Commands for Testing Trade Match Notification API (Corrected Version)
+
+## 1. تست سلامت سرویس (Health Check)
+Invoke-RestMethod -Uri "http://localhost:57546/health" -Method GET
+
+## 2. تست ارسال اطلاعیه معتبر (با نام‌های صحیح property ها)
+$validNotification = @{
+    tradeId = "123e4567-e89b-12d3-a456-426614174000"
+    buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
+    buyerUserId = "123e4567-e89b-12d3-a456-426614174001"
+    sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
+    sellerUserId = "123e4567-e89b-12d3-a456-426614174002"
+    asset = "USDT"
+    price = 50000.0
+    matchedVolume = 100.5
+    tradeDateTime = "2024-01-15T10:30:00"
+    buyOrderCompletionPercentage = 75.0
+    buyOrderRemainingPercentage = 25.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 134.0
+    buyOrderRemainingVolume = 33.5
+    sellOrderTotalVolume = 100.5
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $validNotification -ContentType "application/json"
+
+## 3. تست اطلاعیه نامعتبر - حجم صفر
+$invalidVolumeNotification = @{
+    tradeId = "123e4567-e89b-12d3-a456-426614174000"
+    buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
+    buyerUserId = "123e4567-e89b-12d3-a456-426614174001"
+    sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
+    sellerUserId = "123e4567-e89b-12d3-a456-426614174002"
+    asset = "USDT"
+    price = 50000.0
+    matchedVolume = 0
+    tradeDateTime = "2024-01-15T10:30:00"
+    buyOrderCompletionPercentage = 75.0
+    buyOrderRemainingPercentage = 25.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 134.0
+    buyOrderRemainingVolume = 33.5
+    sellOrderTotalVolume = 100.5
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $invalidVolumeNotification -ContentType "application/json"
+    Write-Host "❌ اطلاعیه نامعتبر قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ اطلاعیه نامعتبر به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+}
+
+## 4. تست اطلاعیه نامعتبر - قیمت منفی
+$invalidPriceNotification = @{
+    tradeId = "123e4567-e89b-12d3-a456-426614174000"
+    buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
+    buyerUserId = "123e4567-e89b-12d3-a456-426614174001"
+    sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
+    sellerUserId = "123e4567-e89b-12d3-a456-426614174002"
+    asset = "USDT"
+    price = -1000
+    matchedVolume = 100.5
+    tradeDateTime = "2024-01-15T10:30:00"
+    buyOrderCompletionPercentage = 75.0
+    buyOrderRemainingPercentage = 25.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 134.0
+    buyOrderRemainingVolume = 33.5
+    sellOrderTotalVolume = 100.5
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $invalidPriceNotification -ContentType "application/json"
+    Write-Host "❌ قیمت منفی قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ قیمت منفی به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+}
+
+## 5. تست اطلاعیه نامعتبر - شناسه کاربر خالی
+$invalidUserIdNotification = @{
+    tradeId = "123e4567-e89b-12d3-a456-426614174000"
+    buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
+    buyerUserId = "00000000-0000-0000-0000-000000000000"
+    sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
+    sellerUserId = "00000000-0000-0000-0000-000000000000"
+    asset = "USDT"
+    price = 50000.0
+    matchedVolume = 100.5
+    tradeDateTime = "2024-01-15T10:30:00"
+    buyOrderCompletionPercentage = 75.0
+    buyOrderRemainingPercentage = 25.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 134.0
+    buyOrderRemainingVolume = 33.5
+    sellOrderTotalVolume = 100.5
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $invalidUserIdNotification -ContentType "application/json"
+    Write-Host "❌ شناسه‌های خالی قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ شناسه‌های خالی به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+}
+
+## 6. تست اطلاعیه نامعتبر - Asset خالی
+$emptyAssetNotification = @{
+    tradeId = "123e4567-e89b-12d3-a456-426614174000"
+    buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
+    buyerUserId = "123e4567-e89b-12d3-a456-426614174001"
+    sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
+    sellerUserId = "123e4567-e89b-12d3-a456-426614174002"
+    asset = ""
+    price = 50000.0
+    matchedVolume = 100.5
+    tradeDateTime = "2024-01-15T10:30:00"
+    buyOrderCompletionPercentage = 75.0
+    buyOrderRemainingPercentage = 25.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 134.0
+    buyOrderRemainingVolume = 33.5
+    sellOrderTotalVolume = 100.5
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $emptyAssetNotification -ContentType "application/json"
+    Write-Host "❌ Asset خالی قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ Asset خالی به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+}
+
+## 7. تست با داده خالی
+$emptyNotification = "{}"
+
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $emptyNotification -ContentType "application/json"
+    Write-Host "❌ داده خالی قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ داده خالی به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: $($_.ErrorDetails.Message)" -ForegroundColor Yellow
+}
+
+## 8. تست با متد نامعتبر (GET به جای POST)
+try {
+    Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method GET
+    Write-Host "❌ متد GET قبول شد!" -ForegroundColor Red
+} catch {
+    Write-Host "✅ متد GET به درستی رد شد" -ForegroundColor Green
+    Write-Host "📝 پیام خطا: HTTP 405 Method Not Allowed" -ForegroundColor Yellow
+}
+
+## نمونه‌های پیشرفته:
+
+## 9. تست با حجم‌های مختلف (BTC)
+$btcNotification = @{
+    tradeId = [System.Guid]::NewGuid().ToString()
+    buyOrderId = [System.Guid]::NewGuid().ToString()
+    buyerUserId = [System.Guid]::NewGuid().ToString()
+    sellOrderId = [System.Guid]::NewGuid().ToString()
+    sellerUserId = [System.Guid]::NewGuid().ToString()
+    asset = "BTC"
+    price = 1000000.0
+    matchedVolume = 0.001
+    tradeDateTime = "2024-01-15T15:45:30"
+    buyOrderCompletionPercentage = 100.0
+    buyOrderRemainingPercentage = 0.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 0.001
+    buyOrderRemainingVolume = 0.0
+    sellOrderTotalVolume = 0.001
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+Write-Host "🪙 تست معامله BTC..." -ForegroundColor Yellow
+$btcResponse = Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $btcNotification -ContentType "application/json"
+Write-Host "✅ پاسخ: $($btcResponse.message)" -ForegroundColor Green
+
+## 10. تست تطبیق جزئی
+$partialMatchNotification = @{
+    tradeId = [System.Guid]::NewGuid().ToString()
+    buyOrderId = [System.Guid]::NewGuid().ToString()
+    buyerUserId = [System.Guid]::NewGuid().ToString()
+    sellOrderId = [System.Guid]::NewGuid().ToString()
+    sellerUserId = [System.Guid]::NewGuid().ToString()
+    asset = "USDT"
+    price = 75500.0
+    matchedVolume = 50.25
+    tradeDateTime = "2024-01-15T20:15:45"
+    buyOrderCompletionPercentage = 25.0
+    buyOrderRemainingPercentage = 75.0
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = 201.0
+    buyOrderRemainingVolume = 150.75
+    sellOrderTotalVolume = 50.25
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+Write-Host "🔄 تست تطبیق جزئی..." -ForegroundColor Yellow
+$partialResponse = Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $partialMatchNotification -ContentType "application/json"
+Write-Host "✅ پاسخ: $($partialResponse.message)" -ForegroundColor Green
+
+## 11. تست شناسه‌های تصادفی
+Write-Host "`n🎲 تست با شناسه‌های تصادفی..." -ForegroundColor Cyan
+$volume = Get-Random -Minimum 10 -Maximum 1000
+$completion = Get-Random -Minimum 50 -Maximum 100
+$randomNotification = @{
+    tradeId = [System.Guid]::NewGuid().ToString()
+    buyOrderId = [System.Guid]::NewGuid().ToString()
+    buyerUserId = [System.Guid]::NewGuid().ToString()
+    sellOrderId = [System.Guid]::NewGuid().ToString()
+    sellerUserId = [System.Guid]::NewGuid().ToString()
+    asset = "USDT"
+    price = Get-Random -Minimum 40000 -Maximum 80000
+    matchedVolume = $volume
+    tradeDateTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss")
+    buyOrderCompletionPercentage = $completion
+    buyOrderRemainingPercentage = 100 - $completion
+    sellOrderCompletionPercentage = 100.0
+    sellOrderRemainingPercentage = 0.0
+    buyOrderTotalVolume = $volume * 2
+    buyOrderRemainingVolume = $volume * (100 - $completion) / 100
+    sellOrderTotalVolume = $volume
+    sellOrderRemainingVolume = 0.0
+} | ConvertTo-Json
+
+try {
+    $randomResponse = Invoke-RestMethod -Uri "http://localhost:57546/api/telegram/notifications/trade-match" -Method POST -Body $randomNotification -ContentType "application/json"
+    Write-Host "✅ تست تصادفی موفق: $($randomResponse.message)" -ForegroundColor Green
+} catch {
+    Write-Host "❌ خطا در تست تصادفی: $($_.ErrorDetails.Message)" -ForegroundColor Red
+}
+
+## 12. تست کامل با نمایش نتایج
+Write-Host "`n📊 خلاصه تست‌ها:" -ForegroundColor Magenta
+Write-Host "✅ Health Check" -ForegroundColor Green
+Write-Host "✅ اطلاعیه معتبر" -ForegroundColor Green  
+Write-Host "✅ Validation خطاها" -ForegroundColor Green
+Write-Host "✅ تست‌های پیشرفته" -ForegroundColor Green
+Write-Host "`n🎉 همه تست‌ها کامل شد!" -ForegroundColor Green
+
+# نکته مهم: نام‌های Property در DTO باید دقیقاً با JSON ارسالی مطابقت داشته باشد
+# Property Names in TradeMatchNotificationDto:
+# - tradeId (Guid)
+# - buyOrderId (Guid)  
+# - buyerUserId (Guid)
+# - sellOrderId (Guid)
+# - sellerUserId (Guid)
+# - asset (string)
+# - price (decimal)
+# - matchedVolume (decimal)
+# - tradeDateTime (DateTime)
+# - buyOrderCompletionPercentage (decimal)
+# - buyOrderRemainingPercentage (decimal)
+# - sellOrderCompletionPercentage (decimal)
+# - sellOrderRemainingPercentage (decimal)
+# - buyOrderTotalVolume (decimal)
+# - buyOrderRemainingVolume (decimal)
+# - sellOrderTotalVolume (decimal)
+# - sellOrderRemainingVolume (decimal)

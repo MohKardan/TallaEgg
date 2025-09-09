@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using System.Net.Http;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.TelegramBot.Infrastructure.Services;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
@@ -15,7 +16,18 @@ class Program
     {
         try
         {
-            Console.WriteLine("Starting Telegram Bot...");
+            // بررسی نوع اجرا بر اساس آرگومان‌ها
+            if (args.Length > 0 && args[0].ToLower() == "--api-only")
+            {
+                Console.WriteLine("🚀 Starting Telegram Notification API only...");
+                TelegramNotificationApi.RunNotificationApi(args);
+                return;
+            }
+            TelegramNotificationApi.RunNotificationApi(args);
+            // اگر آرگومان --with-api داده شده باشد، هم بات و هم API را اجرا کن
+            bool runWithApi = args.Length > 0 && args[0].ToLower() == "--with-api";
+            
+            Console.WriteLine(runWithApi ? "🤖🚀 Starting Telegram Bot with Notification API..." : "🤖 Starting Telegram Bot...");
             
             // خواندن تنظیمات
             var config = new ConfigurationBuilder()
@@ -89,6 +101,7 @@ class Program
             services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(provider.GetRequiredService<HttpClient>(), config));
             services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
             services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
+            services.AddSingleton<TradeNotificationService>();
             services.AddSingleton<IBotHandler>(provider => new BotHandler(
                 provider.GetRequiredService<ITelegramBotClient>(),
                 provider.GetRequiredService<OrderApiClient>(),
