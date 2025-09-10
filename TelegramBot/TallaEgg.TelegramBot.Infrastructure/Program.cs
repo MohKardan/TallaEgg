@@ -16,18 +16,6 @@ class Program
     {
         try
         {
-            // بررسی نوع اجرا بر اساس آرگومان‌ها
-            if (args.Length > 0 && args[0].ToLower() == "--api-only")
-            {
-                Console.WriteLine("🚀 Starting Telegram Notification API only...");
-                TelegramNotificationApi.RunNotificationApi(args);
-                return;
-            }
-            TelegramNotificationApi.RunNotificationApi(args);
-            // اگر آرگومان --with-api داده شده باشد، هم بات و هم API را اجرا کن
-            bool runWithApi = args.Length > 0 && args[0].ToLower() == "--with-api";
-            
-            Console.WriteLine(runWithApi ? "🤖🚀 Starting Telegram Bot with Notification API..." : "🤖 Starting Telegram Bot...");
             
             // خواندن تنظیمات
             var config = new ConfigurationBuilder()
@@ -178,6 +166,8 @@ class Program
                 receiverOptions: receiverOptions,
                 cancellationToken: cts.Token
             );
+
+            TelegramNotificationApi.RunNotificationApi(args);
 
             Console.WriteLine("✅ Bot is now running and listening for messages...");
             Console.WriteLine("Press any key to stop...");

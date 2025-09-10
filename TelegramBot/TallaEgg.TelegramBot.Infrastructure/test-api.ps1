@@ -57,9 +57,9 @@ Write-Host "`n3️⃣ تست اطلاعیه نامعتبر (حجم صفر)..." -
 $invalidNotification = @{
     tradeId = "123e4567-e89b-12d3-a456-426614174000"
     buyOrderId = "223e4567-e89b-12d3-a456-426614174000"
-    buyerUserId = "123e4567-e89b-12d3-a456-426614174001"
+    buyerUserId = "080A42C8-603F-422D-A02F-142407F3E94C"
     sellOrderId = "323e4567-e89b-12d3-a456-426614174000"
-    sellerUserId = "123e4567-e89b-12d3-a456-426614174002"
+    sellerUserId = "D286F932-D4E9-49EC-8D72-D85EEC4907A7"
     asset = "USDT"
     price = 50000.0
     matchedVolume = 0

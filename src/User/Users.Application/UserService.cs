@@ -209,4 +209,15 @@ public class UserService
         // return await dbContext.Invitations.FirstOrDefaultAsync(x => x.Code == invitationCode);
     }
     */
+
+    /// <summary>
+    /// دریافت کاربر بر اساس شناسه یکتا
+    /// </summary>
+    /// <param name="userId">شناسه یکتای کاربر</param>
+    /// <returns>اطلاعات کاربر در قالب DTO یا null در صورت عدم وجود</returns>
+    public async Task<UserDto?> GetUserByIdAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        return user != null ? _userMapper.Map(user) : null;
+    }
 }

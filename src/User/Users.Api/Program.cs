@@ -169,6 +169,40 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
 });
 
+/// <summary>
+/// دریافت اطلاعات کاربر بر اساس شناسه
+/// </summary>
+/// <param name="userId">شناسه یکتای کاربر</param>
+/// <param name="userService">سرویس کاربر برای منطق تجاری</param>
+/// <returns>جزئیات کاربر در صورت یافتن</returns>
+/// <response code="200">کاربر پیدا شد و با موفقیت برگردانده شد</response>
+/// <response code="404">کاربر پیدا نشد</response>
+app.MapGet("/api/user/id/{userId}", async (Guid userId, UserService userService) =>
+{
+    try
+    {
+        var user = await userService.GetUserByIdAsync(userId);
+        
+        if (user == null)
+        {
+            return Results.Json(
+                ApiResponse<UserDto>.NotFound("کاربر مورد نظر یافت نشد."),
+                statusCode: 404
+            );
+        }
+
+        return Results.Json(
+            ApiResponse<UserDto>.Ok(user, "اطلاعات کاربر با موفقیت دریافت شد.")
+        );
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(
+            ApiResponse<UserDto>.Error($"خطا در دریافت اطلاعات کاربر: {ex.Message}"),
+            statusCode: 500
+        );
+    }
+});
 
 /// <summary>
 /// Retrieves user information by phone number
@@ -397,4 +431,4 @@ public record RegisterUserWithInvitationRequest(User User);
 /// <summary>
 /// Request model for updating user roles
 /// </summary>
-public record UpdateUserRoleRequest(Guid UserId, UserRole NewRole); 
+public record UpdateUserRoleRequest(Guid UserId, UserRole NewRole);

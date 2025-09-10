@@ -28,6 +28,26 @@ namespace TallaEgg.Core.DTOs
         {
             return new ApiResponse<T>(false, message, default);
         }
+
+        /// <summary>
+        /// ایجاد پاسخ برای موارد پیدا نشدن (404 Not Found)
+        /// </summary>
+        /// <param name="message">پیام توضیحی</param>
+        /// <returns>پاسخ API با وضعیت عدم موفقیت</returns>
+        public static ApiResponse<T> NotFound(string message = "آیتم مورد نظر یافت نشد")
+        {
+            return new ApiResponse<T>(false, message, default);
+        }
+
+        /// <summary>
+        /// ایجاد پاسخ برای خطاهای سرور (500 Internal Server Error)
+        /// </summary>
+        /// <param name="message">پیام خطا</param>
+        /// <returns>پاسخ API با وضعیت عدم موفقیت</returns>
+        public static ApiResponse<T> Error(string message = "خطای داخلی سرور")
+        {
+            return new ApiResponse<T>(false, message, default);
+        }
     }
 
 }
