@@ -25,6 +25,12 @@ public interface IOrderRepository
     /// <param name="userId">شناسه کاربر</param>
     /// <returns>لیست سفارشات فعال کاربر</returns>
     Task<List<Order>> GetActiveOrdersByUserIdAsync(Guid userId);
+    
+    /// <summary>
+    /// دریافت تمام سفارشات فعال سیستم
+    /// </summary>
+    /// <returns>لیست تمام سفارشات فعال</returns>
+    Task<List<Order>> GetActiveOrdersAsync();
     Task<List<Order>> GetOrdersByDateRangeAsync(DateTime from, DateTime to);
     Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);
     Task<int> GetOrderCountByAssetAsync(string asset);

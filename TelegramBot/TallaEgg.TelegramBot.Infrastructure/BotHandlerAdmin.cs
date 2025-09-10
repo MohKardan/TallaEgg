@@ -232,7 +232,7 @@ namespace TallaEgg.TelegramBot
                 var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
                 if (useId.HasValue)
                 {
-                    await ShowOrderHistory(chatId, useId.Value);
+                    await ShowActiveOrders(chatId, useId.Value);
                 }
                 else
                 {

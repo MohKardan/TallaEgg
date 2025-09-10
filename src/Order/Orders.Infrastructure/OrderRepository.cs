@@ -220,6 +220,25 @@ public class OrderRepository : IOrderRepository
         }
     }
 
+    public async Task<List<Order>> GetActiveOrdersAsync()
+    {
+        try
+        {
+            return await _dbContext.Orders
+                .Where(o => (o.Status == OrderStatus.Pending || 
+                            o.Status == OrderStatus.Confirmed || 
+                            o.Status == OrderStatus.Partially) && 
+                           o.RemainingAmount > 0)
+                .OrderByDescending(o => o.CreatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving all active orders");
+            throw new InvalidOperationException("خطا در بازیابی تمام سفارشات فعال", ex);
+        }
+    }
+
     public async Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType)
     {
         try

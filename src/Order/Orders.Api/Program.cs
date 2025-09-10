@@ -364,6 +364,93 @@ app.MapGet("/api/trades/user/{userId}", async (
 .Produces(400);
 
 /// <summary>
+/// دریافت سفارشات فعال کاربر
+/// </summary>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>لیست سفارشات فعال کاربر</returns>
+/// <response code="200">سفارشات فعال کاربر با موفقیت دریافت شد</response>
+/// <response code="400">درخواست نامعتبر</response>
+app.MapGet("/api/orders/active/user/{userId}", async (
+    Guid userId,
+    OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetActiveOrdersByUserIdAsync(userId);
+        var orderDtos = orders.Select(o => new OrderHistoryDto
+        {
+            Id = o.Id,
+            Asset = o.Asset,
+            Amount = o.Amount,
+            RemainingAmount = o.RemainingAmount,
+            Price = o.Price,
+            Type = o.Side,
+            Status = o.Status,
+            TradingType = o.TradingType,
+            Role = o.Role,
+            CreatedAt = o.CreatedAt,
+            UpdatedAt = o.UpdatedAt,
+            Notes = o.Notes,
+            ParentOrderId = o.ParentOrderId
+        }).ToList();
+
+        return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "سفارشات فعال دریافت شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+    }
+})
+.WithName("GetUserActiveOrders")
+.WithSummary("دریافت سفارشات فعال کاربر")
+.WithTags("Orders")
+.Produces<ApiResponse<List<OrderHistoryDto>>>(200)
+.Produces(400);
+
+/// <summary>
+/// دریافت تمام سفارشات فعال سیستم (برای ادمین)
+/// </summary>
+/// <param name="orderService">سرویس مدیریت سفارشات</param>
+/// <returns>لیست تمام سفارشات فعال</returns>
+/// <response code="200">تمام سفارشات فعال با موفقیت دریافت شد</response>
+/// <response code="500">خطای داخلی سرور</response>
+app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
+{
+    try
+    {
+        var orders = await orderService.GetAllActiveOrdersAsync();
+        var orderDtos = orders.Select(o => new OrderHistoryDto
+        {
+            Id = o.Id,
+            Asset = o.Asset,
+            Amount = o.Amount,
+            RemainingAmount = o.RemainingAmount,
+            Price = o.Price,
+            Type = o.Side,
+            Status = o.Status,
+            TradingType = o.TradingType,
+            Role = o.Role,
+            CreatedAt = o.CreatedAt,
+            UpdatedAt = o.UpdatedAt,
+            Notes = o.Notes,
+            ParentOrderId = o.ParentOrderId
+        }).ToList();
+
+        return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "تمام سفارشات فعال دریافت شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+    }
+})
+.WithName("GetAllActiveOrders")
+.WithSummary("دریافت تمام سفارشات فعال")
+.WithTags("Orders")
+.Produces<ApiResponse<List<OrderHistoryDto>>>(200)
+.Produces(500);
+
+/// <summary>
 /// دریافت بهترین قیمت‌های خرید و فروش
 /// </summary>
 /// <param name="symbol">نماد معاملاتی (مثل BTC/USDT، ETH/USDT)</param>

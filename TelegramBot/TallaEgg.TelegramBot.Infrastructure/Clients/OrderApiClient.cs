@@ -73,6 +73,46 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    public async Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId)
+    {
+        var uri = $"{_baseUrl}/orders/active/user/{userId}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(uri);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(json)
+                : ApiResponse<List<OrderHistoryDto>>.Fail("دریافت سفارشات فعال ناموفق بود");
+        }
+        catch (Exception ex)
+        {
+            // TODO: لاگ
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+        }
+    }
+
+    public async Task<ApiResponse<List<OrderHistoryDto>>> GetAllActiveOrdersAsync()
+    {
+        var uri = $"{_baseUrl}/orders/active/all";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(uri);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(json)
+                : ApiResponse<List<OrderHistoryDto>>.Fail("دریافت تمام سفارشات فعال ناموفق بود");
+        }
+        catch (Exception ex)
+        {
+            // TODO: لاگ
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+        }
+    }
+
     // ...existing code...
 
     public async Task<TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol)

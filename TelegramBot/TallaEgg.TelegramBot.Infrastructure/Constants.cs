@@ -23,6 +23,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnHistory = "📋 تاریخچه";
         public const string BtnOrderHistory = "📋 تاریخچه سفارشات";
         public const string BtnTradeHistory = "📊 تاریخچه معاملات";
+        public const string BtnActiveOrders = "⚡ سفارشات فعال";
         public const string BtnWalletsBalance = "💵 موجودی";
         public const string BtnWallet = "💳 کیف پول";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
@@ -71,7 +72,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                           "د شماره مبلغ نوع - کسر از موجودی\n" +
                                           "ک جستجو - لیست کاربران\n" +
                                           "م شماره - موجودی کاربر\n" +
-                                          "س شماره - تاریخچه معاملات\n" +
+                                          "س شماره - سفارشات فعال کاربر\n" +
                                           "قیمت_خرید-قیمت_فروش - ثبت دو سفارش (مثال: 8523690-8529630)";
     }
     public static class InlineCallBackData

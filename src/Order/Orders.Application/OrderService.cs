@@ -314,6 +314,11 @@ public class OrderService
         return await _orderRepository.GetActiveOrdersByUserIdAsync(userId);
     }
 
+    public async Task<List<Order>> GetAllActiveOrdersAsync()
+    {
+        return await _orderRepository.GetActiveOrdersAsync();
+    }
+
     /// <summary>
     /// کنسل کردن تمام سفارشات فعال یک کاربر
     /// </summary>

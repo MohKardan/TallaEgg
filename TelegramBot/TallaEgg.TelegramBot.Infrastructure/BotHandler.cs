@@ -269,6 +269,9 @@ namespace TallaEgg.TelegramBot
                 case BotBtns.BtnTradeHistory:
                     await ShowTradeHistory(chatId, userId);
                     break;
+                case BotBtns.BtnActiveOrders:
+                    await ShowActiveOrders(chatId, userId);
+                    break;
                 case BotBtns.BtnWalletsBalance:
                     await ShowWalletsBalance(chatId, userId);
                     break;
@@ -456,6 +459,30 @@ namespace TallaEgg.TelegramBot
                             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
+                    else if (data.StartsWith("cancel_order_"))
+                    {
+                        var orderIdStr = data["cancel_order_".Length..];
+                        if (Guid.TryParse(orderIdStr, out var orderId))
+                        {
+                            var result = await _orderApi.CancelOrderAsync(orderId);
+                            if (result.success)
+                            {
+                                await _botClient.AnswerCallbackQuery(callbackQuery.Id, "✅ سفارش با موفقیت لغو شد");
+                                
+                                // حذف پیام یا به‌روزرسانی آن
+                                await _botClient.EditMessageText(
+                                    chatId: callbackQuery.Message.Chat.Id,
+                                    messageId: callbackQuery.Message.MessageId,
+                                    text: "✅ سفارش لغو شد و از لیست حذف گردید.",
+                                    replyMarkup: null
+                                );
+                            }
+                            else
+                            {
+                                await _botClient.AnswerCallbackQuery(callbackQuery.Id, $"❌ خطا در لغو سفارش: {result.message}");
+                            }
+                        }
+                    }
 
                     else if (data != null && data.StartsWith("users_"))
                     {
@@ -576,6 +603,33 @@ namespace TallaEgg.TelegramBot
                     parseMode: ParseMode.MarkdownV2,
                     replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
+            }
+        }
+
+        private async Task ShowActiveOrders(long chatId, Guid userId)
+        {
+            var role = await GetUserRoleAsync(chatId);
+            var isAdmin = role == TallaEgg.Core.Enums.User.UserRole.Admin;
+
+            var response = isAdmin 
+                ? await _orderApi.GetAllActiveOrdersAsync()
+                : await _orderApi.GetUserActiveOrdersAsync(userId);
+
+            if (response.Success)
+            {
+                var text = await ActiveOrdersHandler.BuildActiveOrdersListAsync(response.Data!, isAdmin);
+                var keyboard = ActiveOrdersHandler.BuildCancelOrderKeyboard(response.Data!, isAdmin);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: text,
+                    parseMode: ParseMode.MarkdownV2,
+                    replyMarkup: keyboard
+                );
+            }
+            else
+            {
+                await _botClient.SendMessage(chatId, "خطا در دریافت سفارشات فعال: " + response.Message);
             }
         }
 
