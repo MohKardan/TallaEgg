@@ -50,6 +50,29 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    public async Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(
+        Guid userId,
+        int pageNumber = 1,
+        int pageSize = 10)
+    {
+        var uri = $"{_baseUrl}/trades/user/{userId}?pageNumber={pageNumber}&pageSize={pageSize}";
+
+        try
+        {
+            var response = await _httpClient.GetAsync(uri);
+            var json = await response.Content.ReadAsStringAsync();
+
+            return response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<TradeHistoryDto>>>(json)
+                : ApiResponse<PagedResult<TradeHistoryDto>>.Fail("دریافت معاملات ناموفق بود");
+        }
+        catch (Exception ex)
+        {
+            // TODO: لاگ
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+        }
+    }
+
     // ...existing code...
 
     public async Task<TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol)

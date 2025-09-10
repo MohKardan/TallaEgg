@@ -9,6 +9,7 @@ public interface IOrderApiClient
 {
     
     Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(Guid userId, int pageNumber = 1, int pageSize = 10);
+    Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(Guid userId, int pageNumber = 1, int pageSize = 10);
     Task<(bool success, string message)> SubmitOrderAsync(OrderDto order);
     Task<(bool success, string message)> CancelOrderAsync(Guid orderId);
     

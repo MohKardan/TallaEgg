@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Orders.Core;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 
 namespace Orders.Infrastructure;
 
@@ -131,5 +132,48 @@ public class TradeRepository : ITradeRepository
             .ToListAsync();
 
         return (trades, totalCount);
+    }
+
+    public async Task<PagedResult<TradeHistoryDto>> GetTradesByUserIdAsync(
+        Guid userId,
+        int pageNumber,
+        int pageSize)
+    {
+        var query = _context.Trades
+            .Where(t => t.BuyerUserId == userId || t.SellerUserId == userId)
+            .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new TradeHistoryDto
+            {
+                Id = t.Id,
+                Symbol = t.Symbol,
+                Price = t.Price,
+                Quantity = t.Quantity,
+                QuoteQuantity = t.QuoteQuantity,
+                BuyerUserId = t.BuyerUserId,
+                SellerUserId = t.SellerUserId,
+                MakerUserId = t.MakerUserId,
+                TakerUserId = t.TakerUserId,
+                FeeBuyer = t.FeeBuyer,
+                FeeSeller = t.FeeSeller,
+                MakerFee = t.MakerFee,
+                TakerFee = t.TakerFee,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt
+            });
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<TradeHistoryDto>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
     }
 }

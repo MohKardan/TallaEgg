@@ -1,5 +1,6 @@
 using Orders.Core;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 
 namespace Orders.Application;
 
@@ -58,6 +59,11 @@ public class TradeService
     {
         return await _tradeRepository.GetTradesPaginatedAsync(
             pageNumber, pageSize, buyOrderId, sellOrderId, symbol, buyerUserId, sellerUserId);
+    }
+
+    public async Task<PagedResult<TradeHistoryDto>> GetTradesByUserIdAsync(Guid userId, int pageNumber, int pageSize)
+    {
+        return await _tradeRepository.GetTradesByUserIdAsync(userId, pageNumber, pageSize);
     }
 
     public async Task<bool> DeleteTradeAsync(Guid id)

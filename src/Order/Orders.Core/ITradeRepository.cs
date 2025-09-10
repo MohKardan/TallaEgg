@@ -1,4 +1,5 @@
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 
 namespace Orders.Core;
 
@@ -34,4 +35,7 @@ public interface ITradeRepository
         string? symbol = null,
         Guid? buyerUserId = null,
         Guid? sellerUserId = null);
+    
+    // User trade history with pagination
+    Task<PagedResult<TradeHistoryDto>> GetTradesByUserIdAsync(Guid userId, int pageNumber, int pageSize);
 }

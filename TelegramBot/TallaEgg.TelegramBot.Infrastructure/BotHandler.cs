@@ -264,6 +264,9 @@ namespace TallaEgg.TelegramBot
                     await HandleAccountingMenuAsync(chatId);
                     break;
                 case BotBtns.BtnOrderHistory:
+                    await ShowOrderHistory(chatId, userId);
+                    break;
+                case BotBtns.BtnTradeHistory:
                     await ShowTradeHistory(chatId, userId);
                     break;
                 case BotBtns.BtnWalletsBalance:
@@ -429,6 +432,30 @@ namespace TallaEgg.TelegramBot
                             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
+                    else if (data.StartsWith("trades_"))
+                    {
+                        var parts = data.Split('_'); // trades_{userId}_{page}
+                        if (parts.Length == 3 &&
+                            Guid.TryParse(parts[1], out var uid) &&
+                            int.TryParse(parts[2], out var pageNum))
+                        {
+                            var page = await _orderApi.GetUserTradesAsync(uid, pageNum, pageSize: 5);
+
+                            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum);
+
+                            // ویرایش پیام قبلی
+                            await _botClient.EditMessageText(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                messageId: callbackQuery.Message.MessageId,
+                                text: text,
+                                parseMode: ParseMode.MarkdownV2,
+                                replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
+                            );
+
+                            // بستن "در حال فکر کردن..." روی دکمه
+                            await _botClient.AnswerCallbackQuery(callbackQuery.Id);
+                        }
+                    }
 
                     else if (data != null && data.StartsWith("users_"))
                     {
@@ -519,7 +546,7 @@ namespace TallaEgg.TelegramBot
 
             await _botClient.SendMessage(chatId, helpText);
         }
-        private async Task ShowTradeHistory(long chatId, Guid userId)
+        private async Task ShowOrderHistory(long chatId, Guid userId)
         {
 
             var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
@@ -532,6 +559,22 @@ namespace TallaEgg.TelegramBot
                     text: text,
                     parseMode: ParseMode.MarkdownV2,
                     replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
+                );
+            }
+        }
+
+        private async Task ShowTradeHistory(long chatId, Guid userId)
+        {
+            var page = await _orderApi.GetUserTradesAsync(userId, pageNumber: 1, pageSize: 5);
+            if (page.Success)
+            {
+                var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1);
+
+                await _botClient.SendMessage(
+                    chatId: chatId,
+                    text: text,
+                    parseMode: ParseMode.MarkdownV2,
+                    replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
         }

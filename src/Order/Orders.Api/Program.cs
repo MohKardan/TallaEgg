@@ -325,6 +325,45 @@ app.MapGet("/api/orders/user/{userId}", async (
 .Produces(400);
 
 /// <summary>
+/// دریافت معاملات کاربر با صفحه‌بندی
+/// </summary>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="pageNumber">شماره صفحه (پیش‌فرض: 1)</param>
+/// <param name="pageSize">تعداد آیتم در هر صفحه (پیش‌فرض: 10، حداکثر: 100)</param>
+/// <param name="tradeService">سرویس مدیریت معاملات</param>
+/// <returns>لیست صفحه‌بندی شده معاملات کاربر</returns>
+/// <response code="200">معاملات کاربر با موفقیت دریافت شد</response>
+/// <response code="400">پارامترهای درخواست نامعتبر</response>
+app.MapGet("/api/trades/user/{userId}", async (
+    Guid userId,
+    int? pageNumber,
+    int? pageSize,
+    TradeService tradeService) =>
+{
+    // Validation
+    var page = pageNumber ?? 1;
+    var size = Math.Clamp(pageSize ?? 10, 1, 100);
+
+    if (page < 1)
+        return Results.BadRequest(new { success = false, message = "شماره صفحه باید بیشتر از صفر باشد" });
+
+    try
+    {
+        var trades = await tradeService.GetTradesByUserIdAsync(userId, page, size);
+        return Results.Ok(ApiResponse<PagedResult<TradeHistoryDto>>.Ok(trades, "معاملات دریافت شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+    }
+})
+.WithName("GetUserTrades")
+.WithSummary("دریافت معاملات کاربر")
+.WithTags("Trades")
+.Produces<ApiResponse<PagedResult<TradeHistoryDto>>>(200)
+.Produces(400);
+
+/// <summary>
 /// دریافت بهترین قیمت‌های خرید و فروش
 /// </summary>
 /// <param name="symbol">نماد معاملاتی (مثل BTC/USDT، ETH/USDT)</param>

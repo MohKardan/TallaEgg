@@ -114,6 +114,28 @@ namespace TallaEgg.Core.DTOs.Order
     }
 
     /// <summary>
+    /// DTO برای نمایش تاریخچه معاملات کاربر
+    /// </summary>
+    public class TradeHistoryDto
+    {
+        public Guid Id { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal QuoteQuantity { get; set; }
+        public Guid BuyerUserId { get; set; }
+        public Guid SellerUserId { get; set; }
+        public Guid MakerUserId { get; set; }
+        public Guid TakerUserId { get; set; }
+        public decimal FeeBuyer { get; set; }
+        public decimal FeeSeller { get; set; }
+        public decimal MakerFee { get; set; }
+        public decimal TakerFee { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    /// <summary>
     /// DTO برای اطلاعات تطبیق معامله
     /// </summary>
     /// <remarks>
