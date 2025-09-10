@@ -15,10 +15,10 @@ namespace TallaEgg.Infrastructure.Clients;
 public class WalletApiClient : IWalletApiClient
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<WalletApiClient> _logger;
-    private readonly string _walletApiUrl;
+    private readonly ILogger<WalletApiClient>? _logger;
+    private readonly string? _walletApiUrl;
 
-    private readonly string _apiUrl;
+    private readonly string? _apiUrl;
     public WalletApiClient(string apiUrl)
     {
         _apiUrl = apiUrl;
@@ -32,7 +32,7 @@ public class WalletApiClient : IWalletApiClient
     {
         _httpClient = httpClient;
         _logger = logger;
-        _walletApiUrl = configuration["WalletApiUrl"] ?? "http://localhost:60933";
+        _walletApiUrl = configuration["WalletApiUrl"] ?? "http://localhost:60933/api";
 
         // Configure HttpClient base address
         _httpClient.BaseAddress = new Uri(_walletApiUrl);
@@ -43,32 +43,7 @@ public class WalletApiClient : IWalletApiClient
     /// Get user balance for specific asset
     /// دریافت موجودی کاربر برای دارایی مشخص
     /// </summary>
-    public async Task<WalletDTO?> GetBalanceAsync(Guid userId, string asset)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync($"/api/wallet/balance/{userId}/{asset}");
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Failed to get balance for user {UserId}, asset {Asset}. Status: {Status}",
-                    userId, asset, response.StatusCode);
-                return null;
-            }
-
-            var content = await response.Content.ReadAsStringAsync();
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(content, 
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            return apiResponse?.Data;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting balance for user {UserId}, asset {Asset}", userId, asset);
-            return null;
-        }
-    }
-
+    
     /// <summary>
     /// Lock balance for order placement
     /// قفل کردن موجودی برای ثبت سفارش
@@ -90,7 +65,7 @@ public class WalletApiClient : IWalletApiClient
             var json = JsonSerializer.Serialize(request);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync("/api/wallet/lockBalance", stringContent);
+            var response = await _httpClient.PostAsync("/wallet/lockBalance", stringContent);
             var responseContent = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -157,7 +132,7 @@ public class WalletApiClient : IWalletApiClient
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Assuming there's an unlock endpoint - if not, we might need to implement it
-            var response = await _httpClient.PostAsync("/api/wallet/unlockBalance", stringContent);
+            var response = await _httpClient.PostAsync("/wallet/unlockBalance", stringContent);
             
             if (response.IsSuccessStatusCode)
             {
@@ -191,25 +166,13 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            
-            var response = await _httpClient.GetAsync($"/api/wallet/balance/{userId}/{asset}");
-            var responseContent = await response.Content.ReadAsStringAsync();
 
-            if (!response.IsSuccessStatusCode)
+            var (balanceSuccess, balanceMessage, balance) = await GetBalanceAsync(userId, asset);
+
+            if (balanceSuccess)
             {
-                _logger.LogWarning("Failed to validate balance for user {UserId}, asset {Asset}, amount {Amount}. Status: {Status}",
-                    userId, asset, amount, response.StatusCode);
-                return (false, "خطا در بررسی موجودی", false);
-            }
-
-            // Parse the response which should be in the format: { success, message, hasSufficientBalance }
-            var validationResult = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            if (validationResult != null)
-            {
-                bool HasSufficientBalance = validationResult.Data.Balance >= amount;
-                return (validationResult.Success, validationResult.Message ?? "", HasSufficientBalance);
+                bool HasSufficientBalance = balance >= amount;
+                return (true, "چک کردن موجودی", HasSufficientBalance);
             }
             else
             {
@@ -254,17 +217,17 @@ public class WalletApiClient : IWalletApiClient
         }
     }
 
-    public async Task<(bool success, decimal? balance, string message)> GetWalletBalanceAsync(Guid userId, string asset)
+    public async Task<(bool success, string message, decimal? balance)> GetBalanceAsync(Guid userId, string asset)
     {
         // Input validation
         if (userId == Guid.Empty)
         {
-            return (false, null, "شناسه کاربر نامعتبر است.");
+            return (false, "شناسه کاربر نامعتبر است.", null);
         }
 
         if (string.IsNullOrWhiteSpace(asset))
         {
-            return (false, null, "نوع دارایی مشخص نشده است.");
+            return (false, "نوع دارایی مشخص نشده است.", null);
         }
 
         HttpResponseMessage? response = null;
@@ -292,11 +255,11 @@ public class WalletApiClient : IWalletApiClient
                     var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>> (responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    return (true, walletDto.Data.Balance, "موجودی دریافت شد.");
+                    return (true, "موجودی دریافت شد.", walletDto.Data.Balance);
                 }
                 catch (JsonException jsonEx)
                 {
-                    return (false, null, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.");
+                    return (false, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
                 }
             }
             else
@@ -337,48 +300,48 @@ public class WalletApiClient : IWalletApiClient
                     }
                 }
 
-                return (false, null, errorMessage);
+                return (false, errorMessage, null);
             }
         }
         catch (HttpRequestException httpEx)
         {
             // Network-related errors
-            return (false, null, $"خطا در ارتباط شبکه: {httpEx.Message}");
+            return (false, $"خطا در ارتباط شبکه: {httpEx.Message}", null);
         }
         catch (TaskCanceledException tcEx) when (tcEx.InnerException is TimeoutException)
         {
             // Request timeout
-            return (false, null, "زمان انتظار درخواست به پایان رسید. لطفاً مجدداً تلاش کنید.");
+            return (false, "زمان انتظار درخواست به پایان رسید. لطفاً مجدداً تلاش کنید.", null);
         }
         catch (TaskCanceledException)
         {
             // Request was cancelled
-            return (false, null, "درخواست لغو شد.");
+            return (false, "درخواست لغو شد.", null);
         }
         catch (OperationCanceledException)
         {
             // Operation was cancelled
-            return (false, null, "عملیات لغو شد.");
+            return (false, "عملیات لغو شد.", null);
         }
         catch (JsonException jsonEx)
         {
             // JSON parsing errors
-            return (false, null, "خطا در پردازش اطلاعات دریافتی از سرور.");
+            return (false, "خطا در پردازش اطلاعات دریافتی از سرور.", null);
         }
         catch (ArgumentException argEx)
         {
             // Invalid arguments
-            return (false, null, $"پارامتر نامعتبر: {argEx.Message}");
+            return (false, $"پارامتر نامعتبر: {argEx.Message}", null);
         }
         catch (InvalidOperationException invOpEx)
         {
             // Invalid operation state
-            return (false, null, $"عملیات غیرمجاز: {invOpEx.Message}");
+            return (false, $"عملیات غیرمجاز: {invOpEx.Message}", null);
         }
         catch (Exception ex)
         {
             // Catch-all for any other unexpected exceptions
-            return (false, null, $"خطای غیرمنتظره در ارتباط با سرور: {ex.Message}");
+            return (false, $"خطای غیرمنتظره در ارتباط با سرور: {ex.Message}", null);
         }
         finally
         {

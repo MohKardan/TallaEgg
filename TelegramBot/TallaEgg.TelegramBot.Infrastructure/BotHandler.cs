@@ -803,7 +803,7 @@ namespace TallaEgg.TelegramBot
             var assetToCheck = orderState.OrderSide == OrderSide.Buy
                 ? orderState.Asset.Split('/')[1] : orderState.Asset.Split('/')[0];
 
-            var (balanceSuccess, balance, balanceMessage) = await _walletApi.GetWalletBalanceAsync(orderState.UserId, assetToCheck);
+            var (balanceSuccess, balanceMessage, balance) = await _walletApi.GetBalanceAsync(orderState.UserId, assetToCheck);
 
             if (!balanceSuccess || balance == null || balance < totalValue)
             {
