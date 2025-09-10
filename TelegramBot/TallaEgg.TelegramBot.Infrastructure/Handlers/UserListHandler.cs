@@ -47,7 +47,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 {
                     sb.AppendLine("🔹 دستورات:");
                     sb.AppendLine($"   ▫️ موجودی → `م {Utils.EscapeMarkdown(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ سفارشات باز → `س {Utils.EscapeMarkdown(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ سفارشات → `س {Utils.EscapeMarkdown(u.PhoneNumber)}`");
                 }
 
                 sb.AppendLine("──────────────────────");
