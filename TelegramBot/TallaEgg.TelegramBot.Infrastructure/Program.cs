@@ -7,6 +7,7 @@ using TallaEgg.TelegramBot.Core.Interfaces;
 using System.Net.Http;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Services;
+using TallaEgg.Infrastructure.Clients;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
