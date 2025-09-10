@@ -1,9 +1,11 @@
 using System.Text;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using Utils = TallaEgg.TelegramBot.Core.Utilties.Utils;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 {
@@ -38,7 +40,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
      $"💰 قیمت: *{Utils.EscapeMarkdown(t.Price.ToString("N0"))} تومان*\n" +
      $"📊 مقدار: *{Utils.EscapeMarkdown(t.Quantity.ToString("N2"))}*\n" +
      $"💵 ارزش کل: *{Utils.EscapeMarkdown(t.QuoteQuantity.ToString("N0"))} تومان*\n" +
-     $"⏰ زمان: *{Utils.EscapeMarkdown(t.CreatedAt.ToString("yyyy/MM/dd HH:mm"))}*\n" +
+     $"⏰ زمان: *{Utils.EscapeMarkdown(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt))}*\n" +
      $"💸 کارمزد: *{Utils.EscapeMarkdown((t.FeeBuyer + t.FeeSeller).ToString("N0"))} تومان*\n");
             }
 
