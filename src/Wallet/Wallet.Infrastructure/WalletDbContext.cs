@@ -43,7 +43,7 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().HasKey(t => t.Id);
         modelBuilder.Entity<Transaction>().Property(t => t.WalletId).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.Amount).IsRequired().HasPrecision(18, 8);
-        modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(10);
+        modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(50);
         modelBuilder.Entity<Transaction>().Property(t => t.Type).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.Status).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId);
