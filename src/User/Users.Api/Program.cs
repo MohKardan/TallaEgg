@@ -177,7 +177,7 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 /// <returns>جزئیات کاربر در صورت یافتن</returns>
 /// <response code="200">کاربر پیدا شد و با موفقیت برگردانده شد</response>
 /// <response code="404">کاربر پیدا نشد</response>
-app.MapGet("/api/user/id/{userId}", async (Guid userId, UserService userService) =>
+app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userService) =>
 {
     try
     {

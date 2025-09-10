@@ -360,13 +360,14 @@ namespace TallaEgg.TelegramBot
                 const decimal defaultAmount = 1000m;    // Default amount
 
                 // First, cancel all existing active orders for this user
-                await _botClient.SendMessage(chatId, "⏳ در حال کنسل سفارشات قبلی...");
-                
+                //await _botClient.SendMessage(chatId, "⏳ در حال کنسل سفارشات قبلی...");
+                await _botClient.SendMessage(chatId, "⏳ در حال پردازش...");
+
                 var cancelResults = await CancelUserActiveOrdersAsync(userId);
                 if (cancelResults.CancelledCount > 0)
                 {
                     await _botClient.SendMessage(chatId, 
-                        $"✅ {cancelResults.CancelledCount} سفارش قبلی کنسل شد");
+                        $"✅ {cancelResults.CancelledCount} قیمت قبلی کنسل شد");
                 }
                 else if (cancelResults.HasError)
                 {
@@ -403,12 +404,11 @@ namespace TallaEgg.TelegramBot
                 var (sellSuccess, sellMessage) = await _orderApi.SubmitOrderAsync(sellOrder);
 
                 // Send result message
-                var resultMessage = $"📊 نتیجه ثبت سفارشات:\n\n" +
-                                  $"🟢 سفارش خرید {buyPrice:N0}: {(buySuccess ? "✅ موفق" : "❌ ناموفق - " + buyMessage)}\n" +
-                                  $"🔴 سفارش فروش {sellPrice:N0}: {(sellSuccess ? "✅ موفق" : "❌ ناموفق - " + sellMessage)}\n\n" +
+                var resultMessage = $"📊 نتیجه ثبت قیمت جدید:\n\n" +
+                                  $"🟢 قیمت خرید {buyPrice:N0}: {(buySuccess ? "✅ موفق" : "❌ ناموفق - " + buyMessage)}\n" +
+                                  $"🔴 قیمت فروش {sellPrice:N0}: {(sellSuccess ? "✅ موفق" : "❌ ناموفق - " + sellMessage)}\n\n" +
                                   $"📋 جزئیات:\n" +
-                                  $"• نماد: {defaultAsset}\n" +
-                                  $"• مقدار: {defaultAmount} واحد\n" +
+                                  $"• نماد: طلای آبشده\n" +
                                   $"• قیمت خرید: {buyPrice:N0} تومان (هر گرم: {buyOrder.Price:N0})\n" +
                                   $"• قیمت فروش: {sellPrice:N0} تومان (هر گرم: {sellOrder.Price:N0})";
 

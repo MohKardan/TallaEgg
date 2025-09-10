@@ -275,12 +275,14 @@ public class UsersApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/{userId}");
+            var response = await _httpClient.GetAsync($"{_baseUrl}/user/userId/{userId}");
 
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<UserDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(content);
+                return res.Data;
+                //return JsonSerializer.Deserialize<UserDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             }
 
             return null;
