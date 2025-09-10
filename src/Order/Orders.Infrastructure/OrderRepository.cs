@@ -187,7 +187,7 @@ public class OrderRepository : IOrderRepository
     }
 
     /// <summary>
-    /// دریافت تمام سفارشات فعال یک کاربر خاص
+    /// دریافت تمام سفارشات باز و فعال یک کاربر خاص
     /// </summary>
     /// <param name="userId">شناسه کاربر</param>
     /// <returns>لیست سفارشات فعال کاربر (وضعیت Pending، Confirmed یا Partially و مقدار باقی‌مانده بیشتر از صفر)</returns>

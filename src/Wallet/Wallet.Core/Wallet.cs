@@ -7,6 +7,7 @@ public class WalletEntity
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+    public WalletType Type { get; set; }
     public string Asset { get; set; } = "";
     public decimal Balance { get; set; }
     /// <summary>
