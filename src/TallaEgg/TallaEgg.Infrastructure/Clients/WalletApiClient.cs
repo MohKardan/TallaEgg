@@ -18,15 +18,16 @@ public class WalletApiClient : IWalletApiClient
     private readonly ILogger<WalletApiClient>? _logger;
     private readonly string? _walletApiUrl;
 
-    private readonly string? _apiUrl;
-    public WalletApiClient(string apiUrl)
+    public WalletApiClient(string? apiUrl)
     {
-        _apiUrl = apiUrl;
-
+        
         // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+
+        _walletApiUrl = apiUrl ?? "http://localhost:60933/api";
+        _httpClient.BaseAddress = new Uri(_walletApiUrl);
     }
     public WalletApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<WalletApiClient> logger)
     {
@@ -65,7 +66,7 @@ public class WalletApiClient : IWalletApiClient
             var json = JsonSerializer.Serialize(request);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync("/wallet/lockBalance", stringContent);
+            var response = await _httpClient.PostAsync("api/wallet/lockBalance", stringContent);
             var responseContent = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -132,7 +133,7 @@ public class WalletApiClient : IWalletApiClient
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Assuming there's an unlock endpoint - if not, we might need to implement it
-            var response = await _httpClient.PostAsync("/wallet/unlockBalance", stringContent);
+            var response = await _httpClient.PostAsync("api/wallet/unlockBalance", stringContent);
             
             if (response.IsSuccessStatusCode)
             {
@@ -193,7 +194,7 @@ public class WalletApiClient : IWalletApiClient
         try
         {
 
-            var response = await _httpClient.GetAsync($"/wallet/balances/{userId}");
+            var response = await _httpClient.GetAsync($"api/wallet/balances/{userId}");
             var respText = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -239,7 +240,7 @@ public class WalletApiClient : IWalletApiClient
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
             // Make HTTP request with timeout
-            response = await _httpClient.GetAsync($"/wallet/balance/{userId}/{asset}", cts.Token);
+            response = await _httpClient.GetAsync($"api/wallet/balance/{userId}/{asset}", cts.Token);
 
             // Read response content
             responseContent = await response.Content.ReadAsStringAsync();
@@ -360,7 +361,7 @@ public class WalletApiClient : IWalletApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"/wallet/deposit", content);
+            var response = await _httpClient.PostAsync($"api/wallet/deposit", content);
             var respText = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -394,7 +395,7 @@ public class WalletApiClient : IWalletApiClient
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"/wallet/withdrawal", content);
+            var response = await _httpClient.PostAsync($"api/wallet/withdrawal", content);
             var respText = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
