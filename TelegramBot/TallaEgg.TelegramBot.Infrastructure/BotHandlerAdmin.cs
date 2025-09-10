@@ -62,10 +62,9 @@ namespace TallaEgg.TelegramBot
                 {
                     var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = currency,
+                        Asset = "CREDIT_" + currency, //فعلا ادمین شارژ کنه اعتباری شارژ میشه
                         Amount = amount,
-                        UserId = userDto.Id,
-                        WalletType = WalletType.Credit // فعلا تمام شارژهایی که توسط ادمین انجام میشه از نوع اعتبار است
+                        UserId = userDto.Id
                     });
                     if (result.Success)
                     {

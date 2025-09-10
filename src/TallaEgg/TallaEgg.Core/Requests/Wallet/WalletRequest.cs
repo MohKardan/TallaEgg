@@ -8,9 +8,5 @@ namespace TallaEgg.Core.Requests.Wallet
         public string Asset { get; set; }
         public decimal Amount { get; set; }
         public string? ReferenceId { get; set; }
-        public WalletType WalletType { get; set; }
     }
-   
-
-
 }

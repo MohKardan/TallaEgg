@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TallaEgg.Core.Enums.Wallet;
 
 namespace TallaEgg.Core.Utilties
 {
@@ -109,5 +110,53 @@ namespace TallaEgg.Core.Utilties
             
             return $"{year:0000}/{month:00}/{day:00} {dateTime:HH:mm}";
         }
+    }
+    /// <summary>
+    /// برای تشخیص نوع کیف پول اینجوری خیلی راحت تره
+    /// </summary>
+    public static class AssetHelper
+    {
+        private const string CREDIT_PREFIX = "CREDIT_";
+        private const string MARGIN_PREFIX = "MARGIN_";
+        private const string SAVINGS_PREFIX = "SAVINGS_";
+
+        /// <summary>
+        /// تبدیل Asset + WalletType به Asset string
+        /// </summary>
+        public static string CreateAssetKey(string baseAsset, WalletType walletType)
+        {
+            return walletType switch
+            {
+                WalletType.Credit => $"{CREDIT_PREFIX}{baseAsset}",
+                WalletType.Margin => $"{MARGIN_PREFIX}{baseAsset}",
+                WalletType.Savings => $"{SAVINGS_PREFIX}{baseAsset}",
+                WalletType.Spot => baseAsset,
+                _ => baseAsset
+            };
+        }
+
+        /// <summary>
+        /// استخراج نوع کیف پول از Asset string
+        /// </summary>
+        public static (string baseAsset, WalletType walletType) ParseAssetKey(string assetKey)
+        {
+            if (assetKey.StartsWith(CREDIT_PREFIX))
+                return (assetKey.Substring(CREDIT_PREFIX.Length), WalletType.Credit);
+
+            if (assetKey.StartsWith(MARGIN_PREFIX))
+                return (assetKey.Substring(MARGIN_PREFIX.Length), WalletType.Margin);
+
+            if (assetKey.StartsWith(SAVINGS_PREFIX))
+                return (assetKey.Substring(SAVINGS_PREFIX.Length), WalletType.Savings);
+
+            return (assetKey, WalletType.Spot);
+        }
+
+        /// <summary>
+        /// بررسی نوع کیف پول
+        /// </summary>
+        public static bool IsCreditWallet(string assetKey) => assetKey.StartsWith(CREDIT_PREFIX);
+        public static bool IsMarginWallet(string assetKey) => assetKey.StartsWith(MARGIN_PREFIX);
+        public static bool IsSpotWallet(string assetKey) => !assetKey.Contains("_");
     }
 }

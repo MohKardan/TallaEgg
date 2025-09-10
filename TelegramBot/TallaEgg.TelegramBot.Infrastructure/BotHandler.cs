@@ -688,12 +688,12 @@ namespace TallaEgg.TelegramBot
 
             var assets = new[]
             {
-                new { Symbol = "MAUA/IRR", DisplayName = "مثقال طلا آبشده / ریال" },
-                new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
-                new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
-                new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
-                new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
-                new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
+                new { Symbol = "MAUA/IRR", DisplayName = "طلا آبشده / ریال" },
+                //new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
+                //new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
+                //new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
+                //new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
+                //new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
             };
 
             // Show available assets
@@ -782,6 +782,19 @@ namespace TallaEgg.TelegramBot
             orderState.Price = price;
             orderState.State = "";
 
+            var confirmationMsg = "";
+
+            // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
+            if (orderState.Asset == "MAUA/IRR")
+            {
+                orderState.Price /= 4.3318m;
+                confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
+            }
+            else
+            {
+                confirmationMsg = BotMsgs.MsgOrderConfirmation;
+            }
+            var totalValue = orderState.Amount * orderState.Price;
 
             // Check user's balance for the asset
 
@@ -790,7 +803,7 @@ namespace TallaEgg.TelegramBot
 
             var (balanceSuccess, balance, balanceMessage) = await _walletApi.GetWalletBalanceAsync(orderState.UserId, assetToCheck);
 
-            if (!balanceSuccess || balance == null || balance < orderState.Amount)
+            if (!balanceSuccess || balance == null || balance < totalValue)
             {
                 var availableBalance = balance ?? 0;
                 var backBtn = new KeyboardButton(BotBtns.BtnBack);
@@ -807,20 +820,6 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            var confirmationMsg = "";   
-
-            // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
-            if (orderState.Asset == "MAUA/IRR")
-            {
-                orderState.Price /= 4.3318m;
-                confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
-            }
-            else
-            {
-                confirmationMsg = BotMsgs.MsgOrderConfirmation;
-            }
-            
-            var totalValue = orderState.Amount * orderState.Price;
             var confirmationMessage = string.Format(confirmationMsg,
                 orderState.Asset,
                 orderState.OrderSide,
