@@ -1,5 +1,6 @@
 using System.Text;
 using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot.Types.ReplyMarkups;

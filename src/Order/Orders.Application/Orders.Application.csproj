@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TallaEgg\TallaEgg.Infrastructure\TallaEgg.Infrastructure.csproj" />
     <ProjectReference Include="..\Orders.Infrastructure\Orders.Infrastructure.csproj" />
     <ProjectReference Include="..\Orders.Core\Orders.Core.csproj" />
   </ItemGroup>

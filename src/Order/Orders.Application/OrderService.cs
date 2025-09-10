@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Orders.Core;
-using Orders.Infrastructure.Clients;
+using TallaEgg.Infrastructure.Clients;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;

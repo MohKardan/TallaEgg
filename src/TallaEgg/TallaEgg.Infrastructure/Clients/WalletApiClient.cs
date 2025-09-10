@@ -6,7 +6,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Requests.Wallet;
 
-namespace Orders.Infrastructure.Clients;
+namespace TallaEgg.Infrastructure.Clients;
 
 /// <summary>
 /// HTTP client for communicating with Wallet service

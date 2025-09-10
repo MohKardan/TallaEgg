@@ -1,7 +1,7 @@
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
 
-namespace Orders.Infrastructure.Clients;
+namespace TallaEgg.Infrastructure.Clients;
 
 /// <summary>
 /// Client interface for communicating with Wallet service

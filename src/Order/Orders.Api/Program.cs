@@ -7,6 +7,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using System.Reflection;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Infrastructure.Clients;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
@@ -28,12 +29,12 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
 
 // Add Wallet API Client
-builder.Services.AddHttpClient<Orders.Infrastructure.Clients.IWalletApiClient, Orders.Infrastructure.Clients.WalletApiClient>(client =>
+builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>
 {
     var walletApiUrl = builder.Configuration.GetValue<string>("WalletApiUrl") ?? "http://localhost:60933";
     client.BaseAddress = new Uri(walletApiUrl);
 });
-builder.Services.AddScoped<Orders.Infrastructure.Clients.IWalletApiClient, Orders.Infrastructure.Clients.WalletApiClient>();
+builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
 // Add Matching Engine
 builder.Services.AddScoped<IMatchingEngine, Orders.Application.Services.MatchingEngineService>();

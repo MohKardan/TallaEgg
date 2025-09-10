@@ -17,7 +17,6 @@ public interface IOrderRepository
     Task<List<Order>> GetOrdersByTypeAsync(OrderSide type);
     Task<List<Order>> GetOrdersByTradingTypeAsync(TradingType tradingType);
     Task<List<Order>> GetOrdersByRoleAsync(OrderRole role);
-    Task<List<Order>> GetActiveOrdersAsync();
     
     /// <summary>
     /// دریافت تمام سفارشات فعال یک کاربر خاص
