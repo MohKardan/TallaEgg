@@ -14,6 +14,7 @@ namespace TallaEgg.Core.DTOs.Order
         public Guid Id { get; set; }
         public string Asset { get; set; }
         public decimal Amount { get; set; }
+        public decimal RemainingAmount { get; set; }
         public decimal Price { get; set; }
         public OrderSide Type { get; set; }
         public OrderStatus Status { get; set; }
@@ -22,6 +23,7 @@ namespace TallaEgg.Core.DTOs.Order
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public string? Notes { get; set; }
+        public Guid? ParentOrderId { get; set; }
     }
     /// <summary>
     /// Unified order creation request for all order types

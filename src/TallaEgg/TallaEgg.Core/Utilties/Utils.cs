@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -67,6 +69,45 @@ namespace TallaEgg.Core.Utilties
                 return $"\u202B{text}\u202C";
 
             return text;
+        }
+
+        /// <summary>
+        /// دریافت متن فارسی از Description attribute یک enum
+        /// </summary>
+        /// <param name="value">مقدار enum</param>
+        /// <returns>متن فارسی از Description attribute یا نام enum در صورت عدم وجود</returns>
+        public static string GetEnumDescription(Enum value)
+        {
+            var field = value.GetType().GetField(value.ToString());
+            var attribute = field?.GetCustomAttribute<DescriptionAttribute>();
+            return attribute?.Description ?? value.ToString();
+        }
+
+        /// <summary>
+        /// تبدیل تاریخ میلادی به شمسی (تقریبی)
+        /// </summary>
+        /// <param name="dateTime">تاریخ میلادی</param>
+        /// <returns>تاریخ شمسی به فرمت yyyy/MM/dd HH:mm</returns>
+        public static string ConvertToPersianDate(DateTime dateTime)
+        {
+            // تبدیل ساده به تاریخ شمسی - برای پیاده‌سازی کامل نیاز به کتابخانه PersianCalendar است
+            var persianMonths = new[] { "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", 
+                                       "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند" };
+            
+            // محاسبه تقریبی تاریخ شمسی
+            var year = dateTime.Year - 621;
+            var month = dateTime.Month;
+            var day = dateTime.Day;
+            
+            // تنظیم ماه شمسی (تقریبی)
+            if (month >= 3 && month <= 5) month = month - 2;
+            else if (month >= 6 && month <= 8) month = month - 2;
+            else if (month >= 9 && month <= 11) month = month - 2;
+            else if (month == 12) month = 10;
+            else if (month == 1) month = 11;
+            else if (month == 2) month = 12;
+            
+            return $"{year:0000}/{month:00}/{day:00} {dateTime:HH:mm}";
         }
     }
 }

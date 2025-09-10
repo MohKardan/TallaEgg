@@ -77,6 +77,7 @@ public class OrderRepository : IOrderRepository
                 Id = o.Id,
                 Asset = o.Asset,
                 Amount = o.Amount,
+                RemainingAmount = o.RemainingAmount,
                 Price = o.Price,
                 Type = o.Side,
                 Status = o.Status,
@@ -84,7 +85,8 @@ public class OrderRepository : IOrderRepository
                 Role = o.Role,
                 CreatedAt = o.CreatedAt,
                 UpdatedAt = o.UpdatedAt,
-                Notes = o.Notes
+                Notes = o.Notes,
+                ParentOrderId = o.ParentOrderId
             });
 
         var totalCount = await query.CountAsync();
