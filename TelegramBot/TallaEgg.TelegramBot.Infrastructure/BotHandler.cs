@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
@@ -643,14 +644,37 @@ namespace TallaEgg.TelegramBot
                 if (res.Data.Any())
                 {
                     StringBuilder stringBuilder = new StringBuilder();
+
                     foreach (var item in res.Data)
                     {
-                        stringBuilder.AppendLine($"نوع موجودی : {item.Asset}");
-                        stringBuilder.AppendLine($"موجودی قابل برداشت : {item.Balance}");
-                        stringBuilder.AppendLine($"موجودی فریز شده : {item.LockedBalance}");
-                        stringBuilder.AppendLine($"---------------------------------------- \n");
+                        var parts = item.Asset.Split('_');
+                        var code = parts.Last();
+
+                        var info = CurrenciesConstant.GetCurrencyInfo(code);
+
+                        if (info != null)
+                        {
+                            // فرمت کردن موجودی‌ها با اعشار و واحد
+                            string balance = item.Balance.ToString($"F{info.DecimalPlaces}");
+                            string locked = item.LockedBalance.ToString($"F{info.DecimalPlaces}");
+
+                            stringBuilder.AppendLine($"💰 {info.PersianName} ({info.Code})");
+                            stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {balance} {info.Unit}");
+                            stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {locked} {info.Unit}");
+                            stringBuilder.AppendLine("───────────────────────────────\n");
+                        }
+                        else
+                        {
+                            // fallback ساده وقتی ارزی در لیست ما نباشه
+                            stringBuilder.AppendLine($"💰 {item.Asset}");
+                            stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {item.Balance}");
+                            stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {item.LockedBalance}");
+                            stringBuilder.AppendLine("───────────────────────────────\n");
+                        }
                     }
+
                     await _botClient.SendMessage(chatId, stringBuilder.ToString());
+
                 }
                 else
                 {

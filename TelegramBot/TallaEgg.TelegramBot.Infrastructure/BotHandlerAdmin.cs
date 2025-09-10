@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
@@ -49,12 +50,21 @@ namespace TallaEgg.TelegramBot
                 var amount = decimal.Parse(match.Groups["amount"].Value);
                 var currency = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
-                    : "ریالی"; // مقدار پیش‌فرض
+                    : CurrenciesConstant.Rial; // مقدار پیش‌فرض
 
+                if(CurrenciesConstant.IsValidCurrency(currency) == false)
+                {
+                    await _botClient.SendMessage(message.Chat.Id,
+                        "❌ ارز وارد شده معتبر نیست." +
+                        "\nارزهای معتبر: " + string.Join(", ", CurrenciesConstant.GetAllCodes()));
+                    return true;
+                }
+
+                        var info = CurrenciesConstant.GetCurrencyInfo(currency);
                 string response = $"📌 دستورافزایش موجودی ثبت شد:\n" +
                                   $"👤 کاربر: {phone}\n" +
                                   $"💰 مبلغ: {amount}\n" +
-                                  $"💵 نوع شارژ: {currency}";
+                                  $"💵 نوع شارژ: {info.PersianName}";
 
                 await _botClient.SendMessage(message.Chat.Id, response);
                 var userDto = await _usersApi.GetUserAsync(phone);
@@ -69,23 +79,22 @@ namespace TallaEgg.TelegramBot
                     if (result.Success)
                     {
 
-
                         await _botClient.SendMessage(
                            message.Chat.Id,
                            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-                           $"💳 دارایی: `{currency}`\n" +
-                           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+                           $"💳 دارایی: `{info.PersianName}`\n" +
+                           $"💵 مبلغ شارژ: `{amount.ToString($"F{info.DecimalPlaces}")}` {info.Unit}\n" +
                            $"🆔 تلفن: `{phone}`\n\n" +
-                           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                           $"💵 موجودی جدید: `{result.Data.BalanceAfter.ToString($"F{info.DecimalPlaces}")} {info.Unit}`\n\n" +
                            $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
                        );
                                         await _botClient.SendMessage(
                            userDto.TelegramId,
                            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-                           $"💳 دارایی: `{currency}`\n" +
-                           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+                           $"💳 دارایی: `{info.PersianName}`\n" +
+                           $"💵 مبلغ شارژ: `{amount.ToString($"F{info.DecimalPlaces}")}` {info.Unit}\n" +
                            $"🆔 تلفن: `{phone}`\n\n" +
-                           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                           $"💵 موجودی جدید: `{result.Data.BalanceAfter.ToString($"F{info.DecimalPlaces}")} {info.Unit}`\n\n" +
                            $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
                        );
                     }
@@ -242,6 +251,8 @@ namespace TallaEgg.TelegramBot
                 return true;
             }
 
+
+            //دستور ثبت قیمت جفتی برای ادمین    
             // Handle price pair format: buyPrice-sellPrice (e.g., 8523690-8529630)
             var pricePairRegex = new Regex(@"^(\d+)-(\d+)$", RegexOptions.Compiled);
             var pricePairMatch = pricePairRegex.Match(msgText);
