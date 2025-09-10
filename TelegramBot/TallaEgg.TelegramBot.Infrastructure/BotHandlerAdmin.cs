@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Enums.Wallet;
 using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
@@ -24,7 +25,7 @@ namespace TallaEgg.TelegramBot
 {
     public partial class BotHandler : IBotHandler
     {
-        
+
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
@@ -63,30 +64,31 @@ namespace TallaEgg.TelegramBot
                     {
                         Asset = currency,
                         Amount = amount,
-                        UserId = userDto.Id
+                        UserId = userDto.Id,
+                        WalletType = WalletType.Credit // فعلا تمام شارژهایی که توسط ادمین انجام میشه از نوع اعتبار است
                     });
                     if (result.Success)
                     {
 
 
                         await _botClient.SendMessage(
-           message.Chat.Id,
-           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `{currency}`\n" +
-           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
-           $"🆔 تلفن: `{phone}`\n\n" +
-           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-       );
-                        await _botClient.SendMessage(
-           userDto.TelegramId,
-           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `{currency}`\n" +
-           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
-           $"🆔 تلفن: `{phone}`\n\n" +
-           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-       );
+                           message.Chat.Id,
+                           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+                           $"💳 دارایی: `{currency}`\n" +
+                           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+                           $"🆔 تلفن: `{phone}`\n\n" +
+                           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+                       );
+                                        await _botClient.SendMessage(
+                           userDto.TelegramId,
+                           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+                           $"💳 دارایی: `{currency}`\n" +
+                           $"💵 مبلغ شارژ: `{amount:N0}` ریال\n" +
+                           $"🆔 تلفن: `{phone}`\n\n" +
+                           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+                       );
                     }
                     else
                     {
@@ -147,23 +149,23 @@ namespace TallaEgg.TelegramBot
 
 
                         await _botClient.SendMessage(
-           message.Chat.Id,
-           $"💰 *کسر از کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `{currency}`\n" +
-           $"💵 مبلغ کسر : `{amount:N0}` ریال\n" +
-           $"🆔 تلفن: `{phone}`\n\n" +
-           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-       );
-                        await _botClient.SendMessage(
-           userDto.TelegramId,
-           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-           $"💳 دارایی: `{currency}`\n" +
-           $"💵 مبلغ کسر: `{amount:N0}` ریال\n" +
-           $"🆔 تلفن: `{phone}`\n\n" +
-           $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-       );
+                               message.Chat.Id,
+                               $"💰 *کسر از کیف‌پول با موفقیت انجام شد.*\n\n" +
+                               $"💳 دارایی: `{currency}`\n" +
+                               $"💵 مبلغ کسر : `{amount:N0}` ریال\n" +
+                               $"🆔 تلفن: `{phone}`\n\n" +
+                               $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                               $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+                           );
+                                            await _botClient.SendMessage(
+                               userDto.TelegramId,
+                               $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
+                               $"💳 دارایی: `{currency}`\n" +
+                               $"💵 مبلغ کسر: `{amount:N0}` ریال\n" +
+                               $"🆔 تلفن: `{phone}`\n\n" +
+                               $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
+                               $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
+                           );
 
 
                     }
@@ -248,7 +250,7 @@ namespace TallaEgg.TelegramBot
             {
                 var buyPrice = decimal.Parse(pricePairMatch.Groups[1].Value);
                 var sellPrice = decimal.Parse(pricePairMatch.Groups[2].Value);
-                
+
                 await HandlePricePairOrdersAsync(chatId, user.Id, buyPrice, sellPrice);
                 return true;
             }
@@ -306,7 +308,7 @@ namespace TallaEgg.TelegramBot
 
             return false;
         }
-        
+
         private async Task ApproveUser(long telegramUserId, long adminTgId, Message originalMsg)
         {
             await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Approved);
@@ -366,12 +368,12 @@ namespace TallaEgg.TelegramBot
                 var cancelResults = await CancelUserActiveOrdersAsync(userId);
                 if (cancelResults.CancelledCount > 0)
                 {
-                    await _botClient.SendMessage(chatId, 
+                    await _botClient.SendMessage(chatId,
                         $"✅ {cancelResults.CancelledCount} قیمت قبلی کنسل شد");
                 }
                 else if (cancelResults.HasError)
                 {
-                    await _botClient.SendMessage(chatId, 
+                    await _botClient.SendMessage(chatId,
                         $"⚠️ خطا در کنسل سفارشات قبلی: {cancelResults.ErrorMessage}");
                 }
 
@@ -437,7 +439,7 @@ namespace TallaEgg.TelegramBot
             {
                 // Use the new API endpoint to cancel all active orders for the user
                 var (success, message, cancelledCount) = await _orderApi.CancelAllUserActiveOrdersAsync(userId, "کنسل شده توسط ادمین برای ثبت سفارش جدید");
-                
+
                 return new CancelOrdersResult
                 {
                     CancelledCount = cancelledCount,
@@ -447,10 +449,10 @@ namespace TallaEgg.TelegramBot
             }
             catch (Exception ex)
             {
-                return new CancelOrdersResult 
-                { 
-                    HasError = true, 
-                    ErrorMessage = ex.Message 
+                return new CancelOrdersResult
+                {
+                    HasError = true,
+                    ErrorMessage = ex.Message
                 };
             }
         }
