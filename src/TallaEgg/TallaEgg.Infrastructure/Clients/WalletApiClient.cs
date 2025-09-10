@@ -217,7 +217,7 @@ public class WalletApiClient : IWalletApiClient
         }
     }
 
-    public async Task<(bool success, string message, decimal? balance)> GetBalanceAsync(Guid userId, string asset)
+    public async Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset)
     {
         // Input validation
         if (userId == Guid.Empty)

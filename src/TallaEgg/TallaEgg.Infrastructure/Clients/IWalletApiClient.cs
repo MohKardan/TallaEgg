@@ -13,7 +13,7 @@ public interface IWalletApiClient
     /// Get user balance for specific asset
     /// دریافت موجودی کاربر برای دارایی مشخص
     /// </summary>
-    Task<(bool Success, string Message, decimal balance)?> GetBalanceAsync(Guid userId, string asset);
+    Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset);
 
     /// <summary>
     /// Lock balance for order placement
