@@ -827,20 +827,17 @@ namespace TallaEgg.TelegramBot
             }
             var totalValue = orderState.Amount * orderState.Price;
 
-            // Check user's balance for the asset
+            var validateCreditAndBalance =
+                await _walletApi.ValidateCreditAndBalanceAsync(orderState.UserId, orderState.Asset, orderState.Amount, orderState.Price);
 
-            var assetToCheck = orderState.OrderSide == OrderSide.Buy
-                ? orderState.Asset.Split('/')[1] : orderState.Asset.Split('/')[0];
+            var hasSufficientBalance = orderState.OrderSide == OrderSide.Buy
+                ? validateCreditAndBalance.HasSufficientCreditAndBalanceQuote : validateCreditAndBalance.HasSufficientCreditAndBalanceBase;
 
-            //var (balanceSuccess, balanceMessage, balance) = await _walletApi.GetBalanceAsync(orderState.UserId, assetToCheck);
-            var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) = await _walletApi.ValidateBalanceAsync(orderState.UserId, assetToCheck, totalValue);
-
-            if (!balanceCheckSuccess || !hasSufficientBalance)
+            if (!validateCreditAndBalance.Success || !hasSufficientBalance)
             {
-                var availableBalance = balanceMessage;
                 var backBtn = new KeyboardButton(BotBtns.BtnBack);
                 await _botClient.SendMessage(chatId,
-                    string.Format(BotMsgs.MsgInsufficientBalance, availableBalance),
+                    string.Format(BotMsgs.MsgInsufficientBalance, validateCreditAndBalance.Message),
                     replyMarkup: new ReplyKeyboardMarkup(new[]
                     {
                             new KeyboardButton[] { backBtn }

@@ -32,7 +32,23 @@ public interface IWalletApiClient
     /// بررسی داشتن موجودی کافی برای سفارش
     /// </summary>
     Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
-        Guid userId, 
-        string asset, 
+        Guid userId,
+        string asset,
         decimal amount);
+    /// <summary>
+    /// بررسی اعتبار و موجودی کاربر برای ثبت سفارش
+    /// </summary>
+    /// <param name="userId"></param>
+    /// <param name="symbol">
+    /// pair assets like BTC/USDT
+    /// </param>
+    /// <param name="amount">
+    /// quantety
+    /// </param>
+    /// <param name="price">
+    /// quote price
+    /// </param>
+    /// <returns></returns>
+    Task<(bool Success, string Message, bool HasSufficientCreditAndBalanceBase, bool HasSufficientCreditAndBalanceQuote)> 
+        ValidateCreditAndBalanceAsync(Guid userId, string symbol, object amount, object price);
 }

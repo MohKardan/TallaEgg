@@ -20,7 +20,7 @@ public class WalletApiClient : IWalletApiClient
 
     public WalletApiClient(string? apiUrl)
     {
-        
+
         // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
@@ -44,14 +44,14 @@ public class WalletApiClient : IWalletApiClient
     /// Get user balance for specific asset
     /// دریافت موجودی کاربر برای دارایی مشخص
     /// </summary>
-    
+
     /// <summary>
     /// Lock balance for order placement
     /// قفل کردن موجودی برای ثبت سفارش
     /// </summary>
     public async Task<(bool Success, string Message, WalletDTO? Wallet)> LockBalanceAsync(
-        Guid userId, 
-        string asset, 
+        Guid userId,
+        string asset,
         decimal amount)
     {
         try
@@ -114,8 +114,8 @@ public class WalletApiClient : IWalletApiClient
     /// آزاد کردن موجودی هنگام لغو سفارش
     /// </summary>
     public async Task<(bool Success, string Message)> UnlockBalanceAsync(
-        Guid userId, 
-        string asset, 
+        Guid userId,
+        string asset,
         decimal amount)
     {
         try
@@ -134,7 +134,7 @@ public class WalletApiClient : IWalletApiClient
 
             // Assuming there's an unlock endpoint - if not, we might need to implement it
             var response = await _httpClient.PostAsync("api/wallet/unlockBalance", stringContent);
-            
+
             if (response.IsSuccessStatusCode)
             {
                 _logger.LogInformation("Successfully unlocked {Amount} {Asset} for user {UserId}",
@@ -159,11 +159,13 @@ public class WalletApiClient : IWalletApiClient
     /// <summary>
     /// Validate if user has sufficient balance for order
     /// بررسی داشتن موجودی کافی برای سفارش
+    /// اینجا باید حجم را به عنوان ورودی دریافت کنیم
+    /// valume = price * amount
     /// </summary>
     public async Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
-        Guid userId, 
-        string asset, 
-        decimal amount)
+        Guid userId,
+        string asset,
+        decimal valume)
     {
         try
         {
@@ -172,7 +174,7 @@ public class WalletApiClient : IWalletApiClient
 
             if (balanceSuccess)
             {
-                bool HasSufficientBalance = balance >= amount;
+                bool HasSufficientBalance = balance >= valume;
                 return (true, "چک کردن موجودی", HasSufficientBalance);
             }
             else
@@ -183,11 +185,67 @@ public class WalletApiClient : IWalletApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error validating balance for user {UserId}, asset {Asset}, amount {Amount}",
-                userId, asset, amount);
+                userId, asset, valume);
             return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", false);
         }
     }
+    /// <summary>
+    /// با استفاده از این متد می‌توان اعتبار و موجودی کاربر را برای ثبت سفارش بررسی کرد
+    /// 
+    /// </summary>
+    /// <param name="userId">شناسه کاربر در سیستم ما</param>
+    /// <param name="symbol">
+    /// نماد معاملاتی که شامل دو دارایی است
+    /// Trading Pair: Base Asset / Quote Asset
+    /// </param>
+    /// <param name="amount">
+    /// مقدار دارایی که کاربر قصد خرید یا فروش آن را دارد
+    /// Quantity
+    /// </param>
+    /// <param name="price">
+    /// قیمت بر اساس ارز مظنه که کاربر قصد خرید یا فروش دارد
+    /// Quote Asset
+    /// </param>
+    /// <returns>
+    /// اگر Success برابر true باشد یعنی عملیات بدون خطا انجام شده است
+    /// اگر HasSufficientCreditAndBalanceBase برابر true باشد یعنی کاربر برای دارایی پایه (Base Asset) اعتبار و موجودی کافی دارد و می‌تواند سفارش فروش را ثبت کند
+    /// اگر HasSufficientCreditAndBalanceQuote برابر true باشد یعنی کاربر برای دارایی مظنه (Quote Asset) اعتبار و موجودی کافی دارد و می‌تواند سفارش خرید را ثبت کند
+    /// </returns>
+    public async Task<(
+                        bool Success,
+                        string Message,
+                        bool HasSufficientCreditAndBalanceBase,
+                        bool HasSufficientCreditAndBalanceQuote
+        )> 
+        ValidateCreditAndBalanceAsync(Guid userId, string symbol, decimal amount, decimal price)
+    {
+        try
+        {
+            // دریافت موجودی‌های مختلف کاربر
+            var spotBaseAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
+            var creditBaseAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
+            var spotQuoteAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
+            var creditQuoteAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
 
+            var spotBaseAssetBalance = spotBaseAsset.Success ? spotBaseAsset.balance : 0;
+            var creditBaseAssetBalance = creditBaseAsset.Success ? creditBaseAsset.balance : 0;
+            var spotQuoteAssetBalance = spotQuoteAsset.Success ? spotQuoteAsset.balance : 0;
+            var creditQuoteAssetBalance = creditQuoteAsset.Success ? creditQuoteAsset.balance : 0;
+
+            return (
+                true,
+                "اعتبار و موجودی کاربر بررسی شد",
+                (spotBaseAssetBalance + creditBaseAssetBalance) + 
+                (creditQuoteAssetBalance / price) >= amount,
+                (spotQuoteAssetBalance + creditQuoteAssetBalance) +
+                (creditBaseAssetBalance * price) >= amount * price
+            );
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", false, false);
+        }
+    }
 
     public async Task<TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>> GetUserWalletsBalanceAsync(Guid userId)
     {

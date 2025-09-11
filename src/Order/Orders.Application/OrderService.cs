@@ -36,7 +36,7 @@ public class OrderService
         try
         {
             _logger.LogInformation("Creating unified order for user {UserId} with symbol {Symbol}, side {Side}, type {Type}",
-                request.UserId, request.Symbol, request.Side, request.Side);
+                request.UserId, request.Symbol, request.Side, request.Type);
 
             // 1. Validate authorization
             var canCreateOrder = true;
@@ -61,11 +61,20 @@ public class OrderService
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);
 
-            var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) =
-                await _walletApiClient.ValidateBalanceAsync(
-                userId,
-                assetToCheck,
-                amountToCheck);
+            //var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) =
+            //    await _walletApiClient.ValidateBalanceAsync(
+            //    userId,
+            //    assetToCheck,
+            //    amountToCheck);
+            
+            var validateCreditAndBalance =
+                await _walletApiClient.ValidateCreditAndBalanceAsync(request.UserId, request.Symbol, request.Quantity, request.Price);
+
+            var hasSufficientBalance = request.Side == OrderSide.Buy
+                ? validateCreditAndBalance.HasSufficientCreditAndBalanceQuote : validateCreditAndBalance.HasSufficientCreditAndBalanceBase;
+
+            var balanceCheckSuccess = validateCreditAndBalance.Success;
+            var balanceMessage = validateCreditAndBalance.Message;
 
             if (!balanceCheckSuccess)
             {
