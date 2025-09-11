@@ -325,7 +325,7 @@ namespace TallaEgg.TelegramBot
                     await _botClient.DeleteMessage(chatId, message.Id);
 
                     await _botClient.SendMessage(chatId,
-                                                 $"لطفا مقدار را برای فروش وارد کنید",
+                                                 $"لطفا مقدار را وارد کنید",
                                                  replyMarkup: new ReplyKeyboardRemove());
 
                     break;
@@ -390,7 +390,6 @@ namespace TallaEgg.TelegramBot
                             apiResponse.Data.BestAskPrice *= 4.3318m;
 
                             await _botClient.DeleteMessage(chatId, message.Id);
-
 
                             await _botClient.SendMessage(chatId,
                                             $"📊 <b>بهترین قیمت‌های بازار</b>\n\n" +
@@ -817,7 +816,7 @@ namespace TallaEgg.TelegramBot
             var confirmationMsg = "";
 
             // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
-            if (orderState.Asset == "MAUA/IRR")
+            if (orderState.Asset == CurrenciesConstant.Maua)
             {
                 orderState.Price /= 4.3318m;
                 confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
