@@ -991,7 +991,7 @@ namespace TallaEgg.TelegramBot
             var confirmationMsg = "";
 
             // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
-            if (orderState.Asset == CurrenciesConstant.Maua)
+            if (orderState.Asset == CurrenciesConstant.MAUA_IRR)
             {
                 orderState.Price /= 4.3318m;
                 confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
