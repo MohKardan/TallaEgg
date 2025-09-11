@@ -48,6 +48,13 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserMapper>();
 
+// HttpClient برای فراخوانی Wallet API
+builder.Services.AddHttpClient("WalletAPI", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("WalletApiUrl") ?? "https://localhost:7001/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // اضافه کردن CORS
 builder.Services.AddCors();
 
@@ -410,6 +417,57 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
     catch (Exception ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
+/// <summary>
+/// ایجاد کیف پول‌های پیش‌فرض برای کاربر موجود
+/// </summary>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="userService">سرویس کاربران</param>
+/// <returns>نتیجه عملیات</returns>
+/// <response code="200">کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند</response>
+/// <response code="400">خطا در ایجاد کیف پول‌ها</response>
+/// <response code="404">کاربر یافت نشد</response>
+app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, UserService userService) =>
+{
+    try
+    {
+        var user = await userService.GetUserByIdAsync(userId);
+        if (user == null)
+        {
+            return Results.Json(
+                ApiResponse<object>.NotFound("کاربر مورد نظر یافت نشد."),
+                statusCode: 404
+            );
+        }
+
+        // فراخوانی endpoint کیف پول
+        using var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri("https://localhost:7001/");
+        var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            return Results.Json(
+                ApiResponse<object>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
+            );
+        }
+        else
+        {
+            return Results.Json(
+                ApiResponse<object>.Error("خطا در ایجاد کیف پول‌های پیش‌فرض."),
+                statusCode: 500
+            );
+        }
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(
+            ApiResponse<object>.Error($"خطا در ایجاد کیف پول‌های پیش‌فرض: {ex.Message}"),
+            statusCode: 500
+        );
     }
 });
 
