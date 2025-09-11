@@ -390,7 +390,7 @@ public class WalletService : IWalletService
             var mauaWallet = WalletEntity.Create
             (
                  userId,
-                 CurrenciesConstant.Rial
+                 CurrenciesConstant.Maua
             );
             var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
             wallets.Add(_walletMapper.Map(mauaWallet));
@@ -399,7 +399,7 @@ public class WalletService : IWalletService
             var creditMauaWallet = WalletEntity.Create
             (
                  userId,
-                 CurrenciesConstant.Rial
+                 CurrenciesConstant.Credit_MAUA
             );
             var creditMauaResult = await _walletRepository.CreateWalletAsync(creditMauaWallet);
             wallets.Add(_walletMapper.Map(creditMauaWallet));

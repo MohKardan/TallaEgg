@@ -5,6 +5,7 @@
         // 🔹 ثابت‌ها برای استفاده راحت در کد
         public const string Maua = "MAUA";
         public const string Rial = "IRR";
+        public const string Credit_MAUA = "CREDIT_MAUA";
 
         // 🔹 مجموعه‌ای از اطلاعات ارزها
         public static readonly List<CurrencyInfo> AllCurrencies = new List<CurrencyInfo>
@@ -22,6 +23,14 @@
                 Code = Rial,
                 PersianName = "ریال",
                 Unit = "﷼",
+                DecimalPlaces = 0,
+                IsTradable = false
+            },
+            new CurrencyInfo
+            {
+                Code = Credit_MAUA,
+                PersianName = "اعتبار طلا",
+                Unit = "گرم",
                 DecimalPlaces = 0,
                 IsTradable = false
             }

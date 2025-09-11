@@ -65,8 +65,8 @@ public class WalletEntity
 
     public void LockBalance(decimal amount)
     {
-        if (Balance < amount) throw new ArgumentNullException("موجودی کافی نیست", nameof(amount));
-
+        //if (Balance < amount) throw new ArgumentNullException("موجودی کافی نیست", nameof(amount));
+        // چون اعتبار هم داریم میتونیم حسابو منفی کنیم
 
         LockedBalance += amount;
         Balance -= amount;
@@ -75,13 +75,14 @@ public class WalletEntity
 
     public void UnLockBalance(decimal amount)
     {
-        if(LockedBalance < amount) throw new ArgumentNullException("موجودی قفل شده کافی نیست", nameof(amount));
+        //if(LockedBalance < amount) throw new ArgumentNullException("موجودی قفل شده کافی نیست", nameof(amount));
+        // چون اعتبار هم داریم میتونیم حسابو منفی کنیم
+        // نیاز به بررسی بیشتر
 
         LockedBalance -= amount;
         Balance += amount;
         UpdatedAt = DateTime.UtcNow;
     }
-
 
 }
 
