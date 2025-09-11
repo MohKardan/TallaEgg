@@ -50,5 +50,5 @@ public interface IWalletApiClient
     /// </param>
     /// <returns></returns>
     Task<(bool Success, string Message, bool HasSufficientCreditAndBalanceBase, bool HasSufficientCreditAndBalanceQuote)> 
-        ValidateCreditAndBalanceAsync(Guid userId, string symbol, object amount, object price);
+        ValidateCreditAndBalanceAsync(Guid userId, string symbol, decimal amount, decimal price);
 }
