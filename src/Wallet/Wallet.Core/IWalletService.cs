@@ -5,8 +5,8 @@ namespace Wallet.Core;
 public interface IWalletService
 {
     Task<WalletDTO> GetBalanceAsync(Guid userId, string asset);
-    Task<(WalletEntity walletEntity, Transaction transactionEntity)> CreditAsync(Guid userId, string asset, decimal amount, string? refId = null);
-    Task<(WalletEntity walletEntity, Transaction transactionEntity)> DeCreditAsync(Guid userId, string asset, decimal amount, string? refId = null);
+    Task<(WalletEntity walletEntity, Transaction transactionEntity)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
+    Task<(WalletEntity walletEntity, Transaction transactionEntity)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
     Task<bool> DebitAsync(Guid userId, string asset, decimal amount);
     Task<WalletDTO> LockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<WalletDTO> UnlockBalanceAsync(Guid userId, string asset, decimal amount);

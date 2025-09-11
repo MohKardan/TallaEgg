@@ -1,4 +1,5 @@
 
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.Wallet;
@@ -26,26 +27,29 @@ public class WalletService : IWalletService
         return _walletMapper.Map(wallet);
     }
 
-    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> CreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
+    // اسم قبلی: CreditAsync
+    // اسم جدید: IncreaseBalanceAsync
+
+    /// <summary>
+    /// افزایش موجودی کیف پول کاربر
+    /// Increase user wallet balance
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <param name="asset">نوع دارایی</param>
+    /// <param name="amount">مقدار افزایش</param>
+    /// <param name="refId">شناسه مرجع (اختیاری)</param>
+    /// <returns>کیف پول و تراکنش ایجاد شده</returns>
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
    
-
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
 
         if (wallet == null)
-        {
-            // Create new wallet
-            wallet = WalletEntity.Create
-            (
-                 userId,
-                 asset
-            );
-            await _walletRepository.CreateWalletAsync(wallet);
+            throw new ArgumentException("کیف پول وجود ندارد");
 
-        }
-            // Update existing wallet
-            // Create transaction record
-            var transaction = Transaction.Create(
+        // Update existing wallet
+        // Create transaction record
+        var transaction = Transaction.Create(
                 wallet.Id,
                 amount,
                 asset,
@@ -54,7 +58,7 @@ public class WalletService : IWalletService
                 wallet.Balance + amount,
                 null,
                 TransactionStatus.Completed,
-                "Credit transaction",
+                "Add Funds or Deposit transaction",
                 refId,
                 null
             );
@@ -63,8 +67,11 @@ public class WalletService : IWalletService
         return (wallet, transaction);
              
     }
-
-    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> DeCreditAsync(Guid userId, string asset, decimal amount, string? refId = null)
+    // اسم قبلی: DeCreditAsync
+    /// <summary>
+    /// کاهش موجودی کیف پول کاربر
+    /// </summary>
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
 
 
@@ -158,7 +165,7 @@ public class WalletService : IWalletService
     {
         
 
-        var result = await CreditAsync(userId, asset, amount,referenceId);
+        var result = await IncreaseBalanceAsync(userId, asset, amount,referenceId);
       
 
         return new WalletBallanceDTO
@@ -175,7 +182,7 @@ public class WalletService : IWalletService
     public async Task<WalletBallanceDTO> WithdrawalAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
        
-        var result = await DeCreditAsync(userId, asset, amount,referenceId);
+        var result = await DecreaseBalanceAsync(userId, asset, amount,referenceId);
       
         return new WalletBallanceDTO
         {
@@ -288,7 +295,7 @@ public class WalletService : IWalletService
             return (false, "موجودی ناکافی برای انتقال.");
 
         // Credit to destination user
-        var creditSuccess = await CreditAsync(toUserId, asset, amount);
+        var creditSuccess = await IncreaseBalanceAsync(toUserId, asset, amount);
         //if (!creditSuccess)
         //{
         //    // Rollback - credit back to source user
@@ -337,7 +344,7 @@ public class WalletService : IWalletService
             return (false, "مقدار شارژ از حد مجاز بیشتر است.");
 
         // شارژ کیف پول
-        var success = await CreditAsync(userId, asset, amount);
+        var success = await IncreaseBalanceAsync(userId, asset, amount);
         //if (success)
         //{
         //    // ایجاد تراکنش شارژ
@@ -371,16 +378,31 @@ public class WalletService : IWalletService
         try
         {
             // ایجاد کیف پول ریال (IRR)
-            var irrResult = await CreditAsync(userId, "IRR", 0);
-            wallets.Add(_walletMapper.Map(irrResult.walletEntity));
+            var irrWallet = WalletEntity.Create
+            (
+                 userId,
+                 CurrenciesConstant.Rial
+            );
+            var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
+            wallets.Add(_walletMapper.Map(irrWallet));
 
             // ایجاد کیف پول طلا (MAUA)
-            var mauaResult = await CreditAsync(userId, "MAUA", 0);
-            wallets.Add(_walletMapper.Map(mauaResult.walletEntity));
+            var mauaWallet = WalletEntity.Create
+            (
+                 userId,
+                 CurrenciesConstant.Rial
+            );
+            var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
+            wallets.Add(_walletMapper.Map(mauaWallet));
 
             // ایجاد کیف پول اعتبار طلا (CREDIT_MAUA)
-            var creditMauaResult = await CreditAsync(userId, "CREDIT_MAUA", 0);
-            wallets.Add(_walletMapper.Map(creditMauaResult.walletEntity));
+            var creditMauaWallet = WalletEntity.Create
+            (
+                 userId,
+                 CurrenciesConstant.Rial
+            );
+            var creditMauaResult = await _walletRepository.CreateWalletAsync(creditMauaWallet);
+            wallets.Add(_walletMapper.Map(creditMauaWallet));
 
             return wallets;
         }
