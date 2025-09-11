@@ -718,24 +718,24 @@ namespace TallaEgg.TelegramBot
             // Mesqal Au Abshode
             //var assets = new[] { "MAUA/IRR", "XAU/IRR", "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
 
-            var assets = new[]
-            {
-                new { Symbol = "MAUA/IRR", DisplayName = "طلا آبشده / ریال" },
-                //new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
-                //new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
-                //new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
-                //new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
-                //new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
-            };
+            //var assets = new[]
+            //{
+            //    new { Symbol = "MAUA/IRR", DisplayName = "طلا آبشده / ریال" },
+            //    //new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
+            //    //new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
+            //    //new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
+            //    //new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
+            //    //new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
+            //};
 
             // Show available assets
             var assetButtons = new List<InlineKeyboardButton[]>();
 
-            foreach (var asset in assets)
+            foreach (var asset in CurrenciesConstant.AllCurrencies.Where(x => x.IsTradable))
             {
                 assetButtons.Add(new[]
                 {
-                    InlineKeyboardButton.WithCallbackData(asset.DisplayName, $"asset_{asset.Symbol}")
+                    InlineKeyboardButton.WithCallbackData(asset.PersianName, $"asset_{asset.Code}")
                 });
             }
 
