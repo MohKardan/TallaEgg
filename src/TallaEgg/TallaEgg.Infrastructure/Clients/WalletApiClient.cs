@@ -224,8 +224,8 @@ public class WalletApiClient : IWalletApiClient
             // دریافت موجودی‌های مختلف کاربر
             var spotBaseAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
             var creditBaseAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
-            var spotQuoteAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
-            var creditQuoteAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
+            var spotQuoteAsset = await GetBalanceAsync(userId, symbol.Split('/')[1]);
+            var creditQuoteAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[1]);
 
             var spotBaseAssetBalance = spotBaseAsset.Success ? spotBaseAsset.balance : 0;
             var creditBaseAssetBalance = creditBaseAsset.Success ? creditBaseAsset.balance : 0;

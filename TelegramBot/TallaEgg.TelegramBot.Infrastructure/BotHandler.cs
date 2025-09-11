@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -44,6 +46,7 @@ namespace TallaEgg.TelegramBot
 
     public partial class BotHandler : IBotHandler
     {
+        private readonly ILogger<BotHandler> _logger;
         private readonly ITelegramBotClient _botClient;
         private readonly OrderApiClient _orderApi;
         private readonly UsersApiClient _usersApi;
@@ -55,10 +58,13 @@ namespace TallaEgg.TelegramBot
         private bool _requireReferralCode;
         private string _defaultReferralCode;
 
-        public BotHandler(ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi,
+        public BotHandler(ILogger<BotHandler> logger,
+                         ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi,
                          AffiliateApiClient affiliateApi, WalletApiClient walletApi,
                          bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             _botClient = botClient;
             _orderApi = orderApi;
             _usersApi = usersApi;
@@ -697,55 +703,224 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// بعد از این که خرید یا فروش انتخاب شد با این تابع نمادهای معاملاتی را برای کاربر ارسال میکنیم
+        /// نمایش نمادهای معاملاتی فعال به کاربر پس از انتخاب نوع سفارش
+        /// Display active trading symbols to user after order type selection
         /// </summary>
-        /// <param name="chatId"></param>
-        /// <param name="telegramId"></param>
-        /// <param name="orderSide"></param>
-        /// <returns></returns>
-        private async Task ShowSymbolsAsync(long chatId, long telegramId)
+        /// <param name="chatId">شناسه چت تلگرام</param>
+        /// <param name="telegramId">شناسه کاربر تلگرام</param>
+        /// <returns>نتیجه عملیات ارسال پیام</returns>
+        private async Task<bool> ShowSymbolsAsync(long chatId, long telegramId)
         {
-            if (!_userOrderStates.ContainsKey(telegramId))
+            try
             {
-                await _botClient.SendMessage(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
-                return;
-            }
-
-            // Get available assets 
-            //TODO اینحا باید نمادهای معاملاتیرو از یجایی بحونیم
-            // فعلا نمادهای معاملاتی به صورت HardCode
-            // Mesqal Au Abshode
-            //var assets = new[] { "MAUA/IRR", "XAU/IRR", "BTC/USDT", "ETH/USDT", "XAU/USD", "XAG/USD" };
-
-            //var assets = new[]
-            //{
-            //    new { Symbol = "MAUA/IRR", DisplayName = "طلا آبشده / ریال" },
-            //    //new { Symbol = "XAU/IRR", DisplayName = "انس طلا / ریال" },
-            //    //new { Symbol = "BTC/USDT", DisplayName = "بیت‌کوین / تتر" },
-            //    //new { Symbol = "ETH/USDT", DisplayName = "اتریوم / تتر" },
-            //    //new { Symbol = "XAU/USD", DisplayName = "انس طلا / دلار" },
-            //    //new { Symbol = "XAG/USD", DisplayName = "انس نقره / دلار" }
-            //};
-
-            // Show available assets
-            var assetButtons = new List<InlineKeyboardButton[]>();
-
-            foreach (var asset in CurrenciesConstant.AllCurrencies.Where(x => x.IsTradable))
-            {
-                assetButtons.Add(new[]
+                // بررسی وجود state کاربر
+                if (!_userOrderStates.ContainsKey(telegramId))
                 {
-                    InlineKeyboardButton.WithCallbackData(asset.PersianName, $"asset_{asset.Code}")
+                    _logger.LogWarning("User order state not found for telegramId: {TelegramId}", telegramId);
+                    await SendErrorMessageAsync(chatId, "خطا در پردازش سفارش. لطفاً از منوی اصلی دوباره شروع کنید.");
+                    return false;
+                }
+
+                // دریافت جفت‌های معاملاتی فعال
+                var activeTradingPairs = GetActiveTradingPairs();
+
+                if (!activeTradingPairs.Any())
+                {
+                    _logger.LogError("No active trading pairs found");
+                    await SendErrorMessageAsync(chatId, "در حال حاضر نمادی برای معامله فعال نیست. لطفاً بعداً تلاش کنید.");
+                    return false;
+                }
+
+                // ساخت دکمه‌های نمادهای معاملاتی
+                var symbolButtons = CreateSymbolButtons(activeTradingPairs);
+
+                // اضافه کردن دکمه بازگشت
+                symbolButtons.Add(new[]
+                {
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, InlineCallBackData.BackToMain)
                 });
+
+                var keyboard = new InlineKeyboardMarkup(symbolButtons.ToArray());
+
+                // ارسال پیام با مدیریت خطا
+                var message = await SendMessageWithRetryAsync(chatId, BotMsgs.MsgSelectAsset, keyboard);
+
+                if (message == null)
+                {
+                    _logger.LogError("Failed to send symbol selection message to chatId: {ChatId}", chatId);
+                    return false;
+                }
+
+                _logger.LogInformation("Successfully showed {Count} trading symbols to user {TelegramId}",
+                    activeTradingPairs.Count, telegramId);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ShowSymbolsAsync for telegramId: {TelegramId}, chatId: {ChatId}",
+                    telegramId, chatId);
+
+                try
+                {
+                    await SendErrorMessageAsync(chatId, "خطای سیستمی رخ داده است. لطفاً دوباره تلاش کنید.");
+                }
+                catch (Exception innerEx)
+                {
+                    _logger.LogCritical(innerEx, "Failed to send error message after ShowSymbolsAsync failure");
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// دریافت لیست جفت‌های معاملاتی فعال با validation
+        /// </summary>
+        /// <returns>لیست جفت‌های معاملاتی فعال</returns>
+        private List<TradingPairInfo> GetActiveTradingPairs()
+        {
+            try
+            {
+                if (CurrenciesConstant.AllTradingPairs == null)
+                {
+                    _logger.LogError("CurrenciesConstant.AllTradingPairs is null");
+                    return new List<TradingPairInfo>();
+                }
+
+                var activePairs = CurrenciesConstant.AllTradingPairs
+                    .Where(pair => pair != null &&
+                                  pair.IsActive &&
+                                  !string.IsNullOrWhiteSpace(pair.Symbol) &&
+                                  !string.IsNullOrWhiteSpace(pair.PersianName))
+                    .ToList();
+
+                _logger.LogDebug($"Found {activePairs.Count} active trading pairs");
+                return activePairs;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active trading pairs");
+                return new List<TradingPairInfo>();
+            }
+        }
+
+        /// <summary>
+        /// ساخت دکمه‌های نمادهای معاملاتی با محدودیت تعداد
+        /// </summary>
+        /// <param name="tradingPairs">لیست جفت‌های معاملاتی</param>
+        /// <returns>لیست دکمه‌های inline keyboard</returns>
+        private List<InlineKeyboardButton[]> CreateSymbolButtons(List<TradingPairInfo> tradingPairs)
+        {
+            var buttons = new List<InlineKeyboardButton[]>();
+
+            try
+            {
+                const int maxButtonsPerPage = 10; // محدودیت تعداد دکمه‌ها
+                var pairsToShow = tradingPairs.Take(maxButtonsPerPage);
+
+                foreach (var pair in pairsToShow)
+                {
+                    try
+                    {
+                        // validation اضافی برای هر pair
+                        if (string.IsNullOrWhiteSpace(pair.Symbol) || string.IsNullOrWhiteSpace(pair.PersianName))
+                        {
+                            _logger.LogWarning("Invalid trading pair data: Symbol={Symbol}, PersianName={PersianName}",
+                                pair.Symbol, pair.PersianName);
+                            continue;
+                        }
+
+                        var callbackData = $"{InlineCallBackData.AssetPrefix}_{pair.Symbol}";
+
+                        // بررسی طول callback data (محدودیت تلگرام: 64 کاراکتر)
+                        if (callbackData.Length > 64)
+                        {
+                            _logger.LogWarning("Callback data too long for symbol {Symbol}: {Length} characters",
+                                pair.Symbol, callbackData.Length);
+                            continue;
+                        }
+
+                        buttons.Add(new[]
+                        {
+                    InlineKeyboardButton.WithCallbackData(pair.PersianName, callbackData)
+                });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error creating button for trading pair {Symbol}", pair.Symbol ?? "Unknown");
+                    }
+                }
+
+                if (tradingPairs.Count > maxButtonsPerPage)
+                {
+                    _logger.LogInformation("Showing {Shown} out of {Total} trading pairs due to pagination limit",
+                        maxButtonsPerPage, tradingPairs.Count);
+
+                    // TODO: اضافه کردن دکمه‌های pagination برای صفحه‌بندی
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating symbol buttons");
             }
 
-            assetButtons.Add(new[]
+            return buttons;
+        }
+
+        /// <summary>
+        /// ارسال پیام با retry mechanism
+        /// </summary>
+        /// <param name="chatId">شناسه چت</param>
+        /// <param name="text">متن پیام</param>
+        /// <param name="keyboard">کیبورد inline (اختیاری)</param>
+        /// <param name="maxRetries">حداکثر تعداد تلاش مجدد</param>
+        /// <returns>پیام ارسال شده یا null در صورت شکست</returns>
+        private async Task<Message?> SendMessageWithRetryAsync(long chatId, string text,
+            InlineKeyboardMarkup? keyboard = null, int maxRetries = 3)
+        {
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
-            });
+                try
+                {
+                    var message = await _botClient.SendMessage(chatId, text, replyMarkup: keyboard);
+                    return message;
+                }
+                catch (ApiRequestException apiEx) when (apiEx.ErrorCode == 429) // Rate limiting
+                {
+                    _logger.LogWarning("Rate limited on attempt {Attempt}, waiting before retry", attempt);
+                    await Task.Delay(TimeSpan.FromSeconds(attempt * 2)); // Exponential backoff
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send message on attempt {Attempt}/{MaxAttempts} to chatId: {ChatId}",
+                        attempt, maxRetries, chatId);
 
-            var keyboard = new InlineKeyboardMarkup(assetButtons.ToArray());
+                    if (attempt == maxRetries)
+                        return null;
 
-            await _botClient.SendMessage(chatId, BotMsgs.MsgSelectAsset, replyMarkup: keyboard);
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// ارسال پیام خطا استاندارد
+        /// </summary>
+        /// <param name="chatId">شناسه چت</param>
+        /// <param name="errorMessage">پیام خطا</param>
+        private async Task SendErrorMessageAsync(long chatId, string errorMessage)
+        {
+            try
+            {
+                await _botClient.SendMessage(chatId, $"❌ {errorMessage}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send error message to chatId: {ChatId}", chatId);
+            }
         }
 
         private async Task HandleOrderAmountInputAsync(long chatId, long telegramId, string amountText)

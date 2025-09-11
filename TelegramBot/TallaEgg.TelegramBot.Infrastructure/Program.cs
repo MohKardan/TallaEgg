@@ -91,7 +91,9 @@ class Program
             services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
             services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
             services.AddSingleton<TradeNotificationService>();
+            
             services.AddSingleton<IBotHandler>(provider => new BotHandler(
+                provider.GetRequiredService<ILogger<BotHandler>>(),
                 provider.GetRequiredService<ITelegramBotClient>(),
                 provider.GetRequiredService<OrderApiClient>(),
                 provider.GetRequiredService<UsersApiClient>(),

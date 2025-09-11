@@ -95,6 +95,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string back_to_main = "back_to_main";
         
         public const string confirm_market_order = "confirm_market_order";
-    }
 
+        public const string AssetPrefix = "asset";
+        public const string BackToMain = "back_to_main";
+    }
 }
