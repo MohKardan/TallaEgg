@@ -321,8 +321,11 @@ namespace TallaEgg.TelegramBot
                     _userOrderStates[telegramId].OrderSide = orderSide;
 
                     _userOrderStates[telegramId].State = "waiting_for_amount";
+
+                    await _botClient.DeleteMessage(chatId, message.Id);
+
                     await _botClient.SendMessage(chatId,
-                                                 $"لطفا مقدار را وارد کنید",
+                                                 $"لطفا مقدار را برای فروش وارد کنید",
                                                  replyMarkup: new ReplyKeyboardRemove());
 
                     break;
@@ -385,6 +388,9 @@ namespace TallaEgg.TelegramBot
                         {
                             apiResponse.Data.BestBidPrice *= 4.3318m;
                             apiResponse.Data.BestAskPrice *= 4.3318m;
+
+                            await _botClient.DeleteMessage(chatId, message.Id);
+
 
                             await _botClient.SendMessage(chatId,
                                             $"📊 <b>بهترین قیمت‌های بازار</b>\n\n" +
