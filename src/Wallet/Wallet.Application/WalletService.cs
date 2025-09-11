@@ -359,4 +359,35 @@ public class WalletService : IWalletService
         return true ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
     }
 
+    /// <summary>
+    /// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید (ریال، طلا، اعتبار طلا)
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <returns>لیست کیف پول‌های ایجاد شده</returns>
+    public async Task<IEnumerable<WalletDTO>> CreateDefaultWalletsAsync(Guid userId)
+    {
+        var wallets = new List<WalletDTO>();
+
+        try
+        {
+            // ایجاد کیف پول ریال (IRR)
+            var irrResult = await CreditAsync(userId, "IRR", 0);
+            wallets.Add(_walletMapper.Map(irrResult.walletEntity));
+
+            // ایجاد کیف پول طلا (MAUA)
+            var mauaResult = await CreditAsync(userId, "MAUA", 0);
+            wallets.Add(_walletMapper.Map(mauaResult.walletEntity));
+
+            // ایجاد کیف پول اعتبار طلا (CREDIT_MAUA)
+            var creditMauaResult = await CreditAsync(userId, "CREDIT_MAUA", 0);
+            wallets.Add(_walletMapper.Map(creditMauaResult.walletEntity));
+
+            return wallets;
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"خطا در ایجاد کیف پول‌های پیش‌فرض: {ex.Message}");
+        }
+    }
+
 }

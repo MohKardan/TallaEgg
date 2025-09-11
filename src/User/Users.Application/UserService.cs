@@ -1,4 +1,7 @@
 using Affiliate.Core;
+using Microsoft.Extensions.Http;
+using System.Text;
+using System.Text.Json;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
@@ -12,11 +15,13 @@ public class UserService
 {
     private readonly IUserRepository _userRepository;
     private readonly UserMapper _userMapper;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public UserService(IUserRepository userRepository, UserMapper userMapper)
+    public UserService(IUserRepository userRepository, UserMapper userMapper, IHttpClientFactory httpClientFactory)
     {
         _userRepository = userRepository;
         _userMapper = userMapper;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task<UserDto> RegisterUserAsync(long telegramId,string invitationCode, string? username, string? firstName, string? lastName)
@@ -40,6 +45,10 @@ public class UserService
         };
 
         await _userRepository.CreateAsync(user);
+        
+        // ایجاد کیف پول‌های پیش‌فرض
+        await CreateDefaultWalletsAsync(user.Id);
+        
         return _userMapper.Map(user);
     }
 
@@ -161,7 +170,12 @@ public class UserService
     public async Task<User> RegisterUserAsync(User user)
     {
         ArgumentNullException.ThrowIfNull(user);
-        return await _userRepository.CreateAsync(user);
+        var createdUser = await _userRepository.CreateAsync(user);
+        
+        // ایجاد کیف پول‌های پیش‌فرض
+        await CreateDefaultWalletsAsync(createdUser.Id);
+        
+        return createdUser;
     }
 
     public async Task<User?> UpdateUserRoleAsync(Guid userId, UserRole newRole)
@@ -219,5 +233,27 @@ public class UserService
     {
         var user = await _userRepository.GetByIdAsync(userId);
         return user != null ? _userMapper.Map(user) : null;
+    }
+
+    /// <summary>
+    /// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید
+    /// </summary>
+    /// <param name="userId">شناسه کاربر</param>
+    /// <returns>نتیجه عملیات</returns>
+    private async Task<bool> CreateDefaultWalletsAsync(Guid userId)
+    {
+        try
+        {
+            using var httpClient = _httpClientFactory.CreateClient("WalletAPI");
+            var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+            
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't fail user creation
+            Console.WriteLine($"خطا در ایجاد کیف پول‌های پیش‌فرض برای کاربر {userId}: {ex.Message}");
+            return false;
+        }
     }
 }

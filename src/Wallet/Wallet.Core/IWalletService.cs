@@ -18,5 +18,6 @@ public interface IWalletService
     Task<(bool success, string message)> OldWithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<(bool success, string message)> TransferAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount);
     Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null);
+    Task<IEnumerable<WalletDTO>> CreateDefaultWalletsAsync(Guid userId);
     
 } 

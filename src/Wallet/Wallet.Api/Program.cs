@@ -28,7 +28,7 @@ builder.Services.AddCors();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "TallaEgg Users API", Version = "v1" });
+    c.SwaggerDoc("v1", new() { Title = "TallaEgg Wallet API", Version = "v1" });
 
     // Include XML comments
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -51,7 +51,7 @@ app.UseCors(builder => builder
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Wallet API v1");
     c.RoutePrefix = "api-docs";
 });
 
@@ -175,6 +175,27 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 {
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);
     return Results.Ok(transactions);
+});
+
+/// <summary>
+/// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید (ریال، طلا، اعتبار طلا)
+/// </summary>
+/// <param name="userId">شناسه کاربر</param>
+/// <param name="walletService">سرویس کیف پول</param>
+/// <returns>لیست کیف پول‌های ایجاد شده</returns>
+/// <response code="200">کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند</response>
+/// <response code="400">خطا در ایجاد کیف پول‌ها</response>
+app.MapPost("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
+{
+    try
+    {
+        var wallets = await walletService.CreateDefaultWalletsAsync(userId);
+        return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند"));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<IEnumerable<WalletDTO>>.Fail(ex.Message));
+    }
 });
 
 //// Internal wallet operations (for matching engine)
