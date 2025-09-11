@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
 
@@ -7,10 +8,12 @@ namespace Wallet.Infrastructure;
 public class WalletRepository : IWalletRepository
 {
     private readonly WalletDbContext _context;
+    private readonly ILogger<WalletRepository> _logger;
 
-    public WalletRepository(WalletDbContext context)
+    public WalletRepository(ILogger<WalletRepository> logger, WalletDbContext context)
     {
         _context = context;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<WalletEntity?> GetWalletAsync(Guid userId, string asset)
@@ -27,13 +30,52 @@ public class WalletRepository : IWalletRepository
             .ToListAsync();
     }
 
+    /// <summary>
+    /// ایجاد کیف پول جدید در دیتابیس
+    /// </summary>
+    /// <param name="wallet">کیف پول برای ایجاد</param>
+    /// <returns>کیف پول ایجاد شده</returns>
     public async Task<WalletEntity> CreateWalletAsync(WalletEntity wallet)
     {
-        _context.Wallets.Add(wallet);
-        await _context.SaveChangesAsync();
-        return wallet;
-    }
+        try
+        {
+            // بررسی مجدد وجود کیف پول (Race Condition Prevention)
+            var existingWallet = await GetWalletAsync(wallet.UserId, wallet.Asset);
+            if (existingWallet != null)
+            {
+                _logger.LogWarning("Wallet already exists during creation for user {UserId}, asset {Asset}",
+                    wallet.UserId, wallet.Asset);
+                return existingWallet;
+            }
 
+            _context.Wallets.Add(wallet);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Successfully created wallet {WalletId} for user {UserId}, asset {Asset}",
+                wallet.Id, wallet.UserId, wallet.Asset);
+
+            return wallet;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException?.Message?.Contains("duplicate") == true ||
+                                          ex.InnerException?.Message?.Contains("UNIQUE") == true)
+        {
+            _logger.LogWarning("Duplicate wallet creation attempted for user {UserId}, asset {Asset}. Returning existing wallet.",
+                wallet.UserId, wallet.Asset);
+
+            // در صورت تکراری بودن، کیف پول موجود را برگردان
+            var existingWallet = await GetWalletAsync(wallet.UserId, wallet.Asset);
+            if (existingWallet != null)
+                return existingWallet;
+
+            throw; // اگر هنوز هم پیدا نشد، خطا را دوباره پرتاب کن
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating wallet for user {UserId}, asset {Asset}",
+                wallet.UserId, wallet.Asset);
+            throw;
+        }
+    }
     public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction = null)
     {
         _context.Transactions.Add(transaction);
