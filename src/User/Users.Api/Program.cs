@@ -51,7 +51,7 @@ builder.Services.AddScoped<UserMapper>();
 // HttpClient برای فراخوانی Wallet API
 builder.Services.AddHttpClient("WalletAPI", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("WalletApiUrl") ?? "https://localhost:7001/");
+    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("WalletApiUrl") ?? "https://localhost:60932/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 

@@ -185,7 +185,7 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 /// <returns>لیست کیف پول‌های ایجاد شده</returns>
 /// <response code="200">کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند</response>
 /// <response code="400">خطا در ایجاد کیف پول‌ها</response>
-app.MapPost("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
+app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     try
     {

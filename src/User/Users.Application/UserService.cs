@@ -245,7 +245,7 @@ public class UserService
         try
         {
             using var httpClient = _httpClientFactory.CreateClient("WalletAPI");
-            var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+            var response = await httpClient.GetAsync($"api/wallet/create-default/{userId}");
             
             return response.IsSuccessStatusCode;
         }
