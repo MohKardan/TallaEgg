@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Affiliate.Core;
 using Affiliate.Infrastructure;
 using Affiliate.Application;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,14 @@ builder.Services.AddDbContext<AffiliateDbContext>(options =>
 
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
+
+// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/affiliate-api-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 

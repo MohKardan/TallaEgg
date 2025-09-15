@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
@@ -10,6 +11,14 @@ using Wallet.Core;
 using Wallet.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<WalletDbContext>(options =>
@@ -226,4 +235,4 @@ public record DebitRequest(Guid UserId, string Asset, decimal Amount);
 
 // Market order balance request models
 public record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide); // 0 = Buy, 1 = Sell
-public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide, Guid OrderId); // 0 = Buy, 1 = Sell 
+public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide, Guid OrderId); // 0 = Buy, 1 = Sell

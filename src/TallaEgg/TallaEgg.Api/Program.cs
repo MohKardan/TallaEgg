@@ -19,6 +19,7 @@ using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUse
 using ClientUserDto = TallaEgg.Api.Clients.UserDto;
 using ClientUserRole = TallaEgg.Api.Clients.UserRole;
 using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +61,14 @@ else
 
 // اضافه کردن CORS
 builder.Services.AddCors();
+
+// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/tallaegg-api-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 

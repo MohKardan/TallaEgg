@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Orders.Core;
+using Serilog;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -73,7 +74,13 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/users-api-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 

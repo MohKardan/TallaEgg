@@ -11,6 +11,7 @@ using TallaEgg.Infrastructure.Clients;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,6 +72,15 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlPath);
     }
 });
+
+// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول و فیلتر EF Core
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Console()
+    .WriteTo.File("logs/orders-api-.log", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 
