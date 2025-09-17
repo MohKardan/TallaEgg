@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Orders.Core;
 using System.Text;
@@ -15,12 +17,14 @@ public class OrderApiClient : IOrderApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
+    private readonly ILogger<OrderApiClient> _logger;
 
-    public OrderApiClient(HttpClient httpClient, IConfiguration configuration)
+    public OrderApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<OrderApiClient> logger)
     {
         _httpClient = httpClient;
         _baseUrl = configuration["OrderApiUrl"] ?? "http://localhost:5135/api";
-        
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
         // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
@@ -28,25 +32,69 @@ public class OrderApiClient : IOrderApiClient
     }
 
     public async Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(
-    Guid userId,
-    int pageNumber = 1,
-    int pageSize = 10)
+        Guid userId,
+        int pageNumber = 1,
+        int pageSize = 10)
     {
+        if (userId == Guid.Empty)
+        {
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("شناسه کاربر نامعتبر است.");
+        }
+
+        if (pageNumber <= 0 || pageSize <= 0)
+        {
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("پارامترهای صفحه باید بزرگ‌تر از صفر باشند.");
+        }
+
         var uri = $"{_baseUrl}/orders/user/{userId}?pageNumber={pageNumber}&pageSize={pageSize}";
 
         try
         {
-            var response = await _httpClient.GetAsync(uri);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode
-                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<OrderHistoryDto>>>(json)
-                : ApiResponse<PagedResult<OrderHistoryDto>>.Fail("دریافت سفارشات ناموفق بود");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Order API returned {StatusCode} for user {UserId} (page {PageNumber}, size {PageSize}). Payload: {Payload}",
+                    (int)response.StatusCode, userId, pageNumber, pageSize, payload);
+
+                var message = $"دریافت سفارشات ناموفق بود (کد {(int)response.StatusCode}).";
+                if (!string.IsNullOrWhiteSpace(payload))
+                {
+                    message += $" جزئیات: {payload}";
+                }
+
+                return ApiResponse<PagedResult<OrderHistoryDto>>.Fail(message);
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<PagedResult<OrderHistoryDto>>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Order API returned an invalid payload for user {UserId}. Payload: {Payload}", userId, payload);
+                return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("پاسخ نامعتبر از سرویس سفارشات دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Order API request timed out for user {UserId}", userId);
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Order API communication error for user {UserId}", userId);
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Order API returned invalid JSON for user {UserId}", userId);
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: لاگ
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while fetching orders for user {UserId}", userId);
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
 

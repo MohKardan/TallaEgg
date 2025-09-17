@@ -5,6 +5,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using System.Net.Http;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -136,7 +137,10 @@ class Program
 
             // Register services
             services.AddSingleton<ITelegramBotClient>(provider => ProxyBotClient.CreateWithProxy(botToken));
-            services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(provider.GetRequiredService<HttpClient>(), config));
+            services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(
+                provider.GetRequiredService<HttpClient>(),
+                config,
+                provider.GetRequiredService<ILogger<OrderApiClient>>()));
             services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(provider.GetRequiredService<HttpClient>(), config));
             services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
             services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
