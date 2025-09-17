@@ -23,4 +23,8 @@
     <ProjectReference Include="..\Affiliate.Application\Affiliate.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="C:\Users\shahi\Documents\GitHub\TallaEgg\config\appsettings.global.json" Link="Properties\appsettings.global.json" />
+  </ItemGroup>
+
 </Project> 
