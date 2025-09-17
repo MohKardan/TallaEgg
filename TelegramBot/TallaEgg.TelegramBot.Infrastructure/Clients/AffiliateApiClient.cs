@@ -1,4 +1,6 @@
+using System;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -19,7 +21,6 @@ public class AffiliateApiClient
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
     }
-
     public async Task<(bool success, string message)> ValidateInvitationAsync(string invitationCode)
     {
         var request = new { InvitationCode = invitationCode };
@@ -28,23 +29,46 @@ public class AffiliateApiClient
 
         try
         {
-            var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/validate-invitation", content);
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/validate-invitation", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<ValidateInvitationResponse>(respText);
-                return (result?.IsValid ?? false, result?.Message ?? "خطا در بررسی کد دعوت");
+                _logger.LogWarning("Affiliate API returned {StatusCode} while validating invitation code {InvitationCode}. Payload: {Payload}",
+                    (int)response.StatusCode, invitationCode, payload);
+                return (false, $"خطا در اعتبارسنجی کد دعوت: {payload}");
             }
-            return (false, $"خطا در بررسی کد دعوت: {respText}");
+
+            var result = JsonConvert.DeserializeObject<ValidateInvitationResponse>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Affiliate API returned invalid payload while validating invitation code {InvitationCode}. Payload: {Payload}", invitationCode, payload);
+                return (false, "پاسخ نامعتبر از سرویس افیلیت دریافت شد.");
+            }
+
+            return (result.IsValid, result.Message ?? "نتیجه بررسی کد دعوت دریافت شد.");
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Affiliate API request timed out while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"پاسخ‌گویی سرویس افیلیت زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Affiliate API communication error while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای ارتباط با سرویس افیلیت: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Affiliate API returned invalid JSON while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"ساختار پاسخ سرویس افیلیت نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
     public async Task<(bool success, string message, Guid? invitationId)> UseInvitationAsync(string invitationCode, Guid usedByUserId)
     {
         var request = new
@@ -58,26 +82,53 @@ public class AffiliateApiClient
 
         try
         {
-            var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/use-invitation", content);
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.PostAsync($"{_apiUrl}/affiliate/use-invitation", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<UseInvitationResponse>(respText);
-                if (result?.Success == true)
-                {
-                    return (true, result.Message, result.InvitationId);
-                }
-                return (false, result?.Message ?? "خطا در استفاده از کد دعوت", null);
+                _logger.LogWarning("Affiliate API returned {StatusCode} while consuming invitation code {InvitationCode} for user {UserId}. Payload: {Payload}",
+                    (int)response.StatusCode, invitationCode, usedByUserId, payload);
+                return (false, $"استفاده از کد دعوت ناموفق بود: {payload}", null);
             }
-            return (false, $"خطا در استفاده از کد دعوت: {respText}", null);
+
+            var result = JsonConvert.DeserializeObject<UseInvitationResponse>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Affiliate API returned invalid payload while consuming invitation code {InvitationCode}. Payload: {Payload}", invitationCode, payload);
+                return (false, "پاسخ نامعتبر از سرویس افیلیت دریافت شد.", null);
+            }
+
+            if (result.Success)
+            {
+                return (true, result.Message ?? "کد دعوت با موفقیت استفاده شد.", result.InvitationId);
+            }
+
+            _logger.LogWarning("Affiliate API reported failure while consuming invitation code {InvitationCode}: {Message}", invitationCode, result.Message);
+            return (false, result.Message ?? "استفاده از کد دعوت ناموفق بود.", null);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Affiliate API request timed out while consuming invitation code {InvitationCode}", invitationCode);
+            return (false, $"پاسخ‌گویی سرویس افیلیت زمان‌بر شد: {ex.Message}", null);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Affiliate API communication error while consuming invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای ارتباط با سرویس افیلیت: {ex.Message}", null);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Affiliate API returned invalid JSON while consuming invitation code {InvitationCode}", invitationCode);
+            return (false, $"ساختار پاسخ سرویس افیلیت نامعتبر است: {ex.Message}", null);
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}", null);
+            _logger.LogError(ex, "Unexpected error while consuming invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای غیرمنتظره: {ex.Message}", null);
         }
     }
+
 
     public async Task<(bool success, InvitationDto? invitation)> CreateInvitationAsync(Guid createdByUserId, string type = "Regular", int maxUses = -1)
     {

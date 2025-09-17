@@ -141,8 +141,14 @@ class Program
                 provider.GetRequiredService<HttpClient>(),
                 config,
                 provider.GetRequiredService<ILogger<OrderApiClient>>()));
-            services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(provider.GetRequiredService<HttpClient>(), config));
-            services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(affiliateApiUrl, new HttpClient()));
+            services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(
+                provider.GetRequiredService<HttpClient>(),
+                config,
+                provider.GetRequiredService<ILogger<UsersApiClient>>()));
+            services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(
+                affiliateApiUrl,
+                new HttpClient(),
+                provider.GetRequiredService<ILogger<AffiliateApiClient>>()));
             services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
             services.AddSingleton<TradeNotificationService>();
             

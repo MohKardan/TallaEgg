@@ -97,7 +97,6 @@ public class OrderApiClient : IOrderApiClient
             return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
     public async Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(
         Guid userId,
         int pageNumber = 1,
@@ -107,59 +106,140 @@ public class OrderApiClient : IOrderApiClient
 
         try
         {
-            var response = await _httpClient.GetAsync(uri);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode
-                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<TradeHistoryDto>>>(json)
-                : ApiResponse<PagedResult<TradeHistoryDto>>.Fail("دریافت معاملات ناموفق بود");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Order API returned {StatusCode} for user {UserId} trades (page {PageNumber}, size {PageSize}). Payload: {Payload}",
+                    (int)response.StatusCode, userId, pageNumber, pageSize, payload);
+
+                return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("دریافت معاملات ناموفق بود");
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<PagedResult<TradeHistoryDto>>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Order API returned an invalid trades payload for user {UserId}. Payload: {Payload}", userId, payload);
+                return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("پاسخ نامعتبر از سرویس سفارشات دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Order API request timed out while fetching trades for user {UserId}", userId);
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Order API communication error while fetching trades for user {UserId}", userId);
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Order API returned invalid JSON while fetching trades for user {UserId}", userId);
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: لاگ
-            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while fetching trades for user {UserId}", userId);
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
     public async Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId)
     {
         var uri = $"{_baseUrl}/orders/active/user/{userId}";
 
         try
         {
-            var response = await _httpClient.GetAsync(uri);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode
-                ? JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(json)
-                : ApiResponse<List<OrderHistoryDto>>.Fail("دریافت سفارشات فعال ناموفق بود");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Order API returned {StatusCode} while fetching active orders for user {UserId}. Payload: {Payload}",
+                    (int)response.StatusCode, userId, payload);
+
+                return ApiResponse<List<OrderHistoryDto>>.Fail("دریافت سفارشات فعال ناموفق بود");
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Order API returned an invalid active orders payload for user {UserId}. Payload: {Payload}", userId, payload);
+                return ApiResponse<List<OrderHistoryDto>>.Fail("پاسخ نامعتبر از سرویس سفارشات دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Order API request timed out while fetching active orders for user {UserId}", userId);
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Order API communication error while fetching active orders for user {UserId}", userId);
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Order API returned invalid JSON while fetching active orders for user {UserId}", userId);
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: لاگ
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while fetching active orders for user {UserId}", userId);
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
     public async Task<ApiResponse<List<OrderHistoryDto>>> GetAllActiveOrdersAsync()
     {
         var uri = $"{_baseUrl}/orders/active/all";
 
         try
         {
-            var response = await _httpClient.GetAsync(uri);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode
-                ? JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(json)
-                : ApiResponse<List<OrderHistoryDto>>.Fail("دریافت تمام سفارشات فعال ناموفق بود");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Order API returned {StatusCode} while fetching all active orders. Payload: {Payload}", (int)response.StatusCode, payload);
+                return ApiResponse<List<OrderHistoryDto>>.Fail("دریافت تمام سفارشات فعال ناموفق بود");
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<List<OrderHistoryDto>>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Order API returned an invalid payload while fetching all active orders. Payload: {Payload}", payload);
+                return ApiResponse<List<OrderHistoryDto>>.Fail("پاسخ نامعتبر از سرویس سفارشات دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Order API request timed out while fetching all active orders");
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Order API communication error while fetching all active orders");
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Order API returned invalid JSON while fetching all active orders");
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: لاگ
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while fetching all active orders");
+            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
+
 
     // ...existing code...
 

@@ -1,4 +1,6 @@
+using System;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
@@ -31,31 +33,61 @@ public class UsersApiClient
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
-
     public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(
-    int pageNumber = 1,
-    int pageSize = 10,
-    string? q = null)
+        int pageNumber = 1,
+        int pageSize = 10,
+        string? q = null)
     {
+        if (pageNumber <= 0 || pageSize <= 0)
+        {
+            return ApiResponse<PagedResult<UserDto>>.Fail("پارامترهای صفحه باید بزرگ‌تر از صفر باشند.");
+        }
+
         var uri = $"{_baseUrl}/users/list?pageNumber={pageNumber}&pageSize={pageSize}&q={q}";
 
         try
         {
-            var response = await _httpClient.GetAsync(uri);
-            var json = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            return response.IsSuccessStatusCode
-                ? JsonConvert.DeserializeObject<ApiResponse<PagedResult<UserDto>>>(json)
-                : ApiResponse<PagedResult<UserDto>>.Fail("دریافت کاربران ناموفق بود");
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Users API returned {StatusCode} for GetUsersAsync (page {PageNumber}, size {PageSize}, query {Query}). Payload: {Payload}",
+                    (int)response.StatusCode, pageNumber, pageSize, q ?? "-", payload);
+
+                return ApiResponse<PagedResult<UserDto>>.Fail("دریافت کاربران ناموفق بود");
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<PagedResult<UserDto>>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Users API returned invalid payload for GetUsersAsync. Payload: {Payload}", payload);
+                return ApiResponse<PagedResult<UserDto>>.Fail("پاسخ نامعتبر از سرویس کاربران دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching users");
+            return ApiResponse<PagedResult<UserDto>>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching users");
+            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching users");
+            return ApiResponse<PagedResult<UserDto>>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: لاگ
-            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while fetching users");
+            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
-
     public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)
     {
         try
@@ -64,26 +96,50 @@ public class UsersApiClient
             var json = System.Text.Json.JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/validate-invitation", content);
+            using var response = await _httpClient.PostAsync($"{_baseUrl}/user/validate-invitation", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var result = System.Text.Json.JsonSerializer.Deserialize<ValidateInvitationResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                return (result?.IsValid ?? false, result?.Message ?? "خطا در بررسی کد دعوت");
+                _logger.LogWarning("Users API returned {StatusCode} while validating invitation code {InvitationCode}. Payload: {Payload}",
+                    (int)response.StatusCode, invitationCode, payload);
+
+                return (false, $"خطا در اعتبارسنجی کد دعوت: {payload}");
             }
 
-            return (false, "خطا در ارتباط با سرور");
+            var result = System.Text.Json.JsonSerializer.Deserialize<ValidateInvitationResponse>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (result is null)
+            {
+                _logger.LogError("Users API returned invalid payload while validating invitation code {InvitationCode}. Payload: {Payload}", invitationCode, payload);
+                return (false, "پاسخ نامعتبر از سرویس کاربران دریافت شد.");
+            }
+
+            return (result.IsValid, result.Message ?? "بررسی کد دعوت انجام شد.");
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای ارتباط با سرویس کاربران: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
-            return (false, $"خطا در ارتباط: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while validating invitation code {InvitationCode}", invitationCode);
+            return (false, $"خطای غیرمنتظره: {ex.Message}");
         }
     }
     public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
     {
-        RegisterUserRequest request = new RegisterUserRequest()
+        var request = new RegisterUserRequest
         {
             TelegramId = telegramId,
             InvitationCode = invitationCode,
@@ -92,73 +148,146 @@ public class UsersApiClient
             LastName = lastName
         };
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
         {
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.PostAsync($"{_baseUrl}/user/register", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var result = Newtonsoft.Json.JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                if (result.Success)
-                {
-                    return (true, "ثبت‌نام با موفقیت انجام شد.", Guid.Parse(result.Data.Id.ToString()));
-                }
-                return (false, result.Message.ToString(), null);
+                _logger.LogWarning("Users API returned {StatusCode} while registering user {TelegramId}. Payload: {Payload}",
+                    (int)response.StatusCode, telegramId, payload);
+
+                return (false, $"خطا در ثبت کاربر: {payload}", null);
             }
-            return (false, $"خطا در ثبت‌نام: {respText}", null);
+
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result?.Success == true && result.Data != null)
+            {
+                var userId = Guid.TryParse(result.Data.Id.ToString(), out var parsed) ? parsed : (Guid?)null;
+                return (true, result.Message ?? "کاربر با موفقیت ثبت شد.", userId);
+            }
+
+            if (result != null)
+            {
+                _logger.LogWarning("Users API reported failure while registering user {TelegramId}: {Message}", telegramId, result.Message);
+                return (false, result.Message ?? "ثبت کاربر ناموفق بود.", null);
+            }
+
+            _logger.LogError("Users API returned invalid payload while registering user {TelegramId}. Payload: {Payload}", telegramId, payload);
+            return (false, "پاسخ نامعتبر از سرویس کاربران دریافت شد.", null);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while registering user {TelegramId}", telegramId);
+            return (false, $"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}", null);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while registering user {TelegramId}", telegramId);
+            return (false, $"خطای ارتباط با سرویس کاربران: {ex.Message}", null);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while registering user {TelegramId}", telegramId);
+            return (false, $"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}", null);
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}", null);
+            _logger.LogError(ex, "Unexpected error while registering user {TelegramId}", telegramId);
+            return (false, $"خطای غیرمنتظره: {ex.Message}", null);
         }
     }
-
     public async Task<UserDto?> GetUserAsync(long telegramId)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/{telegramId}");
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/user/{telegramId}");
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                return res.Data;
+                _logger.LogWarning("Users API returned {StatusCode} while fetching user by TelegramId {TelegramId}. Payload: {Payload}",
+                    (int)response.StatusCode, telegramId, payload);
+                return null;
             }
+
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result?.Data == null)
+            {
+                _logger.LogWarning("Users API returned empty data while fetching user by TelegramId {TelegramId}. Payload: {Payload}", telegramId, payload);
+            }
+            return result?.Data;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching user by TelegramId {TelegramId}", telegramId);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching user by TelegramId {TelegramId}", telegramId);
+            return null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching user by TelegramId {TelegramId}", telegramId);
             return null;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error while fetching user by TelegramId {TelegramId}", telegramId);
             return null;
         }
     }
-
     public async Task<UserDto?> GetUserAsync(string phone)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/userByPhone/{phone}");
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/userByPhone/{phone}");
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                return res.Data;
+                _logger.LogWarning("Users API returned {StatusCode} while fetching user by phone {Phone}. Payload: {Payload}",
+                    (int)response.StatusCode, phone, payload);
+                return null;
             }
+
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result?.Data == null)
+            {
+                _logger.LogWarning("Users API returned empty data while fetching user by phone {Phone}. Payload: {Payload}", phone, payload);
+            }
+            return result?.Data;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching user by phone {Phone}", phone);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching user by phone {Phone}", phone);
+            return null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching user by phone {Phone}", phone);
             return null;
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error while fetching user by phone {Phone}", phone);
             return null;
         }
     }
     public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber)
     {
-        UpdatePhoneRequest request = new UpdatePhoneRequest()
+        var request = new UpdatePhoneRequest
         {
             TelegramId = telegramId,
             PhoneNumber = phoneNumber
@@ -169,24 +298,46 @@ public class UsersApiClient
 
         try
         {
-            var response = await _httpClient.PostAsync($"{_baseUrl}/user/update-phone", content);
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.PostAsync($"{_baseUrl}/user/update-phone", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                return result;
+                _logger.LogWarning("Users API returned {StatusCode} while updating phone for TelegramId {TelegramId}. Payload: {Payload}",
+                    (int)response.StatusCode, telegramId, payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("بروزرسانی شماره تلفن ناموفق بود.");
             }
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطا در ثبت شماره تلفن");
+
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Users API returned invalid payload while updating phone for TelegramId {TelegramId}. Payload: {Payload}", telegramId, payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("پاسخ نامعتبر از سرویس کاربران دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while updating phone for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while updating phone for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while updating phone for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // todo باید اکسپشن برای دولوپر فرستاده بشه
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
-
+            _logger.LogError(ex, "Unexpected error while updating phone for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
     public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, TallaEgg.Core.Enums.User.UserStatus newStatus)
     {
         var request = new UpdateUserStatusRequest
@@ -200,67 +351,121 @@ public class UsersApiClient
 
         try
         {
-            // PUT: /user/status
-            var response = await _httpClient.PutAsync($"{_baseUrl}/user/status", content);
-            var respText = await response.Content.ReadAsStringAsync();
+            using var response = await _httpClient.PutAsync($"{_baseUrl}/user/status", content);
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(respText);
-                return result;
+                _logger.LogWarning("Users API returned {StatusCode} while updating user status for TelegramId {TelegramId}. Payload: {Payload}",
+                    (int)response.StatusCode, telegramId, payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("بروزرسانی وضعیت کاربر ناموفق بود.");
             }
 
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطا در به‌روزرسانی وضعیت کاربر");
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Users API returned invalid payload while updating user status for TelegramId {TelegramId}. Payload: {Payload}", telegramId, payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("پاسخ نامعتبر از سرویس کاربران دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while updating user status for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while updating user status for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while updating user status for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
         }
         catch (Exception ex)
         {
-            // TODO: ارسال اکسپشن به لاگ یا سرویس مانیتورینگ
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while updating user status for TelegramId {TelegramId}", telegramId);
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
-
-
     public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByInvitationCode/{invitationCode}");
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByInvitationCode/{invitationCode}");
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<Guid>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _logger.LogWarning("Users API returned {StatusCode} while fetching user id by invitation code {InvitationCode}. Payload: {Payload}",
+                    (int)response.StatusCode, invitationCode, payload);
+                return null;
             }
 
+            return JsonSerializer.Deserialize<Guid>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching user id by invitation code {InvitationCode}", invitationCode);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching user id by invitation code {InvitationCode}", invitationCode);
+            return null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching user id by invitation code {InvitationCode}", invitationCode);
             return null;
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
+            _logger.LogError(ex, "Unexpected error while fetching user id by invitation code {InvitationCode}", invitationCode);
             return null;
         }
     }
-
     public async Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByPhoneNumber/{phonenumber}");
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/user/getUserIdByPhoneNumber/{phonenumber}");
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<Guid>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _logger.LogWarning("Users API returned {StatusCode} while fetching user id by phone {Phone}. Payload: {Payload}",
+                    (int)response.StatusCode, phonenumber, payload);
+                return null;
             }
 
+            return JsonSerializer.Deserialize<Guid>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching user id by phone {Phone}", phonenumber);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching user id by phone {Phone}", phonenumber);
+            return null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching user id by phone {Phone}", phonenumber);
             return null;
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
+            _logger.LogError(ex, "Unexpected error while fetching user id by phone {Phone}", phonenumber);
             return null;
         }
     }
+
 
     /// <summary>
     /// دریافت اطلاعات کاربر بر اساس شناسه کاربر
@@ -275,24 +480,45 @@ public class UsersApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"{_baseUrl}/user/userId/{userId}");
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/user/userId/{userId}");
+            var payload = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+            if (!response.IsSuccessStatusCode)
             {
-                var content = await response.Content.ReadAsStringAsync();
-                var res = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(content);
-                return res.Data;
-                //return JsonSerializer.Deserialize<UserDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                _logger.LogWarning("Users API returned {StatusCode} while fetching user by id {UserId}. Payload: {Payload}",
+                    (int)response.StatusCode, userId, payload);
+                return null;
             }
 
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+            if (result?.Data == null)
+            {
+                _logger.LogWarning("Users API returned empty data while fetching user by id {UserId}. Payload: {Payload}", userId, payload);
+            }
+            return result?.Data;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while fetching user by id {UserId}", userId);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while fetching user by id {UserId}", userId);
+            return null;
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Users API returned invalid JSON while fetching user by id {UserId}", userId);
             return null;
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
+            _logger.LogError(ex, "Unexpected error while fetching user by id {UserId}", userId);
             return null;
         }
     }
+
 
     private class ValidateInvitationResponse
     {
