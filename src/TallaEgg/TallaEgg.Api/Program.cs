@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Orders.Application;
@@ -10,18 +13,49 @@ using Users.Application;
 using Users.Core;
 using ClientRegisterUserRequest = TallaEgg.Api.Clients.RegisterUserRequest;
 using ClientRegisterUserWithInvitationRequest = TallaEgg.Api.Clients.RegisterUserWithInvitationRequest;
+using ClientUserDto = TallaEgg.Api.Clients.UserDto;
+using ClientUserRole = TallaEgg.Api.Clients.UserRole;
+using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
+using Serilog;
+using System.IO;
 // using TallaEgg.Core.Interfaces;
 // using TallaEgg.Application.Interfaces;
 // using TallaEgg.Application.Services;
 // using TallaEgg.Infrastructure.Repositories;
 // using TallaEgg.Infrastructure.Data;
 // using TallaEgg.Core.Enums.Order;
-using ClientUserDto = TallaEgg.Api.Clients.UserDto;
-using ClientUserRole = TallaEgg.Api.Clients.UserRole;
-using ClientUserStatus = TallaEgg.Api.Clients.UserStatus;
-using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string sharedConfigFileName = "appsettings.global.json";
+var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
+builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+
+var applicationName = builder.Environment.ApplicationName;
+var serviceSection = builder.Configuration.GetSection($"Services:{applicationName}");
+if (!serviceSection.Exists())
+{
+    throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {sharedConfigFileName}.");
+}
+
+var prefix = $"Services:{applicationName}:";
+var flattened = serviceSection.AsEnumerable(true)
+    .Where(pair => pair.Value is not null)
+    .Select(pair => new KeyValuePair<string, string>(
+        pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? pair.Key[prefix.Length..]
+            : pair.Key,
+        pair.Value!))
+    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+    .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+builder.Configuration.AddInMemoryCollection(flattened);
+
+var urls = serviceSection.GetSection("Urls").Get<string[]>();
+if (urls is { Length: > 0 })
+{
+    builder.WebHost.UseUrls(urls);
+}
 
 // تنظیم اتصال به دیتابیس SQL Server (در appsettings.json هم می‌توان قرار داد)
 builder.Services.AddDbContext<OrdersDbContext>(options =>
@@ -466,6 +500,23 @@ app.MapGet("/api/health/users", async ([FromServices] IUsersApiClient usersClien
 //        return Results.BadRequest(new { message = ex.Message });
 //    }
 //});
+
+static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
+{
+    var current = new System.IO.DirectoryInfo(environment.ContentRootPath);
+    while (current is not null)
+    {
+        var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
+        if (System.IO.File.Exists(candidate))
+        {
+            return candidate;
+        }
+        current = current.Parent;
+    }
+
+    throw new System.IO.FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.", fileName);
+}
+
 
 app.Run();
 

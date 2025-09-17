@@ -382,9 +382,8 @@ FodyWeavers.xsd
 # Configuration files (keep base configs, ignore environment-specific)
 appsettings.*.json
 !appsettings.json
+!config/appsettings.global.json
 !appsettings.Example.json
-
-# User-specific configuration
 *.user
 *.suo
 *.userosscache
@@ -691,9 +690,9 @@ chocolatey/
 
 # Keep important configuration files
 !appsettings.json
+!config/appsettings.global.json
 !appsettings.Example.json
 !appsettings.Template.json
-
 # Keep important documentation
 !README.md
 !CHANGELOG.md
@@ -712,3 +711,4 @@ chocolatey/
 bin/
 obj/
 /clean_build.bat
+

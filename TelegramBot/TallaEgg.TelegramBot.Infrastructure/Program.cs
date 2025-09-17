@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -8,38 +10,86 @@ using System.Net.Http;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Services;
 using TallaEgg.Infrastructure.Clients;
+using System.IO;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
 class Program
 {
+
+        private static string ResolveSharedConfigPath(string fileName)
+        {
+            var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (current is not null)
+            {
+                var candidate = Path.Combine(current.FullName, "config", fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+                current = current.Parent;
+            }
+
+            throw new FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.", fileName);
+        }
+
+
     static async Task Main(string[] args)
     {
         try
         {
             
             // خواندن تنظیمات
-            var config = new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", true)
+            
+            const string sharedConfigFileName = "appsettings.global.json";
+            var sharedConfigPath = ResolveSharedConfigPath(sharedConfigFileName);
+            var baseConfig = new ConfigurationBuilder()
+                .SetBasePath(Path.GetDirectoryName(sharedConfigPath) ?? Directory.GetCurrentDirectory())
+                .AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true)
+                .AddEnvironmentVariables()
                 .Build();
 
-            var botToken = config["TelegramBotToken"];
+            var applicationName = typeof(Program).Assembly.GetName().Name ?? "TallaEgg.TelegramBot.Infrastructure";
+            var serviceSection = baseConfig.GetSection($"Services:{applicationName}");
+            if (!serviceSection.Exists())
+            {
+                throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {sharedConfigFileName}.");
+            }
+
+            var prefix = $"Services:{applicationName}:";
+            var flattened = serviceSection.AsEnumerable(true)
+                .Where(pair => pair.Value is not null)
+                .Select(pair => new KeyValuePair<string, string>(
+                    pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                        ? pair.Key[prefix.Length..]
+                        : pair.Key,
+                    pair.Value!))
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+            var config = new ConfigurationBuilder()
+                .AddConfiguration(baseConfig)
+                .AddInMemoryCollection(flattened)
+                .AddEnvironmentVariables()
+                .Build();
+
+            var botToken = config["TelegramBotToken"] ?? Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
             var orderApiUrl = config["OrderApiUrl"];
             var usersApiUrl = config["UsersApiUrl"];
             var affiliateApiUrl = config["AffiliateApiUrl"];
-            var pricesApiUrl = config["PricesApiUrl"];
-            var walletApiUrl = config["WalletApiUrl"];
             
+            var walletApiUrl = config["WalletApiUrl"];
+
             // Bot settings
             var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "false");
             var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "admin";
+
 
             Console.WriteLine($"Bot Token: {botToken?.Substring(0, Math.Min(10, botToken?.Length ?? 0))}...");
             Console.WriteLine($"Order API URL: {orderApiUrl}");
             Console.WriteLine($"Users API URL: {usersApiUrl}");
             Console.WriteLine($"Affiliate API URL: {affiliateApiUrl}");
-            Console.WriteLine($"Prices API URL: {pricesApiUrl}");
+            
             Console.WriteLine($"Wallet API URL: {walletApiUrl}");
             Console.WriteLine($"Require Referral Code: {requireReferralCode}");
             Console.WriteLine($"Default Referral Code: {defaultReferralCode}");

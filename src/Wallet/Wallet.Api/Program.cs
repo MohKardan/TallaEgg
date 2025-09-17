@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TallaEgg.Core.DTOs;
@@ -9,8 +12,39 @@ using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 using Wallet.Infrastructure;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
+
+const string sharedConfigFileName = "appsettings.global.json";
+var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
+builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+
+var applicationName = builder.Environment.ApplicationName;
+var serviceSection = builder.Configuration.GetSection($"Services:{applicationName}");
+if (!serviceSection.Exists())
+{
+    throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {sharedConfigFileName}.");
+}
+
+var prefix = $"Services:{applicationName}:";
+var flattened = serviceSection.AsEnumerable(true)
+    .Where(pair => pair.Value is not null)
+    .Select(pair => new KeyValuePair<string, string>(
+        pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? pair.Key[prefix.Length..]
+            : pair.Key,
+        pair.Value!))
+    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+    .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+builder.Configuration.AddInMemoryCollection(flattened);
+
+var urls = serviceSection.GetSection("Urls").Get<string[]>();
+if (urls is { Length: > 0 })
+{
+    builder.WebHost.UseUrls(urls);
+}
 
 // پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
 Log.Logger = new LoggerConfiguration()
@@ -223,6 +257,23 @@ app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletSer
 //        Results.Ok(new { success = true }) :
 //        Results.BadRequest(new { success = false, message = "خطا در کاهش موجودی" });
 //});
+
+static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
+{
+    var current = new System.IO.DirectoryInfo(environment.ContentRootPath);
+    while (current is not null)
+    {
+        var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
+        if (System.IO.File.Exists(candidate))
+        {
+            return candidate;
+        }
+        current = current.Parent;
+    }
+
+    throw new System.IO.FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.", fileName);
+}
+
 
 app.Run();
 

@@ -1,0 +1,7 @@
+﻿<Project>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)config\appsettings.global.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Collections.Generic;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using Orders.Application;
@@ -12,8 +14,40 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
 using Serilog;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
+
+
+const string sharedConfigFileName = "appsettings.global.json";
+var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
+builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+
+var applicationName = builder.Environment.ApplicationName;
+var serviceSection = builder.Configuration.GetSection($"Services:{applicationName}");
+if (!serviceSection.Exists())
+{
+    throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {sharedConfigFileName}.");
+}
+
+var prefix = $"Services:{applicationName}:";
+var flattened = serviceSection.AsEnumerable(true)
+    .Where(pair => pair.Value is not null)
+    .Select(pair => new KeyValuePair<string, string>(
+        pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? pair.Key[prefix.Length..]
+            : pair.Key,
+        pair.Value!))
+    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
+    .ToDictionary(pair => pair.Key, pair => pair.Value);
+
+builder.Configuration.AddInMemoryCollection(flattened);
+
+var urls = serviceSection.GetSection("Urls").Get<string[]>();
+if (urls is { Length: > 0 })
+{
+    builder.WebHost.UseUrls(urls);
+}
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<OrdersDbContext>(options =>
@@ -565,6 +599,23 @@ static bool IsValidSymbolFormat(string symbol)
 }
 
 // Remove all other endpoints - keeping only the essential unified ones
+static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
+{
+    var current = new System.IO.DirectoryInfo(environment.ContentRootPath);
+    while (current is not null)
+    {
+        var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
+        if (System.IO.File.Exists(candidate))
+        {
+            return candidate;
+        }
+        current = current.Parent;
+    }
+
+    throw new System.IO.FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.", fileName);
+}
+
+
 app.Run();
 
 // Request models
