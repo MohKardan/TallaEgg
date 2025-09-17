@@ -11,11 +11,13 @@ public class AffiliateApiClient
 {
     private readonly string _apiUrl;
     private readonly HttpClient _httpClient;
+    private readonly ILogger<AffiliateApiClient> _logger;
 
-    public AffiliateApiClient(string apiUrl, HttpClient httpClient)
+    public AffiliateApiClient(string apiUrl, HttpClient httpClient, ILogger<AffiliateApiClient> logger)
     {
         _apiUrl = apiUrl;
-        
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
         // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -16,23 +17,22 @@ namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 public class UsersApiClient
 {
     private readonly HttpClient _httpClient;
-
-    /// <summary>
-    /// private readonly string _apiUrl;
-    /// </summary>
     private readonly string _baseUrl;
-    
-    public UsersApiClient(HttpClient httpClient, IConfiguration configuration)
+    private readonly ILogger<UsersApiClient> _logger;
+
+    public UsersApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<UsersApiClient> logger)
     {
         _httpClient = httpClient;
         _baseUrl = configuration["UsersApiUrl"] ?? "http://localhost:5001/api";
-        
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
         // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
+
     public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(
         int pageNumber = 1,
         int pageSize = 10,

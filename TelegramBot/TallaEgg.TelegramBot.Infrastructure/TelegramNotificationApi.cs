@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -106,10 +107,11 @@ public class TelegramNotificationApi
             return new TelegramBotClient(botToken);
         });
 
-        builder.Services.AddSingleton<UsersApiClient>(provider => 
+        builder.Services.AddSingleton<UsersApiClient>(provider =>
         {
             var httpClient = provider.GetRequiredService<HttpClient>();
-            return new UsersApiClient(httpClient, configuration);
+            var logger = provider.GetRequiredService<ILogger<UsersApiClient>>();
+            return new UsersApiClient(httpClient, configuration, logger);
         });
 
         builder.Services.AddSingleton<TradeNotificationService>();
