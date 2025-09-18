@@ -1,7 +1,6 @@
 # ==========================================
 # .NET Core & ASP.NET Core
 # ==========================================
-
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
@@ -711,4 +710,5 @@ chocolatey/
 bin/
 obj/
 /clean_build.bat
-
+/publishes/APIs
+/publishes/TelegramBot
