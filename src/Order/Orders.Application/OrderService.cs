@@ -23,12 +23,14 @@ public class OrderService
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
         IMatchingEngine matchingEngine,
-        ILogger<OrderService> logger)
+        ILogger<OrderService> logger,
+        UsersApiClient UsersApiClient)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
         _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _usersApiClient = UsersApiClient;
     }
 
     /// <summary>
