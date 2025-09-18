@@ -147,7 +147,29 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             replyMarkup: keyboard);
 
         }
+        public static async Task SendAccountingMenuKeyboardForAdmin(this ITelegramBotClient _botClient, long chatId)
+        {
 
+            var keyboard = new ReplyKeyboardMarkup(
+               new[]
+               {
+                    new[] { new KeyboardButton(BotBtns.BtnOrderHistory), new KeyboardButton(BotBtns.BtnTradeHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnActiveOrders) },
+                    new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
+               }
+                            )
+            {
+                ResizeKeyboard = true,
+            };
+
+
+            await _botClient.SendMessage(
+                chatId,
+                "📑 منوی حسابداری\n" +
+                "لطفاً یکی از گزینه‌های را انتخاب کنید:",
+            replyMarkup: keyboard);
+
+        }
         public static async Task SendSpotSideMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
         {
             var keyboard = new InlineKeyboardMarkup(new[]
