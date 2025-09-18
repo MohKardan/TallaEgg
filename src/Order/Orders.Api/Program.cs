@@ -602,17 +602,27 @@ static bool IsValidSymbolFormat(string symbol)
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {
     var current = new System.IO.DirectoryInfo(environment.ContentRootPath);
-    while (current is not null)
+    try
     {
-        var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
-        if (System.IO.File.Exists(candidate))
+        while (current is not null)
         {
-            return candidate;
+            var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
+            if (System.IO.File.Exists(candidate))
+            {
+                return candidate;
+            }
+            current = current.Parent;
         }
-        current = current.Parent;
-    }
 
-    throw new System.IO.FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.", fileName);
+        var errorMsg = $"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.";
+        Log.Error(errorMsg); // Serilog logs to file as configured
+        throw new System.IO.FileNotFoundException(errorMsg, fileName);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error resolving shared config path for file {FileName}", fileName);
+        throw;
+    }
 }
 
 
@@ -733,6 +743,10 @@ public record NotifyMatchingEngineRequest(
 /// Type of order (Buy or Sell)
 /// </summary>
 OrderSide Type);
+
+
+
+
 
 
 

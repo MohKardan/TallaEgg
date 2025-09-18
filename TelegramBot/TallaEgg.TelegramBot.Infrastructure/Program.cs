@@ -21,17 +21,27 @@ class Program
         private static string ResolveSharedConfigPath(string fileName)
         {
             var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-            while (current is not null)
+            try
             {
-                var candidate = Path.Combine(current.FullName, "config", fileName);
-                if (File.Exists(candidate))
+                while (current is not null)
                 {
-                    return candidate;
+                    var candidate = Path.Combine(current.FullName, "config", fileName);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+                    current = current.Parent;
                 }
-                current = current.Parent;
-            }
 
-            throw new FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.", fileName);
+                var errorMsg = $"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.ر";
+                Serilog.Log.Error(errorMsg); // Serilog logs to file as configured
+                throw new FileNotFoundException(errorMsg, fileName);
+            }
+            catch (Exception ex)
+            {
+                Serilog.Log.Error(ex, "Error resolving shared config path for file {FileName}", fileName);
+                throw;
+            }
         }
 
 

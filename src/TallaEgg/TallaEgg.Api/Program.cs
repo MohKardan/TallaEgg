@@ -504,19 +504,28 @@ app.MapGet("/api/health/users", async ([FromServices] IUsersApiClient usersClien
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {
     var current = new System.IO.DirectoryInfo(environment.ContentRootPath);
-    while (current is not null)
+    try
     {
-        var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
-        if (System.IO.File.Exists(candidate))
+        while (current is not null)
         {
-            return candidate;
+            var candidate = System.IO.Path.Combine(current.FullName, "config", fileName);
+            if (System.IO.File.Exists(candidate))
+            {
+                return candidate;
+            }
+            current = current.Parent;
         }
-        current = current.Parent;
+
+        var errorMsg = $"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.";
+        Log.Error(errorMsg); // Serilog logs to file as configured
+        throw new System.IO.FileNotFoundException(errorMsg, fileName);
     }
-
-    throw new System.IO.FileNotFoundException($"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.", fileName);
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error resolving shared config path for file {FileName}", fileName);
+        throw;
+    }
 }
-
 
 app.Run();
 
