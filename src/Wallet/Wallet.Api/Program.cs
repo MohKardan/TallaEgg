@@ -84,8 +84,16 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// تنظیم CORS
-app.UseCors(builder => builder
+
+// --- مایگریشن و سیید اولیه ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<WalletDbContext>();
+    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+}
+    // تنظیم CORS
+    app.UseCors(builder => builder
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());

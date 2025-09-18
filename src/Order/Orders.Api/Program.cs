@@ -118,6 +118,14 @@ builder.Host.UseSerilog();
 
 var app = builder.Build();
 
+// --- مایگریشن و سیید اولیه ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<OrdersDbContext>();
+    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+}
+
 // Configure Swagger UI
 if (app.Environment.IsDevelopment())
 {

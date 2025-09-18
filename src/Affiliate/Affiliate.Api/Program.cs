@@ -59,6 +59,14 @@ builder.Host.UseSerilog();
 
 var app = builder.Build();
 
+// --- مایگریشن و سیید اولیه ---
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var context = services.GetRequiredService<AffiliateDbContext>();
+    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+}
+
 // Affiliate management endpoints
 app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationRequest request, AffiliateService affiliateService) =>
 {
