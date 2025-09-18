@@ -564,8 +564,14 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandleAccountingMenuAsync(long chatId)
         {
-
-            await _botClient.SendAccountingMenuKeyboard(chatId);
+            if (await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin)
+            {
+                await _botClient.SendAccountingMenuKeyboardForAdmin(chatId);
+            }
+            else
+            {
+                await _botClient.SendAccountingMenuKeyboard(chatId);
+            }
         }
 
         private async Task ShowHelpAsync(long chatId)
@@ -1008,6 +1014,9 @@ namespace TallaEgg.TelegramBot
             var hasSufficientBalance = orderState.OrderSide == OrderSide.Buy
                 ? validateCreditAndBalance.HasSufficientCreditAndBalanceQuote : validateCreditAndBalance.HasSufficientCreditAndBalanceBase;
 
+            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+
+            if (!isAdmin)    
             if (!validateCreditAndBalance.Success || !hasSufficientBalance)
             {
                 var backBtn = new KeyboardButton(BotBtns.BtnBack);

@@ -15,6 +15,8 @@ using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
 using Serilog;
 using System.IO;
+using TallaEgg.TelegramBot.Infrastructure.Clients;
+using CancelActiveOrdersResponseDto = TallaEgg.Core.DTOs.Order.CancelActiveOrdersResponseDto;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +64,7 @@ builder.Services.AddScoped<ITradeRepository, TradeRepository>();
 builder.Services.AddScoped<OrderMatchingRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
+builder.Services.AddScoped<UsersApiClient>();
 
 // Add Wallet API Client
 builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>

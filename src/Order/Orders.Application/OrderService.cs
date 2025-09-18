@@ -6,6 +6,8 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Responses.Order;
+using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.Core.Enums.User;
 
 namespace Orders.Application;
 
@@ -15,17 +17,20 @@ public class OrderService
     private readonly IWalletApiClient _walletApiClient;
     private readonly IMatchingEngine _matchingEngine;
     private readonly ILogger<OrderService> _logger;
+    private readonly UsersApiClient _usersApiClient;
 
     public OrderService(
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
         IMatchingEngine matchingEngine,
-        ILogger<OrderService> logger)
+        ILogger<OrderService> logger,
+        UsersApiClient UsersApiClient)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
         _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _usersApiClient = UsersApiClient;
     }
 
     /// <summary>
@@ -66,6 +71,7 @@ public class OrderService
             //    userId,
             //    assetToCheck,
             //    amountToCheck);
+
             
             var validateCreditAndBalance =
                 await _walletApiClient.ValidateCreditAndBalanceAsync(request.UserId, request.Symbol, request.Quantity, request.Price);
@@ -76,12 +82,18 @@ public class OrderService
             var balanceCheckSuccess = validateCreditAndBalance.Success;
             var balanceMessage = validateCreditAndBalance.Message;
 
+
+            var user = await _usersApiClient.GetUserByIdAsync(userId);
+            var isadmin = user?.Role == UserRole.Admin;
+
+            if (!isadmin)
             if (!balanceCheckSuccess)
             {
                 _logger.LogWarning("Balance validation failed for user {UserId}: {Message}", userId, balanceMessage);
                 throw new InvalidOperationException($"خطا در بررسی موجودی: {balanceMessage}");
             }
 
+            if (!isadmin)
             if (!hasSufficientBalance)
             {
                 _logger.LogWarning("Insufficient balance for user {UserId}: {Message}", userId, balanceMessage);
