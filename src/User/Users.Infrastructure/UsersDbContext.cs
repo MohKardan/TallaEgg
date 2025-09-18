@@ -19,7 +19,7 @@ public class UsersDbContext : DbContext
         modelBuilder.Entity<User>().Property(u => u.CreatedAt).IsRequired();
         modelBuilder.Entity<User>().Property(u => u.Status).IsRequired();
 
-        SeedUsers(modelBuilder);
+       // SeedUsers(modelBuilder);
 
     }
 

@@ -1,0 +1,29 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Users.Api.Migrations
+{
+    /// <inheritdoc />
+    public partial class init2 : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DeleteData(
+                table: "Users",
+                keyColumn: "Id",
+                keyValue: new Guid("5564f136-b9fb-4719-b4dc-b0833fa24761"));
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.InsertData(
+                table: "Users",
+                columns: new[] { "Id", "CreatedAt", "CreatedByUserId", "FirstName", "InvitationCode", "IsActive", "LastActiveAt", "LastName", "PhoneNumber", "Role", "Status", "TelegramId", "Username" },
+                values: new object[] { new Guid("5564f136-b9fb-4719-b4dc-b0833fa24761"), new DateTime(2025, 8, 4, 12, 13, 43, 123, DateTimeKind.Local).AddTicks(4567), null, "مدیر", "admin", true, null, "کل", null, 3, 0, 0L, null });
+        }
+    }
+}

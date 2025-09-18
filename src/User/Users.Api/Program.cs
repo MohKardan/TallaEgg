@@ -128,6 +128,19 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<UsersDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 
+    User user = new User()
+    {
+        Id = Guid.Parse("5564f136-b9fb-4719-b4dc-b0833fa24761"),
+        FirstName = "مدیر",
+        LastName = "کل",
+        InvitationCode = "admin",
+        IsActive = true,
+        CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
+        Role = UserRole.SuperAdmin
+    };
+     context.Users.Add(user);
+    context.SaveChanges();
+
     //var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     //var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
 
