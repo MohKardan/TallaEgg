@@ -168,6 +168,8 @@ public class UsersApiClient
             if (result?.Success == true && result.Data != null)
             {
                 var userId = Guid.TryParse(result.Data.Id.ToString(), out var parsed) ? parsed : (Guid?)null;
+
+
                 return (true, result.Message ?? "کاربر با موفقیت ثبت شد.", userId);
             }
 

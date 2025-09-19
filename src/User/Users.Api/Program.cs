@@ -126,121 +126,39 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<UsersDbContext>();
-    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
-
-    User user = new User()
+    try
     {
-        Id = Guid.Parse("5564f136-b9fb-4719-b4dc-b0833fa24761"),
-        FirstName = "مدیر",
-        LastName = "کل",
-        InvitationCode = "admin",
-        IsActive = true,
-        CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
-        Role = UserRole.SuperAdmin
-    };
-     context.Users.Add(user);
-    context.SaveChanges();
+        await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 
-    //var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-    //var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var adminId = Guid.Parse("5564f136-b9fb-4719-b4dc-b0833fa24761");
+        var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
 
-    //// نقش‌ها
-    //var superAdminRoleId = Guid.Parse("38ed12da-a56f-4c81-bfe3-3de2e1f2d2ca");
-    //var adminRoleId = Guid.Parse("f155a811-ff53-49a3-973e-7c83e15e62c8");
-    //var employeeRoleId = Guid.Parse("350f81b2-e5b2-423f-b91e-dcc1c1ee0f1a");
-
-    //if (!await roleManager.RoleExistsAsync(Constants.SUPERADMINROLE))
-    //{
-    //    await roleManager.CreateAsync(new IdentityRole<Guid>
-    //    {
-    //        Id = superAdminRoleId,
-    //        Name = Constants.SUPERADMINROLE,
-    //        NormalizedName = Constants.SUPERADMINROLE.ToUpper()
-    //    });
-    //}
-
-    //if (!await roleManager.RoleExistsAsync(Constants.ADMINROLE))
-    //{
-    //    await roleManager.CreateAsync(new IdentityRole<Guid>
-    //    {
-    //        Id = adminRoleId,
-    //        Name = Constants.ADMINROLE,
-    //        NormalizedName = Constants.ADMINROLE.ToUpper()
-    //    });
-    //}
-
-    //if (!await roleManager.RoleExistsAsync(Constants.EmployeeROLE))
-    //{
-    //    await roleManager.CreateAsync(new IdentityRole<Guid>
-    //    {
-    //        Id = employeeRoleId,
-    //        Name = Constants.EmployeeROLE,
-    //        NormalizedName = Constants.EmployeeROLE.ToUpper()
-    //    });
-    //}
-
-    //// کاربر سوپر ادمین
-    //var superAdminUserId = Guid.Parse("3956e3af-84dd-40e8-b53e-d63ab82dbef6");
-    //var superAdmin = await userManager.FindByNameAsync("superAdmin");
-
-    //if (superAdmin == null)
-    //{
-    //    var adminUser = new ApplicationUser
-    //    {
-    //        Id = superAdminUserId,
-    //        UserName = "superAdmin",
-    //        NormalizedUserName = "SUPERADMIN",
-    //        FirstName = "مدیرکل",
-    //        EmailConfirmed = true,
-    //        IsActive = true,
-    //        SecurityStamp = Guid.NewGuid().ToString()
-    //    };
-
-    //    var result = await userManager.CreateAsync(adminUser, "4r5t$R%T"); // ست کردن پسورد
-
-    //    if (result.Succeeded)
-    //    {
-    //        await userManager.AddToRoleAsync(adminUser, Constants.SUPERADMINROLE);
-    //    }
-    //    else
-    //    {
-    //        throw new Exception("خطا در ساخت کاربر سوپر ادمین: " +
-    //            string.Join(", ", result.Errors.Select(e => e.Description)));
-    //    }
-    //}
-
-
-
-    //// کاربر ادمین
-    //var adminUserId = Guid.Parse("56c07248-8383-4bed-be66-fb0af85103b7");
-    //var admin = await userManager.FindByNameAsync("admin");
-
-    //if (admin == null)
-    //{
-    //    var adminUser = new ApplicationUser
-    //    {
-    //        Id = adminUserId,
-    //        UserName = "admin",
-    //        NormalizedUserName = "ADMIN",
-    //        FirstName = "مدیر",
-    //        EmailConfirmed = true,
-    //        IsActive = true,
-    //        SecurityStamp = Guid.NewGuid().ToString()
-    //    };
-
-    //    var result = await userManager.CreateAsync(adminUser, "7y6t&Y^T"); // ست کردن پسورد
-
-    //    if (result.Succeeded)
-    //    {
-    //        await userManager.AddToRoleAsync(adminUser, Constants.ADMINROLE);
-    //    }
-    //    else
-    //    {
-    //        throw new Exception("خطا در ساخت کاربر ادمین: " +
-    //            string.Join(", ", result.Errors.Select(e => e.Description)));
-    //    }
-    //}
-
+        if (existingAdmin == null)
+        {
+            User user = new User()
+            {
+                Id = adminId,
+                FirstName = "مدیر",
+                LastName = "کل",
+                InvitationCode = "admin",
+                IsActive = true,
+                CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
+                Role = UserRole.SuperAdmin
+            };
+            context.Users.Add(user);
+            await context.SaveChangesAsync();
+            Log.Information("مدیر کل با موفقیت ایجاد شد.");
+        }
+        else
+        {
+            Log.Information("مدیر کل قبلاً وجود دارد. برنامه بدون خطا اجرا می‌شود.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "خطا در مایگریشن یا سیید اولیه مدیر کل");
+        throw;
+    }
 }
 
 
