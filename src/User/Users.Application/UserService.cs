@@ -1,5 +1,6 @@
 using Affiliate.Core;
 using Microsoft.Extensions.Http;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 using TallaEgg.Core.DTOs;
@@ -16,12 +17,14 @@ public class UserService
     private readonly IUserRepository _userRepository;
     private readonly UserMapper _userMapper;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(IUserRepository userRepository, UserMapper userMapper, IHttpClientFactory httpClientFactory)
+    public UserService(IUserRepository userRepository, UserMapper userMapper, IHttpClientFactory httpClientFactory, ILogger<UserService> logger)
     {
         _userRepository = userRepository;
         _userMapper = userMapper;
         _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     public async Task<UserDto> RegisterUserAsync(long telegramId,string invitationCode, string? username, string? firstName, string? lastName)
@@ -245,6 +248,8 @@ public class UserService
         try
         {
             using var httpClient = _httpClientFactory.CreateClient("WalletAPI");
+            _logger.Log(LogLevel.Information,"درخواست برای ساخت کیف پول های پیش فرض" + " " + httpClient.BaseAddress + $"api/wallet/create-default/{userId}");
+            
             var response = await httpClient.GetAsync($"api/wallet/create-default/{userId}");
             
             return response.IsSuccessStatusCode;
