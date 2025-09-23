@@ -1,288 +1,162 @@
+﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using Telegram.Bot;
-using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
+using System.Net.Http;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using TallaEgg.TelegramBot.Core.Interfaces;
-using System.Net.Http;
-using TallaEgg.TelegramBot.Infrastructure.Clients;
-using TallaEgg.TelegramBot.Infrastructure.Services;
+using Microsoft.Extensions.Options;
+using Serilog;
+using Telegram.Bot;
 using TallaEgg.Infrastructure.Clients;
-using System.IO;
+using TallaEgg.TelegramBot.Core.Interfaces;
+using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.TelegramBot.Infrastructure.Options;
+using TallaEgg.TelegramBot.Infrastructure.Services;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
-class Program
+public class Program
 {
+    private const string SharedConfigFileName = "appsettings.global.json";
 
-        private static string ResolveSharedConfigPath(string fileName)
-        {
-            var current = new DirectoryInfo(Directory.GetCurrentDirectory());
-            try
-            {
-                while (current is not null)
-                {
-                    var candidate = Path.Combine(current.FullName, "config", fileName);
-                    if (File.Exists(candidate))
-                    {
-                        return candidate;
-                    }
-                    current = current.Parent;
-                }
-
-                var errorMsg = $"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.ر";
-                Serilog.Log.Error(errorMsg); // Serilog logs to file as configured
-                throw new FileNotFoundException(errorMsg, fileName);
-            }
-            catch (Exception ex)
-            {
-                Serilog.Log.Error(ex, "Error resolving shared config path for file {FileName}", fileName);
-                throw;
-            }
-        }
-
-
-    static async Task Main(string[] args)
+    public static async Task Main(string[] args)
     {
-        try
-        {
-            
-            // خواندن تنظیمات
-            
-            const string sharedConfigFileName = "appsettings.global.json";
-            var sharedConfigPath = ResolveSharedConfigPath(sharedConfigFileName);
-            var baseConfig = new ConfigurationBuilder()
-                .SetBasePath(Path.GetDirectoryName(sharedConfigPath) ?? Directory.GetCurrentDirectory())
-                .AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true)
-                .AddEnvironmentVariables()
-                .Build();
+        _ = Task.Run(() => TelegramNotificationApi.RunNotificationApi(args));
 
-            var applicationName = typeof(Program).Assembly.GetName().Name ?? "TallaEgg.TelegramBot.Infrastructure";
-            var serviceSection = baseConfig.GetSection($"Services:{applicationName}");
-            if (!serviceSection.Exists())
-            {
-                throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {sharedConfigFileName}.");
-            }
-
-            var prefix = $"Services:{applicationName}:";
-            var flattened = serviceSection.AsEnumerable(true)
-                .Where(pair => pair.Value is not null)
-                .Select(pair => new KeyValuePair<string, string>(
-                    pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-                        ? pair.Key[prefix.Length..]
-                        : pair.Key,
-                    pair.Value!))
-                .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
-                .ToDictionary(pair => pair.Key, pair => pair.Value);
-
-            var config = new ConfigurationBuilder()
-                .AddConfiguration(baseConfig)
-                .AddInMemoryCollection(flattened)
-                .AddEnvironmentVariables()
-                .Build();
-
-            var botToken = config["TelegramBotToken"] ?? Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
-            var orderApiUrl = config["OrderApiUrl"];
-            var usersApiUrl = config["UsersApiUrl"];
-            var affiliateApiUrl = config["AffiliateApiUrl"];
-            
-            var walletApiUrl = config["WalletApiUrl"];
-
-            // Bot settings
-            var requireReferralCode = bool.Parse(config["BotSettings:RequireReferralCode"] ?? "false");
-            var defaultReferralCode = config["BotSettings:DefaultReferralCode"] ?? "admin";
-
-
-            Console.WriteLine($"Bot Token: {botToken?.Substring(0, Math.Min(10, botToken?.Length ?? 0))}...");
-            Console.WriteLine($"Order API URL: {orderApiUrl}");
-            Console.WriteLine($"Users API URL: {usersApiUrl}");
-            Console.WriteLine($"Affiliate API URL: {affiliateApiUrl}");
-            
-            Console.WriteLine($"Wallet API URL: {walletApiUrl}");
-            Console.WriteLine($"Require Referral Code: {requireReferralCode}");
-            Console.WriteLine($"Default Referral Code: {defaultReferralCode}");
-
-            if (string.IsNullOrEmpty(botToken) || string.IsNullOrEmpty(orderApiUrl) || 
-                string.IsNullOrEmpty(usersApiUrl) || string.IsNullOrEmpty(affiliateApiUrl) ||
-                string.IsNullOrEmpty(walletApiUrl))
-            {
-                Console.WriteLine("❌ توکن یا آدرس‌های API تنظیم نشده است.");
-                return;
-            }
-
-            Console.WriteLine("✅ Configuration loaded successfully");
-
-            // Test network connectivity first
-            await NetworkTest.TestConnectivityAsync();
-
-            // Test HTTP vs HTTPS
-            await SimpleHttpTest.TestHttpRequestsAsync();
-
-            // Test with proxy settings
-            await ProxyTest.TestWithProxyAsync();
-
-            // Test bot token first
-            Console.WriteLine("🔍 Testing bot token...");
-            var tokenTestResult = await TestBotToken.TestTokenAsync(botToken);
-
-            // If network connectivity fails, run offline test
-            if (!tokenTestResult)
-            {
-                Console.WriteLine("\n⚠️ Network connectivity issues detected.");
-                Console.WriteLine("Running offline test mode...");
-                await OfflineTestMode.RunOfflineTestAsync();
-                Console.WriteLine("\nPress any key to exit...");
-                Console.ReadKey();
-                return;
-            }
-
-            
-            // Setup Dependency Injection
-            var services = new ServiceCollection();
-
-            services.AddHttpClient();
-
-            // Register services
-            services.AddSingleton<ITelegramBotClient>(provider => ProxyBotClient.CreateWithProxy(botToken));
-            services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(
-                provider.GetRequiredService<HttpClient>(),
-                config,
-                provider.GetRequiredService<ILogger<OrderApiClient>>()));
-            services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(
-                provider.GetRequiredService<HttpClient>(),
-                config,
-                provider.GetRequiredService<ILogger<UsersApiClient>>()));
-            services.AddSingleton<AffiliateApiClient>(provider => new AffiliateApiClient(
-                affiliateApiUrl,
-                new HttpClient(),
-                provider.GetRequiredService<ILogger<AffiliateApiClient>>()));
-            services.AddSingleton<WalletApiClient>(provider => new WalletApiClient(walletApiUrl));
-            services.AddSingleton<TradeNotificationService>();
-            
-            services.AddSingleton<IBotHandler>(provider => new BotHandler(
-                provider.GetRequiredService<ILogger<BotHandler>>(),
-                provider.GetRequiredService<ITelegramBotClient>(),
-                provider.GetRequiredService<OrderApiClient>(),
-                provider.GetRequiredService<UsersApiClient>(),
-                provider.GetRequiredService<AffiliateApiClient>(),
-                provider.GetRequiredService<WalletApiClient>(),
-                requireReferralCode,
-                defaultReferralCode
-            ));
-
-            var serviceProvider = services.BuildServiceProvider();
-            var botClient = serviceProvider.GetRequiredService<ITelegramBotClient>();
-            var botHandler = serviceProvider.GetRequiredService<IBotHandler>();
-
-            Console.WriteLine("✅ API clients initialized");
-
-            // حذف webhook قبلی
-            try
-            {
-                await botClient.DeleteWebhook(dropPendingUpdates: true);
-                Console.WriteLine("✅ Webhook deleted successfully");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠️ Warning: Could not delete webhook: {ex.Message}");
-            }
-
-            // Test bot connection
-            try
-            {
-                var me = await botClient.GetMe();
-                Console.WriteLine($"✅ Bot connection successful: @{me.Username}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Bot connection failed: {ex.Message}");
-                Console.WriteLine("Please check your bot token and internet connection.");
-                return;
-            }
-
-            var receiverOptions = new Telegram.Bot.Polling.ReceiverOptions
-            {
-                AllowedUpdates = new[] { UpdateType.Message, UpdateType.CallbackQuery },
-                Limit = 100
-            };
-
-            Console.WriteLine("🔄 Starting message polling...");
-
-            var cts = new CancellationTokenSource();
-
-            botClient.StartReceiving(
-                updateHandler: async (bot, update, ct) =>
-                {
-                    await HandleUpdateAsync(bot, update, botHandler);
-                },
-
-                errorHandler: async (bot, exception, source, ct) =>
-                {
-                    Console.WriteLine($"❌ Polling Error: {exception.Message}");
-                    Console.WriteLine($"Error Type: {exception.GetType().Name}");
-                    if (exception.InnerException != null)
-                    {
-                        Console.WriteLine($"Inner Error: {exception.InnerException.Message}");
-                    }
-                    
-                    // اگر خطای timeout باشد، کمی صبر کنیم و دوباره تلاش کنیم
-                    if (exception.Message.Contains("timeout") || exception.Message.Contains("timed out"))
-                    {
-                        Console.WriteLine("⏳ Timeout detected. Waiting 10 seconds before retrying...");
-                        await Task.Delay(10000, ct);
-                    }
-                },
-
-                receiverOptions: receiverOptions,
-                cancellationToken: cts.Token
-            );
-
-            TelegramNotificationApi.RunNotificationApi(args);
-
-            Console.WriteLine("✅ Bot is now running and listening for messages...");
-            Console.WriteLine("Press any key to stop...");
-            Console.ReadKey();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Fatal Error: {ex.Message}");
-            Console.WriteLine($"Error Type: {ex.GetType().Name}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
-            }
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
-        }
+        using var host = CreateHostBuilder(args).Build();
+        await host.RunAsync();
     }
 
-    static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, IBotHandler botHandler)
+    private static IHostBuilder CreateHostBuilder(string[] args) =>
+        Host.CreateDefaultBuilder(args)
+            .ConfigureAppConfiguration((context, configBuilder) =>
+            {
+                var sharedConfigPath = ResolveSharedConfigPath(SharedConfigFileName);
+                configBuilder.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
+
+                var tempConfiguration = configBuilder.Build();
+                var applicationName = context.HostingEnvironment.ApplicationName
+                    ?? typeof(Program).Assembly.GetName().Name
+                    ?? "TallaEgg.TelegramBot.Infrastructure";
+
+                var serviceSection = tempConfiguration.GetSection($"Services:{applicationName}");
+                if (!serviceSection.Exists())
+                {
+                    throw new InvalidOperationException($"Missing configuration section 'Services:{applicationName}' in {SharedConfigFileName}.");
+                }
+
+                var prefix = $"Services:{applicationName}:";
+                var flattened = serviceSection.AsEnumerable(true)
+                    .Where(pair => pair.Value is not null)
+                    .Select(pair => new KeyValuePair<string, string>(
+                        pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                            ? pair.Key[prefix.Length..]
+                            : pair.Key,
+                        pair.Value!))
+                    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key));
+
+                configBuilder.AddInMemoryCollection(flattened);
+                configBuilder.AddEnvironmentVariables();
+            })
+            .ConfigureServices((context, services) =>
+            {
+                services.AddOptions<TelegramBotOptions>()
+                    .Bind(context.Configuration)
+                    .ValidateDataAnnotations();
+
+                services.AddHttpClient();
+
+                services.AddSingleton<ITelegramBotClient>(provider =>
+                {
+                    var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
+                    if (string.IsNullOrWhiteSpace(options.TelegramBotToken))
+                    {
+                        throw new InvalidOperationException("TelegramBotToken is not configured.");
+                    }
+
+                    return ProxyBotClient.CreateWithProxy(options.TelegramBotToken);
+                });
+
+                services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(
+                    provider.GetRequiredService<HttpClient>(),
+                    provider.GetRequiredService<IConfiguration>(),
+                    provider.GetRequiredService<ILogger<OrderApiClient>>()));
+
+                services.AddSingleton<UsersApiClient>(provider => new UsersApiClient(
+                    provider.GetRequiredService<HttpClient>(),
+                    provider.GetRequiredService<IConfiguration>(),
+                    provider.GetRequiredService<ILogger<UsersApiClient>>()));
+
+                services.AddSingleton<AffiliateApiClient>(provider =>
+                {
+                    var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
+                    if (string.IsNullOrWhiteSpace(options.AffiliateApiUrl))
+                    {
+                        throw new InvalidOperationException("AffiliateApiUrl is not configured.");
+                    }
+
+                    return new AffiliateApiClient(
+                        options.AffiliateApiUrl,
+                        new HttpClient(),
+                        provider.GetRequiredService<ILogger<AffiliateApiClient>>());
+                });
+
+                services.AddSingleton<WalletApiClient>(provider =>
+                {
+                    var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
+                    return new WalletApiClient(options.WalletApiUrl);
+                });
+
+                services.AddSingleton<TradeNotificationService>();
+
+                services.AddSingleton<IBotHandler>(provider =>
+                {
+                    var logger = provider.GetRequiredService<ILogger<BotHandler>>();
+                    var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
+                    var botSettings = options.BotSettings ?? new BotSettingsOptions();
+
+                    return new BotHandler(
+                        logger,
+                        provider.GetRequiredService<ITelegramBotClient>(),
+                        provider.GetRequiredService<OrderApiClient>(),
+                        provider.GetRequiredService<UsersApiClient>(),
+                        provider.GetRequiredService<AffiliateApiClient>(),
+                        provider.GetRequiredService<WalletApiClient>(),
+                        botSettings.RequireReferralCode,
+                        botSettings.DefaultReferralCode);
+                });
+
+                services.AddHostedService<TelegramBotHostedService>();
+            });
+
+    private static string ResolveSharedConfigPath(string fileName)
     {
+        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
         try
         {
-            
-            if (update.Message != null)
+            while (current is not null)
             {
-                Console.WriteLine($"📨 Received message from {update.Message.From?.Username ?? "Unknown"}: {update.Message.Text?.Substring(0, Math.Min(50, update.Message.Text?.Length ?? 0))}...");
-                await botHandler.HandleMessageAsync(update.Message);
+                var candidate = Path.Combine(current.FullName, "config", fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                current = current.Parent;
             }
-            else if (update.CallbackQuery != null)
-            {
-                Console.WriteLine($"🔘 Received callback query from {update.CallbackQuery.From?.Username ?? "Unknown"}: {update.CallbackQuery.Data}");
-                await botHandler.HandleCallbackQueryAsync(update.CallbackQuery);
-            }
+
+            var errorMsg = $"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.";
+            Log.Error(errorMsg);
+            throw new FileNotFoundException(errorMsg, fileName);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ Error handling update: {ex.Message}");
-            Console.WriteLine($"Error Type: {ex.GetType().Name}");
-            if (ex.InnerException != null)
-            {
-                Console.WriteLine($"Inner Error: {ex.InnerException.Message}");
-            }
+            Log.Error(ex, "Error resolving shared config path for file {FileName}", fileName);
+            throw;
         }
     }
 }

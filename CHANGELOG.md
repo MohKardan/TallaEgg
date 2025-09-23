@@ -1,14 +1,24 @@
-# Changelog
+﻿# Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2025-09-23
+
+### Added
+- Introduced TelegramBotOptions to provide strongly typed configuration binding for the bot service.
+- Added TelegramBotHostedService to run the Telegram bot via the Generic Host background service pipeline.
+
+### Changed
+- Refactored Telegram bot entry point to use the Generic Host pattern with options binding and dependency injection for external clients.
+- Launched the notification minimal API alongside the host to preserve existing functionality during startup.
+- Documented publish commands and metadata refresh steps for deployment artifacts.
 ## [2.2.0] - 2025-08-28
 
 ### Added
-- **🎯 Complete Maker/Taker Trading System**: Implemented comprehensive Maker/Taker identification and fee calculation system
+- **ðŸŽ¯ Complete Maker/Taker Trading System**: Implemented comprehensive Maker/Taker identification and fee calculation system
   - Added proper Maker/Taker role assignment based on order timing and liquidity provision
   - Implemented differentiated fee structure: Makers (0.1%) vs Takers (0.2%)
   - Enhanced Trade entity with MakerOrderId, TakerOrderId, MakerUserId, TakerUserId fields
@@ -18,46 +28,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added comprehensive business logic for automatic Maker/Taker identification
 
 ### Changed
-- **⚡ Enhanced Trade Entity**: Complete redesign with Maker/Taker specific fields
+- **âš¡ Enhanced Trade Entity**: Complete redesign with Maker/Taker specific fields
   - Updated Trade.Create method signature to include all Maker/Taker parameters
   - Added automatic fee calculation based on order roles and trade value
   - Enhanced fee assignment logic: buyer/seller fees determined by Maker/Taker roles
   - Improved validation with comprehensive parameter checking
 
-- **🔄 Advanced Order Matching Logic**: Revolutionary matching engine with proper role assignment
+- **ðŸ”„ Advanced Order Matching Logic**: Revolutionary matching engine with proper role assignment
   - **Maker Identification**: Orders that provide liquidity by waiting in order book
   - **Taker Identification**: Orders that consume liquidity by matching immediately
   - **Timing-Based Logic**: Earlier timestamp = Maker, Later timestamp = Taker
   - **Market vs Limit Orders**: Market orders are always Takers, Limit orders can be either
   - **Fee Optimization**: Makers get lower fees (0.1%) to incentivize liquidity provision
 
-- **💼 OrderService Architecture**: Enhanced with proper Maker/Taker workflow
+- **ðŸ’¼ OrderService Architecture**: Enhanced with proper Maker/Taker workflow
   - Refactored CreateMakerOrderAsync for limit orders that add liquidity
   - Added CreateMarketOrderAsync for market orders that consume liquidity
   - Implemented immediate matching detection for Taker role assignment
   - Enhanced balance validation and wallet integration for different order types
 
-- **🏗️ Repository Layer Updates**: Updated OrderMatchingRepository with new Trade creation
+- **ðŸ—ï¸ Repository Layer Updates**: Updated OrderMatchingRepository with new Trade creation
   - Fixed CreateTrade method to use enhanced Trade.Create signature
   - Added proper Maker/Taker role determination logic
   - Implemented fee calculation based on trade value and role-specific rates
   - Enhanced thread-safe order matching with proper role assignment
 
 ### Fixed
-- **🐛 Compilation Issues**: Resolved all build errors for complete Maker/Taker system
+- **ðŸ› Compilation Issues**: Resolved all build errors for complete Maker/Taker system
   - Fixed Trade.Create method signature mismatch in OrderMatchingRepository
-  - Corrected OrderStatus enum usage (PartiallyFilled → Partially)
+  - Corrected OrderStatus enum usage (PartiallyFilled â†’ Partially)
   - Resolved Order entity method conflicts (FilledAmount removed, RemainingAmount used)
   - Fixed unused variable warnings in exception handlers
   - Removed unused Timer fields from MatchingEngineService
 
-- **⚙️ Interface Compliance**: Fixed IMatchingEngine interface implementation
+- **âš™ï¸ Interface Compliance**: Fixed IMatchingEngine interface implementation
   - Added proper StartAsync and StopAsync method implementations
   - Resolved service registration conflicts between multiple MatchingEngineService classes
   - Fixed Program.cs DI registration with explicit namespace specification
 
 ### Technical Details
-- **🎲 Maker/Taker Algorithm**: Sophisticated role determination system
+- **ðŸŽ² Maker/Taker Algorithm**: Sophisticated role determination system
   ```csharp
   // Determine roles based on order timestamp
   var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;
@@ -67,30 +77,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   var takerFeeRate = 0.002m; // 0.2% - Higher fee for liquidity consumers
   ```
 
-- **💰 Fee Structure**: Advanced fee calculation system
+- **ðŸ’° Fee Structure**: Advanced fee calculation system
   - **Maker Fee**: 0.1% to encourage liquidity provision
   - **Taker Fee**: 0.2% standard trading fee
   - **Dynamic Assignment**: Fees assigned based on actual trading role
-  - **Trade Value Based**: Fees calculated on quantity × price
+  - **Trade Value Based**: Fees calculated on quantity Ã— price
 
-- **🔗 Order Relationships**: Comprehensive order linking system
+- **ðŸ”— Order Relationships**: Comprehensive order linking system
   - MakerOrderId/TakerOrderId for trade tracking
   - MakerUserId/TakerUserId for user role identification  
   - Proper parent-child relationships between orders
   - Complete audit trail for regulatory compliance
 
-- **🚀 Performance Optimizations**: Enhanced matching engine efficiency
+- **ðŸš€ Performance Optimizations**: Enhanced matching engine efficiency
   - Eliminated unused background processing for better performance
   - Streamlined service dependencies and DI configuration
   - Optimized database operations with proper LINQ queries
   - Improved error handling and logging throughout
 
 ### Architecture Benefits
-- **📈 Industry Standard**: Implements standard exchange trading model
-- **💡 Liquidity Incentives**: Lower fees for market makers encourage liquidity
-- **🔍 Transparency**: Clear role identification for all trades
-- **⚖️ Fair Pricing**: Market-driven price discovery through proper maker/taker mechanics
-- **📊 Comprehensive Tracking**: Full audit trail with role-based analytics
+- **ðŸ“ˆ Industry Standard**: Implements standard exchange trading model
+- **ðŸ’¡ Liquidity Incentives**: Lower fees for market makers encourage liquidity
+- **ðŸ” Transparency**: Clear role identification for all trades
+- **âš–ï¸ Fair Pricing**: Market-driven price discovery through proper maker/taker mechanics
+- **ðŸ“Š Comprehensive Tracking**: Full audit trail with role-based analytics
 
 ### Breaking Changes
 - Trade.Create method signature updated - requires migration of existing trade creation code
@@ -104,7 +114,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.1.0] - 2025-08-28
 
 ### Added
-- **💰 Wallet Integration for Order Balance Validation**: Complete integration with Wallet service for balance validation and freeze transactions
+- **ðŸ’° Wallet Integration for Order Balance Validation**: Complete integration with Wallet service for balance validation and freeze transactions
   - Added `IWalletApiClient` interface for communication with Wallet service
   - Implemented `WalletApiClient` with full HTTP client functionality
   - Added balance validation before order placement with `ValidateBalanceAsync`
@@ -113,70 +123,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added asset-specific balance calculation logic for Buy/Sell orders
   - Integrated rollback mechanism for failed order creation
 
-- **🔒 Advanced Order Balance Management**: Enhanced order lifecycle with proper balance handling
-  - Buy orders now require USDT balance validation (amount × price)
+- **ðŸ”’ Advanced Order Balance Management**: Enhanced order lifecycle with proper balance handling
+  - Buy orders now require USDT balance validation (amount Ã— price)
   - Sell orders now require asset balance validation (amount)
   - Balance is frozen (locked) immediately upon order creation
   - Balance is automatically unlocked when orders are cancelled
   - Added comprehensive error handling for insufficient balance scenarios
   - Implemented proper transaction rollback on order creation failures
 
-- **🔗 Wallet Service Endpoints Enhancement**: Extended Wallet service with new balance management endpoints
+- **ðŸ”— Wallet Service Endpoints Enhancement**: Extended Wallet service with new balance management endpoints
   - Added `POST /api/wallet/unlockBalance` endpoint for releasing frozen funds
   - Enhanced existing balance validation endpoints for order integration
   - Added proper error handling and response formatting for all endpoints
 
 ### Changed
-- **📈 Enhanced OrderService Architecture**: Complete refactoring of order creation workflow
+- **ðŸ“ˆ Enhanced OrderService Architecture**: Complete refactoring of order creation workflow
   - Updated `CreateMakerOrderAsync` with full wallet integration
   - Added `CalculateRequiredBalance` helper method for asset-specific calculations
   - Enhanced `CancelOrderAsync` with automatic balance unlock functionality
   - Added comprehensive logging for all wallet-related operations
   - Improved error handling with user-friendly Persian messages
 
-- **🔧 Dependency Injection Updates**: Enhanced service configuration and dependencies
+- **ðŸ”§ Dependency Injection Updates**: Enhanced service configuration and dependencies
   - Added HttpClient configuration for WalletApiClient communication
   - Registered IWalletApiClient interface with proper DI lifetime management
   - Added configuration support for WalletApiUrl in appsettings.json
   - Updated Orders.Api Program.cs with proper service registrations
 
-- **⚙️ Configuration Management**: Enhanced application configuration
+- **âš™ï¸ Configuration Management**: Enhanced application configuration
   - Added WalletApiUrl configuration to appsettings.json
   - Set default Wallet service URL to http://localhost:60933
   - Added proper configuration binding for HTTP client base address
 
 ### Fixed
-- **🔄 Order Lifecycle Management**: Resolved balance consistency issues
+- **ðŸ”„ Order Lifecycle Management**: Resolved balance consistency issues
   - Fixed race conditions between order creation and balance updates
   - Implemented proper rollback mechanism for failed order scenarios
   - Added validation to prevent orders with insufficient balance
   - Fixed memory leaks in unused exception variables
 
-- **🌐 HTTP Client Configuration**: Resolved configuration binding issues
+- **ðŸŒ HTTP Client Configuration**: Resolved configuration binding issues
   - Fixed IConfiguration.GetValue usage in WalletApiClient
   - Updated to use IConfiguration indexer for better compatibility
   - Added proper error handling for service unavailability scenarios
 
 ### Technical Details
-- **🏗️ Architecture**: Service-oriented architecture with proper separation of concerns
+- **ðŸ—ï¸ Architecture**: Service-oriented architecture with proper separation of concerns
   - Orders service communicates with Wallet service via HTTP APIs
   - Implemented proper client-server pattern for microservices communication
   - Added comprehensive error handling and retry mechanisms
   - Maintained transaction consistency across service boundaries
 
-- **💡 Balance Logic**: Sophisticated balance calculation and management
-  - **Buy Orders**: Require base currency (USDT) = quantity × price
+- **ðŸ’¡ Balance Logic**: Sophisticated balance calculation and management
+  - **Buy Orders**: Require base currency (USDT) = quantity Ã— price
   - **Sell Orders**: Require actual asset = quantity amount
   - **Freeze Process**: Immediate balance lock upon order validation success
   - **Unlock Process**: Automatic balance release on order cancellation or failure
 
-- **🔐 Transaction Safety**: Comprehensive transaction management
+- **ðŸ” Transaction Safety**: Comprehensive transaction management
   - Atomic balance validation and freeze operations
   - Proper rollback mechanisms for partial failures
   - Consistent error handling across all balance operations
   - Detailed logging for audit trail and debugging
 
-- **📊 Error Handling**: Enhanced error management and user feedback
+- **ðŸ“Š Error Handling**: Enhanced error management and user feedback
   - Persian error messages for better user experience
   - Detailed logging for debugging and monitoring
   - Proper HTTP status codes for different error scenarios
@@ -209,14 +219,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0] - 2025-08-28
 
 ### Added
-- **🔒 Thread-Safe Database Lock Implementation**: Implemented comprehensive Database Pessimistic Locking for Orders.Api
+- **ðŸ”’ Thread-Safe Database Lock Implementation**: Implemented comprehensive Database Pessimistic Locking for Orders.Api
   - Added `OrderMatchingRepository` with database-level locking using UPDLOCK and READPAST hints
   - Implemented `GetBuyOrdersWithLockAsync` and `GetSellOrdersWithLockAsync` with proper ORDER BY clauses
   - Added LINQ-based queries for SQL Server compatibility and enum handling
   - Integrated SemaphoreSlim for application-level concurrency control
   - Added proper price-time priority ordering (DESC for Buy, ASC for Sell)
 
-- **⚡ Complete Matching Engine Rewrite**: Redesigned matching engine as thread-safe BackgroundService
+- **âš¡ Complete Matching Engine Rewrite**: Redesigned matching engine as thread-safe BackgroundService
   - Complete rewrite of `MatchingEngineService` with proper thread safety
   - Fixed critical race condition issues in original matching logic
   - Implemented per-asset locking using `SemaphoreSlim` for concurrent processing
@@ -224,7 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced partial fill handling with proper order status transitions
   - Added continuous background processing every 5 seconds
 
-- **🛡️ Race Condition Prevention**: Eliminated critical race conditions in order matching
+- **ðŸ›¡ï¸ Race Condition Prevention**: Eliminated critical race conditions in order matching
   - Implemented database pessimistic locking to prevent concurrent access
   - Added proper thread synchronization with SemaphoreSlim
   - Fixed order status updates to include Pending orders in active queries
@@ -232,58 +242,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Eliminated duplicate trade creation and inconsistent order states
 
 ### Changed
-- **📈 Enhanced Order Repository**: Fixed GetActiveOrdersAsync to include all matchable orders
+- **ðŸ“ˆ Enhanced Order Repository**: Fixed GetActiveOrdersAsync to include all matchable orders
   - Updated WHERE clause to include Pending, Confirmed, and PartiallyFilled orders
   - Fixed missing Pending orders from active order matching
   - Added proper order status filtering for matching engine compatibility
 
-- **🔧 SQL Server Compatibility**: Switched from Raw SQL to LINQ for better enum handling
+- **ðŸ”§ SQL Server Compatibility**: Switched from Raw SQL to LINQ for better enum handling
   - Replaced problematic Raw SQL queries with LINQ expressions
   - Fixed SQL Server enum conversion errors (Cannot convert varchar to int)
   - Added proper OrderType enum handling in database queries
   - Enhanced query performance with Entity Framework Core optimization
 
-- **⚙️ Dependency Injection**: Updated Program.cs with new thread-safe components
+- **âš™ï¸ Dependency Injection**: Updated Program.cs with new thread-safe components
   - Added `AddScoped<OrderMatchingRepository>()` registration
   - Maintained existing service registrations for backward compatibility
   - Enhanced DI container configuration for new locking infrastructure
 
 ### Fixed
-- **🚨 Critical Price Matching Bug**: Fixed incorrect price comparison logic
+- **ðŸš¨ Critical Price Matching Bug**: Fixed incorrect price comparison logic
   - Changed from `buyOrder.Price == sellOrder.Price` to `buyOrder.Price >= sellOrder.Price`
   - Enables proper market order matching where buy price meets or exceeds sell price
   - Fixed trading logic that was preventing valid order matches
 
-- **⚠️ SQL Query Compatibility**: Resolved Entity Framework Core SQL translation errors
+- **âš ï¸ SQL Query Compatibility**: Resolved Entity Framework Core SQL translation errors
   - Fixed "Cannot convert varchar 'Buy' to int" error in Raw SQL queries
   - Replaced integer enum casting with proper LINQ enum handling
   - Enhanced SQL Server compatibility for enum-based filtering
 
-- **🔄 Order Status Management**: Fixed incomplete order status handling
+- **ðŸ”„ Order Status Management**: Fixed incomplete order status handling
   - Added Pending orders to active order queries for proper matching
   - Fixed order status transitions during partial fills
   - Enhanced order lifecycle management with proper status updates
 
 ### Technical Details
-- **🏗️ Architecture**: Thread-safe Clean Architecture implementation
+- **ðŸ—ï¸ Architecture**: Thread-safe Clean Architecture implementation
   - Background Service pattern for continuous order matching
   - Repository pattern with database locking capabilities
   - Dependency injection with proper service lifetimes
   - Clean separation of concerns with domain-driven design
 
-- **🔒 Locking Strategy**: Multi-layer concurrency control
+- **ðŸ”’ Locking Strategy**: Multi-layer concurrency control
   - **Database Level**: UPDLOCK and READPAST hints for row-level locking
   - **Application Level**: SemaphoreSlim for per-asset synchronization
   - **Transaction Level**: Atomic operations with Entity Framework transactions
   - **Query Level**: Proper ORDER BY for consistent locking order
 
-- **📊 Performance Optimizations**: Enhanced matching engine performance
+- **ðŸ“Š Performance Optimizations**: Enhanced matching engine performance
   - Asset-based processing for parallel order matching
   - Efficient LINQ queries with proper indexing
   - Reduced database round-trips with batch operations
   - Optimized SQL generation with Entity Framework Core
 
-- **🧪 Testing**: Comprehensive thread-safety validation
+- **ðŸ§ª Testing**: Comprehensive thread-safety validation
   - Unit tests for matching logic with thread safety scenarios
   - Integration tests with database locking verification
   - Performance testing under concurrent load
@@ -502,7 +512,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated WalletDbContext to include Transaction entity with proper foreign key relationships
   - Created ITransactionService and TransactionService for business logic handling
   - Enhanced TransactionType enum with new types: Freeze, Unfreeze, Trade
-  - Updated TransactionStatus enum (Cancelled → Canceled for consistency)
+  - Updated TransactionStatus enum (Cancelled â†’ Canceled for consistency)
   - Added comprehensive business operations: Deposit, Withdraw, Freeze, Unfreeze
   - Implemented transaction status management: Complete, Fail, Cancel
   - Added pagination support with filtering by WalletId, UserId, Currency, Type, Status
@@ -653,7 +663,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Market Buy/Sell Flow - Step 4: Telegram Bot Market Button and Flow**: Implemented complete Market order flow in Telegram Bot
-  - Added Market button to main menu with "📈 بازار" text and proper keyboard layout
+  - Added Market button to main menu with "ðŸ“ˆ Ø¨Ø§Ø²Ø§Ø±" text and proper keyboard layout
   - Implemented Market menu with tradable symbols (BTC/USDT, ETH/USDT, ADA/USDT, DOT/USDT)
   - Added Market symbol selection handler with best bid/ask price display
   - Implemented Buy/Sell button handlers for Market orders with quantity input
@@ -1035,7 +1045,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BotHandler**: Enhanced with complete trading workflow
   - Added TradingType selection before OrderType selection
   - Enhanced OrderState with TradingType and IsConfirmed properties
-  - Improved order flow: TradingType → OrderType → Asset → Amount → Confirmation
+  - Improved order flow: TradingType â†’ OrderType â†’ Asset â†’ Amount â†’ Confirmation
   - Added order confirmation with detailed summary before submission
   - Enhanced callback handling for new trading workflow
   - Improved error handling and user feedback
@@ -1052,9 +1062,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Technical Details
 - **Trading Workflow**: Complete user journey for order placement
-  1. User clicks "📝 ثبت سفارش" button
-  2. User selects trading type (💰 نقدی / 📈 آتی)
-  3. User selects order type (🛒 خرید / 🛍️ فروش)
+  1. User clicks "ðŸ“ Ø«Ø¨Øª Ø³ÙØ§Ø±Ø´" button
+  2. User selects trading type (ðŸ’° Ù†Ù‚Ø¯ÛŒ / ðŸ“ˆ Ø¢ØªÛŒ)
+  3. User selects order type (ðŸ›’ Ø®Ø±ÛŒØ¯ / ðŸ›ï¸ ÙØ±ÙˆØ´)
   4. User selects trading symbol from available assets
   5. User enters amount
   6. System shows order confirmation with details
