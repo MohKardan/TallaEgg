@@ -1,4 +1,4 @@
-# TallaEgg Published Applications
+﻿# TallaEgg Published Applications
 
 This folder contains all published applications ready for deployment.
 
@@ -67,6 +67,32 @@ cd TelegramBot
 dotnet TallaEgg.TelegramBot.Infrastructure.dll
 ```
 
+## Build & Publish
+
+Use Release builds and publish directly into this folder structure:
+
+```powershell
+# From repo root
+# APIs
+dotnet publish src/User/Users.Api/Users.Api.csproj -c Release -o publishes/APIs/Users
+dotnet publish src/Affiliate/Affiliate.Api/Affiliate.Api.csproj -c Release -o publishes/APIs/Affiliate
+dotnet publish src/Order/Orders.Api/Orders.Api.csproj -c Release -o publishes/APIs/Orders
+dotnet publish src/Wallet/Wallet.Api/Wallet.Api.csproj -c Release -o publishes/APIs/Wallet
+dotnet publish src/TallaEgg/TallaEgg.Api/TallaEgg.Api.csproj -c Release -o publishes/APIs/TallaEgg
+
+# Telegram Bot
+dotnet publish TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj -c Release -o publishes/TelegramBot
+```
+
+After publishing, refresh the metadata (optional):
+
+```powershell
+$json = Get-Content publishes/deployment-info.json -Raw | ConvertFrom-Json
+$json.PublishedAt = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+$json.Projects | ForEach-Object { $_.Published = $true }
+$json | ConvertTo-Json -Depth 5 | Set-Content publishes/deployment-info.json -Encoding UTF8
+```
+
 ## 🔧 Configuration
 
 Each application includes:
@@ -123,5 +149,5 @@ For deployment issues, check:
 - Windows Event Viewer for system errors
 
 ---
-*Generated on: 2025-09-19*
+*Generated on: 2025-09-23*
 *Configuration: Release*

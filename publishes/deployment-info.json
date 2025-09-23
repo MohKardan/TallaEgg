@@ -1,42 +1,42 @@
-{
-  "PublishedAt": "2025-09-19 01:54:09",
-  "Configuration": "Release",
-  "Projects": [
-    {
-      "Path": "src\\User\\Users.Api\\Users.Api.csproj",
-      "Name": "Users API",
-      "Published": true,
-      "OutputPath": "publishes\\APIs\\Users"
-    },
-    {
-      "Path": "src\\Affiliate\\Affiliate.Api\\Affiliate.Api.csproj",
-      "Name": "Affiliate API",
-      "Published": true,
-      "OutputPath": "publishes\\APIs\\Affiliate"
-    },
-    {
-      "Path": "src\\Order\\Orders.Api\\Orders.Api.csproj",
-      "Name": "Orders API",
-      "Published": true,
-      "OutputPath": "publishes\\APIs\\Orders"
-    },
-    {
-      "Path": "src\\Wallet\\Wallet.Api\\Wallet.Api.csproj",
-      "Name": "Wallet API",
-      "Published": true,
-      "OutputPath": "publishes\\APIs\\Wallet"
-    },
-    {
-      "Path": "src\\TallaEgg\\TallaEgg.Api\\TallaEgg.Api.csproj",
-      "Name": "TallaEgg API",
-      "Published": true,
-      "OutputPath": "publishes\\APIs\\TallaEgg"
-    },
-    {
-      "Path": "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
-      "Name": "Telegram Bot",
-      "Published": true,
-      "OutputPath": "publishes\\TelegramBot"
-    }
-  ]
+﻿{
+    "PublishedAt":  "2025-09-23 18:57:23",
+    "Configuration":  "Release",
+    "Projects":  [
+                     {
+                         "Path":  "src\\User\\Users.Api\\Users.Api.csproj",
+                         "Name":  "Users API",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\APIs\\Users"
+                     },
+                     {
+                         "Path":  "src\\Affiliate\\Affiliate.Api\\Affiliate.Api.csproj",
+                         "Name":  "Affiliate API",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\APIs\\Affiliate"
+                     },
+                     {
+                         "Path":  "src\\Order\\Orders.Api\\Orders.Api.csproj",
+                         "Name":  "Orders API",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\APIs\\Orders"
+                     },
+                     {
+                         "Path":  "src\\Wallet\\Wallet.Api\\Wallet.Api.csproj",
+                         "Name":  "Wallet API",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\APIs\\Wallet"
+                     },
+                     {
+                         "Path":  "src\\TallaEgg\\TallaEgg.Api\\TallaEgg.Api.csproj",
+                         "Name":  "TallaEgg API",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\APIs\\TallaEgg"
+                     },
+                     {
+                         "Path":  "TelegramBot\\TallaEgg.TelegramBot.Infrastructure\\TallaEgg.TelegramBot.Infrastructure.csproj",
+                         "Name":  "Telegram Bot",
+                         "Published":  true,
+                         "OutputPath":  "publishes\\TelegramBot"
+                     }
+                 ]
 }
