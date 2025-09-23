@@ -23,7 +23,7 @@ public class UsersApiClient
     public UsersApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<UsersApiClient> logger)
     {
         _httpClient = httpClient;
-        _baseUrl = configuration["UsersApiUrl"] ?? "http://localhost:5001/api";
+        _baseUrl = ResolveUsersApiBaseUrl(configuration) ?? "http://localhost:5001/api";
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         // برای حل مشکل SSL در محیط توسعه
@@ -31,6 +31,31 @@ public class UsersApiClient
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
+    }
+
+    private static string? ResolveUsersApiBaseUrl(IConfiguration? configuration)
+    {
+        if (configuration is null)
+        {
+            return null;
+        }
+
+        var directValue = configuration["UsersApiUrl"];
+        if (!string.IsNullOrWhiteSpace(directValue))
+        {
+            return directValue;
+        }
+
+        foreach (var pair in configuration.AsEnumerable())
+        {
+            if (pair.Key?.EndsWith("UsersApiUrl", StringComparison.OrdinalIgnoreCase) == true &&
+                !string.IsNullOrWhiteSpace(pair.Value))
+            {
+                return pair.Value;
+            }
+        }
+
+        return null;
     }
 
     public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(
