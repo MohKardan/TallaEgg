@@ -1,21 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog;
-using Telegram.Bot;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
+using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.TelegramBot.Infrastructure.Services;
+using Telegram.Bot;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
@@ -113,6 +114,14 @@ public class Program
 
                 services.AddSingleton<TradeNotificationService>();
 
+                services.AddSingleton<TelegramLoggerService>(provider =>
+                {
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                   // var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
+
+                    return new TelegramLoggerService(httpClientFactory, /*options.TelegramBotToken*/"7331560325:AAHgmgugtatg0XmoIMgTd7_Nj6G09jvo9g4");
+                });
+
                 services.AddSingleton<IBotHandler>(provider =>
                 {
                     var logger = provider.GetRequiredService<ILogger<BotHandler>>();
@@ -126,11 +135,14 @@ public class Program
                         provider.GetRequiredService<UsersApiClient>(),
                         provider.GetRequiredService<AffiliateApiClient>(),
                         provider.GetRequiredService<WalletApiClient>(),
+                        provider.GetRequiredService<TelegramLoggerService>(),
                         botSettings.RequireReferralCode,
                         botSettings.DefaultReferralCode);
                 });
 
                 services.AddHostedService<TelegramBotHostedService>();
+
+
             });
 
     private static string ResolveSharedConfigPath(string fileName)

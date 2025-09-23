@@ -8,6 +8,7 @@ using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Requests.Order;
+using TallaEgg.Core.Services;
 using TallaEgg.Core.Utilties;
 using TallaEgg.Infrastructure;
 using TallaEgg.Infrastructure.Clients;
@@ -52,6 +53,7 @@ namespace TallaEgg.TelegramBot
         private readonly UsersApiClient _usersApi;
         private readonly AffiliateApiClient _affiliateApi;
         private readonly WalletApiClient _walletApi;
+        private readonly TelegramLoggerService _telegramLogger;
 
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
 
@@ -60,7 +62,7 @@ namespace TallaEgg.TelegramBot
 
         public BotHandler(ILogger<BotHandler> logger,
                          ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi,
-                         AffiliateApiClient affiliateApi, WalletApiClient walletApi,
+                         AffiliateApiClient affiliateApi, WalletApiClient walletApi, TelegramLoggerService telegramLogger,
                          bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -70,6 +72,7 @@ namespace TallaEgg.TelegramBot
             _usersApi = usersApi;
             _affiliateApi = affiliateApi;
             _walletApi = walletApi;
+            _telegramLogger = telegramLogger;
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
 
@@ -89,6 +92,7 @@ namespace TallaEgg.TelegramBot
                     }
                     catch (Exception ex)
                     {
+                        await _telegramLogger.ErrorAsync(ex, "Error in cleanup");
                         Console.WriteLine($"Error in cleanup: {ex.Message}");
                     }
                 }
@@ -150,6 +154,8 @@ namespace TallaEgg.TelegramBot
             }
             catch (Exception ex)
             {
+                await _telegramLogger.ErrorAsync(ex, "❌ Error in HandleUpdateAsync");
+
                 Console.WriteLine($"❌ Error in HandleUpdateAsync: {ex.Message}");
 
             }
