@@ -86,7 +86,33 @@ namespace TallaEgg.Core.Services
         }
 
 
-        public async Task LogAsync(string log, Exception ex = null)
+        public async Task LogAsync<T>(string message, T dto, string chatId = "-822161060", string parseMode = "")
+        {
+            //Version version = Assembly.GetExecutingAssembly().GetName().Version;
+            var version = Assembly.GetEntryAssembly()?.GetName().Version;
+
+
+            string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ message;
+
+            var _options = new JsonSerializerOptions
+            {
+                //Encoder = JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All),
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                WriteIndented = true
+            };
+
+            text += JsonSerializer.Serialize(dto, _options);
+            text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+
+            string _message = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId, ParseMode = parseMode }, _options);
+
+            var data = new StringContent(_message, Encoding.UTF8, "application/json");
+
+            await Send(data);
+        }
+
+
+        public async Task LogAsync(string log, string chatId = "-822161060")
         {
             //Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
@@ -100,22 +126,13 @@ namespace TallaEgg.Core.Services
                     WriteIndented = true
                 };
                 string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ log + "\n";
-                string _ex;
-                if (ex != null)
-                {
-                    /// Send To Exception Chanell
-                    text += JsonSerializer.Serialize(ex.Message, _options);
-                    text += JsonSerializer.Serialize(string.IsNullOrEmpty(ex.StackTrace) ? "no stack trace" : ex.StackTrace, _options);
+             
+                
                     text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
-                    _ex = JsonSerializer.Serialize(new { Message = text, BotId = "1831329096:AAHA-kJzBETlafAoHdTGfFYeWdED1kwCLDk", ChatId = "-1001206333249" }, _options);
-                }
-                else
-                {
+                    var _text = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId }, _options);
+                
 
-                    _ex = JsonSerializer.Serialize(new { Message = text, BotId = "1831329096:AAHA-kJzBETlafAoHdTGfFYeWdED1kwCLDk", ChatId = "-618284393" }, _options);
-                }
-
-                var data = new StringContent(_ex, Encoding.UTF8, "application/json");
+                var data = new StringContent(_text, Encoding.UTF8, "application/json");
                 await Send(data);
             }
             catch (Exception eex)

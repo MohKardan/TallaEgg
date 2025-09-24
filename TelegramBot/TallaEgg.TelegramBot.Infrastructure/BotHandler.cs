@@ -105,6 +105,8 @@ namespace TallaEgg.TelegramBot
             {
                 var chatId = message.Chat.Id;
                 var telegramId = message.From?.Id ?? 0;
+                await _telegramLogger.LogAsync<Message>($"✔➕ new message:",message);
+
 
                 message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
 

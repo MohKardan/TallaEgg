@@ -332,6 +332,7 @@ namespace TallaEgg.TelegramBot
 
             // اطلاع‌رسانی به کاربر
             await _botClient.SendMessage(telegramUserId, "درخواست شما تأیید شد\n حالا میتوانید از خدمات ما استفاده کنید.");
+            await _telegramLogger.Notif<Message>($"کاربر تایید شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
         }
 
         private async Task RejectUser(long telegramUserId, long adminTgId, Message originalMsg)
@@ -346,6 +347,8 @@ namespace TallaEgg.TelegramBot
 
             // اطلاع‌رسانی به کاربر
             await _botClient.SendMessage(telegramUserId, "درخواست شما رد شد.");
+            await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
+
         }
 
         /// <summary>
