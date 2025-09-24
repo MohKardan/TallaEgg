@@ -169,7 +169,8 @@ public class TelegramBotHostedService : BackgroundService
     {
         try
         {
-            if (update.Message is not null)
+            
+            if (update.Message is not null && update.Message.Chat.Type == ChatType.Private)
             {
                 var preview = update.Message.Text is null
                     ? string.Empty
@@ -177,7 +178,7 @@ public class TelegramBotHostedService : BackgroundService
                 _logger.LogInformation("Received message from {User}: {Preview}", update.Message.From?.Username ?? "Unknown", preview);
                 await _botHandler.HandleMessageAsync(update.Message);
             }
-            else if (update.CallbackQuery is not null)
+            else if (update.CallbackQuery is not null && update.CallbackQuery.Message.Chat.Type == ChatType.Private)
             {
                 _logger.LogInformation("Received callback query from {User}: {Data}", update.CallbackQuery.From?.Username ?? "Unknown", update.CallbackQuery.Data);
                 await _botHandler.HandleCallbackQueryAsync(update.CallbackQuery);
