@@ -1,176 +1,132 @@
-# TallaEgg Trading Bot
+# TallaEgg Trading Platform
 
-ربات تلگرام برای معاملات ارز دیجیتال و طلا با سیستم affiliate marketing
+## Overview
+TallaEgg is a modular .NET 9 trading platform that models the core workflows of a centralised exchange. The solution is split into focused minimal API services and background workers that cooperate through shared DTOs, HTTP clients, and SQL Server databases.
 
-## ساختار پروژه
+## Key Capabilities
+- RESTful minimal APIs for users, wallets, orders, and affiliate programs that return a unified `ApiResponse<T>` envelope.
+- Matching engine background service with maker/taker logic, database-level locking, and scheduled order book processing.
+- Wallet domain with deposit, withdrawal, balance locking, trade settlement, transaction history, and default wallet provisioning.
+- Invitation and affiliate tracking including code creation, validation, usage counting, and per-user reporting.
+- Telegram bot infrastructure that consumes the platform APIs, streams trade notifications, and exposes a lightweight notification API for other services.
+- Centralised configuration (`config/appsettings.global.json`), Serilog logging, and typed HTTP clients across services.
 
-پروژه به صورت میکروسرویس‌های جداگانه طراحی شده است:
+## Repository Layout
+| Path | Description |
+| --- | --- |
+| src/User | Users service (API, Application, Core, Infrastructure) for onboarding, profile updates, roles, and default wallets |
+| src/Wallet | Wallet service with EF Core persistence, wallet operations, and transaction endpoints |
+| src/Order | Orders service, application layer, and matching engine background service |
+| src/Affiliate | Affiliate microservice for invitation codes and referral tracking |
+| src/TallaEgg | Shared core/application/infrastructure libraries plus orchestration API |
+| TelegramBot | Telegram bot core, infrastructure host, clients, and automated tests |
+| config/appsettings.global.json | Shared configuration consumed by all services |
+| tools, publish, publishes | Helper scripts and deployment artifacts |
 
-### 1. Users Service (مدیریت کاربران)
-- **Users.Core**: مدل‌های کاربر و enum ها
-- **Users.Infrastructure**: دسترسی به دیتابیس و repository ها
-- **Users.Application**: سرویس‌های کاربر
-- **Users.Api**: API برای مدیریت کاربران
+## Tech Stack
+- .NET 9.0 with C# 12, minimal APIs, and background services.
+- Entity Framework Core 9 with SQL Server providers.
+- Serilog for structured logging to console and rolling files.
+- Telegram.Bot client plus proxy-aware wrappers for bot connectivity.
+- Hosted services and typed `HttpClient` wrappers for inter-service calls.
 
-### 2. Affiliate Service (سیستم دعوت)
-- **Affiliate.Core**: مدل‌های دعوت و کدهای تخفیف
-- **Affiliate.Infrastructure**: دسترسی به دیتابیس affiliate
-- **Affiliate.Application**: سرویس‌های affiliate
-- **Affiliate.Api**: API برای مدیریت دعوت‌ها
+## Prerequisites
+- .NET SDK 9.0 (preview channel as of this repository).
+- Local or network-accessible SQL Server (Express/localdb works for development).
+- Telegram bot token (store in an environment variable such as `TELEGRAM_BOT_TOKEN`).
+- Optional: PowerShell 7+ or Bash for running the helper scripts.
 
-### 3. Matching Engine Service (موتور تطبیق معاملات)
-- **Matching.Core**: مدل‌های سفارش و معامله
-- **Matching.Infrastructure**: دسترسی به دیتابیس معاملات
-- **Matching.Application**: موتور تطبیق و منطق معاملات
-- **Matching.Api**: API برای مدیریت سفارشات و معاملات
+## Configuration
+All services load shared settings from `config/appsettings.global.json` and then flatten the service-specific section that matches the hosting assembly. Copy the template below, replace connection strings, ports, and secrets with values that match your environment, and do **not** commit real credentials:
 
-### 4. Wallet Service (کیف پول)
-- **Wallet.Core**: مدل‌های کیف پول و تراکنش
-- **Wallet.Infrastructure**: دسترسی به دیتابیس کیف پول
-- **Wallet.Application**: سرویس‌های کیف پول
-- **Wallet.Api**: API برای مدیریت کیف پول
-
-### 5. Orders Service (سفارشات)
-- **Orders.Core**: مدل‌های سفارش
-- **Orders.Infrastructure**: دسترسی به دیتابیس سفارشات
-- **Orders.Application**: سرویس‌های سفارش
-- **TallaEgg.Api**: API اصلی برای سفارشات
-
-### 6. Telegram Bot
-- **TallaEgg.TelegramBot**: ربات تلگرام با رابط کاربری کامل
-
-## ویژگی‌ها
-
-- سیستم دعوت با کدهای منحصر به فرد
-- ثبت‌نام کاربران با کد دعوت
-- اشتراک‌گذاری شماره تلفن
-- مدیریت وضعیت کاربران
-- مدیریت نقش‌ها (ادمین، کاربر)
-- ثبت سفارش خرید و فروش توسط ادمین
-- معاملات نقدی و آتی
-- مشاهده موجودی و تاریخچه
-- راهنمای استفاده
-
-### احراز هویت و ثبت‌نام
-- ✅ سیستم دعوت با کدهای منحصر به فرد
-- ✅ ثبت‌نام کاربران با کد دعوت
-- ✅ اشتراک‌گذاری شماره تلفن
-- ✅ مدیریت وضعیت کاربران
-
-### منوی اصلی
-- 💰 **نقدی**: معاملات نقدی و فوری
-- 📈 **آتی**: معاملات آتی و قراردادهای آتی
-- 📊 **حسابداری**: مشاهده موجودی و تاریخچه
-- ❓ **راهنما**: راهنمای استفاده
-
-### معاملات آتی
-- 📈 نمایش آخرین قیمت‌های خرید و فروش
-- 🛒 دکمه‌های خرید و فروش
-- 🔙 بازگشت به منوی اصلی
-
-### موتور تطبیق معاملات
-- ⚡ تطبیق خودکار سفارشات خرید و فروش
-- 📊 مدیریت Order Book
-- 💰 محاسبه کارمزد معاملات
-- 🔄 به‌روزرسانی موجودی کیف پول
-
-### کیف پول
-- 💳 مدیریت موجودی‌های مختلف
-- 📝 ثبت تراکنش‌ها
-- 🔒 قفل موجودی برای سفارشات
-- 💸 واریز و برداشت
-
-## نحوه اجرا
-
-### 1. راه‌اندازی دیتابیس‌ها
-```bash
-# Users Database
-dotnet ef database update --project src/Users.Api
-
-# Affiliate Database  
-dotnet ef database update --project src/Affiliate.Api
-
-# Matching Database
-dotnet ef database update --project src/Matching.Api
-
-# Wallet Database
-dotnet ef database update --project src/Wallet.Api
-
-# Orders Database
-dotnet ef database update --project src/TallaEgg.Api
-```
-
-### 2. اجرای API ها
-```bash
-# Users API (Port 5136)
-cd src/Users.Api
-dotnet run
-
-# Affiliate API (Port 5137)
-cd src/Affiliate.Api
-dotnet run
-
-# Matching API (Port 5138)
-cd src/Matching.Api
-dotnet run
-
-# Wallet API (Port 5139)
-cd src/Wallet.Api
-dotnet run
-
-# Orders API (Port 5135)
-cd src/TallaEgg.Api
-dotnet run
-```
-
-### 3. اجرای ربات تلگرام
-```bash
-cd TelegramBot/TallaEgg.TelegramBot
-dotnet run
-```
-
-## تنظیمات
-
-### فایل appsettings.json ربات
-```json
-{
-  "TelegramBotToken": "YOUR_BOT_TOKEN",
-  "OrderApiUrl": "http://localhost:5135/api/order",
-  "UsersApiUrl": "http://localhost:5136/api",
-  "AffiliateApiUrl": "http://localhost:5137/api",
-  "MatchingApiUrl": "http://localhost:5138/api",
-  "WalletApiUrl": "http://localhost:5139/api",
-  "PricesApiUrl": "http://localhost:5135/api"
-}
-```
-
-### فایل‌های appsettings.json API ها
 ```json
 {
   "ConnectionStrings": {
-    "UsersDb": "Server=localhost;Database=TallaEggUsers;...",
-    "AffiliateDb": "Server=localhost;Database=TallaEggAffiliate;...",
-    "MatchingDb": "Server=localhost;Database=TallaEggMatching;...",
-    "WalletDb": "Server=localhost;Database=TallaEggWallet;...",
-    "OrdersDb": "Server=localhost;Database=TallaEggOrders;..."
+    "UsersDb": "Server=localhost;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
+    "WalletDb": "Server=localhost;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
+    "OrdersDb": "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+    "AffiliateDb": "Server=localhost;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Services": {
+    "Users.Api": {
+      "Urls": [ "http://localhost:5136" ],
+      "WalletApiUrl": "http://localhost:60933/api"
+    },
+    "Wallet.Api": {
+      "Urls": [ "https://localhost:60932", "http://localhost:60933" ]
+    },
+    "Orders.Api": {
+      "Urls": [ "https://localhost:7140", "http://localhost:5140" ],
+      "WalletApiUrl": "http://localhost:60933/api"
+    },
+    "Affiliate.Api": {
+      "Urls": [ "https://localhost:60811", "http://localhost:60812" ]
+    },
+    "TallaEgg.TelegramBot.Infrastructure": {
+      "Urls": [ "http://localhost:57546" ],
+      "OrderApiUrl": "http://localhost:5140/api",
+      "UsersApiUrl": "http://localhost:5136/api",
+      "AffiliateApiUrl": "http://localhost:60812/api",
+      "PricesApiUrl": "http://localhost:5140/api",
+      "WalletApiUrl": "http://localhost:60933/api",
+      "BotSettings": {
+        "RequireReferralCode": false,
+        "DefaultReferralCode": "ADMIN2024"
+      },
+      "TelegramBotToken": "set-with-env-or-user-secrets"
+    }
   }
 }
 ```
 
-## جریان کار کاربر
+Override `TelegramBotToken` and other sensitive values via environment variables or `dotnet user-secrets` in development. The services also honour environment variables used by `Host.CreateDefaultBuilder`.
 
-1. **شروع**: کاربر با `/start [کد_دعوت]` ربات را شروع می‌کند
-2. **تایید کد**: سیستم کد دعوت را بررسی می‌کند
-3. **ثبت‌نام**: کاربر در سیستم ثبت‌نام می‌شود
-4. **شماره تلفن**: کاربر شماره تلفن خود را به اشتراک می‌گذارد
-5. **منوی اصلی**: کاربر به منوی اصلی دسترسی پیدا می‌کند
-6. **معاملات**: کاربر می‌تواند قیمت‌ها را ببیند و معامله کند
-7. **ادمین**: ادمین می‌تواند سفارش خرید و فروش ثبت کند
+## Database Setup
+Every API calls `Database.MigrateAsync()` on startup, so running each service will create or update its database automatically once migrations are present. To initialise them ahead of time you can execute:
 
-## مزایای ساختار جدید
+```
+dotnet restore
+dotnet tool install --global dotnet-ef
+dotnet ef database update --project src/User/Users.Api/Users.Api.csproj
+dotnet ef database update --project src/Wallet/Wallet.Api/Wallet.Api.csproj
+dotnet ef database update --project src/Order/Orders.Api/Orders.Api.csproj
+dotnet ef database update --project src/Affiliate/Affiliate.Api/Affiliate.Api.csproj
+```
 
-- 🔄 **جداسازی مسئولیت‌ها**: هر سرویس مسئولیت خاص خود را دارد
-- 📈 **مقیاس‌پذیری**: هر بخش می‌تواند مستقل توسعه یابد
-- 🛠️ **نگهداری آسان**: کد تمیزتر و قابل فهم‌تر
-- 🔒 **امنیت بهتر**: دسترسی‌های مختلف برای بخش‌های مختلف
-- 🚀 **توسعه سریع‌تر**: تیم‌های مختلف می‌توانند همزمان کار کنند
+The Users service seeds a super admin account (`Id = 5564f136-b9fb-4719-b4dc-b0833fa24761`). Update or disable this seed before going beyond development.
+
+## Running Locally
+From the repository root you can start each component using the following commands in separate terminals:
+
+```
+dotnet run --project src/User/Users.Api/Users.Api.csproj
+dotnet run --project src/Affiliate/Affiliate.Api/Affiliate.Api.csproj
+dotnet run --project src/Wallet/Wallet.Api/Wallet.Api.csproj
+dotnet run --project src/Order/Orders.Api/Orders.Api.csproj
+dotnet run --project src/TallaEgg/TallaEgg.Api/TallaEgg.Api.csproj
+dotnet run --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
+```
+
+Swagger UI is available at `/api-docs` (for example `http://localhost:5136/api-docs` for the Users API). The Telegram infrastructure host also spins up a minimal API at `/api/telegram/notifications/trade-match` for receiving trade match notifications.
+
+## Service Highlights
+- **Users.Api**: registration with invitation codes, phone updates, role/status management, default wallet provisioning, and lookups by Telegram ID, phone, or role.
+- **Wallet.Api**: balance queries, deposits, withdrawals, lock/unlock operations, trade settlement endpoint, transaction history, and default wallet creation.
+- **Orders.Api**: order creation, confirmation, cancellation, active order listing, trade history, best bid/ask computation, and maker/taker aware matching engine.
+- **Affiliate.Api**: create, validate, and redeem invitation codes plus per-user invitation reports.
+- **Telegram Bot**: long-polling bot hosted in `TallaEgg.TelegramBot.Infrastructure`, typed API clients, trade notification service, and proxy-aware bot client factory.
+
+## Testing
+Run the full test suite with:
+
+```
+dotnet test TallaEgg.sln
+```
+
+`TallaEgg.TelegramBot.Tests` covers bot command handlers and client integrations; add more domain-specific tests alongside the corresponding projects.
+
+## Logging
+Each service writes structured logs to the console and to rolling files under its local `logs/` directory (for example `src/Order/Orders.Api/logs`). Ensure the directories exist or adjust the Serilog sinks before deploying.
+
+## Deployment
+The repository includes publishing scripts under `publish/` and `publish-all.*`. Review and adapt them for your environment; they assume local build outputs and do not handle secrets.
