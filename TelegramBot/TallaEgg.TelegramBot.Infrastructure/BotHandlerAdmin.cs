@@ -50,7 +50,7 @@ namespace TallaEgg.TelegramBot
                 var amount = decimal.Parse(match.Groups["amount"].Value);
                 var currency = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
-                    : CurrenciesConstant.Rial; // مقدار پیش‌فرض
+                    : CurrenciesConstant.Maua; // مقدار پیش‌فرض
 
                 if(CurrenciesConstant.IsValidCurrency(currency) == false)
                 {

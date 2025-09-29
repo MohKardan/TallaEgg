@@ -15,7 +15,7 @@
                 Code = Maua,
                 PersianName = "طلا آبشده",
                 Unit = "گرم",
-                DecimalPlaces = 8,
+                DecimalPlaces = 2,
                 IsTradable = true
             },
             new CurrencyInfo
@@ -31,7 +31,7 @@
                 Code = Credit_MAUA,
                 PersianName = "اعتبار طلا",
                 Unit = "گرم",
-                DecimalPlaces = 0,
+                DecimalPlaces = 2,
                 IsTradable = false
             }
         };
