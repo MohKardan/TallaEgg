@@ -1,5 +1,4 @@
-using System.Linq;
-using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
@@ -7,14 +6,17 @@ using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
+using Serilog;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Reflection;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
-using TallaEgg.Infrastructure.Clients;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
-using Serilog;
-using System.IO;
+using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using CancelActiveOrdersResponseDto = TallaEgg.Core.DTOs.Order.CancelActiveOrdersResponseDto;
 
@@ -57,6 +59,29 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
         "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("Orders.Infrastructure"))
     .LogTo(Console.WriteLine, LogLevel.None)); // Disable all EF Core logging
+
+// فقط در production محافظت فعال شود
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddAuthentication("ApiKey")
+        .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
+        {
+            options.ApiKey = APIKeyConstant.TallaEggApiKey;
+        });
+
+    // Authorization Policy سراسری فقط برای production
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else
+{
+    // برای development فقط authorization اضافه کنید (بدون authentication)
+    builder.Services.AddAuthorization();
+}
 
 // Add services to the container.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -129,16 +154,30 @@ using (var scope = app.Services.CreateScope())
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 }
 
-// Configure Swagger UI
-if (app.Environment.IsDevelopment())
+
+// Authentication و Authorization فقط در production
+if (app.Environment.IsProduction())
 {
-    app.UseSwagger();
+    app.UseAuthentication();
+    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
+       .AllowAnonymous();
+}
+app.UseAuthorization();
+
+// تنظیم CORS
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+
+
+app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Orders API V1");
         c.RoutePrefix = "api-docs";
     });
-}
+
 
 // Order management endpoints
 

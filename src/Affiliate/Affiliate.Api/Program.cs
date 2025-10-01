@@ -1,12 +1,14 @@
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
-using Microsoft.EntityFrameworkCore;
+using Affiliate.Application;
 using Affiliate.Core;
 using Affiliate.Infrastructure;
-using Affiliate.Application;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Serilog;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using TallaEgg.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +48,29 @@ builder.Services.AddDbContext<AffiliateDbContext>(options =>
         "Server=localhost;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("Affiliate.Api")));
 
+// فقط در production محافظت فعال شود
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddAuthentication("ApiKey")
+        .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
+        {
+            options.ApiKey = APIKeyConstant.TallaEggApiKey;
+        });
+
+    // Authorization Policy سراسری فقط برای production
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else
+{
+    // برای development فقط authorization اضافه کنید (بدون authentication)
+    builder.Services.AddAuthorization();
+}
+
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
 
@@ -66,6 +91,21 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<AffiliateDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 }
+
+// Authentication و Authorization فقط در production
+if (app.Environment.IsProduction())
+{
+    app.UseAuthentication();
+    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
+       .AllowAnonymous();
+}
+app.UseAuthorization();
+
+// تنظیم CORS
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // Affiliate management endpoints
 app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationRequest request, AffiliateService affiliateService) =>

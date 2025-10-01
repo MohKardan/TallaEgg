@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\TallaEgg\TallaEgg.Core\TallaEgg.Core.csproj" />
     <ProjectReference Include="..\Affiliate.Core\Affiliate.Core.csproj" />
     <ProjectReference Include="..\Affiliate.Infrastructure\Affiliate.Infrastructure.csproj" />
     <ProjectReference Include="..\Affiliate.Application\Affiliate.Application.csproj" />

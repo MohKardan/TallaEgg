@@ -1,7 +1,8 @@
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Text;
+using System.Text.Json;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Requests.Wallet;
@@ -28,6 +29,7 @@ public class WalletApiClient : IWalletApiClient
 
         _walletApiUrl = apiUrl ?? "http://localhost:60933/api";
         _httpClient.BaseAddress = new Uri(_walletApiUrl);
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
     public WalletApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<WalletApiClient> logger)
     {

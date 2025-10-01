@@ -1,11 +1,12 @@
-﻿using System;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Orders.Core;
+using System;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -29,6 +30,7 @@ public class OrderApiClient : IOrderApiClient
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
 
     public async Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(

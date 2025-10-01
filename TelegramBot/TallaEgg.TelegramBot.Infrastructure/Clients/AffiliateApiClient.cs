@@ -1,9 +1,10 @@
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Net.Http;
-using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using TallaEgg.Core;
 
 namespace TallaEgg.TelegramBot;
 
@@ -22,6 +23,7 @@ public class AffiliateApiClient
         var handler = new HttpClientHandler();
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
         _httpClient = new HttpClient(handler);
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
     public async Task<(bool success, string message)> ValidateInvitationAsync(string invitationCode)
     {

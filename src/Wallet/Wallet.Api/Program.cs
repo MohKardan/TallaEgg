@@ -1,8 +1,11 @@
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Serilog;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
@@ -12,7 +15,6 @@ using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 using Wallet.Infrastructure;
-using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +62,30 @@ builder.Services.AddDbContext<WalletDbContext>(options =>
         "Server=localhost;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
         b => b.MigrationsAssembly("Wallet.Api")));
 
+
+// فقط در production محافظت فعال شود
+if (builder.Environment.IsProduction())
+{
+    builder.Services.AddAuthentication("ApiKey")
+        .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
+        {
+            options.ApiKey = APIKeyConstant.TallaEggApiKey;
+        });
+
+    // Authorization Policy سراسری فقط برای production
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+}
+else
+{
+    // برای development فقط authorization اضافه کنید (بدون authentication)
+    builder.Services.AddAuthorization();
+}
+
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<WalletMapper>();
@@ -92,11 +118,23 @@ using (var scope = app.Services.CreateScope())
     var context = services.GetRequiredService<WalletDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 }
-    // تنظیم CORS
-    app.UseCors(builder => builder
+
+// Authentication و Authorization فقط در production
+if (app.Environment.IsProduction())
+{
+    app.UseAuthentication();
+    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
+       .AllowAnonymous();
+}
+app.UseAuthorization();
+
+// تنظیم CORS
+app.UseCors(builder => builder
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
+
+
 
 // Add Swagger middleware
 app.UseSwagger();
