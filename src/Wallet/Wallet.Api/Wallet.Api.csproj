@@ -4,6 +4,10 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	  <!--رفع باگ افزایش عدد سوم
+	  افزودن ویژگی جدید افزایش عدد دوم
+	  تغییر دیتابیس یا تغییرات پایه ای افزایش عدد اول-->
+	  <AssemblyVersion>1.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
