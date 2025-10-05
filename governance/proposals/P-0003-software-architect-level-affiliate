@@ -6,7 +6,7 @@
 - فعال‌سازی ثبت‌نام همکاران فروش و تأیید ثبت‌نام  
 - ردیابی کلیک‌ها/ارجاعات، نسبت دادن تبدیل‌ها (فروش/ثبت‌نام)، محاسبه کمیسیون‌ها و زمان‌بندی پرداخت‌ها  
 - ارائه API برای فروشندگان و همکاران (داشبورد) و وب‌هوک‌ها برای رویدادهای فروشندگان  
-- پشتیبانی از دسترس‌پذیری بالا، مقیاس‌پذیری در زمان افزایش ترافیک (نقطه پایانی ردیابی)، و حسابداری دقیق برای پرداخت‌ها  
+- پشتیبانی از دسترس‌پذیری بالا، مقیاس‌پذیری در زمان افزایش ترافیک (نقطه پایانی ردیابی)، و حسابداری دقیق برای [...]
 
 ---
 
@@ -27,36 +27,34 @@
 تصویر 4
 
 # سطح API (پایانه‌های پیشنهادی)
-احراز هویت / OAuth2: ‎/oauth/token (خارجی)
 
-همکاران فروش:
+**احراز هویت / OAuth2:**  
+‎`/oauth/token` (خارجی)
 
-‎POST ‎/api/affiliates — ثبت‌نام
+### همکاران فروش
 
-‎GET ‎/api/affiliates/{id} — پروفایل
+- ‎`POST /api/affiliates` — ثبت‌نام
+- ‎`GET /api/affiliates/{id}` — پروفایل
+- ‎`POST /api/affiliates/{id}/campaigns` — ایجاد کمپین
 
-‎POST ‎/api/affiliates/{id}/campaigns — ایجاد کمپین
+### ردیابی
 
-ردیابی:
+- ‎`GET /t?aid={aid}&cid={cid}&redirect={url}` — ردیابی کلیک و ریدایرکت
+- ‎`POST /api/tracking/click` — رویداد سمت سرور (اختیاری)
 
-‎GET ‎/t?aid={aid}&cid={cid}&redirect={url} — ردیابی کلیک و ریدایرکت
+### یکپارچه‌سازی فروشنده
 
-‎POST ‎/api/tracking/click — رویداد سمت سرور (اختیاری)
+- ‎`POST /api/webhooks/conversion` — اعلان تبدیل توسط فروشنده
 
-یکپارچه‌سازی فروشنده:
+### گزارش‌گیری
 
-‎POST ‎/api/webhooks/conversion — اعلان تبدیل توسط فروشنده
+- ‎`GET /api/affiliates/{id}/stats?from=&to=&groupBy=`
 
-گزارش‌گیری:
+### پرداخت‌ها
 
-‎GET ‎/api/affiliates/{id}/stats?from=&to=&groupBy=
+- ‎`GET /api/payouts`
+- ‎`POST /api/payouts/{id}/approve` (ادمین)
 
-پرداخت‌ها:
+### مدیریت (Admin)
 
-‎GET ‎/api/payouts
-
-‎POST ‎/api/payouts/{id}/approve (ادمین)
-
-مدیریت (Admin):
-
-‎GET ‎/api/admin/commissions/unsettled
+- ‎`GET /api/admin/commissions/unsettled`
