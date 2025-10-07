@@ -91,6 +91,17 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
 builder.Services.AddScoped<UsersApiClient>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+
 // Add Wallet API Client
 builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>
 {
@@ -165,10 +176,8 @@ if (app.Environment.IsProduction())
 app.UseAuthorization();
 
 // تنظیم CORS
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+app.UseCors();
+
 
 
 app.UseSwagger();
