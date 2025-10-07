@@ -76,13 +76,43 @@ public class WalletRepository : IWalletRepository
             throw;
         }
     }
-    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction = null)
+    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet, Transaction transaction = null)
     {
-        _context.Transactions.Add(transaction);
-        wallet.UpdatedAt = DateTime.UtcNow;
-        _context.Wallets.Update(wallet);
-        await _context.SaveChangesAsync();
-        return wallet;
+        if (wallet == null)
+        {
+            _logger.LogError("Attempted to update a null wallet entity");
+            throw new ArgumentNullException(nameof(wallet));
+        }
+
+        try
+        {
+            if (transaction != null)
+            {
+                _context.Transactions.Add(transaction);
+            }
+            else
+            {
+                _logger.LogDebug("No transaction provided while updating wallet {WalletId}", wallet.Id);
+            }
+
+            wallet.UpdatedAt = DateTime.UtcNow;
+            _context.Wallets.Update(wallet);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Updated wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
+
+            return wallet;
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            _logger.LogWarning(ex, "Concurrency conflict while updating wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
+            throw;
+        }
     }
 
     public async Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount)
@@ -172,3 +202,7 @@ public class WalletRepository : IWalletRepository
 
    
 } 
+
+
+
+

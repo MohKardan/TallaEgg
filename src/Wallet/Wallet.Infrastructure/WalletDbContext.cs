@@ -17,8 +17,8 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<WalletEntity>().HasKey(w => w.Id);
         modelBuilder.Entity<WalletEntity>().Property(w => w.UserId).IsRequired();
         modelBuilder.Entity<WalletEntity>().Property(w => w.Asset).IsRequired();
-        modelBuilder.Entity<WalletEntity>().Property(w => w.Balance).IsRequired().HasPrecision(18, 8);
-        modelBuilder.Entity<WalletEntity>().Property(w => w.LockedBalance).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<WalletEntity>().Property(w => w.Balance).IsRequired().HasPrecision(28, 8);
+        modelBuilder.Entity<WalletEntity>().Property(w => w.LockedBalance).IsRequired().HasPrecision(28, 8);
         modelBuilder.Entity<WalletEntity>().Property(w => w.CreatedAt).IsRequired();
         modelBuilder.Entity<WalletEntity>().Property(w => w.UpdatedAt).IsRequired();
         
@@ -29,7 +29,7 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<WalletTransaction>().HasKey(wt => wt.Id);
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.UserId).IsRequired();
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Asset).IsRequired();
-        modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Amount).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Amount).IsRequired().HasPrecision(28, 8);
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Type).IsRequired();
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.Status).IsRequired();
         modelBuilder.Entity<WalletTransaction>().Property(wt => wt.CreatedAt).IsRequired();
@@ -42,7 +42,9 @@ public class WalletDbContext : DbContext
         // Transaction configuration (new)
         modelBuilder.Entity<Transaction>().HasKey(t => t.Id);
         modelBuilder.Entity<Transaction>().Property(t => t.WalletId).IsRequired();
-        modelBuilder.Entity<Transaction>().Property(t => t.Amount).IsRequired().HasPrecision(18, 8);
+        modelBuilder.Entity<Transaction>().Property(t => t.Amount).IsRequired().HasPrecision(28, 8);
+        modelBuilder.Entity<Transaction>().Property(t => t.BallanceBefore).IsRequired().HasPrecision(28, 8);
+        modelBuilder.Entity<Transaction>().Property(t => t.BallanceAfter).IsRequired().HasPrecision(28, 8);
         modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(50);
         modelBuilder.Entity<Transaction>().Property(t => t.Type).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.Status).IsRequired();
