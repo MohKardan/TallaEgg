@@ -40,6 +40,7 @@ public class WalletApiClient : IWalletApiClient
         // Configure HttpClient base address
         _httpClient.BaseAddress = new Uri(_walletApiUrl);
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+        _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
 
     /// <summary>

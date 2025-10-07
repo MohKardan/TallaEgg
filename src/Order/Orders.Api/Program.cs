@@ -91,16 +91,6 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
 builder.Services.AddScoped<UsersApiClient>();
 
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(builder =>
-    {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
-    });
-});
-
 
 // Add Wallet API Client
 builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>
@@ -108,6 +98,11 @@ builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient,
     var walletApiUrl = builder.Configuration.GetValue<string>("WalletApiUrl") ?? "http://localhost:60933";
     client.BaseAddress = new Uri(walletApiUrl);
 });
+
+// اضافه کردن CORS
+builder.Services.AddCors();
+
+
 builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
 // Add Matching Engine
@@ -176,7 +171,10 @@ if (app.Environment.IsProduction())
 app.UseAuthorization();
 
 // تنظیم CORS
-app.UseCors();
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 
 
