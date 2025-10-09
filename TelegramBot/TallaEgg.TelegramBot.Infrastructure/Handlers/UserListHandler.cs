@@ -30,25 +30,25 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
             foreach (var u in page.Items)
             {
-                sb.AppendLine($"👤 {Utils.EscapeMarkdown(u.FirstName)} {Utils.EscapeMarkdown(u.LastName)}");
+                sb.AppendLine($"👤 {Utils.EscapeMarkdownV2(u.FirstName)} {Utils.EscapeMarkdownV2(u.LastName)}");
                 if (!string.IsNullOrWhiteSpace(u.Username))
-                    sb.AppendLine($"🔗 یوزرنیم: @{Utils.EscapeMarkdown(u.Username)}");
+                    sb.AppendLine($"🔗 یوزرنیم: @{Utils.EscapeMarkdownV2(u.Username)}");
                 if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
-                    sb.AppendLine($"📞 {Utils.EscapeMarkdown(u.PhoneNumber)}");
+                    sb.AppendLine($"📞 {Utils.EscapeMarkdownV2(u.PhoneNumber)}");
                 else
                     sb.AppendLine("📞 —");
 
                 sb.AppendLine($"📅 ثبت‌نام: {u.CreatedAt:yyyy/MM/dd HH:mm}");
                 if (u.LastActiveAt.HasValue)
                     sb.AppendLine($"🕓 آخرین فعالیت: {u.LastActiveAt:yyyy/MM/dd HH:mm}");
-                sb.AppendLine($"⚡ وضعیت: {Utils.EscapeMarkdown(u.Status.ToString())}");
+                sb.AppendLine($"⚡ وضعیت: {Utils.EscapeMarkdownV2(u.Status.ToString())}");
 
                 if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
                 {
                     sb.AppendLine("🔹 دستورات:");
-                    sb.AppendLine($"   ▫️ موجودی → `م {Utils.EscapeMarkdown(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ سفارشات → `س {Utils.EscapeMarkdown(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ سفارشات باز → `ف {Utils.EscapeMarkdown(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ موجودی → `م {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ سفارشات → `س {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ سفارشات باز → `ف {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
                 }
 
                 sb.AppendLine("──────────────────────");

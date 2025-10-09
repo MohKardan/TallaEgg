@@ -23,19 +23,19 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             foreach (var o in orders)
             {
                 sb.AppendLine(
-     $"📌 *سفارش #{Utils.EscapeMarkdown(o.Id.ToString()[..8])}\\…*\n" +
-     $"🏷️ دارایی: *{Utils.EscapeMarkdown(o.Asset)}*\n" +
-     $"🔺 نوع: *{Utils.EscapeMarkdown(GetTypeIcon(o.Type))} {Utils.EscapeMarkdown(TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type))}*\n" +
+     $"📌 *سفارش {"#" + o.Id.ToString()[..8]}\\…*\n" +
+     $"🏷️ دارایی: *{o.Asset}*\n" +
+     $"🔺 نوع: *{GetTypeIcon(o.Type)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}*\n" +
      $"📊 حجم: *{o.Amount}* | باقی‌مانده: *{o.RemainingAmount}*\n" +
      $"💰 قیمت: *{o.Price:#,0} تومان*\n" +
      $"💵 ارزش کل: *{(o.Amount * o.Price):#,0} تومان*\n" +
-     $"⚡ وضعیت: *{Utils.EscapeMarkdown(GetStatusEmoji(o.Status))} {Utils.EscapeMarkdown(TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status))}*\n" +
-     $"🕓 زمان: *{Utils.EscapeMarkdown(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt))}*" +
-     (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{Utils.EscapeMarkdown(o.Notes)}_" : "") +
+     $"⚡ وضعیت: *{GetStatusEmoji(o.Status)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}*\n" +
+     $"🕓 زمان: *{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt)}*" +
+     (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{o.Notes}_" : "") +
      "\n➖➖➖➖➖➖➖➖➖\n"
  );
             }
-            return Utils.EscapeMarkdown(sb.ToString());
+            return Utils.EscapeMarkdownV2(sb.ToString());
         }
 
         public static InlineKeyboardMarkup? BuildCancelOrderKeyboard(List<OrderHistoryDto> orders, bool isAdmin = false)

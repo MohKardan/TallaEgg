@@ -473,7 +473,7 @@ namespace TallaEgg.TelegramBot
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
-                                parseMode: ParseMode.MarkdownV2,
+                                parseMode: ParseMode.Html,
                                 replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
@@ -628,7 +628,7 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.MarkdownV2,
+                    parseMode: ParseMode.Html,
                     replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
