@@ -26,7 +26,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         {
             if (page == null || !page.Items.Any())
             {
-                return Utils.EscapeMarkdown("هیچ معامله‌ای یافت نشد.");
+                return Utils.EscapeMarkdownV2("هیچ معامله‌ای یافت نشد.");
             }
 
             var sb = new StringBuilder();
@@ -35,13 +35,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             foreach (var t in page.Items)
             {
                 sb.AppendLine(
-     $"📌 *معامله #{Utils.EscapeMarkdown(t.Id.ToString()[..8])}\\…*\n" +
-     $"🏷️ نماد: *{Utils.EscapeMarkdown(t.Symbol)}*\n" +
-     $"💰 قیمت: *{Utils.EscapeMarkdown(t.Price.ToString("N0"))} تومان*\n" +
-     $"📊 مقدار: *{Utils.EscapeMarkdown(t.Quantity.ToString("N2"))}*\n" +
-     $"💵 ارزش کل: *{Utils.EscapeMarkdown(t.QuoteQuantity.ToString("N0"))} تومان*\n" +
-     $"⏰ زمان: *{Utils.EscapeMarkdown(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt))}*\n" +
-     $"💸 کارمزد: *{Utils.EscapeMarkdown((t.FeeBuyer + t.FeeSeller).ToString("N0"))} تومان*\n");
+    $"📌 <b>معامله #{t.Id.ToString()[..8]}…</b>\n" +
+$"🏷️ نماد: <b>{t.Symbol}</b>\n" +
+$"💰 قیمت: <b>{t.Price:N0} تومان</b>\n" +
+$"📊 مقدار: <b>{t.Quantity:N2}</b>\n" +
+$"💵 ارزش کل: <b>{t.QuoteQuantity:N0} تومان</b>\n" +
+$"⏰ زمان: <b>{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt)}</b>\n" +
+$"💸 کارمزد: <b>{(t.FeeBuyer + t.FeeSeller):N0} تومان</b>\n"
+     );
             }
 
             return sb.ToString();

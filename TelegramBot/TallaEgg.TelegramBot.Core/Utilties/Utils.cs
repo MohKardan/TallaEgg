@@ -10,28 +10,46 @@ namespace TallaEgg.TelegramBot.Core.Utilties
     public static class Utils
     {
 
-        public static string EscapeMarkdown(string text)
+        //public static string EscapeMarkdown(string text)
+        //{
+        //    if (string.IsNullOrEmpty(text))
+        //        return "";
+        //    return text
+        //        .Replace("_", "\\_")
+        //        .Replace("*", "\\*")
+        //        .Replace("[", "\\[")
+        //        .Replace("`", "\\`")
+        //        .Replace("(", "\\(")
+        //        .Replace(")", "\\)")
+        //        .Replace("~", "\\~")
+        //        .Replace(">", "\\>")
+        //        .Replace("#", "\\#")
+        //        .Replace("+", "\\+")
+        //        .Replace("-", "\\-")
+        //        .Replace("=", "\\=")
+        //        .Replace("|", "\\|")
+        //        .Replace("{", "\\{")
+        //        .Replace("}", "\\}")
+        //        .Replace(".", "\\.")
+        //        .Replace("!", "\\!");
+        //}
+
+        public static string EscapeMarkdownV2(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return "";
-            return text
-                .Replace("_", "\\_")
-                .Replace("*", "\\*")
-                .Replace("[", "\\[")
-                .Replace("`", "\\`")
-                .Replace("(", "\\(")
-                .Replace(")", "\\)")
-                .Replace("~", "\\~")
-                .Replace(">", "\\>")
-                .Replace("#", "\\#")
-                .Replace("+", "\\+")
-                .Replace("-", "\\-")
-                .Replace("=", "\\=")
-                .Replace("|", "\\|")
-                .Replace("{", "\\{")
-                .Replace("}", "\\}")
-                .Replace(".", "\\.")
-                .Replace("!", "\\!");
+
+            var specialChars = new[] {
+        "_", "*", "[", "]", "(", ")", "~", "`", ">", "#",
+        "+", "-", "=", "|", "{", "}", ".", "!"
+    };
+
+            foreach (var ch in specialChars)
+            {
+                text = text.Replace(ch, "\\" + ch);
+            }
+
+            return text;
         }
 
 
