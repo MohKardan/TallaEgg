@@ -159,6 +159,48 @@ public class WalletApiClient : IWalletApiClient
         }
     }
 
+    public async Task<(bool Success, string Message)> IncreaseBalanceAsync(
+        Guid userId,
+        string asset,
+        decimal amount)
+    {
+        try
+        {
+            
+            var request = new WalletRequest
+            {
+                UserId = userId,
+                Asset = asset,
+                Amount = amount
+            };
+
+            var json = JsonSerializer.Serialize(request);
+            var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            // Assuming there's an unlock endpoint - if not, we might need to implement it
+            var response = await _httpClient.PostAsync("api/wallet/increaseBalance", stringContent);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully increaseBalance {Amount} {Asset} for user {UserId}",
+                    amount, asset, userId);
+                return (true, "موجودی با موفقیت آزاد شد");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to increase balance for user {UserId}, asset {Asset}, amount {Amount}. Status: {Status}",
+                    userId, asset, amount, response.StatusCode);
+                return (false, "خطا در آزاد کردن موجودی");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error increase balance for user {UserId}, asset {Asset}, amount {Amount}",
+                userId, asset, amount);
+            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Validate if user has sufficient balance for order
     /// بررسی داشتن موجودی کافی برای سفارش

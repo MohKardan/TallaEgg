@@ -135,7 +135,7 @@ public class WalletRepository : IWalletRepository
       );
         wallet.LockBalance(amount);
 
-        await UpdateWalletAsync(wallet,transaction);
+        await UpdateWalletAsync(wallet, transaction);
         return wallet;
     }
 
@@ -159,7 +159,31 @@ public class WalletRepository : IWalletRepository
       );
         wallet.UnLockBalance(amount);
 
-        await UpdateWalletAsync(wallet,transaction);
+        await UpdateWalletAsync(wallet, transaction);
+        return wallet;
+    }
+
+    public async Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount)
+    {
+        var wallet = await GetWalletAsync(userId, asset);
+        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+        var transaction = Transaction.Create(
+          wallet.Id,
+          amount,
+          asset,
+          TransactionType.Trade,
+          wallet.Balance,
+          wallet.Balance + amount,
+          null,
+          TransactionStatus.Completed,
+          "IncreaseBalanceAsync transaction",
+          null,
+          null
+                                            );
+        wallet.IncreaseBalance(amount);
+
+        await UpdateWalletAsync(wallet, transaction);
         return wallet;
     }
 
@@ -181,7 +205,7 @@ public class WalletRepository : IWalletRepository
         var query = _context.WalletTransactions.Where(wt => wt.UserId == userId);
         if (!string.IsNullOrEmpty(asset))
             query = query.Where(wt => wt.Asset == asset);
-        
+
         return await query.OrderByDescending(wt => wt.CreatedAt).ToListAsync();
     }
 
@@ -200,8 +224,8 @@ public class WalletRepository : IWalletRepository
         return transaction;
     }
 
-   
-} 
+
+}
 
 
 

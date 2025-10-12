@@ -409,8 +409,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private Trade CreateMakerTakerTrade(Order makerOrder, Order takerOrder, decimal quantity)
     {
         // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
-        var makerFeeRate = 0.001m; // 0.1%
-        var takerFeeRate = 0.002m; // 0.2%
+        var makerFeeRate = 0.000m; // 0.1%
+        var takerFeeRate = 0.000m; // 0.2%
         
         var price = makerOrder.Price; // Execute at maker's price
         var quoteQuantity = quantity * price;

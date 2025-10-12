@@ -100,25 +100,7 @@ public class OrderService
                 throw new InvalidOperationException($"موجودی ناکافی: {balanceMessage}");
             }
 
-            // 4. For limit orders, lock the balance
-            //if (request.Type == OrderTypeEnum.Limit)
-            {
-                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.LockBalanceAsync(
-                    userId,
-                    assetToCheck,
-                    amountToCheck);
-
-                if (!lockSuccess)
-                {
-                    _logger.LogWarning("Failed to lock balance for user {UserId}: {Message}", userId, lockMessage);
-                    throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
-                }
-
-                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}",
-                    amountToCheck, assetToCheck, userId);
-            }
-
-            // 5. Create appropriate order command based on order type
+            // 4. Create appropriate order command based on order type
             Order order;
             OrderRole determinedRole;
             List<TradeDto> executedTrades = new();
@@ -141,6 +123,30 @@ public class OrderService
             );
 
             order = await CreateOrderAsync(limitCommand);
+
+            // 5. For limit orders, lock the balance
+            //if (request.Type == OrderTypeEnum.Limit)
+            if(order != null)
+            {
+                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.LockBalanceAsync(
+                    userId,
+                    assetToCheck,
+                    amountToCheck);
+
+                if (!lockSuccess)
+                {
+                    _logger.LogWarning("Failed to lock balance for user {UserId}: {Message}", userId, lockMessage);
+                    throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
+                }
+
+                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}",
+                    amountToCheck, assetToCheck, userId);
+
+                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.(
+                    userId,
+                    assetToCheck,
+                    amountToCheck);
+            }
 
             // Determine role based on order status
             determinedRole = order.Status == OrderStatus.Completed || order.Status == OrderStatus.Partially

@@ -26,6 +26,11 @@ public interface IWalletApiClient
     /// آزاد کردن موجودی هنگام لغو سفارش
     /// </summary>
     Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
+    /// <summary>
+    /// Increase balance for order placement
+    /// افزایش موجودی برای ثبت سفارش
+    /// </summary>
+    Task<(bool Success, string Message, WalletDTO? Wallet)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount);
 
     /// <summary>
     /// Validate if user has sufficient balance for order
