@@ -1,7 +1,9 @@
 # TallaEgg Trading Platform
 
 ## Overview
-TallaEgg is a modular .NET 9 trading platform that models the core workflows of a centralised exchange. The solution is split into focused minimal API services and background workers that cooperate through shared DTOs, HTTP clients, and SQL Server databases.
+Our minimum viable product (MVP) for gold sellers works as follows: the seller can set their buy and sell prices, for example, 4700–4800, and then in-store customers can view these prices and buy or sell gold through their trusted seller.
+When a user starts the bot and registers, a message containing the new user’s information is sent to the administrator. If this user is an in-store customer of the seller (the administrator) and their identity is verified, the administrator approves them, after which the user can access the bot’s services. Otherwise, they will not have access to its features. To buy or sell, a user must either have a cash balance or be credited manually by the administrator.
+Approved users can trade based on the seller’s buy and sell prices, view their order and trade history, and, if needed, physically exchange their gold.
 
 ## Key Capabilities
 - RESTful minimal APIs for users, wallets, orders, and affiliate programs that return a unified `ApiResponse<T>` envelope.
