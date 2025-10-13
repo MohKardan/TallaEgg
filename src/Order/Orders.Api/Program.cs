@@ -106,6 +106,7 @@ builder.Services.AddCors();
 builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
 // Add Matching Engine
+builder.Services.AddScoped<IMatchingEngine, Orders.Application.Services.MatchingEngineService>();
 builder.Services.AddHostedService<Orders.Application.Services.MatchingEngineService>();
 
 // Configure JSON serialization
