@@ -60,18 +60,3 @@ public class CreateOrderResponse
     /// </summary>
     public decimal TotalFeesPaid => ExecutedTrades.Sum(t => t.FeeBuyer + t.FeeSeller);
 }
-
-/// <summary>
-/// DTO معامله برای پاسخ
-/// </summary>
-public class TradeDto
-{
-    public Guid Id { get; set; }
-    public decimal Price { get; set; }
-    public decimal Quantity { get; set; }
-    public decimal QuoteQuantity { get; set; }
-    public decimal FeeBuyer { get; set; }
-    public decimal FeeSeller { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public OrderRole TraderRole { get; set; }
-}

@@ -4,8 +4,10 @@ using System.Text;
 using System.Text.Json;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Requests.Wallet;
+using TallaEgg.Core.Responses.Order;
 
 namespace TallaEgg.Infrastructure.Clients;
 
@@ -42,11 +44,6 @@ public class WalletApiClient : IWalletApiClient
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
-
-    /// <summary>
-    /// Get user balance for specific asset
-    /// دریافت موجودی کاربر برای دارایی مشخص
-    /// </summary>
 
     /// <summary>
     /// Lock balance for order placement
@@ -521,4 +518,36 @@ public class WalletApiClient : IWalletApiClient
 
         }
     }
+    /// <summary>
+    /// بعد از اینکه معامله‌ای انجام شد، باید تراکنش معامله ثبت و بالانس‌ها به‌روزرسانی شوند
+    /// </summary>
+    /// <param name="trade"></param>
+    /// <returns></returns>
+    public async Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(trade);
+            var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync("api/wallet/changeBalance", stringContent);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Successfully TradeTransactionAndBalanceChangeAsnc {Amount} {Asset} for user {UserId}");
+                return (true, "موجودی با موفقیت آزاد شد");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to TradeTransactionAndBalanceChangeAsnc for user {UserId}, asset {Asset}, amount {Amount}. Status: {Status}");
+                return (false, "خطا در آزاد کردن موجودی");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error TradeTransactionAndBalanceChangeAsnc for user {UserId}, asset {Asset}, amount {Amount}");
+            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+        }
+    }
+
 }

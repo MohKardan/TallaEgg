@@ -19,8 +19,8 @@ public class Trade
     public decimal FeeSeller { get; private set; }
     public decimal MakerFee { get; private set; }
     public decimal TakerFee { get; private set; }
-    public decimal MakerFeeRate { get; private set; } = 0.001m; // 0.1% default
-    public decimal TakerFeeRate { get; private set; } = 0.002m; // 0.2% default
+    public decimal MakerFeeRate { get; private set; } = 0.000m; // 0.1% default
+    public decimal TakerFeeRate { get; private set; } = 0.000m; // 0.2% default
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -46,8 +46,8 @@ public class Trade
         Guid sellerUserId,
         Guid makerUserId,
         Guid takerUserId,
-        decimal makerFeeRate = 0.001m,  // 0.1%
-        decimal takerFeeRate = 0.002m,  // 0.2%
+        decimal makerFeeRate = 0.000m,  // 0.1%
+        decimal takerFeeRate = 0.000m,  // 0.2%
         decimal feeBuyer = 0,
         decimal feeSeller = 0)
     {

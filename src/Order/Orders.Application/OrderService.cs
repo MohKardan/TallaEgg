@@ -142,10 +142,6 @@ public class OrderService
                 _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}",
                     amountToCheck, assetToCheck, userId);
 
-                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.(
-                    userId,
-                    assetToCheck,
-                    amountToCheck);
             }
 
             // Determine role based on order status

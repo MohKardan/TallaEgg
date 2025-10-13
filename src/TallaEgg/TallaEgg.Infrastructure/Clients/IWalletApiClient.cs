@@ -1,5 +1,7 @@
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Responses.Order;
 
 namespace TallaEgg.Infrastructure.Clients;
 
@@ -14,7 +16,12 @@ public interface IWalletApiClient
     /// دریافت موجودی کاربر برای دارایی مشخص
     /// </summary>
     Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset);
-
+    
+    /// <summary>
+    /// ثبت تراکنش معامله و تغییر بالانس ها
+    /// </summary>
+    Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade);
+    
     /// <summary>
     /// Lock balance for order placement
     /// قفل کردن موجودی برای ثبت سفارش
@@ -30,7 +37,7 @@ public interface IWalletApiClient
     /// Increase balance for order placement
     /// افزایش موجودی برای ثبت سفارش
     /// </summary>
-    Task<(bool Success, string Message, WalletDTO? Wallet)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount);
+    Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount);
 
     /// <summary>
     /// Validate if user has sufficient balance for order
