@@ -1,4 +1,4 @@
-## Component Diagram
+# Component Diagram
 
 This diagram provides a high-level overview of the TallaEgg system's architecture, showcasing the primary modules and their interdependencies. The system is designed with a modular approach, where each component encapsulates a specific set of functionalities.
 
