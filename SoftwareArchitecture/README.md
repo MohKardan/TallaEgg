@@ -30,5 +30,5 @@ These diagrams are **self-authored** and should be treated as **interpretations*
 
 ---
 
-✍️ *Created by: Xerxes*  
+✍️ *Created by: Xerxes* Asimov*
 🗓️ *Status: Draft / Work-in-Progress*  
