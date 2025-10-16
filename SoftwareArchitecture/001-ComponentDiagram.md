@@ -8,3 +8,5 @@ This diagram provides a high-level overview of the TallaEgg system's architectur
 - **Order**: Handles the creation, management, and matching of trade orders. It interacts with the `User` module to associate orders with users and with the `Wallet` module for financial operations.
 - **Affiliate**: Manages the referral and affiliate program, including invitation codes and usage tracking. It is dependent on the `User` module.
 - **TelegramBot**: Acts as the primary user interface, allowing users to interact with the system via Telegram. It communicates with all other modules to facilitate user registration, order placement, wallet management, and affiliate interactions.
+
+![Component Diagram](Diagrams/ComponentDiagram.png)
