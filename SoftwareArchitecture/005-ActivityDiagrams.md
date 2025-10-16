@@ -12,3 +12,15 @@ This diagram illustrates the workflow of the matching engine when a new order is
 4.  If no match is found, the new order is placed in the order book to await a future match.
 
 ![Activity Diagrams](Diagrams/ActivityDiagrams.png)
+
+## Message Handling (TelegramBot)
+
+This diagram shows the logic flow within the `BotHandler` when a new message is received from a user.
+
+1.  The bot first checks if the user is already registered in the system. If not, it initiates the new user registration flow.
+2.  It then verifies if the user has provided a phone number and if their account is active and approved.
+3.  For approved users, the bot checks if they have administrative privileges.
+4.  If the user is an admin, it checks for specific admin commands. Otherwise, it proceeds to the standard user main menu.
+5.  This structured flow ensures that users are properly authenticated and authorized before they can access different levels of functionality.
+
+![Message Handling](Diagrams/MessageHandling.png)
