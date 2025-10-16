@@ -16,7 +16,7 @@ These diagrams are **self-authored** and should be treated as **interpretations*
 ---
 
 ## Contents
-- **Component Diagram** – !(001-Component Diagram.md).  
+- **Component Diagram** – [Link Text](001-Component Diagram.md).  
 - **Class Diagrams** – Show entities, attributes, and relationships as I currently understand them.  
 - **Sequence Diagrams** – Capture possible flows of interaction between components.  
 - **Use Case Diagrams** – Illustrate how I think users and systems interact.  
