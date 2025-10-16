@@ -16,12 +16,12 @@ These diagrams are **self-authored** and should be treated as **interpretations*
 ---
 
 ## Contents
-- **Component Diagram** – [Component Diagram](001-ComponentDiagram.md).
-- **Class Diagrams** – [Class Diagram](002-ClassDiagrams.md).
-- **Entity-Relationship Diagrams.md** – [Entity-Relationship Diagrams](003-Entity-RelationshipDiagrams.md).
-- **Sequence Diagrams** – [Sequence Diagrams](004-SequenceDiagrams.md).
-- **Activity Diagrams** – [Activity Diagrams](005-ActivityDiagrams.md).
-- **State Diagrams** – [State Diagrams](006-StateDiagrams.md).
+- **[Component Diagram](001-ComponentDiagram.md)**
+- **[Class Diagram](002-ClassDiagrams.md)**
+- **[Entity-Relationship Diagrams](003-Entity-RelationshipDiagrams.md)**
+- **[Sequence Diagrams](004-SequenceDiagrams.md)**
+- **[Activity Diagrams](005-ActivityDiagrams.md)**
+- **[State Diagrams](006-StateDiagrams.md)**
 
 ---
 
