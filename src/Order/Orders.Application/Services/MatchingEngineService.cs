@@ -4,7 +4,10 @@ using Microsoft.Extensions.Logging;
 using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Responses.Order;
+using TallaEgg.Infrastructure.Clients;
 
 namespace Orders.Application.Services;
 
@@ -14,6 +17,12 @@ namespace Orders.Application.Services;
 /// </summary>
 public class MatchingEngineService : BackgroundService, IMatchingEngine
 {
+    /// <summary>
+    /// .NET اجازه نمی‌دهد Singleton به Scoped وابسته شود، چون ممکن است Scoped قبلاً Dispose شده باشد.
+    /// بخاطر همین از ین روش استفاده کردم
+    /// </summary>
+    private readonly IServiceScopeFactory _scopeFactory;
+
     private readonly ILogger<MatchingEngineService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly TimeSpan _processingInterval = TimeSpan.FromSeconds(1);
@@ -21,9 +30,12 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private bool _isRunning = false;
 
     public MatchingEngineService(
+        IServiceScopeFactory scopeFactory,
         ILogger<MatchingEngineService> logger,
         IServiceProvider serviceProvider)
     {
+        _scopeFactory = scopeFactory;
+
         _logger = logger;
         _serviceProvider = serviceProvider;
     }
@@ -37,6 +49,9 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         {
             while (!stoppingToken.IsCancellationRequested && _isRunning)
             {
+                using var scope = _scopeFactory.CreateScope();
+                var _walletApiClient = scope.ServiceProvider.GetRequiredService<IWalletApiClient>();
+
                 // Use semaphore to ensure only one processing cycle runs at a time
                 // استفاده از semaphore برای اطمینان از اجرای یک چرخه در هر زمان
                 if (await _processingSemaphore.WaitAsync(100, stoppingToken))
@@ -360,6 +375,32 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             
             if (result.Success)
             {
+                //TODO باید آنفریز کنه و تراکنش های مربوط به معامله را ثبت کند
+                //await _walletApiClient.UnlockBalanceAsync(result.Trade.BuyerUserId, result.Trade.Symbol, result.Trade.Quantity);
+                //await _walletApiClient.UnlockBalanceAsync(result.Trade.SellerUserId, result.Trade.Symbol, result.Trade.Quantity * result.Trade.Price);
+
+                ////dotnet add package AutoMapper
+                ////dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection
+
+                //TradeDto tradeDto = new TradeDto()
+                //{
+                //    Id = result.Trade.Id,
+                //    BuyOrderId = result.Trade.BuyOrderId,
+                //    SellOrderId = result.Trade.SellOrderId,
+                //    MakerOrderId = result.Trade.MakerOrderId,
+                //    TakerOrderId = result.Trade.TakerOrderId,
+                //    Symbol = result.Trade.Symbol,
+                //    Price = result.Trade.Price,
+                //    Quantity = result.Trade.Quantity,
+                //    QuoteQuantity = result.Trade.QuoteQuantity,
+                //    FeeBuyer = result.Trade.FeeBuyer,
+                //    FeeSeller = result.Trade.FeeSeller,
+                //    CreatedAt = result.Trade.CreatedAt,
+
+                //};
+
+                //await _walletApiClient.TradeTransactionAndBalanceChangeAsync(tradeDto);
+
                 _logger.LogInformation(
                     "✅ Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
                     makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
@@ -409,8 +450,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private Trade CreateMakerTakerTrade(Order makerOrder, Order takerOrder, decimal quantity)
     {
         // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
-        var makerFeeRate = 0.001m; // 0.1%
-        var takerFeeRate = 0.002m; // 0.2%
+        var makerFeeRate = 0.000m; // 0.1%
+        var takerFeeRate = 0.000m; // 0.2%
         
         var price = makerOrder.Price; // Execute at maker's price
         var quoteQuantity = quantity * price;

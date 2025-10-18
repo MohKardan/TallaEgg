@@ -40,8 +40,8 @@ $"🏷️ نماد: <b>{t.Symbol}</b>\n" +
 $"💰 قیمت: <b>{t.Price:N0} تومان</b>\n" +
 $"📊 مقدار: <b>{t.Quantity:N2}</b>\n" +
 $"💵 ارزش کل: <b>{t.QuoteQuantity:N0} تومان</b>\n" +
-$"⏰ زمان: <b>{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt)}</b>\n" +
-$"💸 کارمزد: <b>{(t.FeeBuyer + t.FeeSeller):N0} تومان</b>\n"
+$"⏰ زمان: <b>{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt)}</b>\n" //+
+//$"💸 کارمزد: <b>{(t.FeeBuyer + t.FeeSeller):N0} تومان</b>\n"
      );
             }
 

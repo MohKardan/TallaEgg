@@ -93,7 +93,7 @@ namespace TallaEgg.TelegramBot
                            $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
                            $"💳 دارایی: `{info.PersianName}`\n" +
                            $"💵 مبلغ شارژ: `{amount.ToString($"F{info.DecimalPlaces}")}` {info.Unit}\n" +
-                           $"🆔 تلفن: `{phone}`\n\n" +
+                           $"🆔 تلفن: `{phone}` \n" +
                            $"💵 موجودی جدید: `{result.Data.BalanceAfter.ToString($"F{info.DecimalPlaces}")} {info.Unit}`\n\n" +
                            $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
                        );

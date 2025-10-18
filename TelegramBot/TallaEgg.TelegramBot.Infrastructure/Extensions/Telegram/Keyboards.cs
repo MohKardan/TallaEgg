@@ -176,12 +176,12 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             {
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🛒 خرید نقدی", "buy_spot"),
-                    InlineKeyboardButton.WithCallbackData("🛍️ فروش نقدی", "sell_spot")
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketBuy, InlineCallBackData.buy_spot),
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnSpotMarketSell, InlineCallBackData.sell_spot)
                 },
                 new InlineKeyboardButton[]
                 {
-                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, "back_to_main")
+                    InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, InlineCallBackData.back_to_main)
                 }
             });
 

@@ -222,6 +222,19 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
     }
 });
 
+app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWalletService walletService) =>
+{
+    try
+    {
+        // فرق WalletEntity و WalletDTO چیست؟ بهتر نیست این دوتا یکی باشن؟
+        var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
+        return Results.Ok(ApiResponse<(WalletEntity,Transaction)>.Ok(result, "عملیات با موفقیت انجام شد"));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
+    }
+});
 
 app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService) =>
 {

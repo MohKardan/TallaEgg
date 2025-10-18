@@ -672,9 +672,11 @@ namespace TallaEgg.TelegramBot
 
                     foreach (var item in res.Data)
                     {
-                        var parts = item.Asset.Split('_');
-                        var code = parts.Last();
+                        //var parts = item.Asset.Split('_');
+                        //var code = parts.Last();
 
+                        var code = item.Asset;
+                        
                         var info = CurrenciesConstant.GetCurrencyInfo(code);
 
                         if (info != null)
@@ -685,7 +687,7 @@ namespace TallaEgg.TelegramBot
 
                             stringBuilder.AppendLine($"💰 {info.PersianName} ({info.Code})");
                             stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {balance} {info.Unit}");
-                            stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {locked} {info.Unit}");
+                            //stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {locked} {info.Unit}");
                             stringBuilder.AppendLine("───────────────────────────────\n");
                         }
                         else
@@ -693,7 +695,7 @@ namespace TallaEgg.TelegramBot
                             // fallback ساده وقتی ارزی در لیست ما نباشه
                             stringBuilder.AppendLine($"💰 {item.Asset}");
                             stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {item.Balance}");
-                            stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {item.LockedBalance}");
+                            //stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {item.LockedBalance}");
                             stringBuilder.AppendLine("───────────────────────────────\n");
                         }
                     }

@@ -29,7 +29,7 @@
             new CurrencyInfo
             {
                 Code = Credit_MAUA,
-                PersianName = "اعتبار طلا",
+                PersianName = "اعتبار طلا آبشده",
                 Unit = "گرم",
                 DecimalPlaces = 2,
                 IsTradable = false

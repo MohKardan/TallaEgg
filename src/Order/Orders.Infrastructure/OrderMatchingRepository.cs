@@ -117,11 +117,11 @@ public class OrderMatchingRepository
             }
 
             // 3. Validate price compatibility (Buy >= Sell)
-            if (currentBuyOrder.Price < currentSellOrder.Price)
-            {
-                await transaction.RollbackAsync();
-                return (false, null, "قیمت خرید کمتر از قیمت فروش است");
-            }
+            //if (currentBuyOrder.Price < currentSellOrder.Price)
+            //{
+            //    await transaction.RollbackAsync();
+            //    return (false, null, "قیمت خرید کمتر از قیمت فروش است");
+            //}
 
             // 4. Calculate actual tradeable quantity
             var actualMatchQty = Math.Min(
@@ -150,7 +150,9 @@ public class OrderMatchingRepository
             // 8. Save all changes
             _context.Orders.UpdateRange(currentBuyOrder, currentSellOrder);
             _context.Trades.Add(trade);
-            
+
+            // 9. Change Ballance of users in Wallets table and create Transactions records
+
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
