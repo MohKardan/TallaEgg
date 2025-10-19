@@ -400,6 +400,40 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 //};
 
                 //await _walletApiClient.TradeTransactionAndBalanceChangeAsync(tradeDto);
+                if (result.Trade != null)
+                {
+                    var tradeDto = new TradeDto()
+                    {
+                        Id = result.Trade.Id,
+                        BuyOrderId = result.Trade.BuyOrderId,
+                        SellOrderId = result.Trade.SellOrderId,
+                        MakerOrderId = result.Trade.MakerOrderId,
+                        TakerOrderId = result.Trade.TakerOrderId,
+                        Symbol = result.Trade.Symbol,
+                        Price = result.Trade.Price,
+                        Quantity = result.Trade.Quantity,
+                        QuoteQuantity = result.Trade.QuoteQuantity,
+                        BuyerUserId = result.Trade.BuyerUserId,
+                        SellerUserId = result.Trade.SellerUserId,
+                        MakerUserId = result.Trade.MakerUserId,
+                        TakerUserId = result.Trade.TakerUserId,
+                        FeeBuyer = result.Trade.FeeBuyer,
+                        FeeSeller = result.Trade.FeeSeller,
+                        MakerFee = result.Trade.MakerFee,
+                        TakerFee = result.Trade.TakerFee,
+                        MakerFeeRate = result.Trade.MakerFeeRate,
+                        TakerFeeRate = result.Trade.TakerFeeRate,
+                        CreatedAt = result.Trade.CreatedAt,
+                    };
+
+                    using var walletScope = _serviceProvider.CreateScope();
+                    var walletClient = walletScope.ServiceProvider.GetRequiredService<IWalletApiClient>();
+                    var walletResp = await walletClient.TradeTransactionAndBalanceChangeAsync(tradeDto);
+                    if (!walletResp.Success)
+                    {
+                        _logger.LogWarning("Wallet update failed for Trade {TradeId}: {Message}", result.Trade.Id, walletResp.Message);
+                    }
+                }
 
                 _logger.LogInformation(
                     "✅ Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
@@ -483,3 +517,4 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     }
 
 }
+

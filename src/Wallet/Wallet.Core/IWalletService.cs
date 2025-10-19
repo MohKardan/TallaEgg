@@ -15,6 +15,7 @@ public interface IWalletService
     Task<WalletBallanceDTO> DepositAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<WalletBallanceDTO> WithdrawalAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<WalletBallanceDTO> MakeTradeAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount, string? referenceId = null);
+    Task<(WalletDTO buyerBase, WalletDTO sellerQuote)> ApplyTradeAsync(Guid buyerUserId, Guid sellerUserId, string symbol, decimal price, decimal quantity, Guid tradeId);
     Task<(bool success, string message)> OldWithdrawAsync(Guid userId, string asset, decimal amount, string? referenceId = null);
     Task<(bool success, string message)> TransferAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount);
     Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null);

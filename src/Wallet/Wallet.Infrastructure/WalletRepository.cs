@@ -163,7 +163,7 @@ public class WalletRepository : IWalletRepository
         return wallet;
     }
 
-    public async Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount)
+    public async Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount, string referenceId)
     {
         var wallet = await GetWalletAsync(userId, asset);
         if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
@@ -178,7 +178,7 @@ public class WalletRepository : IWalletRepository
           null,
           TransactionStatus.Completed,
           "IncreaseBalanceAsync transaction",
-          null,
+          referenceId,
           null
                                             );
         wallet.IncreaseBalance(amount);

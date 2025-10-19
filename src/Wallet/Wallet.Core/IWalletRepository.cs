@@ -9,6 +9,7 @@ public interface IWalletRepository
     Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction= null);
     Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
+    Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount, string referenceId);
     
     // Transaction operations
     Task<Transaction> CreateTransactionAsync(Transaction transaction);
@@ -16,4 +17,4 @@ public interface IWalletRepository
     Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null);
     Task<IEnumerable<WalletTransaction>> GetTransactionsByReferenceAsync(string referenceId);
     Task<WalletTransaction> UpdateTransactionAsync(WalletTransaction transaction);
-} 
+}

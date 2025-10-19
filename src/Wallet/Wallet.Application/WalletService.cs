@@ -149,6 +149,35 @@ public class WalletService : IWalletService
         return _walletMapper.Map(wallet);
     }
 
+    public async Task<(WalletDTO buyerBase, WalletDTO sellerQuote)> ApplyTradeAsync(
+        Guid buyerUserId,
+        Guid sellerUserId,
+        string symbol,
+        decimal price,
+        decimal quantity,
+        Guid tradeId)
+    {
+        var parts = symbol.Split('/');
+        var baseAsset = parts[0];
+        var quoteAsset = parts[1];
+
+        var tradeRef = tradeId.ToString();
+
+        // Buyer IRR: unlock locked IRR for quote, then withdraw same quote from available to spend
+        await UnlockBalanceAsync(buyerUserId, quoteAsset, quantity * price);
+        await DecreaseBalanceAsync(buyerUserId, quoteAsset, quantity * price, tradeRef);
+
+        // Seller MAUA: unlock locked MAUA then withdraw the asset
+        await UnlockBalanceAsync(sellerUserId, baseAsset, quantity);
+        await DecreaseBalanceAsync(sellerUserId, baseAsset, quantity, tradeRef);
+
+        // Credit assets: buyer gets base, seller gets quote
+        var buyerMaua = await _walletRepository.IncreaseBalanceForTradeAsync(buyerUserId, baseAsset, quantity, tradeRef);
+        var sellerIrr = await _walletRepository.IncreaseBalanceForTradeAsync(sellerUserId, quoteAsset, quantity * price, tradeRef);
+
+        return (_walletMapper.Map(buyerMaua), _walletMapper.Map(sellerIrr));
+    }
+
     public async Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId)
     {
         var wallets = await _walletRepository.GetUserWalletsAsync(userId);

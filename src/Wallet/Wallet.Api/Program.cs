@@ -279,6 +279,28 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
     return Results.Ok(transactions);
 });
 
+// Apply post-trade balance updates (unlock locked amounts, record transactions, and credit balances)
+app.MapPost("/api/wallet/changeBalance", async (TallaEgg.Core.DTOs.Order.TradeDto trade, IWalletService walletService) =>
+{
+    try
+    {
+        var res = await walletService.ApplyTradeAsync(
+            trade.BuyerUserId,
+            trade.SellerUserId,
+            trade.Symbol,
+            trade.Price,
+            trade.Quantity,
+            trade.Id
+        );
+
+        return Results.Ok(ApiResponse<string>.Ok("", "Wallets updated for trade"));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
+
 /// <summary>
 /// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید (ریال، طلا، اعتبار طلا)
 /// </summary>
