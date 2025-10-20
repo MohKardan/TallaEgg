@@ -128,12 +128,17 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         {
 
             var keyboard = new ReplyKeyboardMarkup(
-               new[]
+                new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnOrderHistory), new KeyboardButton(BotBtns.BtnTradeHistory)},
-                    new[] { new KeyboardButton(BotBtns.BtnActiveOrders), new KeyboardButton(BotBtns.BtnWalletsBalance)},
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                }
+               //new[]
+               //{
+               //     new[] { new KeyboardButton(BotBtns.BtnOrderHistory), new KeyboardButton(BotBtns.BtnTradeHistory)},
+               //     new[] { new KeyboardButton(BotBtns.BtnActiveOrders), new KeyboardButton(BotBtns.BtnWalletsBalance)},
+               //     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
+               //}
                             )
             {
                 ResizeKeyboard = true,
