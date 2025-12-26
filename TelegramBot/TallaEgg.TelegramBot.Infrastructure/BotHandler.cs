@@ -18,6 +18,7 @@ using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
+using TallaEgg.TelegramBot.Infrastructure.Services;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Requests.Abstractions;
@@ -54,6 +55,7 @@ namespace TallaEgg.TelegramBot
         private readonly AffiliateApiClient _affiliateApi;
         private readonly WalletApiClient _walletApi;
         private readonly TelegramLoggerService _telegramLogger;
+        private readonly IVersionService _versionService;
 
         private readonly Dictionary<long, OrderState> _userOrderStates = new();
 
@@ -62,7 +64,7 @@ namespace TallaEgg.TelegramBot
 
         public BotHandler(ILogger<BotHandler> logger,
                          ITelegramBotClient botClient, OrderApiClient orderApi, UsersApiClient usersApi,
-                         AffiliateApiClient affiliateApi, WalletApiClient walletApi, TelegramLoggerService telegramLogger,
+                         AffiliateApiClient affiliateApi, WalletApiClient walletApi, TelegramLoggerService telegramLogger, IVersionService versionService,
                          bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -75,6 +77,7 @@ namespace TallaEgg.TelegramBot
             _telegramLogger = telegramLogger;
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
+            _versionService = versionService;
 
             // Cleanup old states every hour
             _ = Task.Run(async () =>
@@ -97,6 +100,7 @@ namespace TallaEgg.TelegramBot
                     }
                 }
             });
+            NotifyUpdateToAllUsers();
         }
 
         public async Task HandleMessageAsync(Message message)
@@ -1121,6 +1125,56 @@ namespace TallaEgg.TelegramBot
             finally
             {
                 _userOrderStates.Remove(telegramId);
+            }
+        }
+        public async Task NotifyUpdate(User user)
+        {
+            var currentVersion = _versionService.GetCurrentVersion();
+
+            
+                await _botClient.SendMessage(
+                    user.Id,
+                    $"🚀 ربات به نسخه جدید آپدیت شد!\n\n" +
+                    $"نسخه فعلی: {currentVersion}\n" +
+                    $"اگر پیشنهاد یا مشکلی دیدی، خوشحال می‌شویم بگویی 🙏"
+                );
+
+        }
+        public async Task NotifyUpdateToAllUsers()
+        {
+            var currentVersion = _versionService.GetCurrentVersion();
+
+            Task.Delay(30000).Wait(); // صبر کردن ۳۰ ثانیه برای اطمینان از اینکه سرویس کاربر اجرا شده باشد وگرنه خطا میدهد
+
+            var usersResponse = await _usersApi.GetUsersAsync();
+
+            var users = usersResponse.Data;
+            if (users == null || users.TotalCount == 0)
+                return;
+
+            foreach (var user in users.Items)
+            {
+                try
+                {
+                    await _botClient.SendMessage(
+                        user.TelegramId,
+                        $"🚀 ربات به نسخه جدید آپدیت شد!\n\n" +
+                        $"نسخه فعلی: {currentVersion}\n" +
+                        $"اگر پیشنهاد یا مشکلی دیدی، خوشحال می‌شویم بگویی 🙏"
+                    );
+
+                    // ⏱ جلوگیری از Rate Limit تلگرام
+                    await Task.Delay(50);
+                }
+                catch (Exception ex)
+                {
+                    // حتماً لاگ بگیر
+                    _logger.LogWarning(
+                        ex,
+                        "Failed to send update message to user {UserId}",
+                        user.Id
+                    );
+                }
             }
         }
 

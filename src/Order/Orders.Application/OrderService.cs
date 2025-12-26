@@ -1,13 +1,15 @@
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Orders.Core;
-using TallaEgg.Infrastructure.Clients;
+using Serilog;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Responses.Order;
+using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
-using TallaEgg.Core.Enums.User;
 
 namespace Orders.Application;
 
@@ -275,7 +277,11 @@ public class OrderService
 
     public async Task<BestPricesDto> GetBestBidAskAsync(string asset, TradingType tradingType)
     {
+        Log.Information(">--------------------- GetBestBidAskAsync({asset}, {tradingType}) ---------------------<", asset, tradingType);
+
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
+
+        //Log.Information("orders:\n" + JsonConvert.SerializeObject(orders, Formatting.Indented));
 
         var activeOrders = orders.Where(o =>
             o.IsMaker() &&
@@ -283,19 +289,33 @@ public class OrderService
             o.TradingType == tradingType)
             .ToList();
 
+        Log.Information("activeOrders:\n" + JsonConvert.SerializeObject(activeOrders, Formatting.Indented));
+
         decimal? bestBid = null;
         decimal? bestAsk = null;
 
-        var buyOrders = activeOrders.Where(o => o.Side == OrderSide.Buy && o.Status == OrderStatus.Confirmed).ToList();
+        var buyOrders = activeOrders.Where(o => o.Side == OrderSide.Buy).ToList();
         if (buyOrders.Any())
         {
             bestBid = buyOrders.OrderByDescending(o => o.Price).First().Price;
-        }
 
-        var sellOrders = activeOrders.Where(o => o.Side == OrderSide.Sell && o.Status == OrderStatus.Confirmed).ToList();
+            Log.Information("Best Bid found: {bestBid}", bestBid);
+        }
+        else
+        {
+            Log.Information("No active buy orders found for best bid.");
+        }   
+
+        var sellOrders = activeOrders.Where(o => o.Side == OrderSide.Sell).ToList();
         if (sellOrders.Any())
         {
             bestAsk = sellOrders.OrderBy(o => o.Price).First().Price;
+
+            Log.Information("Best Ask found: {bestAsk}", bestAsk);
+        }
+        else
+        {
+            Log.Information("No active sell orders found for best ask.");
         }
 
         return new BestPricesDto
@@ -316,12 +336,57 @@ public class OrderService
             return false;
         }
 
-        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+        if (order.Status == OrderStatus.Completed || order.Status == OrderStatus.Failed)
         {
-            throw new InvalidOperationException("فقط سفارشات در انتظار یا تایید شده قابل لغو هستند");
+            throw new InvalidOperationException("سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند");
         }
 
-        return await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
+        //if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+        //{
+        //    throw new InvalidOperationException("فقط سفارشات در انتظار یا تایید شده قابل لغو هستند");
+        //}
+
+        //return await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
+
+        var success = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
+
+        if (success)
+        {
+            try
+            {
+                var assetToUnlock = order.Side == OrderSide.Buy
+                          ? order.Asset.Split('/')[1]
+                          : order.Asset.Split('/')[0];
+
+                var amountToUnlock = order.Side == OrderSide.Buy
+                    ? order.RemainingAmount * order.Price
+                    : order.RemainingAmount;
+
+                if (amountToUnlock > 0)
+                {
+                    var (unlockSuccess, unlockMessage) = await _walletApiClient.UnlockBalanceAsync(
+                        order.UserId,
+                        assetToUnlock,
+                        amountToUnlock);
+
+                    if (!unlockSuccess)
+                    {
+                        _logger.LogError("CRITICAL: Failed to unlock balance for order {OrderId} user {UserId}. Asset: {Asset}, Amount: {Amount}. Message: {Message}",
+                           orderId, order.UserId, assetToUnlock, amountToUnlock, unlockMessage);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Successfully unlocked {Amount} {Asset} for order {OrderId}", amountToUnlock, assetToUnlock, orderId);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while unlocking balance for cancelled order {OrderId}", orderId);
+            }
+        }
+
+        return success;
     }
 
     /// <summary>
