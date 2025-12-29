@@ -5,6 +5,10 @@ Our minimum viable product (MVP) for gold sellers works as follows: the seller c
 When a user starts the bot and registers, a message containing the new user’s information is sent to the administrator. If this user is an in-store customer of the seller (the administrator) and their identity is verified, the administrator approves them, after which the user can access the bot’s services. Otherwise, they will not have access to its features. To buy or sell, a user must either have a cash balance or be credited manually by the administrator.
 Approved users can trade based on the seller’s buy and sell prices, view their order and trade history, and, if needed, physically exchange their gold.
 
+https://private-user-images.githubusercontent.com/45781438/530709572-98e34f7f-e778-45ec-8516-4a3372e6764b.mp4
+
+https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c32-4a05-9fe5-81720a5f2567.mp4
+
 ## Key Capabilities
 - RESTful minimal APIs for users, wallets, orders, and affiliate programs that return a unified `ApiResponse<T>` envelope.
 - Matching engine background service with maker/taker logic, database-level locking, and scheduled order book processing.
