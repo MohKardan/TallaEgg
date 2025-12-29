@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json;
 using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
@@ -569,31 +570,45 @@ app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
     TradingType? tradingType,
     OrderService orderService) =>
 {
+    Log.Information(">--------------------- start best-prices ---------------------<");
+
     try
     {
         string symbol = $"{Base}/{Quote}";
         // Input validation
         if (string.IsNullOrWhiteSpace(symbol))
         {
+            Log.Warning("Symbol is null or empty");
+
             return Results.BadRequest(ApiResponse<BestPricesDto>.Fail("نماد معاملاتی الزامی است."));
         }
 
         // Normalize symbol format (remove special characters, convert to uppercase)
         var normalizedSymbol = symbol.Trim().ToUpperInvariant();
 
+        Log.Information("Normalized symbol: {Symbol}", normalizedSymbol);
+
         // Validate symbol format (basic validation for trading pairs like BTC/USDT)
         if (!IsValidSymbolFormat(normalizedSymbol))
         {
+            Log.Warning("Invalid symbol format: {Symbol}", normalizedSymbol);
+
             return Results.BadRequest(ApiResponse<BestPricesDto>.Fail("فرمت نماد معاملاتی نامعتبر است. (مثال صحیح: BTC/USDT)"));
         }
 
+        Log.Information("befor Trading type: {TradingType}", tradingType);
+
         var type = tradingType ?? TradingType.Spot;
+
+        Log.Information("after Trading type: {TradingType}", type);
 
         // Get best bid/ask prices
         var result = await orderService.GetBestBidAskAsync(normalizedSymbol, type);
 
         if (result == null)
         {
+            Log.Warning("Symbol not found or market inactive: {Symbol}", normalizedSymbol);
+
             return Results.NotFound(ApiResponse<BestPricesDto>.Fail("نماد معاملاتی یافت نشد یا بازار برای این نماد فعال نیست."));
         }
 
@@ -611,27 +626,43 @@ app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
             Timestamp = DateTime.UtcNow
         };
 
+        Log.Information("\n" + JsonConvert.SerializeObject(bestPricesDto, Formatting.Indented));
+        //Log.Information<BestPricesDto>("Retrieved best prices successfully", bestPricesDto);    
+
         return Results.Ok(ApiResponse<BestPricesDto>.Ok(bestPricesDto, "بهترین قیمت‌ها با موفقیت دریافت شد."));
     }
     catch (ArgumentException argEx)
     {
+        Log.Error(argEx, "Invalid argument while getting best prices");
+
         return Results.BadRequest(ApiResponse<BestPricesDto>.Fail($"پارامتر نامعتبر: {argEx.Message}"));
     }
     catch (InvalidOperationException invOpEx)
     {
+        Log.Error(invOpEx, "Service unavailable while getting best prices");
+
         return Results.Json(ApiResponse<BestPricesDto>.Fail("سرویس قیمت‌گذاری در حال حاضر در دسترس نیست."), statusCode: 503);
     }
     catch (TimeoutException)
     {
+        Log.Error("Timeout occurred while getting best prices");
+
         return Results.Json(ApiResponse<BestPricesDto>.Fail("زمان انتظار درخواست به پایان رسید."), statusCode: 408);
     }
     catch (Exception ex)
     {
-        // Log the exception (در محیط واقعی باید لاگ شود)
-        // logger.LogError(ex, "Error getting best prices for symbol: {Symbol}", symbol);
+        
+        Log.Error(ex, "Error getting best prices");
 
         return Results.Json(ApiResponse<BestPricesDto>.Fail("خطای داخلی سرور. لطفاً مجدداً تلاش کنید."), statusCode: 500);
     }
+    finally
+    {
+        Log.Information(">--------------------- finally best-prices ---------------------<");
+    }
+
+    Log.Information(">--------------------- end best-prices ---------------------<");
+
 })
 .WithName("GetBestPrices")
 .WithSummary("دریافت بهترین قیمت‌های خرید و فروش")

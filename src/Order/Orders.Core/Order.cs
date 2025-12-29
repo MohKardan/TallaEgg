@@ -150,7 +150,7 @@ public class Order
         if (amount <= 0)
             throw new ArgumentException("Amount must be greater than zero", nameof(amount));
         
-        if (userId == Guid.Empty)
+        if (userId == Guid.NewGuid())
             throw new ArgumentException("UserId cannot be empty", nameof(userId));
 
         return new Order
@@ -192,8 +192,9 @@ public class Order
 
     public void Complete()
     {
-        if (Status != OrderStatus.Confirmed)
-            throw new InvalidOperationException("Only confirmed orders can be completed");
+        // Allow completing an order that is either Confirmed or Partially filled
+        if (Status != OrderStatus.Confirmed && Status != OrderStatus.Partially)
+            throw new InvalidOperationException("Only confirmed or partially filled orders can be completed");
         
         Status = OrderStatus.Completed;
         UpdatedAt = DateTime.UtcNow;
@@ -237,7 +238,7 @@ public class Order
 
     public decimal GetTotalValue() => RemainingAmount * Price;
 
-    public bool IsActive() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
+    public bool IsActive() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed || Status == OrderStatus.Partially;
 
     public bool CanBeCancelled() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
 

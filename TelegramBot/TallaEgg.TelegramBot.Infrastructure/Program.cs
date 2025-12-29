@@ -122,26 +122,12 @@ public class Program
                     return new TelegramLoggerService(httpClientFactory, /*options.TelegramBotToken*/"7331560325:AAHgmgugtatg0XmoIMgTd7_Nj6G09jvo9g4");
                 });
 
-                services.AddSingleton<IBotHandler>(provider =>
-                {
-                    var logger = provider.GetRequiredService<ILogger<BotHandler>>();
-                    var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
-                    var botSettings = options.BotSettings ?? new BotSettingsOptions();
+                services.AddSingleton<IVersionService, VersionService>();
 
-                    return new BotHandler(
-                        logger,
-                        provider.GetRequiredService<ITelegramBotClient>(),
-                        provider.GetRequiredService<OrderApiClient>(),
-                        provider.GetRequiredService<UsersApiClient>(),
-                        provider.GetRequiredService<AffiliateApiClient>(),
-                        provider.GetRequiredService<WalletApiClient>(),
-                        provider.GetRequiredService<TelegramLoggerService>(),
-                        botSettings.RequireReferralCode,
-                        botSettings.DefaultReferralCode);
-                });
+                services.AddSingleton<IBotHandler, BotHandler>();
+
 
                 services.AddHostedService<TelegramBotHostedService>();
-
 
             });
 

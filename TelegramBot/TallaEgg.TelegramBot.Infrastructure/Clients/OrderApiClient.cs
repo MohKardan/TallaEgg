@@ -258,11 +258,48 @@ public class OrderApiClient : IOrderApiClient
 
         try
         {
+            // Normalize symbol and try to split into base/quote
+            var normalized = symbol.Trim().ToUpperInvariant();
+            string baseAsset = string.Empty;
+            string quoteAsset = string.Empty;
+
+            if (normalized.Contains('/'))
+            {
+                var parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (parts.Length >= 2)
+                {
+                    baseAsset = parts[0];
+                    quoteAsset = parts[1];
+                }
+            }
+            else if (normalized.Contains('-'))
+            {
+                var parts = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (parts.Length >= 2)
+                {
+                    baseAsset = parts[0];
+                    quoteAsset = parts[1];
+                }
+            }
+
+            // If we have both assets, call the Base/Quote route; otherwise fallback to single-segment (URI-escaped)
+            string requestUri;
+            if (!string.IsNullOrWhiteSpace(baseAsset) && !string.IsNullOrWhiteSpace(quoteAsset))
+            {
+                requestUri = $"{_baseUrl}/orders/{baseAsset}/{quoteAsset}/best-prices";
+            }
+            else
+            {
+                // Use Uri.EscapeDataString so symbols with special chars are safely encoded
+                var encoded = Uri.EscapeDataString(normalized);
+                requestUri = $"{_baseUrl}/orders/{encoded}/best-prices";
+            }
+
             // Create cancellation token with timeout
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
             // Make HTTP request with timeout
-            response = await _httpClient.GetAsync($"{_baseUrl}/orders/{symbol}/best-prices", cts.Token);
+            response = await _httpClient.GetAsync(requestUri, cts.Token);
 
             // Read response content
             responseContent = await response.Content.ReadAsStringAsync();
