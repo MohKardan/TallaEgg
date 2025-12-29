@@ -5,10 +5,6 @@ Our minimum viable product (MVP) for gold sellers works as follows: the seller c
 When a user starts the bot and registers, a message containing the new user’s information is sent to the administrator. If this user is an in-store customer of the seller (the administrator) and their identity is verified, the administrator approves them, after which the user can access the bot’s services. Otherwise, they will not have access to its features. To buy or sell, a user must either have a cash balance or be credited manually by the administrator.
 Approved users can trade based on the seller’s buy and sell prices, view their order and trade history, and, if needed, physically exchange their gold.
 
-https://raw.githubusercontent.com/MohKardan/TallaEgg/refs/heads/main/TallaEgg__A_New_Era.mp4
-
-https://raw.githubusercontent.com/MohKardan/TallaEgg/refs/heads/main/%D9%BE%D8%B1%D9%88%D9%BE%D9%88%D8%B2%D8%A7%D9%84_TallaEgg__%D8%A7%D8%B2_%D8%AA%D9%85%D8%B1%DA%A9%D8%B2_%D8%AA%D8%A7_%D8%AE%D9%88%D8%AF%DA%AF%D8%B1%D8%AF%D8%A7%D9%86%DB%8C.mp4
-
 ## Key Capabilities
 - RESTful minimal APIs for users, wallets, orders, and affiliate programs that return a unified `ApiResponse<T>` envelope.
 - Matching engine background service with maker/taker logic, database-level locking, and scheduled order book processing.
