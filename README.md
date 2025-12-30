@@ -1,4 +1,4 @@
-# TallaEgg Trading Platform
+# TallaEgg Decentralised Platform
 
 ## Overview
 Our minimum viable product (MVP) for gold sellers works as follows: the seller can set their buy and sell prices, for example, 4700–4800, and then in-store customers can view these prices and buy or sell gold through their trusted seller.
