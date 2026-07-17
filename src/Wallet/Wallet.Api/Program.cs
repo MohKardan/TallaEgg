@@ -236,15 +236,35 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
     }
 });
 
-app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService) =>
+app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService, ILogger<Program> logger, IConfiguration configuration) =>
 {
+    // Quarantine stub endpoint audit:C-8
+    // Check if stub endpoint quarantine is enabled
+    var quarantineEnabled = configuration.GetValue<bool>("FeatureFlags:QuarantineStubEndpoints", defaultValue: true);
+    
+    if (quarantineEnabled)
+    {
+        logger.LogWarning(
+            "Stub endpoint quarantined — audit:C-8 | Endpoint: POST /api/wallet/transaction/trade | " +
+            "UserId: {FromUserId}, ToUserId: {ToUserId}, Asset: {Asset}, Amount: {Amount}, ReferenceId: {ReferenceId}",
+            request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
+        
+        return Results.StatusCode(501, new { 
+            error = "Not Implemented", 
+            message = "Stub endpoint quarantined. Implementation pending.",
+            auditRef = "C-8"
+        });
+    }
+    
+    // Production implementation (currently unreachable due to quarantine)
     try
     {
-        var result = await walletService.MakeTradeAsync(request.FromUserId,request.ToUserId, request.Asset, request.Amount,request.ReferenceId);
-        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
+        var result = await walletService.MakeTradeAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
+        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "Operation completed successfully"));
     }
     catch (Exception ex)
     {
+        logger.LogError(ex, "Error in MakeTradeAsync for users {FromUserId} -> {ToUserId}", request.FromUserId, request.ToUserId);
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
 });
