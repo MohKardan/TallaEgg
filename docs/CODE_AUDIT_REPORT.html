@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>گزارش ممیزی معماری و کیفیت کد — TallaEgg</title>
+<style>
+:root{
+  --bg:#0f1419; --bg2:#161b22; --bg3:#1c2330; --card:#1a2130; --border:#2a3342;
+  --text:#e6edf3; --muted:#9aa7b4; --accent:#4aa8ff; --accent2:#7c5cff;
+  --good:#3fb950; --warn:#d29922; --bad:#f85149; --crit:#ff5c5c;
+  --shadow:0 6px 24px rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --bg:#f6f8fa; --bg2:#ffffff; --bg3:#eef2f6; --card:#ffffff; --border:#d8dee4;
+  --text:#1c2430; --muted:#5a6672; --accent:#0969da; --accent2:#6639ba;
+  --good:#1a7f37; --warn:#9a6700; --bad:#cf222e; --crit:#cf222e;
+  --shadow:0 6px 24px rgba(140,150,170,.18);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f6f8fa; --bg2:#ffffff; --bg3:#eef2f6; --card:#ffffff; --border:#d8dee4;
+    --text:#1c2430; --muted:#5a6672; --accent:#0969da; --accent2:#6639ba;
+    --good:#1a7f37; --warn:#9a6700; --bad:#cf222e; --crit:#cf222e;
+    --shadow:0 6px 24px rgba(140,150,170,.18);
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:"Vazirmatn","IRANSans","Segoe UI",Tahoma,system-ui,sans-serif;
+  line-height:1.9; font-size:16px;
+}
+.layout{display:flex; max-width:1400px; margin:0 auto; gap:0;}
+/* Sidebar */
+aside{
+  position:sticky; top:0; align-self:flex-start; height:100vh; overflow-y:auto;
+  width:290px; flex:0 0 290px; padding:24px 18px; background:var(--bg2);
+  border-inline-start:1px solid var(--border);
+}
+aside h2{font-size:15px; color:var(--muted); margin:0 0 14px; font-weight:700;}
+aside a{display:block; color:var(--text); text-decoration:none; padding:7px 12px;
+  border-radius:8px; font-size:14px; margin-bottom:2px; opacity:.85; transition:.15s;}
+aside a:hover{background:var(--bg3); opacity:1; transform:translateX(-3px);}
+.brand{font-weight:800; font-size:18px; margin-bottom:6px; color:var(--accent);}
+.themebtn{margin-top:18px; width:100%; padding:9px; border-radius:8px; cursor:pointer;
+  background:var(--bg3); color:var(--text); border:1px solid var(--border); font-family:inherit; font-size:13px;}
+/* Main */
+main{flex:1; min-width:0; padding:38px 44px;}
+h1{font-size:30px; margin:0 0 6px; line-height:1.5;}
+h2.section{font-size:23px; margin:0; padding:18px 0; border-bottom:2px solid var(--border);}
+.sub{color:var(--muted); font-size:15px; margin-bottom:26px;}
+section{margin-bottom:14px; background:var(--card); border:1px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow); overflow:hidden;}
+.sec-head{display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  padding:16px 22px; user-select:none; background:var(--bg2);}
+.sec-head:hover{background:var(--bg3);}
+.sec-head h2{font-size:19px; margin:0; border:none; padding:0;}
+.sec-head .arrow{color:var(--muted); transition:.2s; font-size:14px;}
+.sec-body{padding:6px 24px 22px;}
+section.collapsed .sec-body{display:none;}
+section.collapsed .arrow{transform:rotate(-90deg);}
+p{margin:12px 0;}
+code{background:var(--bg3); padding:2px 7px; border-radius:6px; font-size:13.5px;
+  font-family:"Cascadia Code","Consolas",monospace; direction:ltr; unicode-bidi:embed; display:inline-block;}
+pre{background:#0b0f16; color:#d6e2f0; padding:16px 18px; border-radius:10px; overflow-x:auto;
+  direction:ltr; text-align:left; border:1px solid var(--border); font-size:13px; line-height:1.7;}
+:root[data-theme="light"] pre{background:#0d1117; color:#e6edf3;}
+pre code{background:none; padding:0; color:inherit;}
+.kw{color:#ff7b72;} .str{color:#a5d6ff;} .cm{color:#8b949e;} .fn{color:#d2a8ff;} .num{color:#79c0ff;}
+/* Score cards */
+.scores{display:grid; grid-template-columns:repeat(auto-fill,minmax(215px,1fr)); gap:14px; margin:8px 0 4px;}
+.scard{background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:14px 16px;}
+.scard .lbl{font-size:13.5px; color:var(--muted); margin-bottom:8px; min-height:38px;}
+.scard .val{font-size:22px; font-weight:800; margin-bottom:8px;}
+.bar{height:9px; background:var(--bg3); border-radius:6px; overflow:hidden;}
+.bar > i{display:block; height:100%; border-radius:6px;}
+.s-good{color:var(--good);} .s-good + .bar > i, i.f-good{background:var(--good);}
+.s-warn{color:var(--warn);} i.f-warn{background:var(--warn);}
+.s-bad{color:var(--bad);} i.f-bad{background:var(--bad);}
+/* Overall hero */
+.hero{display:flex; gap:22px; flex-wrap:wrap; margin:22px 0 30px;}
+.hero .big{flex:1; min-width:200px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff; border-radius:16px; padding:22px 26px; box-shadow:var(--shadow);}
+.hero .big .n{font-size:44px; font-weight:900; line-height:1;}
+.hero .big .t{font-size:15px; opacity:.92; margin-top:6px;}
+/* badges */
+.badge{display:inline-block; padding:3px 11px; border-radius:20px; font-size:12.5px;
+  font-weight:700; margin-inline-end:6px;}
+.b-crit{background:rgba(248,81,73,.16); color:var(--crit); border:1px solid var(--crit);}
+.b-high{background:rgba(210,153,34,.16); color:var(--warn); border:1px solid var(--warn);}
+.b-med{background:rgba(74,168,255,.15); color:var(--accent); border:1px solid var(--accent);}
+.b-low{background:rgba(63,185,80,.14); color:var(--good); border:1px solid var(--good);}
+.finding{border-inline-start:4px solid var(--border); padding:4px 16px; margin:16px 0; background:var(--bg2); border-radius:0 10px 10px 0;}
+.finding.crit{border-inline-start-color:var(--crit);}
+.finding.high{border-inline-start-color:var(--warn);}
+.finding h4{margin:12px 0 6px; font-size:16.5px;}
+ul{padding-inline-start:22px;} li{margin:6px 0;}
+table{width:100%; border-collapse:collapse; margin:14px 0; font-size:14.5px;}
+th,td{border:1px solid var(--border); padding:9px 12px; text-align:right;}
+th{background:var(--bg3); font-weight:700;}
+tr:nth-child(even) td{background:var(--bg2);}
+.good-note{color:var(--good); font-weight:700;}
+.pill{font-size:12px; color:var(--muted);}
+hr{border:none; border-top:1px solid var(--border); margin:20px 0;}
+@media(max-width:900px){
+  .layout{flex-direction:column;} aside{position:static; width:auto; height:auto; flex:none; border:none;}
+  main{padding:24px 18px;}
+}
+@media print{
+  aside,.themebtn{display:none!important;}
+  section,.sec-body{display:block!important; box-shadow:none; break-inside:avoid;}
+  section.collapsed .sec-body{display:block!important;}
+  body{font-size:12px; color:#000; background:#fff;}
+  pre{background:#f4f4f4; color:#111;}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside>
+  <div class="brand">🥚 TallaEgg</div>
+  <div class="pill">ممیزی معماری و کیفیت کد</div>
+  <button class="themebtn" onclick="toggleTheme()">🌓 تغییر تم روشن/تیره</button>
+  <h2 style="margin-top:22px">فهرست مطالب</h2>
+  <a href="#summary">۱. خلاصه اجرایی</a>
+  <a href="#scores">۲. جدول امتیازات</a>
+  <a href="#arch">۳. معماری</a>
+  <a href="#critical">۴. یافته‌های بحرانی 🔴</a>
+  <a href="#di">۵. تزریق وابستگی</a>
+  <a href="#solid">۶. SOLID</a>
+  <a href="#errors">۷. مدیریت خطا</a>
+  <a href="#logging">۸. لاگ‌نویسی</a>
+  <a href="#efcore">۹. EF Core و داده</a>
+  <a href="#api">۱۰. طراحی API</a>
+  <a href="#validation">۱۱. اعتبارسنجی</a>
+  <a href="#async">۱۲. Async و کارایی</a>
+  <a href="#deadcode">۱۳. کد مرده و بدهی فنی</a>
+  <a href="#naming">۱۴. نام‌گذاری و یکدستی</a>
+  <a href="#test">۱۵. تست‌پذیری</a>
+  <a href="#strengths">۱۶. نقاط قوت</a>
+  <a href="#modern">۱۷. بهترین‌شیوه‌ها</a>
+  <a href="#debt">۱۸. بدهی فنی</a>
+  <a href="#roadmap">۱۹. نقشه راه</a>
+  <a href="#final">۲۰. جمع‌بندی نهایی</a>
+</aside>
+
+<main>
+  <h1>گزارش ممیزی معماری و کیفیت کد</h1>
+  <div class="sub">
+    پلتفرم معاملاتی TallaEgg — ASP.NET Core (.NET 9) · معماری میکروسرویس + ربات تلگرام<br>
+    تاریخ: ۱۴۰۵/۰۴/۱۷ (۲۰۲۶-۰۷-۰۸) · دامنه: کل Solution (~۲۰٬۰۰۰ خط، ۵ سرویس) · سطح: ممیزی پیش از تولید
+  </div>
+
+  <div class="hero">
+    <div class="big">
+      <div class="n">۴٫۶/۱۰</div>
+      <div class="t">امتیاز کلی پروژه</div>
+    </div>
+    <div class="big" style="background:linear-gradient(135deg,#d29922,#f85149)">
+      <div class="n">٪۳۰</div>
+      <div class="t">آمادگی برای تولید</div>
+    </div>
+    <div class="big" style="background:linear-gradient(135deg,#7c5cff,#4aa8ff)">
+      <div class="n">۳/۱۰</div>
+      <div class="t">سطح بلوغ پروژه</div>
+    </div>
+  </div>
+
+  <!-- 1 -->
+  <section id="summary">
+    <div class="sec-head" onclick="tog(this)"><h2>۱. خلاصه اجرایی</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <p>TallaEgg یک <b>پروتوتایپ کارکردی، بالغ در ساختار اما ناپخته در جزئیات حیاتی</b> است. اسکلت معماری (میکروسرویس با تفکیک <code>Api/Application/Core/Infrastructure</code> و پایگاه‌داده‌ی مجزا به‌ازای هر سرویس) نشان‌دهنده‌ی دانش معماری خوب است، اما <b>لایه‌ی مالی سیستم — که قلب یک صرافی است — فاقد تضمین اتمی بودن، کنترل همزمانی و امنیت است.</b></p>
+      <p>سه دسته مشکل، این پروژه را از تولید دور نگه می‌دارند:</p>
+      <ul>
+        <li><b>یکپارچگی مالی:</b> نبود Transaction روی عملیات چندمرحله‌ای کیف پول، نبود Optimistic Concurrency، و شرط رقابتی‌ای که در آن سفارش پیش از قفل موجودی تطبیق می‌شود — یعنی امکان <b>خلق یا نابودی پول</b>.</li>
+        <li><b>امنیت:</b> کلید API و توکن ربات تلگرام <b>hardcode و کامیت‌شده</b>، اعتبارسنجی TLS <b>کاملاً خاموش</b>، CORS باز، و احراز هویت خاموش خارج از Production.</li>
+        <li><b>بدهی فنی:</b> کد مرده‌ی فراوان، Endpointهای stub زنده (مثل <code>MakeTradeAsync</code>)، پوشه‌های پروژه‌ی تکراری، و ناسازگاری گسترده.</li>
+      </ul>
+      <p><b>در وضعیت فعلی برای پول واقعی امن نیست.</b> ساختار برای رشد آماده است، ولی لایه‌ی مالی و امنیتی باید پیش از تولید بازنویسی شوند.</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="scores">
+    <div class="sec-head" onclick="tog(this)"><h2>۲. جدول امتیازات</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <div class="scores" id="scoregrid"></div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="arch">
+    <div class="sec-head" onclick="tog(this)"><h2>۳. معماری <span class="badge b-med">۶٫۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <p><b>وضعیت فعلی:</b> یک <b>Modular Monolith تقسیم‌شده به میکروسرویس</b>. هر Bounded Context (User, Wallet, Order, Affiliate) چهار لایه و پایگاه‌داده‌ی جداگانه دارد (Database-per-Service) و ارتباط از طریق HTTP Client است. انتخابی درست و بالغ.</p>
+      <div class="finding crit">
+        <h4><span class="badge b-crit">بحرانی</span> نقض قاعده‌ی وابستگی Clean Architecture</h4>
+        <p>پروژه‌ی <code>Orders.Application</code> (منطق دامنه) به <code>TallaEgg.TelegramBot.Infrastructure</code> و <code>TallaEgg.Infrastructure</code> وابسته است:</p>
+        <pre><code><span class="cm">&lt;!-- Orders.Application.csproj --&gt;</span>
+&lt;ProjectReference Include=<span class="str">"..\..\..\TelegramBot\TallaEgg.TelegramBot.Infrastructure\..."</span> /&gt;
+&lt;ProjectReference Include=<span class="str">"..\..\TallaEgg\TallaEgg.Infrastructure\..."</span> /&gt;</code></pre>
+        <p><b>چرا مشکل است:</b> لایه‌ی Application باید فقط به Abstraction وابسته باشد؛ اینجا <code>OrderService</code> کلاس concrete به نام <code>UsersApiClient</code> و <code>WalletApiClient</code> را از Infrastructure می‌گیرد.<br>
+        <b>ریسک:</b> تست واحد غیرممکن، و تغییر Infrastructure دامنه را می‌شکند.<br>
+        <b>راهکار:</b> اینترفیس‌ها را در Core/Application تعریف کنید و پیاده‌سازی را در Infrastructure نگه دارید (DIP). <b>اولویت: بالا.</b></p>
+      </div>
+      <div class="finding high">
+        <h4><span class="badge b-high">زیاد</span> تراکنش توزیع‌شده مدیریت‌نشده</h4>
+        <p>یک معامله = تغییر DB سرویس Order + فراخوانی HTTP به Wallet. اگر Wallet شکست بخورد، سفارش تطبیق‌خورده می‌ماند اما موجودی جابه‌جا نمی‌شود. هیچ Saga/Outbox/جبرانی نیست.<br>
+        <b>راهکار:</b> الگوی Outbox + رویدادمحوری، یا حداقل Retry + Reconciliation.</p>
+      </div>
+      <div class="finding">
+        <h4><span class="badge b-med">متوسط</span> «Shared Kernel» متورم</h4>
+        <p><code>TallaEgg.Core</code> همه‌چیز (DTO، Enum، Auth، Mapper، Constant، سرویس تلگرام) را در خود دارد و همه به آن وابسته‌اند → Coupling سراسری؛ تغییر یک Enum کل سیستم را Rebuild می‌کند.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="critical">
+    <div class="sec-head" onclick="tog(this)"><h2>۴. یافته‌های بحرانی 🔴 (Blocker تولید)</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-1</span> کلید API به‌صورت hardcode در سورس</h4>
+        <pre><code><span class="kw">public class</span> <span class="fn">APIKeyConstant</span> {
+    <span class="kw">public const string</span> TallaEggApiKey = <span class="str">"WOz9RDFLfDVuOGWcG7FM1WSzaB8pXhKmxLQFv3Ex..."</span>;
+}</code></pre>
+        <p>تنها مکانیزم احراز هویت، همین کلید است؛ در Git کامیت شده و به‌عنوان اعتبارنامه‌ی کلاینت هم استفاده می‌شود. چون <code>const</code> است، قابل چرخش نیست.<br>
+        <b>راهکار:</b> Secret Manager / Env / Key Vault؛ حذف از تاریخچه‌ی Git؛ چرخش فوری.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-2</span> توکن تلگرام و Connection Stringها در کانفیگ کامیت‌شده</h4>
+        <pre><code><span class="cm">// config/appsettings.global.json</span>
+<span class="str">"TelegramBotToken"</span>: <span class="str">"8398757414:AAGBdRZteYIYYsITF4YY33Ad..."</span></code></pre>
+        <p>توکن لو رفته = تصاحب کامل ربات. باید فوراً از BotFather باطل و بازتولید شود.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-3</span> نبود Transaction روی عملیات مالی چندمرحله‌ای</h4>
+        <p><code>WalletService.ApplyTradeAsync</code> شش عملیات با <b><code>SaveChangesAsync</code> جداگانه</b> انجام می‌دهد:</p>
+        <pre><code><span class="kw">await</span> UnlockBalanceAsync(buyer, quoteAsset, qty*price);   <span class="cm">// Save 1</span>
+<span class="kw">await</span> DecreaseBalanceAsync(buyer, quoteAsset, qty*price); <span class="cm">// Save 2</span>
+<span class="kw">await</span> UnlockBalanceAsync(seller, baseAsset, qty);         <span class="cm">// Save 3</span>
+<span class="kw">await</span> DecreaseBalanceAsync(seller, baseAsset, qty);       <span class="cm">// Save 4</span>
+<span class="kw">await</span> IncreaseBalanceForTradeAsync(buyer, base...);       <span class="cm">// Save 5</span>
+<span class="kw">await</span> IncreaseBalanceForTradeAsync(seller, quote...);     <span class="cm">// Save 6</span></code></pre>
+        <p><b>ریسک:</b> Crash بین مرحله‌ی ۳ و ۵ = پول از خریدار کم شده اما به فروشنده نرسیده → <b>پول ناپدید می‌شود</b>. هیچ Rollback ممکن نیست.<br>
+        <b>راهکار:</b> کل عملیات در یک <code>IDbContextTransaction</code> یا یک <code>SaveChanges</code> واحد.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-4</span> نبود کنترل همزمانی خوش‌بینانه (Optimistic Concurrency)</h4>
+        <p>هیچ <code>RowVersion</code> روی <code>WalletEntity</code> یا <code>Order</code> نیست (تأییدشده). الگو همه‌جا Read→Modify→Save است. <b>دو درخواست همزمان روی یک کیف پول = Lost Update = دو برابر خرج شدن.</b><br>
+        <b>راهکار:</b> افزودن <code>[Timestamp] byte[] RowVersion</code> و مدیریت <code>DbUpdateConcurrencyException</code> با Retry.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-5</span> شرط رقابتی: تطبیق سفارش پیش از قفل موجودی</h4>
+        <p>در <code>OrderService.CreateOrderAsync</code> ترتیب معکوس است: سفارش ابتدا Confirm و به موتور تطبیق (که هر ۱ ثانیه هم مستقل اجرا می‌شود) فرستاده می‌شود و <b>سپس</b> موجودی قفل می‌شود:</p>
+        <pre><code>order = <span class="kw">await</span> CreateOrderAsync(limitCommand); <span class="cm">// داخلاً Confirm + ProcessOrderAsync</span>
+<span class="kw">if</span>(order != <span class="kw">null</span>) {
+    <span class="kw">await</span> _walletApiClient.LockBalanceAsync(...); <span class="cm">// قفل بعد از تطبیق!</span>
+}</code></pre>
+        <p><b>ریسک:</b> سفارش پیش از قفل وجوه تسویه می‌شود؛ سپس در <code>ApplyTradeAsync</code> موجودی‌ای Unlock می‌شود که هرگز Lock نشده → موجودی نادرست/منفی.<br>
+        <b>راهکار:</b> ترتیب درست: اعتبارسنجی ← قفل موجودی ← ثبت و تأیید ← ارسال به موتور تطبیق.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-6</span> ثبت اشتباه چرخه‌ی حیات موتور تطبیق</h4>
+        <pre><code>builder.Services.AddScoped&lt;IMatchingEngine, MatchingEngineService&gt;();
+builder.Services.AddHostedService&lt;MatchingEngineService&gt;();</code></pre>
+        <p><b>دو نمونه‌ی کاملاً جدا</b> ساخته می‌شود. <code>SemaphoreSlim</code> در هر نمونه جداست و هیچ هماهنگی ایجاد نمی‌کند؛ نمونه‌ی HostedService سمافور خودش را در <code>finally</code> با <code>Dispose</code> از بین می‌برد. <b>تضمینِ «یک چرخه در هر زمان» یک توهم است</b> و Double-Match ممکن است.<br>
+        <b>راهکار:</b> Singleton مشترک با <code>IServiceScopeFactory</code> یا قفل توزیع‌شده در محیط چنداینستنسی.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-7</span> غیرفعال بودن کامل اعتبارسنجی TLS</h4>
+        <pre><code>handler.ServerCertificateCustomValidationCallback = (m, cert, chain, err) =&gt; <span class="kw">true</span>;</code></pre>
+        <p>در ctor اول <code>WalletApiClient</code> بدون هیچ gate محیطی → <b>حمله‌ی Man-in-the-Middle</b> روی ترافیک مالی. باید فقط در Development پشت <code>#if DEBUG</code> باشد.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-8</span> Endpoint زنده‌ای که هیچ کاری نمی‌کند</h4>
+        <p><code>WalletService.MakeTradeAsync</code> (متصل به <code>POST /api/wallet/transaction/trade</code>) تمام منطق را کامنت کرده و فقط <code>return new WalletBallanceDTO();</code> خالی برمی‌گرداند → فراخواننده تصور می‌کند انتقال انجام شده.</p>
+      </div>
+
+      <div class="finding crit">
+        <h4><span class="badge b-crit">C-9</span> CORS کاملاً باز روی همه‌ی سرویس‌ها</h4>
+        <pre><code>app.UseCors(b =&gt; b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());</code></pre>
+        <p><b>راهکار:</b> لیست سفید Originهای مجاز از کانفیگ.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="di">
+    <div class="sec-head" onclick="tog(this)"><h2>۵. تزریق وابستگی <span class="badge b-med">۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🔴 ثبت دوگانه‌ی <code>MatchingEngineService</code> (Scoped + HostedService) — بند C-6.</li>
+        <li>🟠 ثبت دوگانه‌ی <code>IWalletApiClient</code> در Orders: یک‌بار Typed HttpClient و بلافاصله <code>AddScoped&lt;IWalletApiClient, WalletApiClient&gt;</code> که ثبت اول را بازنویسی و به سازنده‌ی مبهم می‌رسد.</li>
+        <li>🟠 تزریق concrete به‌جای اینترفیس: <code>OrderService</code> مستقیماً <code>UsersApiClient</code> و <code>UserService</code> مستقیماً <code>UserMapper</code> می‌گیرد.</li>
+        <li>🟡 استفاده‌ی گسترده از Service Locator (<code>GetRequiredService</code>) در موتور تطبیق.</li>
+        <li class="good-note">✅ استفاده‌ی درست از <code>IServiceScopeFactory</code> برای حل «Singleton به Scoped وابسته نشود» — با کامنت توضیحی.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="solid">
+    <div class="sec-head" onclick="tog(this)"><h2>۶. اصول SOLID <span class="badge b-high">۴٫۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <table>
+        <tr><th>اصل</th><th>وضعیت</th><th>شاهد</th></tr>
+        <tr><td>SRP</td><td>❌</td><td><code>OrderService.CreateOrderAsync</code> اعتبارسنجی + فراخوانی Wallet + ساخت سفارش + قفل + ساخت پاسخ را یکجا انجام می‌دهد (God-Method).</td></tr>
+        <tr><td>OCP</td><td>⚠️</td><td>نرخ کارمزد hardcode در دو جا با مقادیر متناقض (<code>0.000</code> vs <code>0.001/0.002</code>).</td></tr>
+        <tr><td>LSP</td><td>—</td><td>سلسله‌مراتب وراثت کم؛ نقض خاصی مشاهده نشد.</td></tr>
+        <tr><td>ISP</td><td>⚠️</td><td><code>IWalletService</code> بزرگ با متدهای legacy بلااستفاده.</td></tr>
+        <tr><td>DIP</td><td>❌</td><td>نقض جدی — Application به concrete Infrastructure وابسته است.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="errors">
+    <div class="sec-head" onclick="tog(this)"><h2>۷. مدیریت خطا <span class="badge b-high">۴/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🟠 <b>نبود Middleware سراسری خطا</b> (بدون <code>UseExceptionHandler</code>/<code>ProblemDetails</code>) — به‌جای آن <b>۹۸ بلوک <code>catch (Exception ex)</code></b> پراکنده.</li>
+        <li>🟠 <b>بلعیدن استثنا:</b> در بسیاری Endpointها <code>ex</code> استفاده نمی‌شود و ۵۰۰ عمومی <b>بدون لاگ</b> برمی‌گردد → خطاها در Production ناپدید می‌شوند.</li>
+        <li>🟠 <b>قالب پاسخ ناسازگار:</b> گاهی <code>ApiResponse&lt;T&gt;</code>، گاهی شیء ناشناس، گاهی مقدار خام.</li>
+        <li>🟡 <b>نشت اطلاعات:</b> <code>ApiResponse.Fail(ex.Message)</code> پیام استثنای داخلی را به کاربر برمی‌گرداند.</li>
+        <li>🟡 <code>CancelAllActiveOrders</code> با <code>catch { continue; }</code> خالی و «TODO logging» استثنا را می‌بلعد.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="logging">
+    <div class="sec-head" onclick="tog(this)"><h2>۸. لاگ‌نویسی <span class="badge b-high">۴/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🟠 <b>Placeholderهای بدون آرگومان</b> در <code>WalletApiClient</code>: <code>LogInformation("... {Amount} {Asset} for user {UserId}")</code> بدون هیچ آرگومان → لاگ بی‌فایده و ساختار شکسته.</li>
+        <li>🟠 آمیختن <code>ILogger&lt;T&gt;</code> و <code>Serilog.Log</code> استاتیک در <code>OrderService</code>.</li>
+        <li>🟠 سریال‌سازی کل لیست سفارش‌ها با <code>JsonConvert.SerializeObject</code> در هر درخواستِ <code>GetBestBidAskAsync</code> → حجم لاگ و CPU بالا.</li>
+        <li>🟠 <code>TelegramLoggerService</code> استثناها را در <code>catch { }</code> خالی می‌بلعد و به <code>SendExceptions.txt</code> در cwd می‌نویسد.</li>
+        <li>🟡 اموجی در پیام‌های لاگ (🚀💥🛑) — در Sink/grep مشکل‌ساز.</li>
+        <li class="good-note">✅ Serilog با Rolling File و فیلتر سطح لاگ EF Core — پایه‌ی خوب.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section id="efcore">
+    <div class="sec-head" onclick="tog(this)"><h2>۹. EF Core و لایه‌ی داده <span class="badge b-high">۴/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🔴 نبود Optimistic Concurrency (بند C-4).</li>
+        <li>🟠 <b>نبود <code>AsNoTracking</code> در هیچ‌جا</b> (تأییدشده) → همه‌ی خواندن‌ها Track می‌شوند.</li>
+        <li>🟠 <b>فیلترینگ در حافظه:</b> <code>GetBestBidAskAsync</code> تمام سفارش‌های Asset را می‌خواند و سپس در LINQ-to-Objects فیلتر می‌کند.</li>
+        <li>🟠 <b>Migration خودکار در Startup</b> هر سرویس → رقابت و ریسک در محیط چنداینستنسی.</li>
+        <li>🟡 Seed کاربر <code>SuperAdmin</code> با Guid ثابت در Startup.</li>
+        <li>🟡 دو موجودیت تراکنش موازی (<code>WalletTransaction</code> legacy و <code>Transaction</code>).</li>
+        <li class="good-note">✅ <code>HasPrecision(28, 8)</code> + Unique Index روی <code>(UserId, Asset)</code> + ایندکس‌گذاری خوب تراکنش‌ها.</li>
+        <li class="good-note">✅ <code>ExecuteAtomicMatchAsync</code> با Transaction + الگوی Re-fetch — درست.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="api">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۰. طراحی API <span class="badge b-med">۵٫۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🟡 نبود نسخه‌بندی (Versioning).</li>
+        <li>🟡 کدهای وضعیت نادرست: «یافت نشد» با ۴۰۰ به‌جای ۴۰۴؛ در <code>register</code> خطا با ۲۰۰ برمی‌گردد.</li>
+        <li>🟡 نبود <code>ProblemDetails</code> استاندارد (RFC 7807).</li>
+        <li>🟡 نقض REST: عملیات تغییردهنده با GET (<code>GET /api/wallet/create-default/{userId}</code>).</li>
+        <li>🟡 تکرار منطق نگاشت <code>OrderHistoryDto</code> در دو Endpoint (نقض DRY).</li>
+        <li class="good-note">✅ صفحه‌بندی با <code>Math.Clamp</code>؛ مستندات Swagger با XML Comment و <code>Produces&lt;T&gt;</code> روی Orders API.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section id="validation">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۱. اعتبارسنجی <span class="badge b-high">۴٫۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🟡 نبود FluentValidation/DataAnnotations؛ اعتبارسنجی دستی و تکراری در هر Endpoint.</li>
+        <li>🟠 <b>Primitive Obsession:</b> نماد <code>string</code> و همه‌جا <code>symbol.Split('/')[1]</code> بدون بررسی وجود <code>/</code> → <code>IndexOutOfRangeException</code>. پول <code>decimal</code> خام بدون Value Object.</li>
+        <li>🟡 شرط تودرتوی خطرناک برای دور زدن اعتبارسنجی admin:
+          <pre><code><span class="kw">if</span> (!isadmin)
+<span class="kw">if</span> (!balanceCheckSuccess) { <span class="kw">throw</span> ...; } <span class="cm">// dangling-if بدون آکولاد</span></code></pre>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 12 -->
+  <section id="async">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۲. Async و کارایی <span class="badge b-med">۶٫۵ / ۵٫۵ / ۲ ‏</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li class="good-note">✅ استفاده‌ی گسترده و درست از <code>async/await</code>؛ <b>هیچ <code>.Result</code>/<code>.Wait()</code> مسدودکننده‌ای در Production یافت نشد.</b></li>
+        <li>🟡 نبود <code>CancellationToken</code> در اکثر متدها.</li>
+        <li>🟡 نبود کشینگ (Caching: ۲/۱۰) — بهترین Bid/Ask در هر درخواست از DB محاسبه می‌شود؛ کاندید عالی برای Cache کوتاه‌مدت.</li>
+        <li>🟡 <code>new HttpClient()</code> دستی → ریسک Socket Exhaustion؛ باید <code>IHttpClientFactory</code> باشد.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section id="deadcode">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۳. کد مرده و بدهی فنی <span class="badge b-high">۳٫۵/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>🔴 <b>پوشه‌های پروژه‌ی تکراری در Git:</b> <code>src/Order/Orders/*</code>, <code>src/TallaEgg.Api</code>, <code>src/Orders.Api</code>, <code>src/Users.Infrastructure</code> — کپی‌های قدیمیِ خارج از <code>.sln</code> ولی Track‌شده.</li>
+        <li>🟠 متدهای legacy نیمه‌کاره در <code>WalletService</code>: <code>DebitAsync</code>, <code>TransferAsync</code>, <code>ChargeWalletAsync</code>, <code>OldWithdrawAsync</code> — ثبت تراکنش کامنت‌شده؛ <code>ChargeWalletAsync</code> همیشه <code>true</code>.</li>
+        <li>🟠 نرخ کارمزد <code>0.000</code> در <code>MatchingEngineService.CreateMakerTakerTrade</code> در تناقض با کامنت «0.1%/0.2%».</li>
+        <li>🟡 دو ثبت <code>UseSwagger()</code>/<code>UseSwaggerUI()</code> در Users.Api.</li>
+        <li>🟡 کامنت‌های «سؤال از خود» و بلوک‌های بزرگ کد کامنت‌شده در تقریباً هر فایل.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 14 -->
+  <section id="naming">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۴. نام‌گذاری و یکدستی <span class="badge b-high">۴/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>ناسازگاری املایی: <code>Ballance</code>, <code>Asnc</code>, <code>DepositeAsync</code>, <code>valume</code>.</li>
+        <li>آمیختن فارسی/انگلیسی در نام متغیرها و پیام‌ها.</li>
+        <li><code>WalletEntity</code> vs <code>WalletDTO</code> با کامنت «بهتر نیست این دوتا یکی باشن؟».</li>
+        <li>Namespace ناسازگار: <code>TallaEgg.Core</code> بلوکی، بقیه File-Scoped.</li>
+        <li><code>OrderType</code> تعریف‌شده اما بلااستفاده؛ مرز مبهم <code>OrderDto</code> vs <code>OrderHistoryDto</code>.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 15 -->
+  <section id="test">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۵. تست‌پذیری <span class="badge b-high">۴/۱۰</span></h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li>تست‌ها عمدتاً حول ربات تلگرام‌اند؛ <b>لایه‌ی مالی (بحرانی‌ترین بخش) پوشش معناداری ندارد.</b></li>
+        <li>وابستگی به concrete (<code>UsersApiClient</code>, <code>UserMapper</code>) و <code>Serilog.Log</code> استاتیک، Mock را دشوار می‌کند.</li>
+        <li>موتور تطبیق با Service Locator و <code>IServiceProvider</code>، تست واحد را سخت می‌کند.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 16 -->
+  <section id="strengths">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۶. نقاط قوت (منصفانه)</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ol>
+        <li>تفکیک تمیز لایه‌ها به‌ازای هر Bounded Context.</li>
+        <li>Database-per-Service — ایزولاسیون واقعی داده.</li>
+        <li>مدل دامنه‌ی غنی <code>Order</code> با Factory Method، بررسی Invariant و Setter خصوصی.</li>
+        <li>تراکنش اتمی + Re-fetch در <code>OrderMatchingRepository</code>.</li>
+        <li>مدیریت پیکربندی متمرکز با <code>appsettings.global.json</code>.</li>
+        <li>دقت اعشاری <code>(28,8)</code> + Unique Index + ایندکس‌گذاری خوب.</li>
+        <li>Serilog با Rolling File و فیلتر سطح.</li>
+        <li>مستندسازی Swagger با XML Comment روی Orders API.</li>
+        <li>هدف‌گیری <code>.NET 9</code> و <code>Nullable enable</code> در تمام پروژه‌ها.</li>
+        <li>استفاده‌ی آگاهانه از <code>IServiceScopeFactory</code> در BackgroundService.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 17 -->
+  <section id="modern">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۷. بهترین‌شیوه‌های مدرن</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <ul>
+        <li><code>IExceptionHandler</code> + <code>AddProblemDetails</code> به‌جای try/catchهای تکراری.</li>
+        <li><code>Keyed Services</code> برای انتخاب کلاینت‌های مختلف.</li>
+        <li><code>IOptions&lt;T&gt;</code> برای پیکربندی به‌جای Constant استاتیک.</li>
+        <li><code>Typed HttpClient</code> یکدست.</li>
+        <li>الگوی <code>Result&lt;T&gt;</code> به‌جای استثنا برای جریان کسب‌وکار.</li>
+        <li><code>record</code> و <code>required member</code> برای DTOها.</li>
+        <li>افزودن <code>CancellationToken</code> به کل زنجیره.</li>
+        <li>Value Object <code>Money</code> و <code>Symbol</code> برای رفع Primitive Obsession.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 18 -->
+  <section id="debt">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۸. برآورد بدهی فنی</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <table>
+        <tr><th>بُعد</th><th>ارزیابی</th></tr>
+        <tr><td>تأثیر فعلی</td><td>در دموی تک‌کاربره کار می‌کند، اما در بار همزمان و شرایط خطا یکپارچگی مالی نقض می‌شود.</td></tr>
+        <tr><td>تأثیر آینده</td><td>با افزایش کاربران، باگ‌های همزمانی به‌شکل «پول گم‌شده» ظاهر می‌شوند؛ هزینه‌ی رفع پس از تولید ده‌ها برابر است.</td></tr>
+        <tr><td>حجم بازآرایی</td><td>لایه‌ی مالی: ۳–۴ هفته‌ی نفر · امنیت و پاک‌سازی: ۱ هفته · Clean Architecture و DI: ۱–۲ هفته · <b>مجموع ۶–۸ هفته‌ی نفر</b>.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 19 -->
+  <section id="roadmap">
+    <div class="sec-head" onclick="tog(this)"><h2>۱۹. نقشه‌ی راه بازآرایی</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <h4>⚡ Quick Wins (چند روز)</h4>
+      <ul>
+        <li>انتقال کلید API و توکن تلگرام به Secret/Env و چرخش (C-1, C-2).</li>
+        <li>Gate کردن اعتبارسنجی TLS فقط برای Development (C-7).</li>
+        <li>محدودسازی CORS (C-9)، حذف پوشه‌های تکراری و کد مرده، رفع لاگ‌های شکسته.</li>
+      </ul>
+      <h4>🔴 فاز ۱ — یکپارچگی مالی (بحرانی)</h4>
+      <ul>
+        <li>افزودن <code>RowVersion</code> (C-4)؛ Transaction واحد روی <code>ApplyTradeAsync</code> (C-3).</li>
+        <li>اصلاح ترتیب «قفل پیش از تطبیق» (C-5)؛ اصلاح DI موتور تطبیق (C-6).</li>
+        <li>Idempotency بر اساس <code>ReferenceId</code>؛ حذف/تکمیل متدهای stub مالی (C-8).</li>
+      </ul>
+      <h4>🟠 فاز ۲ — معماری و کیفیت</h4>
+      <ul>
+        <li>اینترفیس‌گذاری کلاینت‌ها و حذف وابستگی Application به Infrastructure.</li>
+        <li>Middleware سراسری خطا با <code>ProblemDetails</code>؛ یکدست‌سازی قالب پاسخ و کدهای HTTP.</li>
+        <li><code>AsNoTracking</code> و انتقال فیلترها به دیتابیس.</li>
+      </ul>
+      <h4>🟢 فاز ۳ — بلوغ تولیدی</h4>
+      <ul>
+        <li>FluentValidation، Value Objectها، Outbox/Saga.</li>
+        <li>کشینگ قیمت، <code>CancellationToken</code>، تست واحد لایه‌ی مالی، خروج Migration از Startup.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 20 -->
+  <section id="final">
+    <div class="sec-head" onclick="tog(this)"><h2>۲۰. جمع‌بندی نهایی</h2><span class="arrow">▾</span></div>
+    <div class="sec-body">
+      <p><b>امتیاز کلی: ۴٫۶/۱۰ · بلوغ: ۳/۱۰ · آمادگی تولید: ٪۳۰</b></p>
+      <h4>۱۰ نقطه‌ی قوت برتر</h4>
+      <p>۱. تفکیک لایه‌ای تمیز · ۲. Database-per-Service · ۳. مدل دامنه‌ی غنی Order · ۴. تراکنش اتمی تطبیق · ۵. پیکربندی متمرکز · ۶. دقت اعشاری و ایندکس · ۷. Serilog · ۸. مستندات Swagger · ۹. .NET 9 + Nullable · ۱۰. مدیریت Scope در BackgroundService.</p>
+      <h4>۱۰ ضعف برتر</h4>
+      <p>۱. اسرار hardcode/کامیت‌شده · ۲. نبود Transaction مالی · ۳. نبود Optimistic Concurrency · ۴. Race condition قفل موجودی · ۵. ثبت اشتباه DI موتور تطبیق · ۶. غیرفعال بودن TLS · ۷. Endpointهای stub زنده · ۸. نبود Middleware خطا و بلعیدن استثنا · ۹. وابستگی Application به Infrastructure · ۱۰. کد مرده/تکراری فراوان.</p>
+      <h4>۲۰ بهبود کلیدی (به‌ترتیب اولویت)</h4>
+      <p>۱. چرخش و برون‌سپاری اسرار · ۲. Transaction روی ApplyTrade · ۳. RowVersion · ۴. اصلاح ترتیب قفل/تطبیق · ۵. اصلاح DI موتور · ۶. Idempotency تسویه · ۷. Gate کردن TLS · ۸. محدودسازی CORS · ۹. Middleware سراسری خطا · ۱۰. یکدست‌سازی پاسخ · ۱۱. حذف Endpointهای stub · ۱۲. اینترفیس‌گذاری کلاینت‌ها · ۱۳. حذف کد مرده · ۱۴. AsNoTracking و فیلتر در DB · ۱۵. FluentValidation · ۱۶. Value Object پول/نماد · ۱۷. رفع لاگ‌های شکسته · ۱۸. خروج Migration از Startup · ۱۹. CancellationToken سراسری · ۲۰. تست واحد لایه‌ی مالی.</p>
+      <h4>ارزیابی ریسک</h4>
+      <p><span class="badge b-crit">ریسک بالا</span> در وضعیت فعلی، استقرار برای پول واقعی می‌تواند به ناسازگاری موجودی، از دست رفتن وجوه و نشت اسرار منجر شود.</p>
+      <h4>سطح بلوغ معماری</h4>
+      <p><b>سطح ۲ از ۵ (Repeatable):</b> الگوها تعریف شده‌اند و ساختار منسجم است، اما اجرای جزئیات (تراکنش، همزمانی، امنیت، یکدستی) هنوز به بلوغ تولیدی نرسیده است.</p>
+      <hr>
+      <p class="pill">این گزارش بر پایه‌ی بازخوانی مستقیم سورس تولید شده و برای هر یافته‌ی بحرانی، نمونه‌ی کد و راهکار ارائه شده است.</p>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script>
+var SCORES = [
+  ["معماری",6.5],["کیفیت طراحی",5],["نگهداری‌پذیری",4.5],["مقیاس‌پذیری",5.5],
+  ["توسعه‌پذیری",5.5],["تست‌پذیری",4],["اشکال‌زدایی",5],["خوانایی",5],
+  ["یکدستی",4],["کارایی",5.5],["امنیت",2.5],["SOLID",4.5],
+  ["تزریق وابستگی",5],["مدیریت خطا",4],["لاگ‌نویسی",4],["پیکربندی",6],
+  ["طراحی API",5.5],["اعتبارسنجی",4.5],["Async",6.5],["EF Core",4],
+  ["کشینگ",2],["Middleware",5],["Background Services",4],["HTTP Clients",4],
+  ["نگاشت DTO",4.5],["کد مرده/تکراری",3.5],["امتیاز کلی پروژه",4.6]
+];
+var faDigits = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+function toFa(s){return String(s).replace(/[0-9]/g,function(d){return faDigits[+d];});}
+function cls(v){return v>=6.5?'good':(v>=4.5?'warn':'bad');}
+(function(){
+  var g=document.getElementById('scoregrid');
+  SCORES.forEach(function(s){
+    var v=s[1], c=cls(v);
+    var d=document.createElement('div'); d.className='scard';
+    d.innerHTML='<div class="lbl">'+s[0]+'</div>'+
+      '<div class="val s-'+c+'">'+toFa(v.toFixed(1))+' / ۱۰</div>'+
+      '<div class="bar"><i class="f-'+c+'" style="width:'+(v*10)+'%"></i></div>';
+    g.appendChild(d);
+  });
+})();
+function tog(h){h.parentElement.classList.toggle('collapsed');}
+function toggleTheme(){
+  var r=document.documentElement;
+  var cur=r.getAttribute('data-theme');
+  if(!cur){cur=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  r.setAttribute('data-theme', cur==='dark'?'light':'dark');
+}
+</script>
+</body>
+</html>
