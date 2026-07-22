@@ -1,5 +1,9 @@
 # Pull Request Template
 
+> GitHub auto-loads a **lean** version of this from [`.github/pull_request_template.md`](../../.github/pull_request_template.md)
+> into every new PR. This file is the **full** reference — copy the Security, Testing, and
+> Deployment/Rollback sections below into the PR for critical, financial, or security changes.
+
 **Branch Name**: (e.g., `hotfix/secrets-rotation`, `feat/wallet-atomicity`)  
 **Linked Issue/Task**: TASK-### or Issue ###
 
@@ -218,4 +222,4 @@ All 4 tests passed in 2.34 seconds.
 ---
 
 **Merge Instructions**:
-After approval, squash and merge to `staging` branch. GitHub Actions will auto-deploy to staging environment. Manual approval required before production merge.
+After approval, squash and merge. Target `staging` once that branch and its CI/CD exist; until then, merge to `main` after review. (Auto-deploy via GitHub Actions is a planned target, not yet in place — see `WORKFLOW.md` → Deployment to Staging.)

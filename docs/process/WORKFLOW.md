@@ -47,9 +47,10 @@ Agenda:
 ### 4. Task Selection (Pull Model)
 - Developers pull tasks from "Ready" column
 - Prioritize based on order in `SPRINT_PLAN.md`
-- Current sprint priorities (3-week cycle):
-  - **Weeks 1-2**: Security & financial integrity (critical path)
-  - **Week 3**: Architecture & API quality
+- Sprint priorities (3 sprints × 2 weeks; see `SPRINT_PLAN.md`):
+  - **Sprint 1**: Security & financial integrity (critical path)
+  - **Sprint 2**: Architecture & API quality
+  - **Sprint 3**: Performance, cleanup & documentation
 
 ---
 
@@ -88,67 +89,31 @@ Use template from `docs/process/STANDARDS.md`, section 3.
 
 ## Immediate Next Tasks (Sprint Start)
 
-Execute in order; current sprint cycle: July 17 — July 31, 2026.
+The task breakdown — owners, estimates, checklists, acceptance criteria — lives in the single
+source of truth, [`SPRINT_PLAN.md`](SPRINT_PLAN.md). It is **not** duplicated here, so the two
+can't drift. Live status (TODO / in progress / done) lives in branches and the board, not in any doc.
 
-### Task 1: Rotate Secrets (1–2 days)
-**Owner**: Dev B (execution), Dev A (Git cleanup)  
-**Status**: BLOCKED until approval  
-**Details**: See `SPRINT_PLAN.md` section "Immediate Tasks"
-
-- [ ] Generate new API key and Telegram bot token
-- [ ] Remove old credentials from Git history
-- [ ] Update configuration template in `config/appsettings.template.json`
-- [ ] Update deployment runbook
-
-### Task 2: Gate TLS Validation & Restrict CORS (0.5–1 day)
-**Owner**: Dev B  
-**Status**: READY  
-**Details**: 
-
-- [ ] Wrap TLS bypass code in `#if DEBUG` directive
-- [ ] Set CORS to whitelist only allowed origins (not `AllowAnyOrigin`)
-- [ ] Test locally and on staging
-- [ ] Create PR with security label
-
-### Task 3: Quarantine Stub Endpoints (1–2 days)
-**Owner**: Dev A  
-**Status**: READY  
-**Details**:
-
-- [ ] Identify stub endpoints returning hardcoded/fake data
-- [ ] Replace logic with `return StatusCode(501, "Not Implemented")` + feature flag
-- [ ] Add unit test verifying quarantine behavior
-- [ ] Create PR, link to audit finding C-8
-
-### Task 4: Transaction Atomicity for Wallet Operations (3–5 days)
-**Owner**: Dev A (primary)  
-**Status**: IN PROGRESS  
-**Details**: See `SPRINT_PLAN.md` section "Sprint 1 — Financial Integrity"
-
-- [ ] Implement single `IDbContextTransaction` for `ApplyTradeAsync`
-- [ ] Add `RowVersion` to `WalletEntity` and `Order`
-- [ ] Handle `DbUpdateConcurrencyException` with retry
-- [ ] Write integration tests for concurrent scenarios
-- [ ] Deploy to staging with feature flag disabled
+**Sprint 1 order**: TASK-001 (Rotate Secrets) → TASK-002 (Gate TLS / Restrict CORS) →
+TASK-003 (Quarantine Stubs) → TASK-004 (Wallet Atomicity) → TASK-005 (Matching DI / Lock order).
+Start each by opening its section in `SPRINT_PLAN.md`.
 
 ---
 
-## Sprint Structure (3 Weeks)
+## Sprint Structure (3 Sprints × 2 Weeks)
 
-### Week 1: Immediate Security Fixes
-- Tasks 1–3 above
+### Sprint 1 — Security & Financial Integrity
+- Immediate tasks (TASK-001..003) then TASK-004 (atomicity) + TASK-005 (matching DI / lock order)
 - Daily code review during standup
-- Smoke test on staging Friday afternoon
-
-### Week 2: Financial Integrity
-- Task 4 + DI cleanup (Task 5)
 - Integration tests for wallet/order flows
-- Staging acceptance testing Wednesday–Friday
 
-### Week 3: API & Architecture Quality
-- Global error middleware
-- API standardization (ProblemDetails, HTTP codes)
-- Documentation updates
+### Sprint 2 — API & Architecture Quality
+- DIP client interfaces (TASK-006)
+- Global error middleware / ProblemDetails (TASK-007)
+- Financial integration test suite (TASK-008)
+
+### Sprint 3 — Performance, Cleanup & Documentation
+- Query optimization (TASK-009), dead-code removal (TASK-010)
+- Runbook & operational playbooks (TASK-011)
 
 ---
 
@@ -164,11 +129,16 @@ Execute in order; current sprint cycle: July 17 — July 31, 2026.
 
 ## Deployment to Staging
 
-### Manual Deployment Process
+> ⚠️ **Target state — not yet set up.** There is currently no `staging` branch and no
+> CI/CD. Until these exist, treat this section as the intended process, not today's reality.
+> The concrete first step to make it real: create a `staging` branch and add
+> `.github/workflows/` for build + test.
+
+### Manual Deployment Process (target)
 1. PR merged to `staging` branch
 2. Run: `./publish-all.ps1` (from `publishes/` folder)
 3. Execute `start-all-services.ps1` on staging server
-4. Smoke test endpoints per `docs/operations/SMOKE_TEST.md`
+4. Smoke test endpoints per `docs/operations/SMOKE_TEST.md` (planned)
 5. Run integration tests: `dotnet test --filter Category=Integration`
 
 ### Automated CI/CD (Future)

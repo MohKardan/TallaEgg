@@ -13,54 +13,45 @@ This document defines all standards and conventions for the TallaEgg project to 
 - Exception: comments referencing external Farsi documentation may link to external sources
 
 ### Documentation Files
-- **All documentation MUST be in English**
+- **All process/standards documentation MUST be in English** (this shared framework must be
+  readable by both the team and AI coding agents, so one common language is required)
 - Use standard Markdown formatting
 - Use American English spelling conventions
+- **Exception**: source/reference artifacts written for a specific audience may be in Farsi
+  (e.g. `docs/CODE_AUDIT_REPORT.html`). When they are, the authoritative English summary is the
+  one linked from `INDEX.md` (for the audit: `operations/AUDIT_FINDINGS.md`).
 
 ---
 
 ## 2. Folder Structure & Naming Conventions
 
 ### Solution Structure
+
+This reflects the repository **as it is today**, not an idealized target. Two things below are
+known tech debt flagged by the audit (see `operations/AUDIT_FINDINGS.md` M-1) and are slated for
+cleanup in TASK-010 — they are marked ⚠️:
+
 ```
 TallaEgg/
-├── src/
-│   ├── User/                    # Bounded Context: User Management
-│   │   ├── Users.Api/
-│   │   ├── Users.Application/
-│   │   ├── Users.Core/
-│   │   └── Users.Infrastructure/
-│   ├── Wallet/
-│   │   ├── Wallet.Api/
-│   │   ├── Wallet.Application/
-│   │   ├── Wallet.Core/
-│   │   └── Wallet.Infrastructure/
-│   ├── Order/
-│   │   ├── Orders.Api/
-│   │   ├── Orders.Application/
-│   │   ├── Orders.Core/
-│   │   └── Orders.Infrastructure/
-│   ├── Affiliate/
-│   │   ├── Affiliate.Api/
-│   │   ├── Affiliate.Application/
-│   │   ├── Affiliate.Core/
-│   │   └── Affiliate.Infrastructure/
-│   └── TelegramBot/
-│       ├── TallaEgg.TelegramBot/
-│       ├── TallaEgg.TelegramBot.Application/
-│       ├── TallaEgg.TelegramBot.Core/
-│       ├── TallaEgg.TelegramBot.Infrastructure/
-│       └── TallaEgg.TelegramBot.Tests/
+├── src/                              # Each Bounded Context: {Name}.Api/.Application/.Core/.Infrastructure
+│   ├── User/                         #   → Users.Api, Users.Application, Users.Core, Users.Infrastructure
+│   ├── Wallet/                       #   → Wallet.Api, Wallet.Application, Wallet.Core, Wallet.Infrastructure
+│   ├── Order/                        #   → Orders.Api, Orders.Application, Orders.Core, Orders.Infrastructure, Orders.Tests
+│   │   └── Orders/                   #   ⚠️ duplicate/legacy folder, not in .sln — remove (TASK-010)
+│   ├── Affiliate/                    #   → Affiliate.Api, Affiliate.Application, Affiliate.Core, Affiliate.Infrastructure
+│   └── TallaEgg/                     # Shared kernel + API gateway (TallaEgg.Api/.Application/.Core/.Infrastructure)
+├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/ (TallaEgg.TelegramBot + .Application/.Core/.Infrastructure)
+├── TallaEgg.TelegramBot.Tests/       # Test project at repo root
 ├── docs/
-│   ├── CODE_AUDIT_REPORT.html    # Full audit report (see operations/AUDIT_FINDINGS.md for the summary)
-│   ├── architecture/             # Architecture documentation
-│   ├── design/                   # Design decisions (ADRs)
-│   ├── operations/               # Runbooks, deployment guides
-│   └── process/                  # Development process standards
-├── tests/
-│   └── TallaEgg.Tests.Integration/
+│   ├── CODE_AUDIT_REPORT.html        # Full audit report (see operations/AUDIT_FINDINGS.md for the summary)
+│   ├── architecture/                 # Architecture documentation (ROADMAP.md)
+│   ├── operations/                   # AUDIT_FINDINGS.md; runbooks/deployment (planned)
+│   └── process/                      # Development process standards (this file, INDEX, WORKFLOW, SPRINT_PLAN, PR_TEMPLATE)
 └── TallaEgg.sln
 ```
+
+**Target for new bounded contexts**: place the four layers under `src/{Context}/`. The `TelegramBot`
+placement at repo root is existing history, not a pattern to copy.
 
 ### Naming Conventions
 
@@ -301,8 +292,8 @@ Example (BAD):
 
 ### Branching Strategy
 - Main branch: `main` (production-ready, deployed)
-- Staging branch: `staging` (pre-production testing)
-- Feature/fix branches: created from `staging`, merged back after review
+- Staging branch: `staging` (pre-production testing) — ⚠️ **not yet created**; today branches are cut from and merged to `main`. Create `staging` when the deployment pipeline is set up.
+- Feature/fix branches: created from `staging` once it exists (from `main` until then), merged back after review
 - Hotfixes: created from `main`, merged to both `main` and `staging`
 
 ### Commit Guidelines
@@ -326,7 +317,7 @@ Example (BAD):
 - StyleCop analyzers (via NuGet package)
 - SonarAnalyzer for C#
 
-### CI/CD
+### CI/CD *(target — not yet configured)*
 - GitHub Actions or Azure Pipelines
 - Automated: build, test, security scan
 - Manual approval before production deployment

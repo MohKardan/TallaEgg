@@ -311,13 +311,13 @@ This index & all standards documents should be reviewed:
 2. **Tech Lead**: Review `SPRINT_PLAN.md` for clarity (20 min)
 3. **Team**: Hold 30-min kickoff: confirm sprint goal, task assignments, blockers
 4. **Dev B**: Start TASK-001 (Rotate Secrets) — highest priority
-5. **Dev A**: Start TASK-004 (Financial Integrity) — already in progress, continue with atomicity focus
+5. **Dev A**: Start TASK-004 (Financial Integrity) — atomicity focus
 
 ---
 
-**Repository**: [TallaEgg GitHub](https://github.com/YourOrg/TallaEgg)  
-**Sprint Duration**: 2 weeks  
+**Repository**: [MohKardan/TallaEgg](https://github.com/MohKardan/TallaEgg)  
+**Sprint Model**: 3 sprints × 2 weeks (~6 weeks total)  
 **Current Sprint**: Sprint 1 (July 17–31, 2026)  
-**Target Score**: 4.6 → 6.5/10 (60%+ production-ready)
+**Target Score**: 4.6 → 6.5/10 (60%+ production-ready) by end of Sprint 1
 
 Good luck! 🚀

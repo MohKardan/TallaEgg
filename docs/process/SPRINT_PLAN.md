@@ -1,17 +1,17 @@
 # Sprint Plan & Task Decomposition
 
-**Cycle**: 2-week sprints  
-**Duration**: July 17 — July 31, 2026 (Sprint 1 of 3)  
-**Team**: Dev A (Backend/Transactions), Dev B (Matching Engine/DI/API)
+**Cycle**: 2-week sprints, 3 sprints total (~6 weeks). This document covers all 3.  
+**Sprint 1**: July 17 — July 31, 2026 · **Sprint 2**: ~July 31 — Aug 14 · **Sprint 3**: ~Aug 14 — Aug 28  
+**Team**: Dev A (Backend/Transactions), Dev B (Matching Engine/DI/API). AI coding agents follow the same standards and PR process — see [`INDEX.md`](INDEX.md).
 
 ---
 
-## Sprint Goal
-Eliminate critical production blockers related to financial integrity, security, and dependency management to achieve minimum viable production-readiness (40% → 60%).
+## Sprint Goal (Sprint 1)
+Eliminate critical production blockers related to financial integrity, security, and dependency management to raise production-readiness from **30% → 60%** (see [`../operations/AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md)).
 
 ---
 
-## Immediate Tasks (Days 1–2)
+## Sprint 1 · Immediate Tasks (Days 1–2)
 
 ### TASK-001: Rotate & Secure Secrets
 **Priority**: CRITICAL  
@@ -106,7 +106,7 @@ Eliminate critical production blockers related to financial integrity, security,
 
 ---
 
-## Sprint 1: Financial Integrity (Days 3–10)
+## Sprint 1 · Financial Integrity (Days 3–10)
 
 ### TASK-004: Implement Transaction Atomicity for Wallet Operations
 **Priority**: CRITICAL  
@@ -257,7 +257,7 @@ public async Task ApplyTradeAsync_100ConcurrentTrades_AllSucceed()
 
 ---
 
-## Sprint 2: API & Architecture Quality (Days 11–21)
+## Sprint 2: API & Architecture Quality (Weeks 3–4)
 
 ### TASK-006: Extract Wallet & Order API Clients to Interfaces (DIP)
 **Priority**: HIGH  
@@ -322,7 +322,7 @@ public async Task ApplyTradeAsync_100ConcurrentTrades_AllSucceed()
 
 ---
 
-## Sprint 3: Polish & Documentation (Days 22–30)
+## Sprint 3: Polish & Documentation (Weeks 5–6)
 
 ### TASK-009: Performance Optimization (AsNoTracking, Query Optimization)
 **Owner**: Dev A  
