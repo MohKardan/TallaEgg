@@ -20,6 +20,9 @@ opening a PR.
 2. **Sprint tasks**: [`docs/process/SPRINT_PLAN.md`](SPRINT_PLAN.md) — Detailed task breakdown, ownership, acceptance criteria
 3. **Code standards**: [`docs/process/STANDARDS.md`](STANDARDS.md) — Naming conventions, comments, PR checklist
 
+### For Reviewing Someone Else's PR
+- **How do I review this?** → [`docs/process/CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) — review depth, TallaEgg-specific red flags, when to approve vs request changes
+
 ### For Problem-Solving
 - **Why are we doing this?** → [`docs/operations/AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md) — Critical findings and rationale
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
@@ -46,7 +49,8 @@ docs/
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
 │   ├── WORKFLOW.md               ← Daily process, standup, PR review, Kanban
 │   ├── SPRINT_PLAN.md            ← Task breakdown, ownership, estimates, acceptance criteria
-│   └── PR_TEMPLATE.md            ← Copy this for every PR
+│   ├── PR_TEMPLATE.md            ← Copy this for every PR (author side)
+│   └── CODE_REVIEW_GUIDE.md      ← How to review a PR (reviewer side)
 ├── architecture/
 │   └── ROADMAP.md                ← Post-Sprint-1 roadmap (bot → web app migration)
 └── operations/

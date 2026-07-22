@@ -77,6 +77,9 @@ Use template from `docs/process/STANDARDS.md`, section 3.
 4. Address review comments
 5. Approver merges after passing CI
 
+**Reviewers**: see [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) for how deep to review, the
+project-specific red flags to check, and when to approve vs request changes.
+
 ### Critical Change Criteria
 - Changes to financial transactions
 - Security-related changes (secrets, TLS, authentication)
