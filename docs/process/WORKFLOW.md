@@ -13,7 +13,7 @@ This document defines the daily workflow for a two-person development team worki
 **Supporting References**:
 - `docs/operations/AUDIT_FINDINGS.md` — Why priorities are ordered as they are
 - `docs/architecture/ROADMAP.md` — High-level feature roadmap
-- `audit/CODE_AUDIT_REPORT.html` — Detailed technical findings
+- `docs/CODE_AUDIT_REPORT.html` — Detailed technical findings
 
 ---
 

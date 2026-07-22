@@ -1,5 +1,12 @@
 # TallaEgg - Agent Development Guide
 
+## Process & Standards
+
+Before writing code or opening a PR, read [`docs/process/INDEX.md`](docs/process/INDEX.md) — it is
+the canonical source for coding standards, branch/commit/PR conventions, and current sprint priorities
+(`docs/process/STANDARDS.md`, `docs/process/WORKFLOW.md`, `docs/process/SPRINT_PLAN.md`,
+`docs/process/PR_TEMPLATE.md`). It applies equally to human developers and AI agents.
+
 ## Build Commands
 - **Build entire solution:** `dotnet build TallaEgg.sln`
 - **Run tests:** `dotnet test` (uses xUnit with Moq mocking)

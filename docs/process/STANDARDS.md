@@ -52,14 +52,13 @@ TallaEgg/
 │       ├── TallaEgg.TelegramBot.Infrastructure/
 │       └── TallaEgg.TelegramBot.Tests/
 ├── docs/
+│   ├── CODE_AUDIT_REPORT.html    # Full audit report (see operations/AUDIT_FINDINGS.md for the summary)
 │   ├── architecture/             # Architecture documentation
 │   ├── design/                   # Design decisions (ADRs)
 │   ├── operations/               # Runbooks, deployment guides
 │   └── process/                  # Development process standards
 ├── tests/
 │   └── TallaEgg.Tests.Integration/
-├── audit/
-│   └── CODE_AUDIT_REPORT.html
 └── TallaEgg.sln
 ```
 

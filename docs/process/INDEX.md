@@ -4,6 +4,13 @@
 **Language**: English (all documentation)  
 **Standards**: Software Engineering Best Practices + Lean Development
 
+This is the **single canonical source** for how work gets planned, built, and reviewed in this
+repository — for human developers and AI coding agents alike. If a document elsewhere in the repo
+conflicts with something here, this index (and the files it links to) wins; fix the conflicting
+document instead of trusting it. AI agents: the root [`AGENT.md`](../../AGENT.md) points here for
+process/standards context — read `STANDARDS.md` before writing code and `PR_TEMPLATE.md` before
+opening a PR.
+
 ---
 
 ## Quick Navigation
@@ -16,7 +23,7 @@
 ### For Problem-Solving
 - **Why are we doing this?** → [`docs/operations/AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md) — Critical findings and rationale
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
-- **What's the architecture?** → `docs/architecture/` (coming: ADR files)
+- **What's the architecture?** → [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed; `SoftwareArchitecture/` (repo root) for current component/class/ER/sequence diagrams
 
 ### For Onboarding
 - **New to the team?** → Read in this order:
@@ -29,28 +36,32 @@
 
 ## Documentation Structure
 
+### Existing today
+
 ```
 docs/
+├── CODE_AUDIT_REPORT.html        ← Full audit report (raw)
 ├── process/
 │   ├── INDEX.md (this file)
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
 │   ├── WORKFLOW.md               ← Daily process, standup, PR review, Kanban
 │   ├── SPRINT_PLAN.md            ← Task breakdown, ownership, estimates, acceptance criteria
-│   ├── PR_TEMPLATE.md            ← Copy this for every PR
-│   └── METRICS.md                ← Weekly metrics tracking (lead time, deployment freq, etc.)
+│   └── PR_TEMPLATE.md            ← Copy this for every PR
 ├── architecture/
-│   ├── ADR-001-... .md           ← Architecture Decision Records (coming)
-│   ├── ROADMAP.md                ← Feature roadmap (coming)
-│   └── DIAGRAMS.md               ← Component, data flow, sequence diagrams (coming)
-├── operations/
-│   ├── AUDIT_FINDINGS.md         ← Critical/high/medium findings from code audit
-│   ├── DEPLOYMENT.md             ← How to deploy to staging/production (coming)
-│   ├── RUNBOOK.md                ← Operational procedures, incident response (coming)
-│   └── INFRASTRUCTURE.md         ← Infrastructure setup, databases, secrets (coming)
-└── design/
-    ├── API_CONTRACT.md           ← OpenAPI specification (coming)
-    └── DATABASE_SCHEMA.md        ← ER diagram, migrations (coming)
+│   └── ROADMAP.md                ← Post-Sprint-1 roadmap (bot → web app migration)
+└── operations/
+    └── AUDIT_FINDINGS.md         ← Critical/high/medium findings from code audit
 ```
+
+### Planned (not yet created — do not link to these until they exist)
+
+- `docs/process/METRICS.md` — weekly metrics tracking (lead time, deployment freq, etc.)
+- `docs/architecture/ADR-###-*.md` — Architecture Decision Records
+- `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams (note: `SoftwareArchitecture/` at repo root already has component/class/ER/sequence/activity/state diagrams — check there first before creating a duplicate)
+- `docs/operations/DEPLOYMENT.md`, `docs/operations/RUNBOOK.md`, `docs/operations/INFRASTRUCTURE.md`
+- `docs/design/API_CONTRACT.md`, `docs/design/DATABASE_SCHEMA.md`
+
+When one of these is created, move its line into "Existing today" in the same PR.
 
 ---
 
