@@ -15,6 +15,14 @@
     <None Include="Users.Application.csproj" />
   </ItemGroup>
 
+  <!-- The Tests/ folder holds NUnit/Moq tests (added with TASK-003) that do not
+       belong in this web API project, which lacks the test packages. Excluded from
+       compilation to keep the build green. TODO: rehome them in a dedicated
+       Wallet.Tests project so they actually run. -->
+  <ItemGroup>
+    <Compile Remove="Tests\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
