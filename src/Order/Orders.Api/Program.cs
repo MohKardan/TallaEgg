@@ -110,6 +110,9 @@ builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, Tal
 builder.Services.AddScoped<IMatchingEngine, Orders.Application.Services.MatchingEngineService>();
 builder.Services.AddHostedService<Orders.Application.Services.MatchingEngineService>();
 
+// Outbox processor: reliably delivers trade settlements to the Wallet service.
+builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
+
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
