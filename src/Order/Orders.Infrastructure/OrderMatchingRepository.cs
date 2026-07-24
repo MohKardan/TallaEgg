@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Infrastructure;
@@ -151,7 +153,16 @@ public class OrderMatchingRepository
             _context.Orders.UpdateRange(currentBuyOrder, currentSellOrder);
             _context.Trades.Add(trade);
 
-            // 9. Change Ballance of users in Wallets table and create Transactions records
+            // 9. Enqueue wallet settlement via the transactional outbox.
+            //    Wallet balances live in a separate database/service, so they cannot
+            //    join this transaction directly. Instead we durably record the intent
+            //    here: the Trade and its outbox row commit atomically together, so a
+            //    matched trade can never be left without a pending settlement. A
+            //    background processor later performs the settlement (idempotently,
+            //    keyed on the Trade id) against the Wallet API.
+            var settlementPayload = JsonSerializer.Serialize(MapTradeToSettlementDto(trade));
+            var outboxMessage = OutboxMessage.Create("TradeSettlement", trade.Id, settlementPayload);
+            _context.OutboxMessages.Add(outboxMessage);
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -169,6 +180,36 @@ public class OrderMatchingRepository
             return (false, null, $"خطا در تطبیق سفارشات: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Maps a matched <see cref="Trade"/> to the settlement DTO stored in the outbox
+    /// payload. This is the exact contract the Wallet API consumes, so the background
+    /// processor can forward it without re-fetching or re-mapping.
+    /// </summary>
+    private static TradeDto MapTradeToSettlementDto(Trade trade) => new()
+    {
+        Id = trade.Id,
+        BuyOrderId = trade.BuyOrderId,
+        SellOrderId = trade.SellOrderId,
+        MakerOrderId = trade.MakerOrderId,
+        TakerOrderId = trade.TakerOrderId,
+        Symbol = trade.Symbol,
+        Price = trade.Price,
+        Quantity = trade.Quantity,
+        QuoteQuantity = trade.QuoteQuantity,
+        BuyerUserId = trade.BuyerUserId,
+        SellerUserId = trade.SellerUserId,
+        MakerUserId = trade.MakerUserId,
+        TakerUserId = trade.TakerUserId,
+        FeeBuyer = trade.FeeBuyer,
+        FeeSeller = trade.FeeSeller,
+        MakerFee = trade.MakerFee,
+        TakerFee = trade.TakerFee,
+        MakerFeeRate = trade.MakerFeeRate,
+        TakerFeeRate = trade.TakerFeeRate,
+        CreatedAt = trade.CreatedAt,
+        UpdatedAt = trade.UpdatedAt
+    };
 
     /// <summary>
     /// Check if order can be processed
