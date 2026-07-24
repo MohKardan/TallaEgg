@@ -412,4 +412,11 @@ public class WalletService : IWalletService
         }
     }
 
+    public Task<(bool Success, string Message)> SettleTradeAsync(
+        Guid tradeId, Guid buyerUserId, Guid sellerUserId,
+        string symbol, decimal quantity, decimal quoteQuantity,
+        decimal feeBuyer, decimal feeSeller)
+        => _walletRepository.SettleTradeAsync(
+            tradeId, buyerUserId, sellerUserId,
+            symbol, quantity, quoteQuantity, feeBuyer, feeSeller);
 }
