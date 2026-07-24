@@ -10,10 +10,12 @@ public class OrdersDbContext : DbContext
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Trade> Trades => Set<Trade>();
-   
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfigurations());
         modelBuilder.ApplyConfiguration(new TradeConfiguration());
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
     }
 }
