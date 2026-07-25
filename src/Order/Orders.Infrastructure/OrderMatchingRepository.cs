@@ -257,9 +257,12 @@ public class OrderMatchingRepository
     {
         var quoteQuantity = quantity * price;
         
-        // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
-        var makerFeeRate = 0.001m; // 0.1%
-        var takerFeeRate = 0.002m; // 0.2%
+        // Fees are DISABLED for the MVP (charged at 0%). The real maker/taker fee model —
+        // which asset each fee is denominated in (buyer fee should be in the base asset it
+        // receives, not the quote) and crediting collected fees to the fee account — is
+        // tracked in issue #35. Zero fees keep trade settlement balanced until then.
+        var makerFeeRate = 0.000m;
+        var takerFeeRate = 0.000m;
         
         // Determine which order is Maker (older timestamp) and which is Taker (newer timestamp)
         var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;

@@ -257,10 +257,11 @@ public class WalletRepository : IWalletRepository
                 return (false, $"Seller locked {baseAsset} ({sellerBase.LockedBalance}) is less than required ({quantity}).");
             }
 
-            // Buyer pays quote: consume the locked collateral (unlock then decrease = net locked consumed).
+            // Buyer pays quote: consume the locked collateral. The funds were reserved at
+            // order time (possibly credit-backed, so available Balance may be negative);
+            // consuming them removes the lock and leaves the debt on Balance.
             var buyerQuoteBefore = buyerQuote.Balance;
-            buyerQuote.UnLockBalance(quoteQuantity);
-            buyerQuote.DecreaseBalance(quoteQuantity);
+            buyerQuote.ConsumeLockedBalance(quoteQuantity);
             AddTradeTransaction(buyerQuote, quoteQuantity, quoteAsset, buyerQuoteBefore, buyerQuote.Balance, referenceId, "Buyer paid quote asset (from locked funds)");
 
             // Buyer receives base.
@@ -268,10 +269,9 @@ public class WalletRepository : IWalletRepository
             buyerBase.IncreaseBalance(buyerReceivesBase);
             AddTradeTransaction(buyerBase, buyerReceivesBase, baseAsset, buyerBaseBefore, buyerBase.Balance, referenceId, "Buyer received base asset");
 
-            // Seller pays base: consume the locked collateral.
+            // Seller pays base: consume the locked collateral (same credit-aware handling).
             var sellerBaseBefore = sellerBase.Balance;
-            sellerBase.UnLockBalance(quantity);
-            sellerBase.DecreaseBalance(quantity);
+            sellerBase.ConsumeLockedBalance(quantity);
             AddTradeTransaction(sellerBase, quantity, baseAsset, sellerBaseBefore, sellerBase.Balance, referenceId, "Seller paid base asset (from locked funds)");
 
             // Seller receives quote.
