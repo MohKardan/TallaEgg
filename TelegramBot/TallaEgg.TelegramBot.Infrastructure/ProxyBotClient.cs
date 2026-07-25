@@ -8,6 +8,18 @@ namespace TallaEgg.TelegramBot
     {
         public static ITelegramBotClient CreateWithProxy(string token)
         {
+            // Local override: when the machine can reach Telegram directly (e.g. a TUN-mode VPN),
+            // the system HTTP proxy can be unstable on long-poll (getUpdates) and drops the
+            // connection ("response ended prematurely"). Set BOT_DIRECT_CONNECTION=1 to bypass the
+            // proxy and connect directly. Unset (the default) keeps the original proxy behaviour,
+            // which the server deployment relies on.
+            if (Environment.GetEnvironmentVariable("BOT_DIRECT_CONNECTION") == "1")
+            {
+                Console.WriteLine("🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)");
+                var directClient = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+                return new TelegramBotClient(token, directClient);
+            }
+
             try
             {
                 // Get system proxy
