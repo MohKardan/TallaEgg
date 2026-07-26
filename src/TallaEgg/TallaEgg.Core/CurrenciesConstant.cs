@@ -141,6 +141,35 @@
             GetCurrencyInfo(code)?.PersianName ?? code;
 
         /// <summary>
+        /// ورودی کاربر را به کد ارز تبدیل می‌کند. هم کد لاتین («IRT») و هم نام فارسی
+        /// («تومان») پذیرفته می‌شود، تا مدیر مجبور نباشد کد انگلیسی به خاطر بسپارد.
+        /// اگر ورودی به هیچ ارزی نخورد، null برمی‌گردد.
+        /// </summary>
+        public static string? ResolveCurrencyCode(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            var trimmed = input.Trim();
+
+            // ابتدا تطبیق با کد ارز
+            if (_map.TryGetValue(trimmed, out var byCode))
+                return byCode.Code;
+
+            // سپس تطبیق با نام فارسی
+            var byName = AllCurrencies.FirstOrDefault(c =>
+                string.Equals(c.PersianName, trimmed, StringComparison.OrdinalIgnoreCase));
+
+            return byName?.Code;
+        }
+
+        /// <summary>
+        /// فهرست نام‌های فارسی ارزها برای نمایش در پیام خطا (به‌جای کدهای لاتین).
+        /// </summary>
+        public static string GetPersianNamesList() =>
+            string.Join("، ", AllCurrencies.Select(c => c.PersianName));
+
+        /// <summary>
         /// نام فارسی جفت معاملاتی برای نمایش به کاربر (مثل «آبشده/تومان»).
         /// اگر جفت ناشناس باشد، از نام فارسی دو طرف ساخته می‌شود تا هیچ‌وقت
         /// نماد لاتین در متن فارسی نمایش داده نشود.
