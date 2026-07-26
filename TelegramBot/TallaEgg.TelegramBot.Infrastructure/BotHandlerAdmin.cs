@@ -371,7 +371,7 @@ namespace TallaEgg.TelegramBot
         {
             try
             {
-                const string defaultAsset = "MAUA/IRR"; // Default asset for admin price pair orders
+                const string defaultAsset = CurrenciesConstant.MAUA_IRT; // Default asset for admin price pair orders
                 const decimal defaultAmount = 1000m;    // Default amount
 
                 // First, cancel all existing active orders for this user

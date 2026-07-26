@@ -211,13 +211,13 @@ public class WalletRepository : IWalletRepository
             return (true, "Trade already settled.");
         }
 
-        // Symbol is BASE/QUOTE, e.g. MAUA/IRR. Parse defensively (never symbol.Split('/')[1] blindly).
+        // Symbol is BASE/QUOTE, e.g. MAUA/IRT. Parse defensively (never symbol.Split('/')[1] blindly).
         var parts = symbol?.Split('/');
         if (parts is not { Length: 2 } || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
             return (false, $"Invalid symbol '{symbol}'. Expected BASE/QUOTE.");
 
         var baseAsset = parts[0].Trim().ToUpperInvariant();   // e.g. MAUA (gold)
-        var quoteAsset = parts[1].Trim().ToUpperInvariant();  // e.g. IRR (rial)
+        var quoteAsset = parts[1].Trim().ToUpperInvariant();  // e.g. IRT (toman)
 
         if (quantity <= 0 || quoteQuantity <= 0)
             return (false, "Quantity and quoteQuantity must be positive.");

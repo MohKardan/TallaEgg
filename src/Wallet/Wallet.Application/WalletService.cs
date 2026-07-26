@@ -377,11 +377,11 @@ public class WalletService : IWalletService
 
         try
         {
-            // ایجاد کیف پول ریال (IRR)
+            // ایجاد کیف پول تومان (IRT)
             var irrWallet = WalletEntity.Create
             (
                  userId,
-                 CurrenciesConstant.Rial
+                 CurrenciesConstant.Toman
             );
             var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
             wallets.Add(_walletMapper.Map(irrWallet));
