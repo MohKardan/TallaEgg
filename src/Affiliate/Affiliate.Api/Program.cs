@@ -101,11 +101,15 @@ if (app.Environment.IsProduction())
 }
 app.UseAuthorization();
 
-// تنظیم CORS
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+// تنظیم CORS — CORS services are only registered in Production (see AddCors above),
+// so only add the middleware there; otherwise the app fails to start in Development.
+if (app.Environment.IsProduction())
+{
+    app.UseCors(builder => builder
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+}
 
 // Affiliate management endpoints
 app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationRequest request, AffiliateService affiliateService) =>

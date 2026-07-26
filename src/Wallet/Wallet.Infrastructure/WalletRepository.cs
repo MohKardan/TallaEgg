@@ -195,6 +195,121 @@ public class WalletRepository : IWalletRepository
         return transaction;
     }
 
+    public async Task<(bool Success, string Message)> SettleTradeAsync(
+        Guid tradeId, Guid buyerUserId, Guid sellerUserId,
+        string symbol, decimal quantity, decimal quoteQuantity,
+        decimal feeBuyer, decimal feeSeller)
+    {
+        var referenceId = tradeId.ToString();
+
+        // Idempotency: a retry or a duplicate outbox delivery must not settle twice.
+        // Check the NEW Transactions table (settlement writes here), not the legacy WalletTransactions.
+        var alreadySettled = await _context.Transactions.AnyAsync(t => t.ReferenceId == referenceId);
+        if (alreadySettled)
+        {
+            _logger.LogInformation("Trade {TradeId} already settled; skipping (idempotent).", tradeId);
+            return (true, "Trade already settled.");
+        }
+
+        // Symbol is BASE/QUOTE, e.g. MAUA/IRR. Parse defensively (never symbol.Split('/')[1] blindly).
+        var parts = symbol?.Split('/');
+        if (parts is not { Length: 2 } || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+            return (false, $"Invalid symbol '{symbol}'. Expected BASE/QUOTE.");
+
+        var baseAsset = parts[0].Trim().ToUpperInvariant();   // e.g. MAUA (gold)
+        var quoteAsset = parts[1].Trim().ToUpperInvariant();  // e.g. IRR (rial)
+
+        if (quantity <= 0 || quoteQuantity <= 0)
+            return (false, "Quantity and quoteQuantity must be positive.");
+        if (feeBuyer < 0 || feeSeller < 0)
+            return (false, "Fees cannot be negative.");
+
+        var buyerReceivesBase = quantity - feeBuyer;         // buyer gets base minus buyer fee
+        var sellerReceivesQuote = quoteQuantity - feeSeller; // seller gets quote minus seller fee
+        if (buyerReceivesBase <= 0 || sellerReceivesQuote <= 0)
+            return (false, "Fee exceeds the trade amount.");
+
+        await using var tx = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // Fetch all four wallets as tracked entities; every change below is persisted by a single SaveChanges.
+            var buyerQuote = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == buyerUserId && w.Asset == quoteAsset);
+            var buyerBase = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == buyerUserId && w.Asset == baseAsset);
+            var sellerBase = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == sellerUserId && w.Asset == baseAsset);
+            var sellerQuote = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == sellerUserId && w.Asset == quoteAsset);
+
+            if (buyerQuote is null || buyerBase is null || sellerBase is null || sellerQuote is null)
+            {
+                await tx.RollbackAsync();
+                return (false, "One or more participant wallets were not found.");
+            }
+
+            // The collateral must actually be locked. Guards against the lock-after-match ordering bug (audit C-5):
+            // settling from funds that were never locked would drive a balance negative.
+            if (buyerQuote.LockedBalance < quoteQuantity)
+            {
+                await tx.RollbackAsync();
+                return (false, $"Buyer locked {quoteAsset} ({buyerQuote.LockedBalance}) is less than required ({quoteQuantity}).");
+            }
+            if (sellerBase.LockedBalance < quantity)
+            {
+                await tx.RollbackAsync();
+                return (false, $"Seller locked {baseAsset} ({sellerBase.LockedBalance}) is less than required ({quantity}).");
+            }
+
+            // Buyer pays quote: consume the locked collateral. The funds were reserved at
+            // order time (possibly credit-backed, so available Balance may be negative);
+            // consuming them removes the lock and leaves the debt on Balance.
+            var buyerQuoteBefore = buyerQuote.Balance;
+            buyerQuote.ConsumeLockedBalance(quoteQuantity);
+            AddTradeTransaction(buyerQuote, quoteQuantity, quoteAsset, buyerQuoteBefore, buyerQuote.Balance, referenceId, "Buyer paid quote asset (from locked funds)");
+
+            // Buyer receives base.
+            var buyerBaseBefore = buyerBase.Balance;
+            buyerBase.IncreaseBalance(buyerReceivesBase);
+            AddTradeTransaction(buyerBase, buyerReceivesBase, baseAsset, buyerBaseBefore, buyerBase.Balance, referenceId, "Buyer received base asset");
+
+            // Seller pays base: consume the locked collateral (same credit-aware handling).
+            var sellerBaseBefore = sellerBase.Balance;
+            sellerBase.ConsumeLockedBalance(quantity);
+            AddTradeTransaction(sellerBase, quantity, baseAsset, sellerBaseBefore, sellerBase.Balance, referenceId, "Seller paid base asset (from locked funds)");
+
+            // Seller receives quote.
+            var sellerQuoteBefore = sellerQuote.Balance;
+            sellerQuote.IncreaseBalance(sellerReceivesQuote);
+            AddTradeTransaction(sellerQuote, sellerReceivesQuote, quoteAsset, sellerQuoteBefore, sellerQuote.Balance, referenceId, "Seller received quote asset");
+
+            var now = DateTime.UtcNow;
+            buyerQuote.UpdatedAt = now; buyerBase.UpdatedAt = now; sellerBase.UpdatedAt = now; sellerQuote.UpdatedAt = now;
+            _context.Wallets.UpdateRange(buyerQuote, buyerBase, sellerBase, sellerQuote);
+
+            await _context.SaveChangesAsync(); // single save: 4 balance changes + 4 transaction records
+            await tx.CommitAsync();
+
+            _logger.LogInformation(
+                "Settled trade {TradeId}: buyer={Buyer} seller={Seller} {Qty} {Base} for {Quote} {QuoteAsset}",
+                tradeId, buyerUserId, sellerUserId, quantity, baseAsset, quoteQuantity, quoteAsset);
+            return (true, "Trade settled.");
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            _logger.LogError(ex, "Error settling trade {TradeId}", tradeId);
+            return (false, $"Settlement error: {ex.Message}");
+        }
+    }
+
+    /// <summary>Adds (but does not save) a completed Trade transaction record to the current unit of work.</summary>
+    private void AddTradeTransaction(WalletEntity wallet, decimal amount, string asset,
+        decimal balanceBefore, decimal balanceAfter, string referenceId, string description)
+    {
+        var transaction = Transaction.Create(
+            wallet.Id, amount, asset, TransactionType.Trade,
+            balanceBefore, balanceAfter, null, TransactionStatus.Completed,
+            description, referenceId, null);
+        _context.Transactions.Add(transaction);
+    }
+
     public async Task<WalletTransaction?> GetTransactionAsync(Guid transactionId)
     {
         return await _context.WalletTransactions.FindAsync(transactionId);

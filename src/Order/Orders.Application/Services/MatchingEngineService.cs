@@ -375,34 +375,13 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             
             if (result.Success)
             {
-                //TODO باید آنفریز کنه و تراکنش های مربوط به معامله را ثبت کند
-                //await _walletApiClient.UnlockBalanceAsync(result.Trade.BuyerUserId, result.Trade.Symbol, result.Trade.Quantity);
-                //await _walletApiClient.UnlockBalanceAsync(result.Trade.SellerUserId, result.Trade.Symbol, result.Trade.Quantity * result.Trade.Price);
-
-                ////dotnet add package AutoMapper
-                ////dotnet add package AutoMapper.Extensions.Microsoft.DependencyInjection
-
-                //TradeDto tradeDto = new TradeDto()
-                //{
-                //    Id = result.Trade.Id,
-                //    BuyOrderId = result.Trade.BuyOrderId,
-                //    SellOrderId = result.Trade.SellOrderId,
-                //    MakerOrderId = result.Trade.MakerOrderId,
-                //    TakerOrderId = result.Trade.TakerOrderId,
-                //    Symbol = result.Trade.Symbol,
-                //    Price = result.Trade.Price,
-                //    Quantity = result.Trade.Quantity,
-                //    QuoteQuantity = result.Trade.QuoteQuantity,
-                //    FeeBuyer = result.Trade.FeeBuyer,
-                //    FeeSeller = result.Trade.FeeSeller,
-                //    CreatedAt = result.Trade.CreatedAt,
-
-                //};
-
-                //await _walletApiClient.TradeTransactionAndBalanceChangeAsync(tradeDto);
-
+                // Wallet settlement is no longer called inline here. ExecuteAtomicMatchAsync
+                // enqueues a 'TradeSettlement' outbox message in the same transaction as the
+                // trade, and OutboxProcessorService delivers it to the Wallet service reliably
+                // (with retry + idempotency). This removes the old fire-and-forget HTTP calls
+                // that could silently lose money if the Wallet service was unavailable.
                 _logger.LogInformation(
-                    "✅ Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
+                    "Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
                     makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
             }
             else

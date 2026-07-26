@@ -1,6 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Infrastructure;
@@ -151,7 +153,16 @@ public class OrderMatchingRepository
             _context.Orders.UpdateRange(currentBuyOrder, currentSellOrder);
             _context.Trades.Add(trade);
 
-            // 9. Change Ballance of users in Wallets table and create Transactions records
+            // 9. Enqueue wallet settlement via the transactional outbox.
+            //    Wallet balances live in a separate database/service, so they cannot
+            //    join this transaction directly. Instead we durably record the intent
+            //    here: the Trade and its outbox row commit atomically together, so a
+            //    matched trade can never be left without a pending settlement. A
+            //    background processor later performs the settlement (idempotently,
+            //    keyed on the Trade id) against the Wallet API.
+            var settlementPayload = JsonSerializer.Serialize(MapTradeToSettlementDto(trade));
+            var outboxMessage = OutboxMessage.Create("TradeSettlement", trade.Id, settlementPayload);
+            _context.OutboxMessages.Add(outboxMessage);
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -169,6 +180,36 @@ public class OrderMatchingRepository
             return (false, null, $"خطا در تطبیق سفارشات: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Maps a matched <see cref="Trade"/> to the settlement DTO stored in the outbox
+    /// payload. This is the exact contract the Wallet API consumes, so the background
+    /// processor can forward it without re-fetching or re-mapping.
+    /// </summary>
+    private static TradeDto MapTradeToSettlementDto(Trade trade) => new()
+    {
+        Id = trade.Id,
+        BuyOrderId = trade.BuyOrderId,
+        SellOrderId = trade.SellOrderId,
+        MakerOrderId = trade.MakerOrderId,
+        TakerOrderId = trade.TakerOrderId,
+        Symbol = trade.Symbol,
+        Price = trade.Price,
+        Quantity = trade.Quantity,
+        QuoteQuantity = trade.QuoteQuantity,
+        BuyerUserId = trade.BuyerUserId,
+        SellerUserId = trade.SellerUserId,
+        MakerUserId = trade.MakerUserId,
+        TakerUserId = trade.TakerUserId,
+        FeeBuyer = trade.FeeBuyer,
+        FeeSeller = trade.FeeSeller,
+        MakerFee = trade.MakerFee,
+        TakerFee = trade.TakerFee,
+        MakerFeeRate = trade.MakerFeeRate,
+        TakerFeeRate = trade.TakerFeeRate,
+        CreatedAt = trade.CreatedAt,
+        UpdatedAt = trade.UpdatedAt
+    };
 
     /// <summary>
     /// Check if order can be processed
@@ -216,9 +257,12 @@ public class OrderMatchingRepository
     {
         var quoteQuantity = quantity * price;
         
-        // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
-        var makerFeeRate = 0.001m; // 0.1%
-        var takerFeeRate = 0.002m; // 0.2%
+        // Fees are DISABLED for the MVP (charged at 0%). The real maker/taker fee model —
+        // which asset each fee is denominated in (buyer fee should be in the base asset it
+        // receives, not the quote) and crediting collected fees to the fee account — is
+        // tracked in issue #35. Zero fees keep trade settlement balanced until then.
+        var makerFeeRate = 0.000m;
+        var takerFeeRate = 0.000m;
         
         // Determine which order is Maker (older timestamp) and which is Taker (newer timestamp)
         var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;

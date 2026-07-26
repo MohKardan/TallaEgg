@@ -84,6 +84,22 @@ public class WalletEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Consumes previously-locked collateral during trade settlement: the reserved funds
+    /// are spent, so they leave LockedBalance WITHOUT returning to the available Balance.
+    /// Unlike UnLockBalance + DecreaseBalance, this does not trip the non-negative Balance
+    /// guard, which is required for credit-backed positions whose available Balance is
+    /// already negative. The debt (negative Balance) legitimately remains.
+    /// </summary>
+    public void ConsumeLockedBalance(decimal amount)
+    {
+        if (amount <= 0)
+            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+
+        LockedBalance -= amount;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
 }
 
 public class WalletTransaction

@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Trade;
@@ -236,6 +237,33 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
     }
 });
 
+// Trade settlement — called by the Orders outbox processor after a match.
+// Atomically consumes both sides' locked collateral, credits each side, and records
+// a Transaction per leg. Idempotent on the trade id, so retries are safe.
+app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService walletService, ILogger<Program> logger) =>
+{
+    try
+    {
+        var result = await walletService.SettleTradeAsync(
+            trade.Id, trade.BuyerUserId, trade.SellerUserId,
+            trade.Symbol, trade.Quantity, trade.QuoteQuantity,
+            trade.FeeBuyer, trade.FeeSeller);
+
+        if (!result.Success)
+        {
+            logger.LogWarning("Trade settlement rejected for {TradeId}: {Message}", trade.Id, result.Message);
+            return Results.BadRequest(ApiResponse<string>.Fail(result.Message));
+        }
+
+        return Results.Ok(ApiResponse<string>.Ok(result.Message, "Trade settled"));
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error settling trade {TradeId}", trade.Id);
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
+
 app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService, ILogger<Program> logger, IConfiguration configuration) =>
 {
     // Quarantine stub endpoint audit:C-8
@@ -249,11 +277,11 @@ app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalle
             "UserId: {FromUserId}, ToUserId: {ToUserId}, Asset: {Asset}, Amount: {Amount}, ReferenceId: {ReferenceId}",
             request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
         
-        return Results.StatusCode(501, new { 
-            error = "Not Implemented", 
+        return Results.Json(new {
+            error = "Not Implemented",
             message = "Stub endpoint quarantined. Implementation pending.",
             auditRef = "C-8"
-        });
+        }, statusCode: 501);
     }
     
     // Production implementation (currently unreachable due to quarantine)

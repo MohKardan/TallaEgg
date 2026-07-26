@@ -19,5 +19,13 @@ public interface IWalletService
     Task<(bool success, string message)> TransferAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount);
     Task<(bool success, string message)> ChargeWalletAsync(Guid userId, string asset, decimal amount, string? paymentMethod = null);
     Task<IEnumerable<WalletDTO>> CreateDefaultWalletsAsync(Guid userId);
-    
+
+    /// <summary>
+    /// Settles a matched trade atomically and idempotently (keyed on <paramref name="tradeId"/>).
+    /// Backs POST /api/wallet/changeBalance, called by the Orders outbox processor.
+    /// </summary>
+    Task<(bool Success, string Message)> SettleTradeAsync(
+        Guid tradeId, Guid buyerUserId, Guid sellerUserId,
+        string symbol, decimal quantity, decimal quoteQuantity,
+        decimal feeBuyer, decimal feeSeller);
 } 
