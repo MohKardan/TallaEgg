@@ -1,3 +1,4 @@
+using TallaEgg.Core;
 using System.Text;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -10,32 +11,56 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 {
     public static class ActiveOrdersHandler
     {
+        /// <summary>
+        /// فهرست سفارش‌های فعال به‌صورت متن ساده.
+        ///
+        /// عمداً از Markdown استفاده نمی‌شود: پیام قبلی با MarkdownV2 ارسال می‌شد اما
+        /// EscapeMarkdownV2 خودِ نشانه‌های bold را هم escape می‌کرد، بنابراین ستاره‌ها
+        /// به‌صورت متن خام به کاربر نمایش داده می‌شدند. متن ساده هم درست نمایش داده
+        /// می‌شود و هم از خطرهای escape شدن در امان است.
+        ///
+        /// قیمت بر حسب «هر مثقال» نشان داده می‌شود، چون کاربر و مدیر قیمت را با همین
+        /// واحد وارد می‌کنند (در دیتابیس بر حسب «هر گرم» ذخیره می‌شود).
+        /// </summary>
         public static async Task<string> BuildActiveOrdersListAsync(List<OrderHistoryDto> orders, bool isAdmin = false)
         {
             if (orders == null || !orders.Any())
             {
-                return "هیچ سفارش فعالی یافت نشد.";
+                return "هیچ سفارش فعالی وجود ندارد.";
             }
 
             var sb = new StringBuilder();
-            sb.AppendLine($"⚡ *سفارشات فعال* {(isAdmin ? "(همه کاربران)" : "")}\n");
+            sb.AppendLine(isAdmin ? "⚡ سفارش‌های فعال (همهٔ کاربران)" : "⚡ سفارش‌های فعال شما");
+            sb.AppendLine();
 
             foreach (var o in orders)
             {
-                sb.AppendLine(
-     $"📌 *سفارش {"#" + o.Id.ToString()[..8]}\\…*\n" +
-     $"🏷️ دارایی: *{o.Asset}*\n" +
-     $"🔺 نوع: *{GetTypeIcon(o.Type)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}*\n" +
-     $"📊 حجم: *{o.Amount}* | باقی‌مانده: *{o.RemainingAmount}*\n" +
-     $"💰 قیمت: *{o.Price:#,0} تومان*\n" +
-     $"💵 ارزش کل: *{(o.Amount * o.Price):#,0} تومان*\n" +
-     $"⚡ وضعیت: *{GetStatusEmoji(o.Status)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}*\n" +
-     $"🕓 زمان: *{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt)}*" +
-     (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{o.Notes}_" : "") +
-     "\n➖➖➖➖➖➖➖➖➖\n"
- );
+                var baseAsset = o.Asset.Split('/')[0];
+                var unit = PersianFormat.Unit(baseAsset);
+                var isGold = o.Asset == CurrenciesConstant.MAUA_IRT;
+
+                // قیمت ذخیره‌شده بر حسب گرم است؛ برای طلا به مثقال تبدیل می‌شود.
+                var displayPrice = isGold ? o.Price * CurrenciesConstant.GramsPerMesghal : o.Price;
+                var priceLabel = isGold ? "قیمت هر مثقال" : "قیمت هر واحد";
+
+                sb.AppendLine($"📌 سفارش {PersianFormat.Ltr(o.Id.ToString()[..8])}");
+                sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(o.Asset)}");
+                sb.AppendLine($"{GetTypeIcon(o.Type)} نوع: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}");
+                sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(o.Amount, baseAsset)} {unit}");
+                sb.AppendLine($"⏳ باقی‌مانده: {PersianFormat.Amount(o.RemainingAmount, baseAsset)} {unit}");
+                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
+                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Number(o.Amount * o.Price)} تومان");
+                sb.AppendLine($"{GetStatusEmoji(o.Status)} وضعیت: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}");
+                sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt))}");
+
+                if (!string.IsNullOrWhiteSpace(o.Notes))
+                    sb.AppendLine($"📝 یادداشت: {o.Notes}");
+
+                sb.AppendLine("➖➖➖➖➖➖➖➖➖");
+                sb.AppendLine();
             }
-            return Utils.EscapeMarkdownV2(sb.ToString());
+
+            return sb.ToString();
         }
 
         public static InlineKeyboardMarkup? BuildCancelOrderKeyboard(List<OrderHistoryDto> orders, bool isAdmin = false)
@@ -48,7 +73,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             foreach (var order in orders)
             {
                 buttons.Add(InlineKeyboardButton.WithCallbackData(
-                    $"❌ لغو #{order.Id.ToString()[..8]}...", 
+                    $"❌ لغو سفارش {order.Id.ToString()[..8]}",
                     $"cancel_order_{order.Id}"));
             }
 

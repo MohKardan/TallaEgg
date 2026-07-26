@@ -449,7 +449,6 @@ namespace TallaEgg.TelegramBot
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
-                                parseMode: ParseMode.MarkdownV2,
                                 replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
@@ -473,7 +472,6 @@ namespace TallaEgg.TelegramBot
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
-                                parseMode: ParseMode.Html,
                                 replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
@@ -608,7 +606,6 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.MarkdownV2,
                     replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
@@ -624,7 +621,6 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.Html,
                     replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
@@ -644,16 +640,18 @@ namespace TallaEgg.TelegramBot
                 var text = await ActiveOrdersHandler.BuildActiveOrdersListAsync(response.Data!, isAdmin);
                 var keyboard = ActiveOrdersHandler.BuildCancelOrderKeyboard(response.Data!, isAdmin);
 
+                // متن ساده ارسال می‌شود؛ با MarkdownV2 نشانه‌های قالب‌بندی escape می‌شدند
+                // و به‌صورت ستارهٔ خام به کاربر نمایش داده می‌شدند.
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.MarkdownV2,
                     replyMarkup: keyboard
                 );
             }
             else
             {
-                await _botClient.SendMessage(chatId, "خطا در دریافت سفارشات فعال: " + response.Message);
+                await _botClient.SendMessage(chatId,
+                    string.Format(BotMsgs.MsgActiveOrdersFailed, response.Message));
             }
         }
 
@@ -953,8 +951,12 @@ namespace TallaEgg.TelegramBot
             {
                 orderState.State = "waiting_for_price";
 
-                await _botClient.SendMessage(chatId,
-                 $"لطفا قیمت رو وارد کنید",
+                // برای طلای آبشده قیمت «یک مثقال» خواسته می‌شود؛ واحد صریح ذکر می‌شود.
+                var pricePrompt = orderState.Asset == CurrenciesConstant.MAUA_IRT
+                    ? BotMsgs.MsgEnterPriceGold
+                    : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset));
+
+                await _botClient.SendMessage(chatId, pricePrompt,
                  replyMarkup: new ReplyKeyboardRemove());
             }
             else if (orderState.OrderType == OrderType.Market)
@@ -998,8 +1000,13 @@ namespace TallaEgg.TelegramBot
 
             var confirmationMsg = "";
 
-            // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
-            if (orderState.Asset == CurrenciesConstant.MAUA_IRT)
+            // قیمتی که کاربر وارد می‌کند برای «یک مثقال» است؛ برای طلای آبشده به قیمت
+            // «هر گرم» تبدیل و ذخیره می‌شود. عدد ورودی نگه داشته می‌شود تا در پیام تایید
+            // هم نمایش داده شود، وگرنه کاربر عددی غیر از ورودی خود می‌بیند.
+            var enteredPricePerMesghal = price;
+            var isGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
+
+            if (isGold)
             {
                 orderState.Price /= 4.3318m;
                 confirmationMsg = BotMsgs.MsgOrderConfirmationGold;
@@ -1038,12 +1045,24 @@ namespace TallaEgg.TelegramBot
             // مقادیر پیش از درج در پیام فارسی‌سازی می‌شوند: نماد به نام فارسی، نوع سفارش
             // به «خرید/فروش»، و اعداد با ارقام فارسی و محافظ راست‌به‌چپ.
             var baseAsset = orderState.Asset.Split('/')[0];
-            var confirmationMessage = string.Format(confirmationMsg,
-                PersianFormat.Symbol(orderState.Asset),
-                TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide),
-                $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}",
-                PersianFormat.Number(orderState.Price),
-                PersianFormat.Number(totalValue));
+            var amountText = $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}";
+            var sideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide);
+
+            // قالب طلا یک آرگومان بیشتر دارد: قیمت هر مثقال و قیمت هر گرم.
+            var confirmationMessage = isGold
+                ? string.Format(confirmationMsg,
+                    PersianFormat.Symbol(orderState.Asset),
+                    sideText,
+                    amountText,
+                    PersianFormat.Number(enteredPricePerMesghal),
+                    PersianFormat.Number(orderState.Price),
+                    PersianFormat.Number(totalValue))
+                : string.Format(confirmationMsg,
+                    PersianFormat.Symbol(orderState.Asset),
+                    sideText,
+                    amountText,
+                    PersianFormat.Number(orderState.Price),
+                    PersianFormat.Number(totalValue));
 
             var keyboard = new InlineKeyboardMarkup(new[]
             {

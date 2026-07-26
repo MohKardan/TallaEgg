@@ -15,6 +15,12 @@
 
         public const string Credit_MAUA = "CREDIT_MAUA";
 
+        /// <summary>
+        /// وزن یک مثقال به گرم. قیمت‌ها توسط کاربر و مدیر بر حسب «هر مثقال» وارد
+        /// می‌شوند و برای ذخیره‌سازی به «هر گرم» تبدیل می‌شوند.
+        /// </summary>
+        public const decimal GramsPerMesghal = 4.3318m;
+
         // 🔹 مجموعه‌ای از اطلاعات ارزها
         public static readonly List<CurrencyInfo> AllCurrencies = new List<CurrencyInfo>
         {
