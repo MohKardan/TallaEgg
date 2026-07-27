@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- OutboxProcessorService.ProcessDueMessagesAsync is internal so its batch-resilience
+         behaviour (issue #44) can be tested without driving the background loop's timing. -->
+    <InternalsVisibleTo Include="Wallet.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.8" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />

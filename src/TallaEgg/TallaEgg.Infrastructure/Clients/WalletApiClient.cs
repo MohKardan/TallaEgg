@@ -519,10 +519,12 @@ public class WalletApiClient : IWalletApiClient
         }
     }
     /// <summary>
-    /// بعد از اینکه معامله‌ای انجام شد، باید تراکنش معامله ثبت و بالانس‌ها به‌روزرسانی شوند
+    /// بعد از اینکه معامله‌ای انجام شد، باید تراکنش معامله ثبت و بالانس‌ها به‌روزرسانی شوند.
+    ///
+    /// دلیل رد شدن تسویه باید عیناً به فراخوان برسد. پیش‌تر هر خطایی به یک پیام عمومی
+    /// تبدیل می‌شد، پس پردازشگر outbox هیچ‌وقت نمی‌فهمید مشکل واقعی چه بوده و همان
+    /// رشتهٔ بی‌فایده در LastError ذخیره می‌شد (issue #38).
     /// </summary>
-    /// <param name="trade"></param>
-    /// <returns></returns>
     public async Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade)
     {
         try
@@ -531,22 +533,59 @@ public class WalletApiClient : IWalletApiClient
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync("api/wallet/changeBalance", stringContent);
+            var body = await response.Content.ReadAsStringAsync();
+
+            // endpoint در هر دو حالت موفق و ناموفق یک ApiResponse برمی‌گرداند و پیام
+            // دقیق تسویه در Message آن است.
+            var parsed = TryParseMessage(body);
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("Successfully TradeTransactionAndBalanceChangeAsnc {Amount} {Asset} for user {UserId}");
-                return (true, "موجودی با موفقیت آزاد شد");
+                // _logger عمداً با ?. صدا زده می‌شود: یکی از سازنده‌های این کلاس logger
+                // نمی‌گیرد و آن را null می‌گذارد.
+                _logger?.LogInformation(
+                    "Trade {TradeId} settled by the wallet service. Symbol: {Symbol}, quantity: {Quantity}, quote: {QuoteQuantity}.",
+                    trade.Id, trade.Symbol, trade.Quantity, trade.QuoteQuantity);
+
+                return (true, parsed ?? "تسویهٔ معامله با موفقیت انجام شد.");
             }
-            else
-            {
-                _logger.LogWarning("Failed to TradeTransactionAndBalanceChangeAsnc for user {UserId}, asset {Asset}, amount {Amount}. Status: {Status}");
-                return (false, "خطا در آزاد کردن موجودی");
-            }
+
+            var reason = parsed ?? $"سرویس کیف پول کد {(int)response.StatusCode} برگرداند.";
+
+            _logger?.LogWarning(
+                "Wallet service rejected settlement of trade {TradeId} with status {StatusCode}: {Reason}",
+                trade.Id, (int)response.StatusCode, reason);
+
+            return (false, reason);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error TradeTransactionAndBalanceChangeAsnc for user {UserId}, asset {Asset}, amount {Amount}");
+            _logger?.LogError(ex, "Error settling trade {TradeId} against the wallet service.", trade.Id);
             return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// پیام را از بدنهٔ ApiResponse بیرون می‌کشد. اگر بدنه خالی یا غیرقابل‌تجزیه بود
+    /// null برمی‌گرداند تا فراخوان خودش یک پیام جایگزین بسازد — خواندن پیام هرگز نباید
+    /// خودش باعث شکست تسویه شود.
+    /// </summary>
+    private string? TryParseMessage(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return null;
+
+        try
+        {
+            var apiResponse = JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<string>>(
+                body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return string.IsNullOrWhiteSpace(apiResponse?.Message) ? null : apiResponse.Message;
+        }
+        catch (JsonException)
+        {
+            _logger?.LogDebug("Wallet settlement response was not a parsable ApiResponse: {Body}", body);
+            return null;
         }
     }
 
