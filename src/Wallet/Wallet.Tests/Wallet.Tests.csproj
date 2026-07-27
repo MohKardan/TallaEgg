@@ -24,6 +24,7 @@
          until a dedicated Orders.Tests project exists (issue #46). -->
     <ProjectReference Include="..\..\Order\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\..\Order\Orders.Infrastructure\Orders.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Order\Orders.Application\Orders.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
