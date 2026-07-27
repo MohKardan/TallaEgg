@@ -224,10 +224,23 @@ public class WalletRepository : IWalletRepository
         if (feeBuyer < 0 || feeSeller < 0)
             return (false, "Fees cannot be negative.");
 
-        var buyerReceivesBase = quantity - feeBuyer;         // buyer gets base minus buyer fee
-        var sellerReceivesQuote = quoteQuantity - feeSeller; // seller gets quote minus seller fee
-        if (buyerReceivesBase <= 0 || sellerReceivesQuote <= 0)
-            return (false, "Fee exceeds the trade amount.");
+        // Fail closed on fees. Settlement debits each payer the full amount but would
+        // credit the receiver the amount minus the fee — and the difference is credited
+        // to NO account, so a non-zero fee silently destroys money on every trade.
+        // Fee rates are 0 for the MVP, so this guard is inert today; it exists so that
+        // restoring a non-zero rate produces a loud, visible failure instead of a slow
+        // leak. Remove it only together with fee crediting to the fee account (issue #35).
+        if (feeBuyer != 0m || feeSeller != 0m)
+        {
+            _logger.LogError(
+                "Refusing to settle trade {TradeId}: non-zero fees are not supported because collected " +
+                "fees are not credited to any account (feeBuyer={FeeBuyer}, feeSeller={FeeSeller}). See issue #35.",
+                tradeId, feeBuyer, feeSeller);
+            return (false, "Fee crediting is not implemented; settlement refused to avoid losing the fee amount.");
+        }
+
+        var buyerReceivesBase = quantity;      // no fee is deducted while fees are disabled
+        var sellerReceivesQuote = quoteQuantity;
 
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
