@@ -135,6 +135,26 @@ public class SettleTradeAsyncTests : IDisposable
     }
 
     [Fact]
+    public async Task SettleTradeAsync_WhenBuyerIsTheSeller_RefusesAndChangesNothing()
+    {
+        // Matching now blocks self-matching, but settlement guards it too: with one user on
+        // both sides the two "different" wallets resolve to the same tracked entity, which
+        // produces an incoherent balance history even though the trade nets out.
+        SeedFullyLockedWallets();
+        var tradeId = Guid.NewGuid();
+
+        var (success, message) = await _repository.SettleTradeAsync(
+            tradeId, _buyerId, _buyerId, $"{Base}/{Quote}",
+            Quantity, QuoteQuantity, 0m, 0m);
+
+        Assert.False(success, "settlement must refuse a self-trade");
+        Assert.Contains("must be different users", message);
+
+        var count = await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString());
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
     public async Task SettleTradeAsync_WithNonZeroFee_RefusesAndChangesNothing()
     {
         // Settlement debits the payer in full but would credit the receiver net of the fee,

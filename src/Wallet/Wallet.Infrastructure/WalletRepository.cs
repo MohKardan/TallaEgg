@@ -224,6 +224,14 @@ public class WalletRepository : IWalletRepository
         if (feeBuyer < 0 || feeSeller < 0)
             return (false, "Fees cannot be negative.");
 
+        // دفاع در عمق: تطبیق نباید اجازهٔ خودمعاملگی بدهد، اما اگر مسیری آن را دور بزند
+        // تسویه روی یک کیف پول مشترک انجام می‌شود و رد حسابرسی نادرست تولید می‌کند.
+        if (buyerUserId == sellerUserId)
+        {
+            _logger.LogError("Refusing to settle trade {TradeId}: buyer and seller are the same user.", tradeId);
+            return (false, "Buyer and seller must be different users.");
+        }
+
         // Fail closed on fees. Settlement debits each payer the full amount but would
         // credit the receiver the amount minus the fee — and the difference is credited
         // to NO account, so a non-zero fee silently destroys money on every trade.
