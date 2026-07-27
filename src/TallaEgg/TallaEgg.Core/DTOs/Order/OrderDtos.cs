@@ -171,7 +171,7 @@ namespace TallaEgg.Core.DTOs.Order
         public Guid SellerUserId { get; set; }
 
         /// <summary>
-        /// نماد دارایی (مثل BTC/USDT، MAUA/IRR)
+        /// نماد دارایی (مثل BTC/USDT، MAUA/IRT)
         /// </summary>
         public string Asset { get; set; } = string.Empty;
 

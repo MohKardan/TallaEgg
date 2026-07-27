@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -119,7 +119,7 @@ namespace TallaEgg.TelegramBot
 
                 if (user == null)
                 {
-                    await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
+                    await _botClient.SendMessage(chatId, "حساب شما پیدا نشد. لطفاً ابتدا با دستور شروع ثبت‌نام کنید.");
                     await HandleNewUserAsync(chatId, telegramId, message);
                     return;
                 }
@@ -139,7 +139,7 @@ namespace TallaEgg.TelegramBot
                 {
                     await _botClient.SendMessage(
                          chatId,
-                         $"عزیز اکانت کاربری شما فعال نیست {user.FirstName}".AutoRtl()
+                         string.Format(BotMsgs.MsgAccountNotApproved, user.FirstName).AutoRtl()
                      );
                 }
                 else
@@ -343,7 +343,7 @@ namespace TallaEgg.TelegramBot
                     await _botClient.DeleteMessage(chatId, message.Id);
 
                     await _botClient.SendMessage(chatId,
-                                                 $"لطفا مقدار را وارد کنید",
+                                                 $"لطفاً مقدار را وارد کنید.",
                                                  replyMarkup: new ReplyKeyboardRemove());
 
                     break;
@@ -360,20 +360,11 @@ namespace TallaEgg.TelegramBot
                     await ShowMainMenuAsync(chatId);
                     break;
 
+                // هر دو مسیر شارژ به یک پیام واحد می‌رسند: در حال حاضر درگاه پرداخت
+                // وجود ندارد و شارژ حساب توسط طلافروشی انجام می‌شود.
                 case InlineCallBackData.charge_card:
-                    await _botClient.SendMessage(chatId,
-                        "💳 شارژ از طریق کارت بانکی\n\n" +
-                        "لطفاً مبلغ مورد نظر را وارد کنید (به تومان):\n" +
-                        "مثال: 100000");
-                    break;
-
                 case InlineCallBackData.charge_bank:
-                    await _botClient.SendMessage(chatId,
-                        "🏦 واریز به حساب بانکی\n\n" +
-                        "شماره حساب: 1234567890\n" +
-                        "شماره کارت: 1234-5678-9012-3456\n" +
-                        "به نام: شرکت تالا\n\n" +
-                        "پس از واریز، رسید را برای ما ارسال کنید.");
+                    await _botClient.SendMessage(chatId, BotMsgs.MsgChargeInfo);
                     break;
 
                 case InlineCallBackData.back_to_main:
@@ -409,11 +400,16 @@ namespace TallaEgg.TelegramBot
 
                             await _botClient.DeleteMessage(chatId, message.Id);
 
+                            // قیمت می‌تواند خالی باشد (وقتی در آن سمت بازار سفارشی نیست).
+                            // نمایش صفر گمراه‌کننده است، پس پیام صریح نشان داده می‌شود.
+                            string FormatPrice(decimal? price) => price.HasValue
+                                ? $"{PersianFormat.Number(price.Value)} تومان"
+                                : BotMsgs.MsgPriceNotAvailable;
+
                             await _botClient.SendMessage(chatId,
-                                            $"📊 <b>بهترین قیمت‌های بازار</b>\n\n" +
-                                            $"💰 <b>خرید:</b> <code>{apiResponse.Data.BestBidPrice:N0}</code>\n" +
-                                            $"💸 <b>فروش:</b> <code>{apiResponse.Data.BestAskPrice:N0}</code>",
-                                            Telegram.Bot.Types.Enums.ParseMode.Html);
+                                            string.Format(BotMsgs.MsgBestPrices,
+                                                FormatPrice(apiResponse.Data.BestBidPrice),
+                                                FormatPrice(apiResponse.Data.BestAskPrice)));
 
                             _userOrderStates[telegramId].BestBidPrice = apiResponse.Data.BestBidPrice;
                             _userOrderStates[telegramId].BestAskPrice = apiResponse.Data.BestAskPrice;
@@ -453,11 +449,10 @@ namespace TallaEgg.TelegramBot
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
-                                parseMode: ParseMode.MarkdownV2,
                                 replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
-                            // بستن "در حال فکر کردن..." روی دکمه
+                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
                             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
@@ -477,11 +472,10 @@ namespace TallaEgg.TelegramBot
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
                                 text: text,
-                                parseMode: ParseMode.Html,
                                 replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
-                            // بستن "در حال فکر کردن..." روی دکمه
+                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
                             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
@@ -493,13 +487,13 @@ namespace TallaEgg.TelegramBot
                             var result = await _orderApi.CancelOrderAsync(orderId);
                             if (result.success)
                             {
-                                await _botClient.AnswerCallbackQuery(callbackQuery.Id, "✅ سفارش با موفقیت لغو شد");
+                                await _botClient.AnswerCallbackQuery(callbackQuery.Id, "✅ سفارش شما لغو شد و مبلغ درگیر آزاد گردید.");
                                 
                                 // حذف پیام یا به‌روزرسانی آن
                                 await _botClient.EditMessageText(
                                     chatId: callbackQuery.Message.Chat.Id,
                                     messageId: callbackQuery.Message.MessageId,
-                                    text: "✅ سفارش لغو شد و از لیست حذف گردید.",
+                                    text: "✅ سفارش لغو شد و از فهرست حذف گردید.",
                                     replyMarkup: null
                                 );
                             }
@@ -531,7 +525,7 @@ namespace TallaEgg.TelegramBot
                                 replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, newPage, query)
                             );
 
-                            // بستن "در حال فکر کردن..." روی دکمه
+                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
                             await _botClient.AnswerCallbackQuery(callbackQuery.Id);
                         }
                     }
@@ -552,7 +546,7 @@ namespace TallaEgg.TelegramBot
 
             if (user == null)
             {
-                await _botClient.SendMessage(chatId, "کاربر یافت نشد. لطفاً ابتدا ثبت‌نام کنید.");
+                await _botClient.SendMessage(chatId, "حساب شما پیدا نشد. لطفاً ابتدا با دستور شروع ثبت‌نام کنید.");
                 throw new Exception("User not found");
             }
 
@@ -590,18 +584,14 @@ namespace TallaEgg.TelegramBot
         {
             var role = await GetUserRoleAsync(chatId);
             
-            var helpText = "❓ راهنما\n\n" +
-                          "💰 نقدی: معاملات نقدی و فوری\n" +
-                          "📈 آتی: معاملات آتی و قراردادهای آتی\n" +
-                          "📊 حسابداری: مشاهده موجودی و تاریخچه معاملات\n" +
-                          "❓ راهنما: این صفحه\n\n";
+            var helpText = BotMsgs.MsgUserHelp;
 
             if (role == TallaEgg.Core.Enums.User.UserRole.Admin)
             {
                 helpText += BotMsgs.MsgAdminHelp + "\n\n";
             }
 
-            helpText += "برای پشتیبانی با تیم فنی تماس بگیرید.";
+            helpText += BotMsgs.MsgSupportFooter;
 
             await _botClient.SendMessage(chatId, helpText);
         }
@@ -616,7 +606,6 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.MarkdownV2,
                     replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
@@ -632,7 +621,6 @@ namespace TallaEgg.TelegramBot
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.Html,
                     replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
             }
@@ -652,16 +640,18 @@ namespace TallaEgg.TelegramBot
                 var text = await ActiveOrdersHandler.BuildActiveOrdersListAsync(response.Data!, isAdmin);
                 var keyboard = ActiveOrdersHandler.BuildCancelOrderKeyboard(response.Data!, isAdmin);
 
+                // متن ساده ارسال می‌شود؛ با MarkdownV2 نشانه‌های قالب‌بندی escape می‌شدند
+                // و به‌صورت ستارهٔ خام به کاربر نمایش داده می‌شدند.
                 await _botClient.SendMessage(
                     chatId: chatId,
                     text: text,
-                    parseMode: ParseMode.MarkdownV2,
                     replyMarkup: keyboard
                 );
             }
             else
             {
-                await _botClient.SendMessage(chatId, "خطا در دریافت سفارشات فعال: " + response.Message);
+                await _botClient.SendMessage(chatId,
+                    string.Format(BotMsgs.MsgActiveOrdersFailed, response.Message));
             }
         }
 
@@ -673,43 +663,39 @@ namespace TallaEgg.TelegramBot
                 if (res.Data.Any())
                 {
                     StringBuilder stringBuilder = new StringBuilder();
+                    stringBuilder.Append(BotMsgs.MsgBalanceHeader);
 
                     foreach (var item in res.Data)
                     {
-                        //var parts = item.Asset.Split('_');
-                        //var code = parts.Last();
-
                         var code = item.Asset;
-                        
-                        var info = CurrenciesConstant.GetCurrencyInfo(code);
+                        var unit = PersianFormat.Unit(code);
 
-                        if (info != null)
-                        {
-                            // فرمت کردن موجودی‌ها با اعشار و واحد
-                            string balance = item.Balance.ToString($"F{info.DecimalPlaces}");
-                            string locked = item.LockedBalance.ToString($"F{info.DecimalPlaces}");
+                        // نام فارسی دارایی؛ کد لاتین هرگز به کاربر نشان داده نمی‌شود.
+                        stringBuilder.Append(string.Format(BotMsgs.MsgBalanceRow,
+                            PersianFormat.Asset(code),
+                            $"{PersianFormat.Amount(item.Balance, code)} {unit}",
+                            $"{PersianFormat.Amount(item.LockedBalance, code)} {unit}"));
 
-                            stringBuilder.AppendLine($"💰 {info.PersianName} ({info.Code})");
-                            stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {balance} {info.Unit}");
-                            //stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {locked} {info.Unit}");
-                            stringBuilder.AppendLine("───────────────────────────────\n");
-                        }
-                        else
+                        // در مدل اعتباری موجودی آزاد می‌تواند منفی شود (کاربر با اعتبار
+                        // معامله کرده است). عدد منفی بدون توضیح گیج‌کننده است، پس مبلغ
+                        // بدهی به‌صورت مثبت و با برچسب صریح نمایش داده می‌شود.
+                        if (item.Balance < 0)
                         {
-                            // fallback ساده وقتی ارزی در لیست ما نباشه
-                            stringBuilder.AppendLine($"💰 {item.Asset}");
-                            stringBuilder.AppendLine($"   📌 موجودی قابل برداشت : {item.Balance}");
-                            //stringBuilder.AppendLine($"   🔒 موجودی فریز شده    : {item.LockedBalance}");
-                            stringBuilder.AppendLine("───────────────────────────────\n");
+                            stringBuilder.Append(string.Format(BotMsgs.MsgBalanceDebtNote,
+                                $"{PersianFormat.Amount(-item.Balance, code)} {unit}"));
                         }
+
+                        stringBuilder.AppendLine();
                     }
+
+                    stringBuilder.Append(BotMsgs.MsgBalanceFooter);
 
                     await _botClient.SendMessage(chatId, stringBuilder.ToString());
 
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId, "کیف پولی برای شما ثبت نشده است. لطفا برای شارژ حساب با ادمین تماس بگیرید");
+                    await _botClient.SendMessage(chatId, BotMsgs.MsgNoWallet);
 
                 }
             }
@@ -965,8 +951,12 @@ namespace TallaEgg.TelegramBot
             {
                 orderState.State = "waiting_for_price";
 
-                await _botClient.SendMessage(chatId,
-                 $"لطفا قیمت رو وارد کنید",
+                // برای طلای آبشده قیمت «یک مثقال» خواسته می‌شود؛ واحد صریح ذکر می‌شود.
+                var pricePrompt = orderState.Asset == CurrenciesConstant.MAUA_IRT
+                    ? BotMsgs.MsgEnterPriceGold
+                    : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset));
+
+                await _botClient.SendMessage(chatId, pricePrompt,
                  replyMarkup: new ReplyKeyboardRemove());
             }
             else if (orderState.OrderType == OrderType.Market)
@@ -1010,11 +1000,16 @@ namespace TallaEgg.TelegramBot
 
             var confirmationMsg = "";
 
-            // اگر طلای آبشده را انتخاب کرد باید مثقال را به گرم تبدیل کنیم
-            if (orderState.Asset == CurrenciesConstant.MAUA_IRR)
+            // قیمتی که کاربر وارد می‌کند برای «یک مثقال» است؛ برای طلای آبشده به قیمت
+            // «هر گرم» تبدیل و ذخیره می‌شود. عدد ورودی نگه داشته می‌شود تا در پیام تایید
+            // هم نمایش داده شود، وگرنه کاربر عددی غیر از ورودی خود می‌بیند.
+            var enteredPricePerMesghal = price;
+            var isGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
+
+            if (isGold)
             {
                 orderState.Price /= 4.3318m;
-                confirmationMsg = BotMsgs.MsgOrderConfirmation_MAUA_IRR;
+                confirmationMsg = BotMsgs.MsgOrderConfirmationGold;
             }
             else
             {
@@ -1047,12 +1042,27 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            var confirmationMessage = string.Format(confirmationMsg,
-                orderState.Asset,
-                orderState.OrderSide,
-                orderState.Amount,
-                orderState.Price,
-                totalValue);
+            // مقادیر پیش از درج در پیام فارسی‌سازی می‌شوند: نماد به نام فارسی، نوع سفارش
+            // به «خرید/فروش»، و اعداد با ارقام فارسی و محافظ راست‌به‌چپ.
+            var baseAsset = orderState.Asset.Split('/')[0];
+            var amountText = $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}";
+            var sideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide);
+
+            // قالب طلا یک آرگومان بیشتر دارد: قیمت هر مثقال و قیمت هر گرم.
+            var confirmationMessage = isGold
+                ? string.Format(confirmationMsg,
+                    PersianFormat.Symbol(orderState.Asset),
+                    sideText,
+                    amountText,
+                    PersianFormat.Number(enteredPricePerMesghal),
+                    PersianFormat.Number(orderState.Price),
+                    PersianFormat.Number(totalValue))
+                : string.Format(confirmationMsg,
+                    PersianFormat.Symbol(orderState.Asset),
+                    sideText,
+                    amountText,
+                    PersianFormat.Number(orderState.Price),
+                    PersianFormat.Number(totalValue));
 
             var keyboard = new InlineKeyboardMarkup(new[]
             {
@@ -1127,54 +1137,87 @@ namespace TallaEgg.TelegramBot
                 _userOrderStates.Remove(telegramId);
             }
         }
+        /// <summary>
+        /// متن اعلان استارتاپ را می‌سازد: اگر نسخه واقعاً تغییر کرده باشد پیام آپدیت
+        /// (به همراه خلاصه تغییرات در صورت وجود)، وگرنه پیام «دوباره در دسترس است».
+        /// </summary>
+        private (string Message, bool IsVersionChange) BuildStartupAnnouncement()
+        {
+            var currentVersion = _versionService.GetCurrentVersion();
+            var lastAnnounced = _versionService.GetLastAnnouncedVersion();
+            var isVersionChange = !string.Equals(currentVersion, lastAnnounced, StringComparison.Ordinal);
+
+            var message = isVersionChange
+                ? string.Format(BotMsgs.MsgBotUpdated, currentVersion, ReleaseNotes.GetSummaryFor(currentVersion))
+                : string.Format(BotMsgs.MsgBotBackOnline, currentVersion);
+
+            return (message, isVersionChange);
+        }
+
         public async Task NotifyUpdate(User user)
         {
-            var currentVersion = _versionService.GetCurrentVersion();
-
-            
-                await _botClient.SendMessage(
-                    user.Id,
-                    $"🚀 ربات به نسخه جدید آپدیت شد!\n\n" +
-                    $"نسخه فعلی: {currentVersion}\n" +
-                    $"اگر پیشنهاد یا مشکلی دیدی، خوشحال می‌شویم بگویی 🙏"
-                );
-
+            var (message, _) = BuildStartupAnnouncement();
+            await _botClient.SendMessage(user.Id, message);
         }
+
         public async Task NotifyUpdateToAllUsers()
         {
-            var currentVersion = _versionService.GetCurrentVersion();
-
-            Task.Delay(30000).Wait(); // صبر کردن ۳۰ ثانیه برای اطمینان از اینکه سرویس کاربر اجرا شده باشد وگرنه خطا میدهد
-
-            var usersResponse = await _usersApi.GetUsersAsync();
-
-            var users = usersResponse.Data;
-            if (users == null || users.TotalCount == 0)
-                return;
-
-            foreach (var user in users.Items)
+            try
             {
-                try
+                // Local runs restart constantly; set BOT_SUPPRESS_STARTUP_ANNOUNCEMENT=1
+                // to avoid messaging every real user on each restart while developing.
+                if (Environment.GetEnvironmentVariable("BOT_SUPPRESS_STARTUP_ANNOUNCEMENT") == "1")
                 {
-                    await _botClient.SendMessage(
-                        user.TelegramId,
-                        $"🚀 ربات به نسخه جدید آپدیت شد!\n\n" +
-                        $"نسخه فعلی: {currentVersion}\n" +
-                        $"اگر پیشنهاد یا مشکلی دیدی، خوشحال می‌شویم بگویی 🙏"
-                    );
+                    _logger.LogInformation("Startup announcement suppressed (BOT_SUPPRESS_STARTUP_ANNOUNCEMENT=1).");
+                    return;
+                }
 
-                    // ⏱ جلوگیری از Rate Limit تلگرام
-                    await Task.Delay(50);
-                }
-                catch (Exception ex)
+                var currentVersion = _versionService.GetCurrentVersion();
+                var (message, isVersionChange) = BuildStartupAnnouncement();
+
+                // صبر کردن ۳۰ ثانیه برای اطمینان از اینکه سرویس کاربر اجرا شده باشد وگرنه خطا میدهد
+                await Task.Delay(30000);
+
+                var usersResponse = await _usersApi.GetUsersAsync();
+
+                var users = usersResponse.Data;
+                if (users == null || users.TotalCount == 0)
+                    return;
+
+                _logger.LogInformation(
+                    "Broadcasting startup announcement to {Count} user(s). Version={Version}, IsVersionChange={IsVersionChange}",
+                    users.TotalCount, currentVersion, isVersionChange);
+
+                foreach (var user in users.Items)
                 {
-                    // حتماً لاگ بگیر
-                    _logger.LogWarning(
-                        ex,
-                        "Failed to send update message to user {UserId}",
-                        user.Id
-                    );
+                    try
+                    {
+                        await _botClient.SendMessage(user.TelegramId, message);
+
+                        // ⏱ جلوگیری از Rate Limit تلگرام
+                        await Task.Delay(50);
+                    }
+                    catch (Exception ex)
+                    {
+                        // حتماً لاگ بگیر
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to send startup announcement to user {UserId}",
+                            user.Id
+                        );
+                    }
                 }
+
+                // Record the announced version only after a version change has actually been
+                // broadcast, so the next restart reports "back online" instead of "updated".
+                if (isVersionChange)
+                    _versionService.SaveAnnouncedVersion(currentVersion);
+            }
+            catch (Exception ex)
+            {
+                // This runs fire-and-forget from the constructor; without this catch a failure
+                // would surface as an unobserved task exception.
+                _logger.LogError(ex, "Startup announcement broadcast failed.");
             }
         }
 

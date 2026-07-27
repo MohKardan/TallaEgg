@@ -40,33 +40,29 @@ namespace TallaEgg.TelegramBot
                 var match = regex.Match(msgText);
                 if (!match.Success)
                 {
+                    // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
                     await _botClient.SendMessage(message.Chat.Id,
-                        "❌ فرمت دستور نادرست است." +
-                        "\nمثال 1 : ش 09121234567 50000 IRR" +
-                        "\nمثال 2 : ش 09121234567 50000 XAUM");
+                        string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetPersianNamesList()));
+                    return true;
                 }
 
                 var phone = match.Groups["phone"].Value;
                 var amount = decimal.Parse(match.Groups["amount"].Value);
-                var currency = match.Groups["currency"].Success
+
+                // ورودی می‌تواند نام فارسی («تومان») یا کد («IRT») باشد.
+                var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Maua; // مقدار پیش‌فرض
+                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
 
-                if(CurrenciesConstant.IsValidCurrency(currency) == false)
+                if (currency is null)
                 {
                     await _botClient.SendMessage(message.Chat.Id,
-                        "❌ ارز وارد شده معتبر نیست." +
-                        "\nارزهای معتبر: " + string.Join(", ", CurrenciesConstant.GetAllCodes()));
+                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
                     return true;
                 }
 
-                        var info = CurrenciesConstant.GetCurrencyInfo(currency);
-                string response = $"📌 دستورافزایش موجودی ثبت شد:\n" +
-                                  $"👤 کاربر: {phone}\n" +
-                                  $"💰 مبلغ: {amount}\n" +
-                                  $"💵 نوع شارژ: {info.PersianName}";
-
-                await _botClient.SendMessage(message.Chat.Id, response);
+                var info = CurrenciesConstant.GetCurrencyInfo(currency);
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
@@ -79,35 +75,37 @@ namespace TallaEgg.TelegramBot
                     if (result.Success)
                     {
 
+                        // نکته: شارژ مدیر به کیف پول «اعتباری» واریز می‌شود (CREDIT_)، پس
+                        // پیام‌ها «اعتبار» می‌گویند نه «موجودی». پیام قبلی این دو را
+                        // اشتباه گرفته بود. همچنین قالب Markdown با ParseMode.Html ناسازگار
+                        // بود و ستاره و بک‌تیک عیناً نمایش داده می‌شدند؛ حالا متن ساده است.
+                        var amountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
+                        var newCreditText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
+
                         await _botClient.SendMessage(
                            message.Chat.Id,
-                           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-                           $"💳 دارایی: `{info.PersianName}`\n" +
-                           $"💵 مبلغ شارژ: `{amount.ToString($"F{info.DecimalPlaces}")}` {info.Unit}\n" +
-                           $"🆔 تلفن: `{phone}`\n\n" +
-                           $"💵 موجودی جدید: `{result.Data.BalanceAfter.ToString($"F{info.DecimalPlaces}")} {info.Unit}`\n\n" +
-                           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-                       );
-                                        await _botClient.SendMessage(
+                           string.Format(BotMsgs.MsgAdminChargeDone,
+                               info.PersianName,
+                               amountText,
+                               PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                               newCreditText));
+
+                        await _botClient.SendMessage(
                            userDto.TelegramId,
-                           $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-                           $"💳 دارایی: `{info.PersianName}`\n" +
-                           $"💵 مبلغ شارژ: `{amount.ToString($"F{info.DecimalPlaces}")}` {info.Unit}\n" +
-                           $"🆔 تلفن: `{phone}` \n" +
-                           $"💵 موجودی جدید: `{result.Data.BalanceAfter.ToString($"F{info.DecimalPlaces}")} {info.Unit}`\n\n" +
-                           $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-                       );
+                           string.Format(BotMsgs.MsgUserCreditIncreased,
+                               info.PersianName,
+                               amountText,
+                               newCreditText));
                     }
                     else
                     {
-                        await _botClient.SendMessage(message.Chat.Id, result.Message);
-
+                        await _botClient.SendMessage(message.Chat.Id,
+                            string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
                 else
                 {
-                    await _botClient.SendMessage(message.Chat.Id, "شماره تلفن معتبر نیست");
-
+                    await _botClient.SendMessage(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
                 }
 
                 return true;
@@ -123,26 +121,31 @@ namespace TallaEgg.TelegramBot
                 var match = regex.Match(msgText);
                 if (!match.Success)
                 {
+                    // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
                     await _botClient.SendMessage(message.Chat.Id,
-                        "❌ فرمت دستور نادرست است." +
-                        "\nمثال 1 : د 09121234567 50000 IRR" +
-                        "\nمثال 2 : د 09121234567 10 XAUM" +
-                        "\nمثال 3 : د 09121234567 3000 MAUA" +
-                        "\nمثال 4 : د 09121234567 500 TAIR");
+                        string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetPersianNamesList()));
+                    return true;
                 }
 
                 var phone = match.Groups["phone"].Value;
                 var amount = decimal.Parse(match.Groups["amount"].Value);
-                var currency = match.Groups["currency"].Success
+
+                // ورودی می‌تواند نام فارسی («تومان») یا کد («IRT») باشد.
+                // پیش‌فرض قبلی رشتهٔ فارسی «ریالی» بود که هیچ‌وقت با کد دارایی تطبیق
+                // نمی‌کرد و باعث می‌شد کسر روی کیف پول ناموجود انجام شود.
+                var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
-                    : "ریالی"; // مقدار پیش‌فرض
+                    : CurrenciesConstant.Toman; // مقدار پیش‌فرض
+                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
 
-                string response = $"📌 دستور کسر از موجودی ثبت شد:\n" +
-                                  $"👤 کاربر: {phone}\n" +
-                                  $"💰 مبلغ: {amount}\n" +
-                                  $"💵 نوع شارژ: {currency}";
+                if (currency is null)
+                {
+                    await _botClient.SendMessage(message.Chat.Id,
+                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
+                    return true;
+                }
 
-                await _botClient.SendMessage(message.Chat.Id, response);
+                var info = CurrenciesConstant.GetCurrencyInfo(currency);
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
@@ -156,37 +159,38 @@ namespace TallaEgg.TelegramBot
                     {
 
 
+                        // پیام قبلیِ ارسالی به کاربر اشتباهاً «شارژ کیف‌پول» می‌گفت، در حالی
+                        // که مبلغ کسر شده بود. همچنین واحد به‌صورت ثابت «ریال» نوشته شده بود
+                        // بدون توجه به دارایی، و کد لاتین دارایی نمایش داده می‌شد.
+                        var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
+                        var newBalanceText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
+
                         await _botClient.SendMessage(
                                message.Chat.Id,
-                               $"💰 *کسر از کیف‌پول با موفقیت انجام شد.*\n\n" +
-                               $"💳 دارایی: `{currency}`\n" +
-                               $"💵 مبلغ کسر : `{amount:N0}` ریال\n" +
-                               $"🆔 تلفن: `{phone}`\n\n" +
-                               $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-                               $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-                           );
-                                            await _botClient.SendMessage(
+                               string.Format(BotMsgs.MsgAdminDeductDone,
+                                   info.PersianName,
+                                   deductAmountText,
+                                   PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                                   newBalanceText));
+
+                        await _botClient.SendMessage(
                                userDto.TelegramId,
-                               $"💰 *شارژ کیف‌پول با موفقیت انجام شد.*\n\n" +
-                               $"💳 دارایی: `{currency}`\n" +
-                               $"💵 مبلغ کسر: `{amount:N0}` ریال\n" +
-                               $"🆔 تلفن: `{phone}`\n\n" +
-                               $"💵 موجودی جدید: `{result.Data.BalanceAfter}`\n\n" +
-                               $"✅ موجودی جدید شما در کیف‌پول به‌روزرسانی شد.", parseMode: ParseMode.Html
-                           );
+                               string.Format(BotMsgs.MsgUserBalanceDeducted,
+                                   info.PersianName,
+                                   deductAmountText,
+                                   newBalanceText));
 
 
                     }
                     else
                     {
-                        await _botClient.SendMessage(message.Chat.Id, result.Message);
-
+                        await _botClient.SendMessage(message.Chat.Id,
+                            string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
                 else
                 {
-                    await _botClient.SendMessage(message.Chat.Id, "شماره تلفن معتبر نیست");
-
+                    await _botClient.SendMessage(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
                 }
 
                 return true;
@@ -327,11 +331,11 @@ namespace TallaEgg.TelegramBot
             await _botClient.EditMessageText(
                 chatId: originalMsg.Chat.Id,
                 messageId: originalMsg.MessageId,
-                text: $"{originalMsg.Text}\n\n✅ توسط ادمین {adminTgId} تأیید شد.",
+                text: originalMsg.Text + BotMsgs.MsgAdminApprovedSuffix,
                 replyMarkup: null);
 
             // اطلاع‌رسانی به کاربر
-            await _botClient.SendMessage(telegramUserId, "درخواست شما تأیید شد\n حالا میتوانید از خدمات ما استفاده کنید.");
+            await _botClient.SendMessage(telegramUserId, BotMsgs.MsgUserApproved);
             await _telegramLogger.Notif<Message>($"کاربر تایید شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
         }
 
@@ -342,11 +346,11 @@ namespace TallaEgg.TelegramBot
             await _botClient.EditMessageText(
                 chatId: originalMsg.Chat.Id,
                 messageId: originalMsg.MessageId,
-                text: $"{originalMsg.Text}\n\n❌ توسط ادمین {adminTgId} رد شد.",
+                text: originalMsg.Text + BotMsgs.MsgAdminRejectedSuffix,
                 replyMarkup: null);
 
             // اطلاع‌رسانی به کاربر
-            await _botClient.SendMessage(telegramUserId, "درخواست شما رد شد.");
+            await _botClient.SendMessage(telegramUserId, BotMsgs.MsgUserRejected);
             await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
 
         }
@@ -371,23 +375,24 @@ namespace TallaEgg.TelegramBot
         {
             try
             {
-                const string defaultAsset = "MAUA/IRR"; // Default asset for admin price pair orders
+                const string defaultAsset = CurrenciesConstant.MAUA_IRT; // Default asset for admin price pair orders
                 const decimal defaultAmount = 1000m;    // Default amount
 
                 // First, cancel all existing active orders for this user
                 //await _botClient.SendMessage(chatId, "⏳ در حال کنسل سفارشات قبلی...");
-                await _botClient.SendMessage(chatId, "⏳ در حال پردازش...");
+                await _botClient.SendMessage(chatId, BotMsgs.MsgAdminProcessing);
 
                 var cancelResults = await CancelUserActiveOrdersAsync(userId);
                 if (cancelResults.CancelledCount > 0)
                 {
                     await _botClient.SendMessage(chatId,
-                        $"✅ {cancelResults.CancelledCount} قیمت قبلی کنسل شد");
+                        string.Format(BotMsgs.MsgAdminPreviousPricesCancelled,
+                            PersianFormat.Number(cancelResults.CancelledCount)));
                 }
                 else if (cancelResults.HasError)
                 {
                     await _botClient.SendMessage(chatId,
-                        $"⚠️ خطا در کنسل سفارشات قبلی: {cancelResults.ErrorMessage}");
+                        string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
                 }
 
                 // Create buy order
@@ -419,19 +424,21 @@ namespace TallaEgg.TelegramBot
                 var (sellSuccess, sellMessage) = await _orderApi.SubmitOrderAsync(sellOrder);
 
                 // Send result message
-                var resultMessage = $"📊 نتیجه ثبت قیمت جدید:\n\n" +
-                                  $"🟢 قیمت خرید {buyPrice:N0}: {(buySuccess ? "✅ موفق" : "❌ ناموفق - " + buyMessage)}\n" +
-                                  $"🔴 قیمت فروش {sellPrice:N0}: {(sellSuccess ? "✅ موفق" : "❌ ناموفق - " + sellMessage)}\n\n" +
-                                  $"📋 جزئیات:\n" +
-                                  $"• نماد: طلای آبشده\n" +
-                                  $"• قیمت خرید: {buyPrice:N0} تومان (هر گرم: {buyOrder.Price:N0})\n" +
-                                  $"• قیمت فروش: {sellPrice:N0} تومان (هر گرم: {sellOrder.Price:N0})";
+                var resultMessage = string.Format(BotMsgs.MsgAdminPriceSubmitResult,
+                    PersianFormat.Symbol(defaultAsset),
+                    buySuccess ? BotMsgs.MsgAdminOrderOk : string.Format(BotMsgs.MsgAdminOrderFailed, buyMessage),
+                    sellSuccess ? BotMsgs.MsgAdminOrderOk : string.Format(BotMsgs.MsgAdminOrderFailed, sellMessage),
+                    PersianFormat.Number(buyPrice),
+                    PersianFormat.Number(buyOrder.Price),
+                    PersianFormat.Number(sellPrice),
+                    PersianFormat.Number(sellOrder.Price));
 
                 await _botClient.SendMessage(chatId, resultMessage);
             }
             catch (Exception ex)
             {
-                await _botClient.SendMessage(chatId, $"❌ خطا در ثبت سفارشات: {ex.Message}");
+                await _botClient.SendMessage(chatId,
+                    string.Format(BotMsgs.MsgAdminPriceSubmitError, ex.Message));
             }
         }
 

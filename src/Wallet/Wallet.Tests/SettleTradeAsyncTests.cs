@@ -12,8 +12,8 @@ namespace Wallet.Tests;
 /// Uses a real SQLite in-memory database (supports transactions, unlike EF InMemory)
 /// so the atomic settlement and its DB transaction are actually exercised.
 ///
-/// Scenario throughout: trading pair MAUA/IRR, price 500, quantity 2 => quoteQuantity 1000.
-/// Buyer locked 1000 IRR as collateral; seller locked 2 MAUA as collateral.
+/// Scenario throughout: trading pair MAUA/IRT, price 500, quantity 2 => quoteQuantity 1000.
+/// Buyer locked 1000 IRT as collateral; seller locked 2 MAUA as collateral.
 /// </summary>
 public class SettleTradeAsyncTests : IDisposable
 {
@@ -25,7 +25,7 @@ public class SettleTradeAsyncTests : IDisposable
     private readonly Guid _sellerId = Guid.NewGuid();
 
     private const string Base = "MAUA";  // gold
-    private const string Quote = "IRR";  // rial
+    private const string Quote = "IRT";  // toman
     private const decimal Quantity = 2m;
     private const decimal QuoteQuantity = 1000m; // price 500 * quantity 2
 
@@ -59,10 +59,10 @@ public class SettleTradeAsyncTests : IDisposable
     /// <summary>Seed the four wallets with collateral already locked (the normal pre-settlement state).</summary>
     private void SeedFullyLockedWallets()
     {
-        SeedWallet(_buyerId, Quote, balance: 0m, locked: QuoteQuantity); // buyer's IRR locked
+        SeedWallet(_buyerId, Quote, balance: 0m, locked: QuoteQuantity); // buyer's IRT locked
         SeedWallet(_buyerId, Base, balance: 0m, locked: 0m);             // buyer's MAUA (to receive)
         SeedWallet(_sellerId, Base, balance: 0m, locked: Quantity);      // seller's MAUA locked
-        SeedWallet(_sellerId, Quote, balance: 0m, locked: 0m);           // seller's IRR (to receive)
+        SeedWallet(_sellerId, Quote, balance: 0m, locked: 0m);           // seller's IRT (to receive)
         _context.SaveChanges();
     }
 
@@ -84,7 +84,7 @@ public class SettleTradeAsyncTests : IDisposable
 
         Assert.True(success, message);
 
-        // Buyer paid IRR from locked funds: locked consumed, available unchanged (0).
+        // Buyer paid IRT from locked funds: locked consumed, available unchanged (0).
         var buyerQuote = await ReloadAsync(_buyerId, Quote);
         Assert.Equal(0m, buyerQuote.LockedBalance);
         Assert.Equal(0m, buyerQuote.Balance);
@@ -98,7 +98,7 @@ public class SettleTradeAsyncTests : IDisposable
         Assert.Equal(0m, sellerBase.LockedBalance);
         Assert.Equal(0m, sellerBase.Balance);
 
-        // Seller received IRR.
+        // Seller received IRT.
         var sellerQuote = await ReloadAsync(_sellerId, Quote);
         Assert.Equal(QuoteQuantity, sellerQuote.Balance);
 
@@ -137,7 +137,7 @@ public class SettleTradeAsyncTests : IDisposable
     [Fact]
     public async Task SettleTradeAsync_WhenCollateralNotLocked_FailsAndChangesNothing()
     {
-        // Buyer's IRR was never locked — simulates the lock-after-match ordering bug (C-5).
+        // Buyer's IRT was never locked — simulates the lock-after-match ordering bug (C-5).
         SeedWallet(_buyerId, Quote, balance: 0m, locked: 0m);
         SeedWallet(_buyerId, Base, balance: 0m, locked: 0m);
         SeedWallet(_sellerId, Base, balance: 0m, locked: Quantity);

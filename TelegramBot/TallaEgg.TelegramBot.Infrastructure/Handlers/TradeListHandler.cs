@@ -1,3 +1,4 @@
+using TallaEgg.Core;
 using System.Text;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -26,23 +27,31 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         {
             if (page == null || !page.Items.Any())
             {
-                return Utils.EscapeMarkdownV2("هیچ معامله‌ای یافت نشد.");
+                return "هیچ معامله‌ای انجام نشده است.";
             }
 
+            // متن ساده: نسخهٔ قبلی برچسب‌های HTML و نشانه‌های Markdown را با هم مخلوط
+            // کرده بود که هیچ‌کدام درست نمایش داده نمی‌شد.
             var sb = new StringBuilder();
-            sb.AppendLine($"📊 *معاملات شما – صفحه {currentPage} از {page.TotalPages}*\n");
+            sb.AppendLine($"📊 معاملات شما — صفحهٔ {PersianFormat.Number(currentPage)} از {PersianFormat.Number(page.TotalPages)}");
+            sb.AppendLine();
 
             foreach (var t in page.Items)
             {
-                sb.AppendLine(
-    $"📌 <b>معامله #{t.Id.ToString()[..8]}…</b>\n" +
-$"🏷️ نماد: <b>{t.Symbol}</b>\n" +
-$"💰 قیمت: <b>{t.Price:N0} تومان</b>\n" +
-$"📊 مقدار: <b>{t.Quantity:N2}</b>\n" +
-$"💵 ارزش کل: <b>{t.QuoteQuantity:N0} تومان</b>\n" +
-$"⏰ زمان: <b>{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt)}</b>\n" //+
-//$"💸 کارمزد: <b>{(t.FeeBuyer + t.FeeSeller):N0} تومان</b>\n"
-     );
+                var baseAsset = t.Symbol.Split('/')[0];
+                var unit = PersianFormat.Unit(baseAsset);
+                var isGold = t.Symbol == CurrenciesConstant.MAUA_IRT;
+                var displayPrice = isGold ? t.Price * CurrenciesConstant.GramsPerMesghal : t.Price;
+                var priceLabel = isGold ? "قیمت هر مثقال" : "قیمت هر واحد";
+
+                sb.AppendLine($"📌 معاملهٔ {PersianFormat.Ltr(t.Id.ToString()[..8])}");
+                sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(t.Symbol)}");
+                sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(t.Quantity, baseAsset)} {unit}");
+                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
+                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Number(t.QuoteQuantity)} تومان");
+                sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt))}");
+                sb.AppendLine("➖➖➖➖➖➖➖➖➖");
+                sb.AppendLine();
             }
 
             return sb.ToString();

@@ -1,3 +1,4 @@
+using TallaEgg.Core;
 ﻿using System.Text;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -31,25 +32,38 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 return "هیچ سفارشی یافت نشد.";
             }
 
+            // متن ساده (بدون Markdown) — همان دلیل ActiveOrdersHandler: نشانه‌های
+            // قالب‌بندی توسط EscapeMarkdownV2 خنثی می‌شدند و خام نمایش داده می‌شدند.
             var sb = new StringBuilder();
-            sb.AppendLine($"📋 *سفارشات شما – صفحه {currentPage} از {page.TotalPages}*\n");
+            sb.AppendLine($"📋 سفارش‌های شما — صفحهٔ {PersianFormat.Number(currentPage)} از {PersianFormat.Number(page.TotalPages)}");
+            sb.AppendLine();
 
             foreach (var o in page.Items)
             {
-                sb.AppendLine(
-     $"📌 *سفارش {"#"+o.Id.ToString()[..8]}\\…*\n" +
-     $"🏷️ دارایی: *{o.Asset}*\n" +
-     $"🔺 نوع: *{GetTypeIcon(o.Type)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}*\n" +
-     $"📊 حجم: *{o.Amount}* | باقی‌مانده: *{o.RemainingAmount}*\n" +
-     $"💰 قیمت: *{o.Price:#,0} تومان*\n" +
-     $"💵 ارزش کل: *{(o.Amount * o.Price):#,0} تومان*\n" +
-     $"⚡ وضعیت: *{GetStatusEmoji(o.Status)} {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}*\n" +
-     $"🕓 زمان: *{TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt)}*" +
-     (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{o.Notes}_" : "") +
-     "\n➖➖➖➖➖➖➖➖➖\n"
- );
+                var baseAsset = o.Asset.Split('/')[0];
+                var unit = PersianFormat.Unit(baseAsset);
+                var isGold = o.Asset == CurrenciesConstant.MAUA_IRT;
+                var displayPrice = isGold ? o.Price * CurrenciesConstant.GramsPerMesghal : o.Price;
+                var priceLabel = isGold ? "قیمت هر مثقال" : "قیمت هر واحد";
+
+                sb.AppendLine($"📌 سفارش {PersianFormat.Ltr(o.Id.ToString()[..8])}");
+                sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(o.Asset)}");
+                sb.AppendLine($"{GetTypeIcon(o.Type)} نوع: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}");
+                sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(o.Amount, baseAsset)} {unit}");
+                sb.AppendLine($"⏳ باقی‌مانده: {PersianFormat.Amount(o.RemainingAmount, baseAsset)} {unit}");
+                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
+                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Number(o.Amount * o.Price)} تومان");
+                sb.AppendLine($"{GetStatusEmoji(o.Status)} وضعیت: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}");
+                sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt))}");
+
+                if (!string.IsNullOrWhiteSpace(o.Notes))
+                    sb.AppendLine($"📝 یادداشت: {o.Notes}");
+
+                sb.AppendLine("➖➖➖➖➖➖➖➖➖");
+                sb.AppendLine();
             }
-            return Utils.EscapeMarkdownV2(sb.ToString());
+
+            return sb.ToString();
         }
 
         private static string GetTypeIcon(OrderSide type) => type switch
