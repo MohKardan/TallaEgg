@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Orders.Core;
 using Serilog;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -61,9 +62,13 @@ public class OrderService
             var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
 
+            // مبلغ قفل‌شده باید با همان دقتِ خودِ دارایی گرد شود. بدون این کار،
+            // «مقدار × قیمت» تا ۱۸ رقم اعشار پیش می‌رود، در حالی که تسویه و ستون‌های
+            // دیتابیس با دقت کمتری کار می‌کنند و یک باقی‌ماندهٔ کوچک در LockedBalance
+            // جا می‌ماند.
             var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
-                ? request.Quantity * request.Price
-                : request.Quantity;
+                ? CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity * request.Price, assetToCheck)
+                : CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity, assetToCheck);
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);

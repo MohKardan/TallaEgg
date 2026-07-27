@@ -132,6 +132,28 @@
         public static bool IsValidCurrency(string code) =>
             _map.ContainsKey(code);
 
+        /// <summary>
+        /// گرد کردن یک مبلغ به دقت واقعی همان دارایی (مثلاً تومان: بدون اعشار، آبشده: دو رقم).
+        ///
+        /// این متد باید در هر جایی که مبلغی محاسبه می‌شود صدا زده شود — به‌ویژه
+        /// «مقدار × قیمت» — چون نتیجهٔ آن ضرب تا ۱۸ رقم اعشار پیش می‌رود در حالی که
+        /// ستون‌های دیتابیس decimal(28,8) هستند. اگر مقدارِ قفل‌شده و مقدارِ تسویه‌شده
+        /// با دقت‌های متفاوت محاسبه شوند، پس از پایان سفارش یک باقی‌ماندهٔ کوچک در
+        /// LockedBalance جا می‌ماند که در سیستم مالی یک نشتی تدریجی است.
+        ///
+        /// از MidpointRounding.ToEven استفاده نمی‌کنیم؛ AwayFromZero رفتار مورد انتظار
+        /// در محاسبات مالی است.
+        /// </summary>
+        public static decimal RoundToCurrencyPrecision(decimal amount, string assetCode)
+        {
+            var info = GetCurrencyInfo(assetCode);
+            // اگر دارایی ناشناخته بود، مقدار را دست‌نخورده برمی‌گردانیم تا رفتار موجود نشکند.
+            if (info is null)
+                return amount;
+
+            return Math.Round(amount, info.DecimalPlaces, MidpointRounding.AwayFromZero);
+        }
+
         // 🔹 دیکشنری جفت‌های معاملاتی برای دسترسی سریع (case-insensitive)
         private static readonly Dictionary<string, TradingPairInfo> _pairMap =
             AllTradingPairs.ToDictionary(p => p.Symbol, p => p, StringComparer.OrdinalIgnoreCase);
