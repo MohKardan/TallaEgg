@@ -65,7 +65,11 @@ public class OutboxProcessorService : BackgroundService
         _logger.LogInformation("OutboxProcessorService stopped.");
     }
 
-    private async Task ProcessDueMessagesAsync(CancellationToken ct)
+    /// <summary>
+    /// internal rather than private so the batch-resilience behaviour required by issue #44
+    /// can be tested directly, without driving the timing of the background loop.
+    /// </summary>
+    internal async Task ProcessDueMessagesAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
@@ -116,7 +120,34 @@ public class OutboxProcessorService : BackgroundService
             }
 
             // Persist per message so a crash mid-batch never loses progress or double-marks.
-            await db.SaveChangesAsync(ct);
+            //
+            // This save has its own guard on purpose. It used to sit outside any try/catch, so a
+            // persistence failure on one message threw out of the whole loop: the generic handler
+            // logged "Unexpected error in the outbox processing loop" without naming the row, the
+            // in-memory RetryCount was discarded so the message never advanced towards Failed, and
+            // every remaining message in the batch was skipped for that cycle — one bad row could
+            // stall settlement for all the others. See issue #44.
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception saveEx)
+            {
+                _logger.LogError(saveEx,
+                    "Could not persist the outcome of outbox message {Id} (trade {AggregateId}). " +
+                    "Its state is unchanged and it will be retried; continuing with the rest of the batch.",
+                    message.Id, message.AggregateId);
+
+                // Detach only THIS message, so the next message's save does not retry the write
+                // that just failed. Detaching everything would also drop the messages still to be
+                // processed in this batch, silently leaving them Pending — which is the very
+                // stall this guard exists to prevent.
+                db.Entry(message).State = EntityState.Detached;
+            }
         }
     }
 
