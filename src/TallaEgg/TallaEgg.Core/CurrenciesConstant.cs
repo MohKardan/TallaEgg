@@ -155,6 +155,55 @@
         }
 
         /// <summary>
+        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به بالا</b>.
+        ///
+        /// برای مبلغی استفاده می‌شود که به‌عنوان وثیقه قفل می‌شود. با گرد کردن به بالا،
+        /// مقدار قفل‌شده هرگز کمتر از ارزش واقعی سفارش نیست.
+        /// </summary>
+        public static decimal CeilingToCurrencyPrecision(decimal amount, string assetCode)
+        {
+            var info = GetCurrencyInfo(assetCode);
+            if (info is null) return amount;
+
+            var factor = Pow10(info.DecimalPlaces);
+            return Math.Ceiling(amount * factor) / factor;
+        }
+
+        /// <summary>
+        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به پایین</b>.
+        ///
+        /// برای مبلغی استفاده می‌شود که در هر معامله از وثیقه مصرف می‌گردد.
+        ///
+        /// چرا جهت‌ها عمداً مخالف هم انتخاب شده‌اند (issue #52): مبلغ قفل یک بار برای کل
+        /// سفارش حساب می‌شود و مصرف در هر fill جداگانه. اگر هر دو با AwayFromZero گرد
+        /// شوند، مجموعِ مصرف‌ها می‌تواند از مقدار قفل‌شده بیشتر شود و گاردِ «وثیقهٔ کافی
+        /// نیست» یک معاملهٔ کاملاً معتبر را رد کند.
+        ///
+        /// با «قفل رو به بالا، مصرف رو به پایین» این نابرابری همیشه برقرار است:
+        ///
+        ///     Σ Floor(qᵢ × pᵢ) ≤ Σ qᵢ×pᵢ ≤ Σ qᵢ × p_سقف ≤ Q × p_سقف ≤ Ceiling(Q × p_سقف)
+        ///
+        /// یعنی «مجموع مصرف ≤ مقدار قفل‌شده» یک تضمین ریاضی است، نه یک احتمال — و به
+        /// یکسان بودن قیمت fillها هم وابسته نیست، چون خریدار هرگز بیش از قیمت سقف
+        /// سفارش خودش پرداخت نمی‌کند. اختلاف باقی‌مانده هنگام تکمیل یا لغو آزاد می‌شود.
+        /// </summary>
+        public static decimal FloorToCurrencyPrecision(decimal amount, string assetCode)
+        {
+            var info = GetCurrencyInfo(assetCode);
+            if (info is null) return amount;
+
+            var factor = Pow10(info.DecimalPlaces);
+            return Math.Floor(amount * factor) / factor;
+        }
+
+        private static decimal Pow10(int exponent)
+        {
+            decimal result = 1m;
+            for (var i = 0; i < exponent; i++) result *= 10m;
+            return result;
+        }
+
+        /// <summary>
         /// دقت ذخیره‌سازی قیمت سفارش. ستون Orders.Price از نوع decimal(18,2) است.
         /// </summary>
         public const int OrderPriceDecimalPlaces = 2;

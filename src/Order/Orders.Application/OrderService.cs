@@ -85,10 +85,14 @@ public class OrderService
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
 
-            // مبلغ قفل‌شده با همان دقتِ خودِ دارایی گرد می‌شود، چون تسویه و ستون‌های
-            // دیتابیس با همان دقت کار می‌کنند.
+            // مبلغ قفل عمداً رو به بالا گرد می‌شود، در حالی که مصرفِ هر معامله رو به
+            // پایین. این جهت‌های مخالف تضمین می‌کنند «مجموع مصرف ≤ مقدار قفل‌شده»
+            // همیشه برقرار بماند، پس بیش‌مصرف — که یک معاملهٔ معتبر را رد می‌کرد —
+            // غیرممکن می‌شود. توضیح کامل روی CeilingToCurrencyPrecision (issue #52).
+            //
+            // سمت فروش گرد کردن لازم ندارد: وثیقه‌اش خودِ مقدار سفارش است.
             var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
-                ? CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity * request.Price, assetToCheck)
+                ? CurrenciesConstant.CeilingToCurrencyPrecision(request.Quantity * request.Price, assetToCheck)
                 : CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity, assetToCheck);
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
@@ -225,7 +229,10 @@ public class OrderService
 
         if (order.Side == OrderSide.Buy)
         {
-            var locked = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
+            // باید دقیقاً همان فرمولی باشد که هنگام ثبت سفارش قفل کرد — از جمله جهت
+            // گرد کردن. اگر اینجا Round و آنجا Ceiling باشد، دوباره همان اختلافی ساخته
+            // می‌شود که این کد برای برداشتنش نوشته شده.
+            var locked = CurrenciesConstant.CeilingToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
             var trades = await _tradeRepository.GetTradesByBuyOrderIdAsync(order.Id);
             return (quoteAsset, locked - trades.Sum(t => t.QuoteQuantity));
         }

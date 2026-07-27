@@ -540,7 +540,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         if (order.Side == OrderSide.Buy)
         {
             // خریدار ارز مظنه را قفل می‌کند و معاملات، QuoteQuantity مصرف می‌کنند.
-            var locked = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
+            // Ceiling — همان فرمول و همان جهتی که هنگام ثبت سفارش قفل کرد.
+            var locked = CurrenciesConstant.CeilingToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
             var trades = await tradeRepository.GetTradesByBuyOrderIdAsync(order.Id);
             var consumed = trades.Sum(t => t.QuoteQuantity);
 

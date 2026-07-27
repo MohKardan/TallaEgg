@@ -24,11 +24,13 @@ public class LockResidueTests
     private static decimal PricePerGram(decimal perMesghal) =>
         perMesghal / CurrenciesConstant.GramsPerMesghal;
 
+    /// <summary>قفل: رو به بالا — همان چیزی که OrderService استفاده می‌کند.</summary>
     private static decimal Lock(decimal quantity, decimal price) =>
-        CurrenciesConstant.RoundToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
+        CurrenciesConstant.CeilingToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
 
+    /// <summary>مصرف هر معامله: رو به پایین — همان چیزی که CreateTrade استفاده می‌کند.</summary>
     private static decimal Fill(decimal quantity, decimal price) =>
-        CurrenciesConstant.RoundToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
+        CurrenciesConstant.FloorToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
 
     /// <summary>
     /// منبع ۱. قیمتِ گردشده همان است که ذخیره و بعداً برای تسویه خوانده می‌شود، پس قفل
@@ -74,41 +76,75 @@ public class LockResidueTests
         var price = CurrenciesConstant.RoundOrderPrice(PricePerGram(BidPerMesghal));
 
         var locked = Lock(10m, price);
-
-        // اندازهٔ fillها اهمیت دارد و انتخابشان بی‌دلیل نیست: با ۳+۳+۴ گرد کردن‌ها
-        // یکدیگر را خنثی می‌کنند (−۰٫۲ −۰٫۲ +۰٫۴ = ۰) و باقی‌مانده صفر می‌شود. یعنی
-        // یک ترکیب خوش‌شانس می‌تواند این باگ را پنهان کند — که دقیقاً همان دلیلی است
-        // که چند ساعت به نظر می‌رسید باقی‌مانده «رشد نمی‌کند».
         var consumed = Fill(3m, price) + Fill(3m, price) + Fill(3m, price) + Fill(1m, price);
 
+        // باقی‌مانده وجود دارد و صرفاً با گرد کردن قیمت از بین نمی‌رود — برای همین
+        // آزادسازی در پایان سفارش لازم است و نمی‌توان به گرد کردن اکتفا کرد.
         Assert.NotEqual(locked, consumed);
-        Assert.Equal(1m, locked - consumed);
+        Assert.True(locked > consumed);
     }
 
     /// <summary>
-    /// ⚠️ این تست یک نقصِ <b>رفع‌نشده</b> را تثبیت می‌کند، نه رفتار مطلوب را.
-    ///
-    /// جهت دیگرِ همان مشکل و خطرناک‌ترش: مجموع fillها می‌تواند از مقدار قفل‌شده
-    /// **بیشتر** شود. آن‌وقت گاردِ «وثیقهٔ قفل‌شده کافی نیست» روی یک معاملهٔ کاملاً
-    /// معتبر فعال می‌شود، سفارش هرگز به Completed نمی‌رسد و در نتیجه آزادسازیِ
-    /// باقی‌مانده هم اجرا نمی‌شود.
-    ///
-    /// گرد کردن قیمت و آزادسازی باقی‌مانده — که در همین تغییر اضافه شدند — این حالت
-    /// را رفع نمی‌کنند. اینجا عمداً ثبت شده تا وقتی رفع شد، این تست شکست بخورد و
-    /// کسی مجبور شود آگاهانه به‌روزش کند. جزئیات در issue #52.
+    /// همان حالتی که پیش‌تر بیش‌مصرف می‌کرد: پنج fill دو گرمی، که هرکدام کسر ۰٫۸ دارد.
+    /// با AwayFromZero همه رو به بالا گرد می‌شدند و مجموعشان ۱ تومان از قفل بیشتر
+    /// می‌شد، پس گاردِ «وثیقهٔ کافی نیست» یک معاملهٔ کاملاً معتبر را رد می‌کرد.
     /// </summary>
     [Fact]
-    public void KnownGap_PerFillRounding_CanStillOverConsumeTheLock()
+    public void FillsThatUsedToOverConsume_NoLongerDo()
     {
         var price = CurrenciesConstant.RoundOrderPrice(PricePerGram(BidPerMesghal));
 
         var locked = Lock(10m, price);
-        // پنج fill دو گرمی: هرکدام ۰٫۸ دارد که رو به بالا گرد می‌شود.
         var consumed = Fill(2m, price) * 5;
 
-        Assert.True(consumed > locked,
-            $"consumed {consumed} should exceed locked {locked}, which is what rejects a valid trade");
-        Assert.Equal(1m, consumed - locked);
+        Assert.True(consumed <= locked, $"consumed {consumed} must not exceed locked {locked}");
+    }
+
+    /// <summary>
+    /// خودِ تضمین، نه یک نمونه: برای هر ترکیبی از اندازهٔ fillها، مجموع مصرف هرگز از
+    /// مقدار قفل‌شده بیشتر نمی‌شود.
+    ///
+    ///     Σ Floor(qᵢ × p) ≤ Σ qᵢ×p = Q×p ≤ Ceiling(Q×p)
+    ///
+    /// این چیزی است که یک تست تک‌نمونه‌ای نمی‌تواند نشان دهد — یک ترکیب خوش‌شانس
+    /// می‌تواند سبز بماند در حالی که ترکیب دیگری می‌شکند. دقیقاً همان اتفاقی که با
+    /// ۳+۳+۴ افتاد و باعث شد چند ساعت به نظر برسد باقی‌مانده رشد نمی‌کند.
+    /// </summary>
+    [Theory]
+    [InlineData(new double[] { 2, 2, 2, 2, 2 })]
+    [InlineData(new double[] { 3, 3, 3, 1 })]
+    [InlineData(new double[] { 3, 3, 4 })]
+    [InlineData(new double[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 })]
+    [InlineData(new double[] { 0.1, 0.3, 0.7, 1.9, 7 })]
+    [InlineData(new double[] { 9.99, 0.01 })]
+    public void ConsumptionNeverExceedsTheLock_ForAnyFillPattern(double[] fills)
+    {
+        var price = CurrenciesConstant.RoundOrderPrice(PricePerGram(BidPerMesghal));
+        var total = fills.Sum(f => (decimal)f);
+
+        var locked = Lock(total, price);
+        var consumed = fills.Sum(f => Fill((decimal)f, price));
+
+        Assert.True(consumed <= locked,
+            $"fills [{string.Join(", ", fills)}] consumed {consumed} but only {locked} was locked");
+    }
+
+    /// <summary>
+    /// و باقی‌مانده باید ناچیز بماند — حداکثر یک واحد به‌ازای هر fill. اگر روزی جهت
+    /// گرد کردن اشتباه عوض شود، مجموع مصرف کمتر می‌شود ولی این تست هم می‌شکند.
+    /// </summary>
+    [Theory]
+    [InlineData(new double[] { 2, 2, 2, 2, 2 })]
+    [InlineData(new double[] { 3, 3, 3, 1 })]
+    [InlineData(new double[] { 0.1, 0.3, 0.7, 1.9, 7 })]
+    public void TheResidueStaysBoundedByOneUnitPerFill(double[] fills)
+    {
+        var price = CurrenciesConstant.RoundOrderPrice(PricePerGram(BidPerMesghal));
+        var total = fills.Sum(f => (decimal)f);
+
+        var residue = Lock(total, price) - fills.Sum(f => Fill((decimal)f, price));
+
+        Assert.InRange(residue, 0m, fills.Length + 1);
     }
 
     /// <summary>
@@ -125,6 +161,7 @@ public class LockResidueTests
         var residue = locked - consumed;
 
         Assert.NotEqual(0m, residue);           // اول مطمئن شویم چیزی برای آزاد کردن هست
+        Assert.True(residue > 0);               // و همیشه در جهت آزادسازی، نه بدهکاری
         Assert.Equal(0m, locked - consumed - residue);
     }
 
