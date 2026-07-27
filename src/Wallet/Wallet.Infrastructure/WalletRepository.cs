@@ -202,10 +202,16 @@ public class WalletRepository : IWalletRepository
     {
         var referenceId = tradeId.ToString();
 
-        // Idempotency: a retry or a duplicate outbox delivery must not settle twice.
-        // Check the NEW Transactions table (settlement writes here), not the legacy WalletTransactions.
-        var alreadySettled = await _context.Transactions.AnyAsync(t => t.ReferenceId == referenceId);
-        if (alreadySettled)
+        // مسیر سریع: اگر معامله از قبل تسویه شده، بدون باز کردن تراکنش برمی‌گردیم.
+        //
+        // این بررسی «تضمین» نیست — فقط بهینه‌سازی است. تحویل مجدد outbox حالت عادی است
+        // (طراحی صریحاً اجازه می‌دهد پیامی که موفق شده دوباره فرستاده شود)، پس ارزش دارد
+        // که مسیر پرتکرار بدون هزینهٔ تراکنش و بدون تولید استثنا رد شود.
+        //
+        // تضمین واقعی، کلید اصلی جدول TradeSettlements است که پایین‌تر اعمال می‌شود.
+        // پیش‌تر همین SELECT تنها محافظ بود و چون بیرون از تراکنش اجرا می‌شد، دو تسویهٔ
+        // همزمان می‌توانستند هر دو از آن رد شوند و پول دو برابر جابه‌جا شود (issue #42).
+        if (await _context.TradeSettlements.AnyAsync(s => s.TradeId == tradeId))
         {
             _logger.LogInformation("Trade {TradeId} already settled; skipping (idempotent).", tradeId);
             return (true, "Trade already settled.");
@@ -304,13 +310,40 @@ public class WalletRepository : IWalletRepository
             buyerQuote.UpdatedAt = now; buyerBase.UpdatedAt = now; sellerBase.UpdatedAt = now; sellerQuote.UpdatedAt = now;
             _context.Wallets.UpdateRange(buyerQuote, buyerBase, sellerBase, sellerQuote);
 
-            await _context.SaveChangesAsync(); // single save: 4 balance changes + 4 transaction records
+            // سد یکتایی: این سطر داخل همان تراکنشِ جابه‌جایی پول درج می‌شود.
+            //
+            // چون TradeId کلید اصلی است، اگر تسویهٔ همزمانِ دیگری زودتر commit کرده باشد،
+            // این درج با نقض کلید تکراری شکست می‌خورد و کل تراکنش — شامل هر چهار تغییر
+            // موجودی — برگردانده می‌شود. یعنی «دقیقاً یک بار» را دیتابیس تضمین می‌کند،
+            // نه ترتیب اجرای کد.
+            _context.TradeSettlements.Add(
+                TradeSettlement.Create(tradeId, buyerUserId, sellerUserId, symbol!, quantity, quoteQuantity));
+
+            await _context.SaveChangesAsync(); // یک save: ۴ تغییر موجودی + ۴ سطر تراکنش + ۱ سطر تسویه
             await tx.CommitAsync();
 
             _logger.LogInformation(
                 "Settled trade {TradeId}: buyer={Buyer} seller={Seller} {Qty} {Base} for {Quote} {QuoteAsset}",
                 tradeId, buyerUserId, sellerUserId, quantity, baseAsset, quoteQuantity, quoteAsset);
             return (true, "Trade settled.");
+        }
+        catch (DbUpdateException ex) when (IsDuplicateSettlement(ex))
+        {
+            // بازندهٔ رقابت. تسویهٔ همزمانِ دیگری زودتر commit کرده و کلید اصلی، درج دوم
+            // را رد کرده است. rollback همهٔ تغییرات موجودی این تلاش را برمی‌گرداند، پس
+            // نتیجهٔ نهایی دقیقاً یک تسویه است.
+            //
+            // این را به «موفقیت» ترجمه می‌کنیم و نه خطا، چون از دید فراخوان واقعاً موفق
+            // است: معامله تسویه شده. اگر خطا برمی‌گرداندیم، پردازشگر outbox پیام را
+            // شکست‌خورده تلقی می‌کرد، پنج بار retry می‌کرد و در نهایت به Failed می‌رسید —
+            // یعنی یک معاملهٔ کاملاً سالم به‌عنوان «گیرکرده» به اپراتور هشدار می‌داد.
+            await tx.RollbackAsync();
+
+            _logger.LogInformation(
+                "Trade {TradeId} was settled concurrently by another caller; this attempt was rolled back (idempotent).",
+                tradeId);
+
+            return (true, "Trade already settled.");
         }
         catch (Exception ex)
         {
@@ -319,6 +352,20 @@ public class WalletRepository : IWalletRepository
             return (false, $"Settlement error: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// تشخیص اینکه آیا شکست ذخیره‌سازی به‌خاطر درج تکراری در TradeSettlements بوده است.
+    ///
+    /// عمداً به کد خطای خاص SQL Server (۲۶۲۷ برای نقض قید، ۲۶۰۱ برای ایندکس یکتا) تکیه
+    /// نمی‌کنیم، چون تست‌ها روی SQLite اجرا می‌شوند و کد خطای دیگری تولید می‌کند. اگر
+    /// فقط کد SQL Server را می‌پذیرفتیم، این مسیر در تست‌ها هرگز اجرا نمی‌شد — یعنی
+    /// دقیقاً همان چیزی که باید تضمین شود، بی‌آزمون می‌ماند.
+    ///
+    /// در عوض از خودِ EF می‌پرسیم چه چیزی در حال درج بوده: اگر تنها موجودیتِ Added از
+    /// نوع TradeSettlement باشد، تنها دلیل ممکنِ نقض یکتایی همان کلید تکراری است.
+    /// </summary>
+    private static bool IsDuplicateSettlement(DbUpdateException ex) =>
+        ex.Entries.Count > 0 && ex.Entries.All(e => e.Entity is TradeSettlement);
 
     /// <summary>Adds (but does not save) a completed Trade transaction record to the current unit of work.</summary>
     private void AddTradeTransaction(WalletEntity wallet, decimal amount, string asset,
