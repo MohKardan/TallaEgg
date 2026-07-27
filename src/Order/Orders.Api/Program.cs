@@ -106,9 +106,9 @@ builder.Services.AddCors();
 
 builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
-// Add Matching Engine
-builder.Services.AddScoped<IMatchingEngine, Orders.Application.Services.MatchingEngineService>();
-builder.Services.AddHostedService<Orders.Application.Services.MatchingEngineService>();
+// Add Matching Engine — یک نمونهٔ واحد (issue #53). جزئیات و دلیلش در
+// MatchingEngineRegistration نوشته شده، که تست‌ها هم از همان استفاده می‌کنند.
+builder.Services.AddMatchingEngine();
 
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();

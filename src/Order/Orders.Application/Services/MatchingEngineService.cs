@@ -109,23 +109,20 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         finally
         {
             _isRunning = false;
-            _processingSemaphore.Dispose();
             _logger.LogInformation("🛑 Matching Engine Service has stopped");
         }
     }
 
-    public new Task StartAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// سمافور اینجا آزاد می‌شود، نه در انتهای ExecuteAsync. این نمونه بین حلقهٔ
+    /// پس‌زمینه و مسیر درخواست‌ها مشترک است (issue #53)، پس اگر همزمان با توقف
+    /// حلقه Dispose می‌شد، درخواستی که در همان لحظه در حال پردازش بود
+    /// ObjectDisposedException می‌گرفت.
+    /// </summary>
+    public override void Dispose()
     {
-        _isRunning = true;
-        _logger.LogInformation("▶️ Matching Engine started manually");
-        return Task.CompletedTask;
-    }
-
-    public new Task StopAsync(CancellationToken cancellationToken)
-    {
-        _isRunning = false;
-        _logger.LogInformation("⏸️ Matching Engine stopped manually");
-        return Task.CompletedTask;
+        _processingSemaphore.Dispose();
+        base.Dispose();
     }
 
     /// <summary>
