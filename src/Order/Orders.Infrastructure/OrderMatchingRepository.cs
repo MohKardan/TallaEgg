@@ -91,11 +91,29 @@ public class OrderMatchingRepository
     /// </summary>
     public async Task<(bool Success, Trade? Trade, string ErrorMessage)> ExecuteAtomicMatchAsync(
         Order buyOrder, 
-        Order sellOrder, 
+        Order sellOrder,
         decimal matchQuantity)
     {
+        // Both parameters are Order, so passing them in the wrong order compiles silently.
+        // That happened: callers passed (maker, taker) instead of (buy, sell), which inverted
+        // buyer and seller whenever the resting order was a sell — the trade was then settled
+        // in the wrong direction, giving the gold to the seller and the money to the buyer.
+        // Fail loudly rather than record an inverted trade.
+        if (buyOrder.Side != OrderSide.Buy)
+        {
+            _logger.LogError("ExecuteAtomicMatchAsync received order {OrderId} with side {Side} as the BUY order.",
+                buyOrder.Id, buyOrder.Side);
+            return (false, null, $"سفارش خرید نامعتبر است: سمت سفارش {buyOrder.Side} است.");
+        }
+        if (sellOrder.Side != OrderSide.Sell)
+        {
+            _logger.LogError("ExecuteAtomicMatchAsync received order {OrderId} with side {Side} as the SELL order.",
+                sellOrder.Id, sellOrder.Side);
+            return (false, null, $"سفارش فروش نامعتبر است: سمت سفارش {sellOrder.Side} است.");
+        }
+
         using var transaction = await _context.Database.BeginTransactionAsync();
-        
+
         try
         {
             // 1. Re-fetch orders with lock to ensure they haven't changed
