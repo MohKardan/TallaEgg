@@ -154,6 +154,81 @@
             return Math.Round(amount, info.DecimalPlaces, MidpointRounding.AwayFromZero);
         }
 
+        /// <summary>
+        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به بالا</b>.
+        ///
+        /// برای مبلغی استفاده می‌شود که به‌عنوان وثیقه قفل می‌شود. با گرد کردن به بالا،
+        /// مقدار قفل‌شده هرگز کمتر از ارزش واقعی سفارش نیست.
+        /// </summary>
+        public static decimal CeilingToCurrencyPrecision(decimal amount, string assetCode)
+        {
+            var info = GetCurrencyInfo(assetCode);
+            if (info is null) return amount;
+
+            var factor = Pow10(info.DecimalPlaces);
+            return Math.Ceiling(amount * factor) / factor;
+        }
+
+        /// <summary>
+        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به پایین</b>.
+        ///
+        /// برای مبلغی استفاده می‌شود که در هر معامله از وثیقه مصرف می‌گردد.
+        ///
+        /// چرا جهت‌ها عمداً مخالف هم انتخاب شده‌اند (issue #52): مبلغ قفل یک بار برای کل
+        /// سفارش حساب می‌شود و مصرف در هر fill جداگانه. اگر هر دو با AwayFromZero گرد
+        /// شوند، مجموعِ مصرف‌ها می‌تواند از مقدار قفل‌شده بیشتر شود و گاردِ «وثیقهٔ کافی
+        /// نیست» یک معاملهٔ کاملاً معتبر را رد کند.
+        ///
+        /// با «قفل رو به بالا، مصرف رو به پایین» این نابرابری همیشه برقرار است:
+        ///
+        ///     Σ Floor(qᵢ × pᵢ) ≤ Σ qᵢ×pᵢ ≤ Σ qᵢ × p_سقف ≤ Q × p_سقف ≤ Ceiling(Q × p_سقف)
+        ///
+        /// یعنی «مجموع مصرف ≤ مقدار قفل‌شده» یک تضمین ریاضی است، نه یک احتمال — و به
+        /// یکسان بودن قیمت fillها هم وابسته نیست، چون خریدار هرگز بیش از قیمت سقف
+        /// سفارش خودش پرداخت نمی‌کند. اختلاف باقی‌مانده هنگام تکمیل یا لغو آزاد می‌شود.
+        /// </summary>
+        public static decimal FloorToCurrencyPrecision(decimal amount, string assetCode)
+        {
+            var info = GetCurrencyInfo(assetCode);
+            if (info is null) return amount;
+
+            var factor = Pow10(info.DecimalPlaces);
+            return Math.Floor(amount * factor) / factor;
+        }
+
+        private static decimal Pow10(int exponent)
+        {
+            decimal result = 1m;
+            for (var i = 0; i < exponent; i++) result *= 10m;
+            return result;
+        }
+
+        /// <summary>
+        /// دقت ذخیره‌سازی قیمت سفارش. ستون Orders.Price از نوع decimal(18,2) است.
+        /// </summary>
+        public const int OrderPriceDecimalPlaces = 2;
+
+        /// <summary>
+        /// گرد کردن قیمت به همان دقتی که ستون دیتابیس می‌تواند نگه دارد.
+        ///
+        /// چرا لازم است: قیمت مثقال بر ۴٫۳۳۱۸ تقسیم می‌شود و نتیجه تا ۲۸ رقم اعشار ادامه
+        /// دارد (مثلاً ۷۹٬۰۰۰٬۰۰۰ ÷ ۴٫۳۳۱۸ = ۱۸۲۳۷۲۲۲٫۴۰۱۷۷۲۹…). مبلغِ قفل‌شده از همان
+        /// مقدارِ کاملِ حافظه حساب می‌شد، ولی خودِ قیمت هنگام ذخیره در ستون به دو رقم
+        /// اعشار گرد می‌شد و تسویه بعداً همان مقدار گردشده را از دیتابیس می‌خواند. دو
+        /// طرفِ یک تساوی با دو قیمتِ متفاوت حساب می‌شدند و اختلافش تا ابد در
+        /// LockedBalance می‌ماند (issue #52).
+        ///
+        /// با گرد کردن در ورودی، قفل و تسویه هر دو از یک عدد استفاده می‌کنند و
+        /// «مبلغ قفل‌شده» از روی خودِ سفارش ذخیره‌شده قابل بازمحاسبه می‌شود.
+        ///
+        /// عمداً به PriceDecimalPlaces جفت معاملاتی تکیه نمی‌کنیم: برای MAUA/IRT مقدار
+        /// آن صفر است در حالی که ستون دو رقم اعشار نگه می‌دارد. گرد کردن به صفر، دقت
+        /// قیمت را از ۰٫۰۱ به ۱ تومان بر گرم تغییر می‌داد که یک تصمیم کسب‌وکاری است نه
+        /// یک رفع باگ. مرجع اینجا ستون است، چون همان چیزی است که واقعاً محدود می‌کند.
+        /// </summary>
+        public static decimal RoundOrderPrice(decimal price) =>
+            Math.Round(price, OrderPriceDecimalPlaces, MidpointRounding.AwayFromZero);
+
         // 🔹 دیکشنری جفت‌های معاملاتی برای دسترسی سریع (case-insensitive)
         private static readonly Dictionary<string, TradingPairInfo> _pairMap =
             AllTradingPairs.ToDictionary(p => p.Symbol, p => p, StringComparer.OrdinalIgnoreCase);

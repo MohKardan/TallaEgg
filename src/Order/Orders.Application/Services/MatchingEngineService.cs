@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Responses.Order;
@@ -458,6 +459,14 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 _logger.LogInformation(
                     "Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
                     makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
+
+                // آزادسازی باقی‌ماندهٔ وثیقه عمداً اینجا انجام نمی‌شود.
+                //
+                // اینجا قفلِ موجودی هنوز ساخته نشده (OrderService بعد از تطبیق قفل
+                // می‌کند — یافتهٔ C-5) و تسویه هم که آن را مصرف می‌کند بعدتر توسط
+                // outbox اجرا می‌شود. تلاش برای آزادسازی در این نقطه با هر دو مسابقه
+                // می‌دهد و در تست واقعی هم شکست خورد. حالا OutboxProcessorService پس
+                // از تسویهٔ موفق این کار را می‌کند (issue #52).
             }
             else
             {

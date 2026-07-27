@@ -274,11 +274,18 @@ public class OrderMatchingRepository
     /// </summary>
     private static Trade CreateTrade(Order buyOrder, Order sellOrder, decimal quantity, decimal price)
     {
-        // ارزش معامله با دقت واقعی ارز مظنه گرد می‌شود (تومان: بدون اعشار). این همان
-        // مبلغی است که در تسویه از خریدار کسر و به فروشنده پرداخت می‌شود، پس باید با
-        // مبلغی که هنگام ثبت سفارش قفل شده هم‌دقت باشد، وگرنه باقی‌مانده جا می‌ماند.
+        // ارزش معامله رو به پایین گرد می‌شود، در حالی که مبلغ قفلِ سفارش رو به بالا.
+        //
+        // این عدد هم از خریدار کسر و هم به فروشنده پرداخت می‌شود (پس در هر معامله
+        // تراز است)، و همین عدد است که از وثیقهٔ قفل‌شده مصرف می‌گردد. قفل یک بار برای
+        // کل سفارش حساب می‌شود ولی مصرف در هر fill جداگانه؛ اگر هر دو با AwayFromZero
+        // گرد شوند، مجموع مصرف‌ها می‌تواند از قفل بیشتر شود و گاردِ «وثیقهٔ کافی نیست»
+        // یک معاملهٔ کاملاً معتبر را رد کند.
+        //
+        // با جهت‌های مخالف، «مجموع مصرف ≤ قفل» یک تضمین ریاضی است. توضیح کامل روی
+        // CurrenciesConstant.FloorToCurrencyPrecision (issue #52).
         var quoteAsset = buyOrder.Asset.Split('/').Last();
-        var quoteQuantity = CurrenciesConstant.RoundToCurrencyPrecision(quantity * price, quoteAsset);
+        var quoteQuantity = CurrenciesConstant.FloorToCurrencyPrecision(quantity * price, quoteAsset);
 
         // Fees are DISABLED for the MVP (charged at 0%). The real maker/taker fee model —
         // which asset each fee is denominated in (buyer fee should be in the base asset it
