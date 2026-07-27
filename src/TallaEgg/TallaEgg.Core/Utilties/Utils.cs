@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;   // PersianCalendar — بخشی از دات‌نت، بدون وابستگی خارجی
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -89,26 +90,64 @@ namespace TallaEgg.Core.Utilties
         /// </summary>
         /// <param name="dateTime">تاریخ میلادی</param>
         /// <returns>تاریخ شمسی به فرمت yyyy/MM/dd HH:mm</returns>
+        /// <summary>
+        /// تبدیل زمان UTC به تاریخ و ساعت شمسیِ تهران، با قالب yyyy/MM/dd HH:mm.
+        ///
+        /// نسخهٔ قبلی «تقریبی» بود و در عمل غلط: سال را ۶۲۱ واحد کم می‌کرد، ماه را جابه‌جا
+        /// می‌کرد، اما **روزِ میلادی را دست‌نخورده** برمی‌گرداند. مثلاً ۲۷ ژوئیهٔ ۲۰۲۶ که
+        /// معادل ۵ مرداد ۱۴۰۵ است، ۱۴۰۵/۰۵/۲۷ نمایش داده می‌شد — یعنی کاربر تاریخ معاملهٔ
+        /// خودش را ۲۲ روز اشتباه می‌دید.
+        ///
+        /// کامنت قبلی می‌گفت «برای پیاده‌سازی کامل نیاز به کتابخانه PersianCalendar است»؛
+        /// این درست نبود — PersianCalendar بخشی از خود دات‌نت است و هیچ وابستگی جدیدی
+        /// لازم ندارد.
+        /// </summary>
         public static string ConvertToPersianDate(DateTime dateTime)
         {
-            // تبدیل ساده به تاریخ شمسی - برای پیاده‌سازی کامل نیاز به کتابخانه PersianCalendar است
-            var persianMonths = new[] { "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", 
-                                       "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند" };
-            
-            // محاسبه تقریبی تاریخ شمسی
-            var year = dateTime.Year - 621;
-            var month = dateTime.Month;
-            var day = dateTime.Day;
-            
-            // تنظیم ماه شمسی (تقریبی)
-            if (month >= 3 && month <= 5) month = month - 2;
-            else if (month >= 6 && month <= 8) month = month - 2;
-            else if (month >= 9 && month <= 11) month = month - 2;
-            else if (month == 12) month = 10;
-            else if (month == 1) month = 11;
-            else if (month == 2) month = 12;
-            
-            return $"{year:0000}/{month:00}/{day:00} {dateTime:HH:mm}";
+            var local = ToTehranTime(dateTime);
+            var pc = new PersianCalendar();
+
+            // PersianCalendar در محدودهٔ تاریخ‌های خیلی قدیمی استثنا می‌دهد. تاریخ نمایشی
+            // هرگز نباید باعث شکست یک پیام شود، پس در آن حالت به قالب میلادی برمی‌گردیم.
+            try
+            {
+                return $"{pc.GetYear(local):0000}/{pc.GetMonth(local):00}/{pc.GetDayOfMonth(local):00} {local:HH:mm}";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return local.ToString("yyyy/MM/dd HH:mm");
+            }
+        }
+
+        /// <summary>
+        /// زمان‌ها در دیتابیس UTC ذخیره می‌شوند (DateTime.UtcNow)، ولی کاربر ایرانی انتظار
+        /// ساعت تهران را دارد. بدون این تبدیل، معامله‌ای که ساعت ۱۳:۲۲ به وقت تهران انجام
+        /// شده، ۰۹:۵۲ نمایش داده می‌شد.
+        ///
+        /// شناسهٔ منطقهٔ زمانی روی ویندوز و لینوکس متفاوت است، پس هر دو امتحان می‌شوند.
+        /// اگر هیچ‌کدام موجود نبود، افست ثابت +۳:۳۰ استفاده می‌شود؛ ایران از سال ۱۴۰۱
+        /// ساعت تابستانی ندارد، پس این افست ثابت امروز درست است.
+        /// </summary>
+        private static DateTime ToTehranTime(DateTime dateTime)
+        {
+            // فقط زمان‌های UTC تبدیل می‌شوند. اگر فراخوانی مقدار Local یا Unspecified بدهد،
+            // تبدیل دوباره باعث جابه‌جایی اشتباه می‌شد.
+            if (dateTime.Kind == DateTimeKind.Local)
+                return dateTime;
+
+            var utc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+
+            foreach (var id in new[] { "Iran Standard Time", "Asia/Tehran" })
+            {
+                try
+                {
+                    return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById(id));
+                }
+                catch (TimeZoneNotFoundException) { }
+                catch (InvalidTimeZoneException) { }
+            }
+
+            return utc.AddHours(3).AddMinutes(30);
         }
     }
     /// <summary>

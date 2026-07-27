@@ -23,7 +23,16 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             return navButtons.Any() ? new InlineKeyboardMarkup(navButtons) : null;
         }
 
-        public static async Task<string> BuildTradesListAsync(PagedResult<TradeHistoryDto> page, int currentPage)
+        /// <summary>
+        /// فهرست معاملات کاربر.
+        /// </summary>
+        /// <param name="viewerUserId">
+        /// کاربری که فهرست را می‌بیند. لازم است چون «خرید یا فروش» یک ویژگی خودِ معامله
+        /// نیست، بلکه به این بستگی دارد که بیننده کدام طرف معامله بوده: یک معاملهٔ واحد
+        /// برای یک طرف خرید است و برای طرف دیگر فروش.
+        /// </param>
+        public static async Task<string> BuildTradesListAsync(
+            PagedResult<TradeHistoryDto> page, int currentPage, Guid viewerUserId)
         {
             if (page == null || !page.Items.Any())
             {
@@ -44,11 +53,23 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 var displayPrice = isGold ? t.Price * CurrenciesConstant.GramsPerMesghal : t.Price;
                 var priceLabel = isGold ? "قیمت هر مثقال" : "قیمت هر واحد";
 
+                var isBuyer = t.BuyerUserId == viewerUserId;
+
+                // دو نشانهٔ مستقل برای یک واقعیت: برچسب صریح در بالا، و جهت پول در پایین.
+                // فقط رنگ ایموجی کافی نیست — کاربری که رنگ‌ها را تفکیک نمی‌کند یا پیام را
+                // سریع مرور می‌کند باید از روی خود کلمه‌ها بفهمد.
+                var sideLabel = isBuyer ? "🟢 خرید" : "🔴 فروش";
+
+                // «ارزش کل» نمی‌گفت این پول از حساب کاربر رفته یا به آن آمده. برای خریدار
+                // این مبلغ پرداختی است و برای فروشنده دریافتی.
+                var amountLabel = isBuyer ? "پرداختی" : "دریافتی";
+
                 sb.AppendLine($"📌 معاملهٔ {PersianFormat.Ltr(t.Id.ToString()[..8])}");
+                sb.AppendLine(sideLabel);
                 sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(t.Symbol)}");
                 sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(t.Quantity, baseAsset)} {unit}");
                 sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
-                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Number(t.QuoteQuantity)} تومان");
+                sb.AppendLine($"💵 {amountLabel}: {PersianFormat.Number(t.QuoteQuantity)} تومان");
                 sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt))}");
                 sb.AppendLine("➖➖➖➖➖➖➖➖➖");
                 sb.AppendLine();

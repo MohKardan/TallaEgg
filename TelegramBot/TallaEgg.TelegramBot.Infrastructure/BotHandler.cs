@@ -465,7 +465,9 @@ namespace TallaEgg.TelegramBot
                         {
                             var page = await _orderApi.GetUserTradesAsync(uid, pageNum, pageSize: 5);
 
-                            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum);
+                            // uid همان کاربری است که فهرست را می‌بیند؛ برای تعیین اینکه هر
+                            // معامله از دید او خرید بوده یا فروش لازم است.
+                            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid);
 
                             // ویرایش پیام قبلی
                             await _botClient.EditMessageText(
@@ -616,7 +618,7 @@ namespace TallaEgg.TelegramBot
             var page = await _orderApi.GetUserTradesAsync(userId, pageNumber: 1, pageSize: 5);
             if (page.Success)
             {
-                var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1);
+                var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1, userId);
 
                 await _botClient.SendMessage(
                     chatId: chatId,

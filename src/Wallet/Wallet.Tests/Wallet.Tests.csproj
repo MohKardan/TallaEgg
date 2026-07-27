@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\Order\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\..\Order\Orders.Infrastructure\Orders.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Order\Orders.Application\Orders.Application.csproj" />
+    <!-- برای تست ساخت متن فهرست معاملات (خرید/فروش و تاریخ شمسی). -->
+    <ProjectReference Include="..\..\..\TelegramBot\TallaEgg.TelegramBot.Infrastructure\TallaEgg.TelegramBot.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
