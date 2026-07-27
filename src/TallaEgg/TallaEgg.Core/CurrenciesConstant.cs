@@ -154,6 +154,32 @@
             return Math.Round(amount, info.DecimalPlaces, MidpointRounding.AwayFromZero);
         }
 
+        /// <summary>
+        /// دقت ذخیره‌سازی قیمت سفارش. ستون Orders.Price از نوع decimal(18,2) است.
+        /// </summary>
+        public const int OrderPriceDecimalPlaces = 2;
+
+        /// <summary>
+        /// گرد کردن قیمت به همان دقتی که ستون دیتابیس می‌تواند نگه دارد.
+        ///
+        /// چرا لازم است: قیمت مثقال بر ۴٫۳۳۱۸ تقسیم می‌شود و نتیجه تا ۲۸ رقم اعشار ادامه
+        /// دارد (مثلاً ۷۹٬۰۰۰٬۰۰۰ ÷ ۴٫۳۳۱۸ = ۱۸۲۳۷۲۲۲٫۴۰۱۷۷۲۹…). مبلغِ قفل‌شده از همان
+        /// مقدارِ کاملِ حافظه حساب می‌شد، ولی خودِ قیمت هنگام ذخیره در ستون به دو رقم
+        /// اعشار گرد می‌شد و تسویه بعداً همان مقدار گردشده را از دیتابیس می‌خواند. دو
+        /// طرفِ یک تساوی با دو قیمتِ متفاوت حساب می‌شدند و اختلافش تا ابد در
+        /// LockedBalance می‌ماند (issue #52).
+        ///
+        /// با گرد کردن در ورودی، قفل و تسویه هر دو از یک عدد استفاده می‌کنند و
+        /// «مبلغ قفل‌شده» از روی خودِ سفارش ذخیره‌شده قابل بازمحاسبه می‌شود.
+        ///
+        /// عمداً به PriceDecimalPlaces جفت معاملاتی تکیه نمی‌کنیم: برای MAUA/IRT مقدار
+        /// آن صفر است در حالی که ستون دو رقم اعشار نگه می‌دارد. گرد کردن به صفر، دقت
+        /// قیمت را از ۰٫۰۱ به ۱ تومان بر گرم تغییر می‌داد که یک تصمیم کسب‌وکاری است نه
+        /// یک رفع باگ. مرجع اینجا ستون است، چون همان چیزی است که واقعاً محدود می‌کند.
+        /// </summary>
+        public static decimal RoundOrderPrice(decimal price) =>
+            Math.Round(price, OrderPriceDecimalPlaces, MidpointRounding.AwayFromZero);
+
         // 🔹 دیکشنری جفت‌های معاملاتی برای دسترسی سریع (case-insensitive)
         private static readonly Dictionary<string, TradingPairInfo> _pairMap =
             AllTradingPairs.ToDictionary(p => p.Symbol, p => p, StringComparer.OrdinalIgnoreCase);

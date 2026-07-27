@@ -22,18 +22,26 @@ public class OrderService
     private readonly ILogger<OrderService> _logger;
     private readonly UsersApiClient _usersApiClient;
 
+    /// <summary>
+    /// برای محاسبهٔ «چقدر از وثیقهٔ یک سفارش واقعاً مصرف شده» لازم است؛ آزادسازی هنگام
+    /// لغو باید از روی معاملات انجام‌شده باشد نه یک بازمحاسبهٔ مستقل (issue #52).
+    /// </summary>
+    private readonly ITradeRepository _tradeRepository;
+
     public OrderService(
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
         IMatchingEngine matchingEngine,
         ILogger<OrderService> logger,
-        UsersApiClient UsersApiClient)
+        UsersApiClient UsersApiClient,
+        ITradeRepository tradeRepository)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
         _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _usersApiClient = UsersApiClient;
+        _tradeRepository = tradeRepository ?? throw new ArgumentNullException(nameof(tradeRepository));
     }
 
     /// <summary>
@@ -62,10 +70,23 @@ public class OrderService
             var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
 
-            // مبلغ قفل‌شده باید با همان دقتِ خودِ دارایی گرد شود. بدون این کار،
-            // «مقدار × قیمت» تا ۱۸ رقم اعشار پیش می‌رود، در حالی که تسویه و ستون‌های
-            // دیتابیس با دقت کمتری کار می‌کنند و یک باقی‌ماندهٔ کوچک در LockedBalance
-            // جا می‌ماند.
+            // قیمت پیش از هر استفاده‌ای به دقت ستون گرد می‌شود.
+            //
+            // ربات قیمت را از تقسیم «قیمت مثقال ÷ ۴٫۳۳۱۸» می‌سازد که تا ۲۸ رقم اعشار
+            // ادامه دارد. اگر قفل از آن مقدار کامل حساب شود ولی سفارش با دو رقم اعشار
+            // ذخیره گردد، تسویه — که قیمت را از دیتابیس می‌خواند — با عدد دیگری کار
+            // می‌کند و اختلاف تا ابد در LockedBalance می‌ماند (issue #52).
+            //
+            // این کار یک اثر جانبی مهم هم دارد: از این پس «مبلغ قفل‌شده» دقیقاً برابر
+            // RoundToCurrencyPrecision(Amount × Price) روی همان سفارشِ ذخیره‌شده است،
+            // پس بدون افزودن ستون جدید قابل بازمحاسبه است.
+            if (request.Price <= 0)
+                throw new ArgumentException("قیمت باید بزرگ‌تر از صفر باشد");
+
+            request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
+
+            // مبلغ قفل‌شده با همان دقتِ خودِ دارایی گرد می‌شود، چون تسویه و ستون‌های
+            // دیتابیس با همان دقت کار می‌کنند.
             var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity * request.Price, assetToCheck)
                 : CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity, assetToCheck);
@@ -187,6 +208,31 @@ public class OrderService
             _logger.LogError(ex, "Error creating unified order for user {UserId}", request.UserId);
             throw new InvalidOperationException("خطا در ایجاد سفارش", ex);
         }
+    }
+
+    /// <summary>
+    /// باقی‌ماندهٔ وثیقهٔ یک سفارش: «آنچه قفل شد» منهای «آنچه معاملات آن مصرف کردند».
+    ///
+    /// «آنچه قفل شد» دقیقاً از روی خودِ سفارش بازمحاسبه می‌شود، و این تنها به این دلیل
+    /// ممکن است که قیمت هنگام ثبت سفارش به دقت ستون گرد می‌شود (issue #52). پیش از آن،
+    /// قفل با قیمتِ گرد‌نشده حساب می‌شد و از روی ردیف ذخیره‌شده قابل بازسازی نبود.
+    /// </summary>
+    private async Task<(string Asset, decimal Residual)> ComputeResidualLockAsync(Order order)
+    {
+        var parts = order.Asset.Split('/');
+        var baseAsset = parts[0];
+        var quoteAsset = parts.Length > 1 ? parts[1] : parts[0];
+
+        if (order.Side == OrderSide.Buy)
+        {
+            var locked = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
+            var trades = await _tradeRepository.GetTradesByBuyOrderIdAsync(order.Id);
+            return (quoteAsset, locked - trades.Sum(t => t.QuoteQuantity));
+        }
+
+        var lockedBase = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount, baseAsset);
+        var sellTrades = await _tradeRepository.GetTradesBySellOrderIdAsync(order.Id);
+        return (baseAsset, lockedBase - sellTrades.Sum(t => t.Quantity));
     }
 
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
@@ -359,13 +405,14 @@ public class OrderService
         {
             try
             {
-                var assetToUnlock = order.Side == OrderSide.Buy
-                          ? order.Asset.Split('/')[1]
-                          : order.Asset.Split('/')[0];
-
-                var amountToUnlock = order.Side == OrderSide.Buy
-                    ? order.RemainingAmount * order.Price
-                    : order.RemainingAmount;
+                // «آنچه قفل شد» منهای «آنچه معاملات مصرف کردند» — نه یک بازمحاسبهٔ مستقل.
+                //
+                // پیش‌تر اینجا RemainingAmount × Price بدون گرد کردن حساب می‌شد، یعنی
+                // فرمول سومی جدا از فرمول قفل و فرمول تسویه. سه راه متفاوت برای محاسبهٔ
+                // یک کمیت، تضمین می‌کرد که پس از لغوِ یک سفارشِ نیمه‌پرشده باقی‌مانده‌ای
+                // جا بماند — و در جهت دیگر، می‌توانست بیش از مقدار قفل‌شده آزاد کند
+                // (issue #52).
+                var (assetToUnlock, amountToUnlock) = await ComputeResidualLockAsync(order);
 
                 if (amountToUnlock > 0)
                 {

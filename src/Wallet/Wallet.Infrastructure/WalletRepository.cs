@@ -144,6 +144,23 @@ public class WalletRepository : IWalletRepository
         var wallet = await GetWalletAsync(userId, asset);
         if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
 
+        if (amount < 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
+
+        // آزادسازیِ بیش از آنچه قفل است، LockedBalance را منفی می‌کند و همزمان Balance
+        // را بالا می‌برد — یعنی از هیچ، پول می‌سازد. پیش‌تر هیچ گاردی وجود نداشت و
+        // مسیر لغو سفارش مقدار را با فرمولی متفاوت از فرمول قفل حساب می‌کرد، پس این
+        // حالت واقعاً قابل رسیدن بود (issue #52).
+        if (amount > wallet.LockedBalance)
+        {
+            _logger.LogError(
+                "Refusing to unlock {Amount} {Asset} for user {UserId}: only {Locked} is locked.",
+                amount, asset, userId, wallet.LockedBalance);
+
+            throw new InvalidOperationException(
+                $"مقدار آزادسازی ({amount}) از موجودی قفل‌شده ({wallet.LockedBalance}) بیشتر است.");
+        }
+
         var transaction = Transaction.Create(
           wallet.Id,
           amount,
