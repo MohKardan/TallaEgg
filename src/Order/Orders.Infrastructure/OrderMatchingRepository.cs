@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
+using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 
@@ -255,8 +256,12 @@ public class OrderMatchingRepository
     /// </summary>
     private static Trade CreateTrade(Order buyOrder, Order sellOrder, decimal quantity, decimal price)
     {
-        var quoteQuantity = quantity * price;
-        
+        // ارزش معامله با دقت واقعی ارز مظنه گرد می‌شود (تومان: بدون اعشار). این همان
+        // مبلغی است که در تسویه از خریدار کسر و به فروشنده پرداخت می‌شود، پس باید با
+        // مبلغی که هنگام ثبت سفارش قفل شده هم‌دقت باشد، وگرنه باقی‌مانده جا می‌ماند.
+        var quoteAsset = buyOrder.Asset.Split('/').Last();
+        var quoteQuantity = CurrenciesConstant.RoundToCurrencyPrecision(quantity * price, quoteAsset);
+
         // Fees are DISABLED for the MVP (charged at 0%). The real maker/taker fee model —
         // which asset each fee is denominated in (buyer fee should be in the base asset it
         // receives, not the quote) and crediting collected fees to the fee account — is

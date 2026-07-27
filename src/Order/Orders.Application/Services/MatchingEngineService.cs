@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -29,15 +30,43 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private readonly SemaphoreSlim _processingSemaphore = new(1, 1); // Prevent concurrent processing
     private bool _isRunning = false;
 
+    /// <summary>
+    /// شناسهٔ کاربر بازارگردان (ادمین). اگر تنظیم شده باشد و RequireMarketMakerCounterparty
+    /// روشن باشد، هر معامله باید یک طرفش این کاربر باشد.
+    /// </summary>
+    private readonly Guid? _marketMakerUserId;
+
+    /// <summary>
+    /// آیا الزام «یک طرف معامله باید بازارگردان باشد» فعال است؟ در مدل فعلی کسب‌وکار
+    /// مشتری‌ها فقط با ادمین معامله می‌کنند، اما وقتی بازار نظیربه‌نظیر باز شود این
+    /// تنظیم خاموش می‌شود (نه اینکه کد حذف شود).
+    /// </summary>
+    private readonly bool _requireMarketMakerCounterparty;
+
     public MatchingEngineService(
         IServiceScopeFactory scopeFactory,
         ILogger<MatchingEngineService> logger,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        IConfiguration configuration)
     {
         _scopeFactory = scopeFactory;
 
         _logger = logger;
         _serviceProvider = serviceProvider;
+
+        _requireMarketMakerCounterparty =
+            configuration.GetValue("Matching:RequireMarketMakerCounterparty", defaultValue: false);
+
+        var marketMakerId = configuration.GetValue<string?>("Matching:MarketMakerUserId", null);
+        _marketMakerUserId = Guid.TryParse(marketMakerId, out var parsed) ? parsed : null;
+
+        if (_requireMarketMakerCounterparty && _marketMakerUserId is null)
+        {
+            // خاموش می‌ماند تا تطبیق به‌کلی متوقف نشود؛ اما باید دیده شود.
+            _logger.LogError(
+                "Matching:RequireMarketMakerCounterparty is enabled but Matching:MarketMakerUserId is not set. " +
+                "The market-maker rule will NOT be enforced.");
+        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -339,13 +368,19 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             {
                 // For buy orders, find sell orders with price <= buy price
                 var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(incomingOrder.Asset);
-                return sellOrders.Where(s => s.Price <= incomingOrder.Price && s.RemainingAmount > 0).ToList();
+                return sellOrders
+                    .Where(s => s.Price <= incomingOrder.Price && s.RemainingAmount > 0)
+                    .Where(s => IsAllowedCounterparty(incomingOrder, s))
+                    .ToList();
             }
             else
             {
                 // For sell orders, find buy orders with price >= sell price
                 var buyOrders = await matchingRepository.GetBuyOrdersWithLockAsync(incomingOrder.Asset);
-                return buyOrders.Where(b => b.Price >= incomingOrder.Price && b.RemainingAmount > 0).ToList();
+                return buyOrders
+                    .Where(b => b.Price >= incomingOrder.Price && b.RemainingAmount > 0)
+                    .Where(b => IsAllowedCounterparty(incomingOrder, b))
+                    .ToList();
             }
         }
         catch (Exception ex)
@@ -353,6 +388,46 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             _logger.LogError(ex, "💥 Error getting matching orders for {OrderId}", incomingOrder.Id);
             return new List<Order>();
         }
+    }
+
+    /// <summary>
+    /// بررسی مجاز بودن طرف مقابل برای تطبیق.
+    ///
+    /// دو قاعده:
+    /// ۱. هیچ کاربری با خودش معامله نمی‌کند. این قاعده همیشه فعال است — خودمعاملگی
+    ///    از نظر اقتصادی خنثی است اما رد حسابرسی نادرست تولید می‌کند و می‌تواند برای
+    ///    ساختن حجم صوری استفاده شود.
+    /// ۲. اگر الزام بازارگردان فعال باشد، یک طرف معامله باید ادمین باشد. در این مرحله
+    ///    از محصول، مشتری‌ها فقط با ادمین معامله می‌کنند و نه با یکدیگر.
+    ///
+    /// سفارش رد‌شده لغو نمی‌شود؛ فقط در این دور تطبیق نادیده گرفته می‌شود و باز می‌ماند.
+    /// </summary>
+    private bool IsAllowedCounterparty(Order incomingOrder, Order candidate)
+    {
+        if (incomingOrder.UserId == candidate.UserId)
+        {
+            _logger.LogDebug(
+                "Skipping self-match for user {UserId} between orders {IncomingOrderId} and {CandidateOrderId}.",
+                incomingOrder.UserId, incomingOrder.Id, candidate.Id);
+            return false;
+        }
+
+        if (_requireMarketMakerCounterparty && _marketMakerUserId is Guid marketMaker)
+        {
+            var involvesMarketMaker =
+                incomingOrder.UserId == marketMaker || candidate.UserId == marketMaker;
+
+            if (!involvesMarketMaker)
+            {
+                _logger.LogDebug(
+                    "Skipping customer-to-customer match between orders {IncomingOrderId} and {CandidateOrderId}: " +
+                    "neither side is the market maker.",
+                    incomingOrder.Id, candidate.Id);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

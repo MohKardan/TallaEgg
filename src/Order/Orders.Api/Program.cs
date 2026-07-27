@@ -716,6 +716,109 @@ static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironm
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Settlement reconciliation (issue #39)
+//
+// When an outbox settlement exhausts its retries it is marked Failed and abandoned,
+// but the trade is already recorded and the participants' collateral stays locked.
+// Nothing surfaced those trades and there was no way to settle them once the cause
+// was fixed. These endpoints make stuck settlements visible and re-drivable.
+//
+// Re-driving is safe because settlement is idempotent on the trade id: a redundant
+// delivery is a no-op rather than a double settlement.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Lists trades whose settlement never completed, newest first.
+app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db) =>
+{
+    try
+    {
+        var stuck = await db.OutboxMessages
+            .AsNoTracking()
+            .Where(m => m.Status != OutboxMessageStatus.Completed)
+            .OrderByDescending(m => m.CreatedAt)
+            .Select(m => new
+            {
+                m.Id,
+                TradeId = m.AggregateId,
+                m.Type,
+                Status = m.Status.ToString(),
+                m.RetryCount,
+                m.CreatedAt,
+                m.NextAttemptAt,
+                m.LastError
+            })
+            .ToListAsync();
+
+        return Results.Ok(ApiResponse<object>.Ok(new
+        {
+            Count = stuck.Count,
+            FailedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Failed)),
+            Items = stuck
+        }, "فهرست تسویه‌های ناتمام"));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error listing unsettled outbox messages");
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
+
+/// Puts a permanently-failed settlement back in the queue after the cause has been fixed.
+app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbContext db) =>
+{
+    try
+    {
+        var message = await db.OutboxMessages.FirstOrDefaultAsync(m => m.Id == messageId);
+        if (message is null)
+            return Results.NotFound(ApiResponse<string>.Fail("پیام یافت نشد."));
+
+        message.ResetForRetry();
+        await db.SaveChangesAsync();
+
+        Log.Information("Outbox message {MessageId} (trade {TradeId}) was re-driven by an operator.",
+            message.Id, message.AggregateId);
+
+        return Results.Ok(ApiResponse<string>.Ok(message.AggregateId.ToString(),
+            "پیام برای پردازش مجدد در صف قرار گرفت."));
+    }
+    catch (InvalidOperationException ex)
+    {
+        // Raised when the message is not in a re-drivable state (Completed or Pending).
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error re-driving outbox message {MessageId}", messageId);
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
+
+/// Re-drives every failed settlement at once, for use after a fix that affects them all.
+app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
+{
+    try
+    {
+        var failed = await db.OutboxMessages
+            .Where(m => m.Status == OutboxMessageStatus.Failed)
+            .ToListAsync();
+
+        foreach (var message in failed)
+            message.ResetForRetry();
+
+        await db.SaveChangesAsync();
+
+        Log.Information("{Count} failed outbox message(s) were re-driven by an operator.", failed.Count);
+
+        return Results.Ok(ApiResponse<int>.Ok(failed.Count,
+            $"{failed.Count} تسویهٔ ناموفق دوباره در صف قرار گرفت."));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error re-driving all failed outbox messages");
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
 
 app.Run();
 

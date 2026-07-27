@@ -135,6 +135,51 @@ public class SettleTradeAsyncTests : IDisposable
     }
 
     [Fact]
+    public async Task SettleTradeAsync_WhenBuyerIsTheSeller_RefusesAndChangesNothing()
+    {
+        // Matching now blocks self-matching, but settlement guards it too: with one user on
+        // both sides the two "different" wallets resolve to the same tracked entity, which
+        // produces an incoherent balance history even though the trade nets out.
+        SeedFullyLockedWallets();
+        var tradeId = Guid.NewGuid();
+
+        var (success, message) = await _repository.SettleTradeAsync(
+            tradeId, _buyerId, _buyerId, $"{Base}/{Quote}",
+            Quantity, QuoteQuantity, 0m, 0m);
+
+        Assert.False(success, "settlement must refuse a self-trade");
+        Assert.Contains("must be different users", message);
+
+        var count = await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString());
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task SettleTradeAsync_WithNonZeroFee_RefusesAndChangesNothing()
+    {
+        // Settlement debits the payer in full but would credit the receiver net of the fee,
+        // with the fee going nowhere — so a non-zero fee destroys money. Until fees are
+        // credited to a fee account (issue #35), settlement must fail closed rather than leak.
+        SeedFullyLockedWallets();
+        var tradeId = Guid.NewGuid();
+
+        var (success, message) = await _repository.SettleTradeAsync(
+            tradeId, _buyerId, _sellerId, $"{Base}/{Quote}",
+            Quantity, QuoteQuantity, feeBuyer: 0.5m, feeSeller: 0m);
+
+        Assert.False(success, "settlement must refuse a non-zero fee");
+        Assert.Contains("Fee crediting is not implemented", message);
+
+        // Nothing moved and nothing was recorded.
+        var buyerBase = await ReloadAsync(_buyerId, Base);
+        Assert.Equal(0m, buyerBase.Balance);
+        var sellerBase = await ReloadAsync(_sellerId, Base);
+        Assert.Equal(Quantity, sellerBase.LockedBalance);
+        var count = await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString());
+        Assert.Equal(0, count);
+    }
+
+    [Fact]
     public async Task SettleTradeAsync_WhenCollateralNotLocked_FailsAndChangesNothing()
     {
         // Buyer's IRT was never locked — simulates the lock-after-match ordering bug (C-5).
