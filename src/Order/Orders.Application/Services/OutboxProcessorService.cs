@@ -94,9 +94,21 @@ public class OutboxProcessorService : BackgroundService
             }
             catch (Exception ex)
             {
-                message.MarkAttemptFailed(ex.Message, MaxRetries, BaseRetryDelay);
+                // The stored reason is length-limited by the column; truncate so persisting
+                // the failure can never itself fail and leave the message stuck as Pending.
+                var reason = ex.Message.Length > 1900
+                    ? ex.Message[..1900] + "…(truncated)"
+                    : ex.Message;
+
+                message.MarkAttemptFailed(reason, MaxRetries, BaseRetryDelay);
                 if (message.Status == OutboxMessageStatus.Failed)
-                    _logger.LogError(ex, "Outbox message {Id} (aggregate {AggregateId}) permanently failed after {Retries} attempts.",
+                    // A trade is now recorded but unsettled, with the participants' collateral
+                    // still locked. It needs an operator: inspect /api/outbox/unsettled and
+                    // re-drive once the cause is fixed (settlement is idempotent).
+                    _logger.LogError(ex,
+                        "SETTLEMENT STUCK — outbox message {Id} (trade {AggregateId}) permanently failed after {Retries} attempts. " +
+                        "The trade is recorded but NOT settled and collateral remains locked. " +
+                        "Fix the cause, then POST /api/outbox/{Id}/redrive.",
                         message.Id, message.AggregateId, message.RetryCount);
                 else
                     _logger.LogWarning(ex, "Outbox message {Id} (aggregate {AggregateId}) failed attempt {Retry}; will retry.",

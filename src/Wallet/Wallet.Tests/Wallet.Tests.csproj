@@ -20,6 +20,9 @@
   <ItemGroup>
     <ProjectReference Include="..\Wallet.Core\Wallet.Core.csproj" />
     <ProjectReference Include="..\Wallet.Infrastructure\Wallet.Infrastructure.csproj" />
+    <!-- OutboxMessage lives on the Orders side; its state machine is unit-tested here
+         until a dedicated Orders.Tests project exists (issue #46). -->
+    <ProjectReference Include="..\..\Order\Orders.Core\Orders.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

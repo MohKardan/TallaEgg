@@ -104,4 +104,28 @@ public class OutboxMessage
             NextAttemptAt = DateTime.UtcNow.Add(TimeSpan.FromTicks(delayTicks));
         }
     }
+
+    /// <summary>
+    /// Puts a permanently-failed message back in the queue after an operator has fixed
+    /// the underlying cause. The retry counter is reset so the message gets a fresh set
+    /// of attempts, and it becomes due immediately.
+    ///
+    /// This is safe to call even if the action actually succeeded before the failure was
+    /// recorded: the receiver is idempotent on <see cref="AggregateId"/>, so a redundant
+    /// delivery is a no-op rather than a double settlement.
+    ///
+    /// Only a Failed message can be re-driven — reviving a Completed one would be an
+    /// attempt to settle the same trade twice, and a Pending one is already queued.
+    /// </summary>
+    public void ResetForRetry()
+    {
+        if (Status != OutboxMessageStatus.Failed)
+            throw new InvalidOperationException(
+                $"Only a failed message can be re-driven; this message is {Status}.");
+
+        Status = OutboxMessageStatus.Pending;
+        RetryCount = 0;
+        NextAttemptAt = DateTime.UtcNow;
+        ProcessedAt = null;
+    }
 }
