@@ -442,11 +442,14 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     {
         try
         {
-            // Create trade with enhanced Maker/Taker logic
-            var trade = CreateMakerTakerTrade(makerOrder, takerOrder, quantity);
-            
-            // Execute atomic match (the method will create its own trade)
-            var result = await matchingRepository.ExecuteAtomicMatchAsync(makerOrder, takerOrder, quantity);
+            // ExecuteAtomicMatchAsync takes (buyOrder, sellOrder) — NOT (maker, taker).
+            // Passing maker/taker positionally compiles (both are Order) but silently swaps
+            // the roles whenever the resting order is a sell, which recorded the trade with
+            // buyer and seller inverted and settled it in the wrong direction.
+            var buyOrder = makerOrder.Side == OrderSide.Buy ? makerOrder : takerOrder;
+            var sellOrder = makerOrder.Side == OrderSide.Buy ? takerOrder : makerOrder;
+
+            var result = await matchingRepository.ExecuteAtomicMatchAsync(buyOrder, sellOrder, quantity);
             
             if (result.Success)
             {
@@ -482,13 +485,11 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     {
         try
         {
-            // Determine Maker/Taker based on timestamp
-            var isBuyOrderMaker = buyOrder.CreatedAt <= sellOrder.CreatedAt;
-            var makerOrder = isBuyOrderMaker ? buyOrder : sellOrder;
-            var takerOrder = isBuyOrderMaker ? sellOrder : buyOrder;
-
-            // Execute with standard method (it will create trade internally)
-            return await matchingRepository.ExecuteAtomicMatchAsync(makerOrder, takerOrder, quantity);
+            // ExecuteAtomicMatchAsync takes (buyOrder, sellOrder). Maker/taker is derived
+            // inside it from the order timestamps, so the orders must be passed by SIDE,
+            // never by maker/taker role — doing the latter inverts buyer and seller
+            // whenever the resting order is a sell.
+            return await matchingRepository.ExecuteAtomicMatchAsync(buyOrder, sellOrder, quantity);
         }
         catch (Exception ex)
         {
