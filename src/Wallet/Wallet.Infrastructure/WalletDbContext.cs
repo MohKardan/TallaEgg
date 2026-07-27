@@ -11,6 +11,9 @@ public class WalletDbContext : DbContext
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
 
+    /// <summary>یک سطر به‌ازای هر معاملهٔ تسویه‌شده. کلید اصلی آن، تسویهٔ تکراری را غیرممکن می‌کند (issue #42).</summary>
+    public DbSet<TradeSettlement> TradeSettlements => Set<TradeSettlement>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Wallet configuration
@@ -71,5 +74,28 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.WalletId, t.CreatedAt });
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Currency, t.CreatedAt });
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Type, t.Status });
+
+        // TradeSettlement configuration — سد یکتایی تسویه (issue #42)
+        //
+        // TradeId عمداً کلید اصلی است و نه یک ستون معمولی با ایندکس یکتا: کلید اصلی
+        // نیت را مستقیم بیان می‌کند («یک سطر = یک معاملهٔ تسویه‌شده») و امکان درج
+        // سطر دوم برای همان معامله را در سطح موتور دیتابیس از بین می‌برد، مستقل از
+        // اینکه کدام مسیر کد فراخوانی کرده باشد.
+        modelBuilder.Entity<TradeSettlement>().HasKey(s => s.TradeId);
+
+        // ValueGeneratedNever لازم است چون TradeId از سرویس سفارش‌ها می‌آید. بدون آن،
+        // EF کلید Guid را به‌صورت خودکار تولیدشده فرض می‌کند و مقدار ارسالی را نادیده
+        // می‌گیرد — که یعنی هر تسویه یک شناسهٔ تازه می‌گرفت و قید یکتایی هیچ‌وقت فعال نمی‌شد.
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.TradeId).ValueGeneratedNever();
+
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.SettledAt).IsRequired();
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.Symbol).IsRequired().HasMaxLength(32);
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.Quantity).IsRequired().HasPrecision(28, 8);
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.QuoteQuantity).IsRequired().HasPrecision(28, 8);
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.BuyerUserId).IsRequired();
+        modelBuilder.Entity<TradeSettlement>().Property(s => s.SellerUserId).IsRequired();
+
+        // برای پرس‌وجوی «تسویه‌های اخیر» در مغایرت‌گیری (#39).
+        modelBuilder.Entity<TradeSettlement>().HasIndex(s => s.SettledAt);
     }
-} 
+}
