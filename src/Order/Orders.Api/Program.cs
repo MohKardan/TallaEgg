@@ -110,6 +110,11 @@ builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, Tal
 // MatchingEngineRegistration نوشته شده، که تست‌ها هم از همان استفاده می‌کنند.
 builder.Services.AddMatchingEngine();
 
+// آزادسازی باقی‌ماندهٔ وثیقه (issue #52). هم OrderService (هنگام لغو) و هم
+// OutboxProcessorService (پس از تسویه) از همین یک نمونه استفاده می‌کنند تا فرمول
+// «چقدر قفل مانده» فقط یک جا تعریف شده باشد.
+builder.Services.AddScoped<Orders.Application.Services.OrderCollateralReconciler>();
+
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
 

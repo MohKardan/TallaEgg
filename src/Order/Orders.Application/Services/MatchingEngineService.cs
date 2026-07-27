@@ -460,9 +460,13 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                     "Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
                     makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
 
-                // اگر سفارشی کاملاً پر شده، باقی‌ماندهٔ وثیقه‌اش را آزاد می‌کنیم.
-                await ReleaseResidualLockIfCompletedAsync(buyOrder.Id);
-                await ReleaseResidualLockIfCompletedAsync(sellOrder.Id);
+                // آزادسازی باقی‌ماندهٔ وثیقه عمداً اینجا انجام نمی‌شود.
+                //
+                // اینجا قفلِ موجودی هنوز ساخته نشده (OrderService بعد از تطبیق قفل
+                // می‌کند — یافتهٔ C-5) و تسویه هم که آن را مصرف می‌کند بعدتر توسط
+                // outbox اجرا می‌شود. تلاش برای آزادسازی در این نقطه با هر دو مسابقه
+                // می‌دهد و در تست واقعی هم شکست خورد. حالا OutboxProcessorService پس
+                // از تسویهٔ موفق این کار را می‌کند (issue #52).
             }
             else
             {
@@ -473,90 +477,6 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         {
             _logger.LogError(ex, "💥 Error executing Maker/Taker trade");
         }
-    }
-
-    /// <summary>
-    /// اگر سفارش کاملاً پر شده باشد، هر مقدار وثیقه‌ای که هنوز به نام آن قفل مانده آزاد می‌شود.
-    ///
-    /// چرا لازم است (issue #52): مبلغ قفل‌شده یک بار برای کل سفارش حساب می‌شود
-    /// (Round(Amount × Price))، ولی مصرف در هر fill جداگانه گرد می‌شود. مجموع مقادیرِ
-    /// جداگانه‌گردشده با مقدارِ یک‌بار‌گردشده برابر نیست، پس پس از پر شدن کامل سفارش یک
-    /// باقی‌مانده در LockedBalance جا می‌ماند. آن باقی‌مانده متعلق به کاربر است و هیچ
-    /// مسیری آن را برنمی‌گرداند.
-    ///
-    /// این کار عمداً بیرون از تراکنش تطبیق انجام می‌شود، چون کیف پول در سرویس و
-    /// دیتابیس دیگری است. اگر شکست بخورد وضعیت از امروز بدتر نمی‌شود (باقی‌مانده
-    /// همان‌جا می‌ماند) و مغایرت‌گیری #39 می‌تواند بعداً آن را بردارد.
-    /// </summary>
-    private async Task ReleaseResidualLockIfCompletedAsync(Guid orderId)
-    {
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
-            var tradeRepository = scope.ServiceProvider.GetRequiredService<ITradeRepository>();
-            var walletApiClient = scope.ServiceProvider.GetRequiredService<IWalletApiClient>();
-
-            var order = await orderRepository.GetByIdAsync(orderId);
-            if (order is null || order.Status != OrderStatus.Completed)
-                return;
-
-            var (asset, residual) = await ComputeResidualLockAsync(order, tradeRepository);
-            if (residual <= 0)
-                return;
-
-            var (success, message) = await walletApiClient.UnlockBalanceAsync(order.UserId, asset, residual);
-
-            if (success)
-                _logger.LogInformation(
-                    "Released residual lock of {Residual} {Asset} for completed order {OrderId}.",
-                    residual, asset, orderId);
-            else
-                _logger.LogWarning(
-                    "Could not release residual lock of {Residual} {Asset} for completed order {OrderId}: {Message}",
-                    residual, asset, orderId, message);
-        }
-        catch (Exception ex)
-        {
-            // آزاد نشدن باقی‌مانده نباید تطبیق را بشکند؛ معامله از قبل commit شده است.
-            _logger.LogError(ex, "Error releasing residual lock for order {OrderId}", orderId);
-        }
-    }
-
-    /// <summary>
-    /// باقی‌ماندهٔ وثیقهٔ یک سفارش: «آنچه قفل شد» منهای «آنچه معاملات آن مصرف کردند».
-    ///
-    /// «آنچه قفل شد» دقیقاً از روی خودِ سفارش بازمحاسبه می‌شود و این تنها به این دلیل
-    /// ممکن است که قیمت هنگام ثبت سفارش به دقت ستون گرد می‌شود. پیش از آن، قفل با
-    /// قیمتِ گرد‌نشده حساب می‌شد و از روی ردیف ذخیره‌شده قابل بازسازی نبود.
-    /// </summary>
-    private static async Task<(string Asset, decimal Residual)> ComputeResidualLockAsync(
-        Order order, ITradeRepository tradeRepository)
-    {
-        var parts = order.Asset.Split('/');
-        var baseAsset = parts[0];
-        var quoteAsset = parts.Length > 1 ? parts[1] : parts[0];
-
-        if (order.Side == OrderSide.Buy)
-        {
-            // خریدار ارز مظنه را قفل می‌کند و معاملات، QuoteQuantity مصرف می‌کنند.
-            // Ceiling — همان فرمول و همان جهتی که هنگام ثبت سفارش قفل کرد.
-            var locked = CurrenciesConstant.CeilingToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
-            var trades = await tradeRepository.GetTradesByBuyOrderIdAsync(order.Id);
-            var consumed = trades.Sum(t => t.QuoteQuantity);
-
-            return (quoteAsset, locked - consumed);
-        }
-
-        // فروشنده دارایی پایه را قفل می‌کند و معاملات دقیقاً Quantity مصرف می‌کنند —
-        // بدون گرد کردن، چون همان واحدی است که سفارش با آن ثبت شده. پس این سمت در
-        // حالت عادی باقی‌مانده‌ای ندارد؛ محاسبه‌اش را نگه می‌داریم تا اگر روزی این
-        // فرض عوض شد، خودبه‌خود پوشش داده شود.
-        var lockedBase = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount, baseAsset);
-        var sellTrades = await tradeRepository.GetTradesBySellOrderIdAsync(order.Id);
-        var consumedBase = sellTrades.Sum(t => t.Quantity);
-
-        return (baseAsset, lockedBase - consumedBase);
     }
 
     /// <summary>

@@ -95,6 +95,19 @@ public class OutboxProcessorService : BackgroundService
                 message.MarkCompleted();
                 _logger.LogInformation("Outbox message {Id} ({Type}, aggregate {AggregateId}) completed.",
                     message.Id, message.Type, message.AggregateId);
+
+                // پس از تسویه، اگر سفارشی کاملاً پر شده باشد باقی‌ماندهٔ وثیقه‌اش آزاد
+                // می‌شود.
+                //
+                // چرا اینجا و نه بلافاصله پس از تطبیق: قفلِ موجودی بعد از تطبیق ساخته
+                // می‌شود (یافتهٔ C-5) و همین‌جا تازه مصرف شده است. اجرای زودتر با هر دو
+                // مسابقه می‌داد — و در تست واقعی روی کیف پولی اجرا شد که هنوز چیزی در
+                // آن قفل نشده بود و شکست خورد (issue #52).
+                //
+                // این فراخوانی گارد خودش را دارد و هرگز استثنا بیرون نمی‌دهد. اگر می‌داد،
+                // بلوک catch پایین یک پیامِ outbox که واقعاً موفق شده را «شکست‌خورده»
+                // علامت می‌زد و دوباره تحویلش می‌داد.
+                await ReleaseResidualCollateralAsync(message, scope);
             }
             catch (Exception ex)
             {
@@ -148,6 +161,35 @@ public class OutboxProcessorService : BackgroundService
                 // stall this guard exists to prevent.
                 db.Entry(message).State = EntityState.Detached;
             }
+        }
+    }
+
+    /// <summary>
+    /// پس از تسویهٔ موفقِ یک معامله، باقی‌ماندهٔ وثیقهٔ هر سفارشی که با آن کامل شده را آزاد می‌کند.
+    ///
+    /// عمداً هیچ استثنایی بیرون نمی‌دهد: تسویه از قبل موفق بوده و نباید به‌خاطر این کارِ
+    /// جانبی «شکست‌خورده» علامت بخورد و دوباره تحویل داده شود. اگر آزادسازی انجام نشود
+    /// هیچ پولی گم نمی‌شود — باقی‌مانده قفل می‌ماند و مغایرت‌گیری (#39) می‌تواند بعداً
+    /// برش دارد.
+    /// </summary>
+    private async Task ReleaseResidualCollateralAsync(OutboxMessage message, IServiceScope scope)
+    {
+        if (message.Type != "TradeSettlement") return;
+
+        try
+        {
+            var trade = JsonSerializer.Deserialize<TradeDto>(message.Payload);
+            if (trade is null) return;
+
+            var reconciler = scope.ServiceProvider.GetRequiredService<OrderCollateralReconciler>();
+
+            await reconciler.ReleaseResidualLockIfCompletedAsync(trade.BuyOrderId);
+            await reconciler.ReleaseResidualLockIfCompletedAsync(trade.SellOrderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error releasing residual collateral after settling trade {AggregateId}.", message.AggregateId);
         }
     }
 

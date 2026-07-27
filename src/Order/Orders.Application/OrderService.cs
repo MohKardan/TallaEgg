@@ -23,10 +23,11 @@ public class OrderService
     private readonly UsersApiClient _usersApiClient;
 
     /// <summary>
-    /// برای محاسبهٔ «چقدر از وثیقهٔ یک سفارش واقعاً مصرف شده» لازم است؛ آزادسازی هنگام
-    /// لغو باید از روی معاملات انجام‌شده باشد نه یک بازمحاسبهٔ مستقل (issue #52).
+    /// محاسبهٔ باقی‌ماندهٔ وثیقه اینجا و در پردازشگر outbox مشترک است. اگر دو کپی از این
+    /// فرمول وجود داشته باشد، دیر یا زود از هم جدا می‌شوند — و «چند فرمول برای یک
+    /// کمیت» دقیقاً همان چیزی بود که #52 را ساخت.
     /// </summary>
-    private readonly ITradeRepository _tradeRepository;
+    private readonly Services.OrderCollateralReconciler _collateralReconciler;
 
     public OrderService(
         IOrderRepository orderRepository,
@@ -34,14 +35,14 @@ public class OrderService
         IMatchingEngine matchingEngine,
         ILogger<OrderService> logger,
         UsersApiClient UsersApiClient,
-        ITradeRepository tradeRepository)
+        Services.OrderCollateralReconciler collateralReconciler)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
         _matchingEngine = matchingEngine ?? throw new ArgumentNullException(nameof(matchingEngine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _usersApiClient = UsersApiClient;
-        _tradeRepository = tradeRepository ?? throw new ArgumentNullException(nameof(tradeRepository));
+        _collateralReconciler = collateralReconciler ?? throw new ArgumentNullException(nameof(collateralReconciler));
     }
 
     /// <summary>
@@ -212,34 +213,6 @@ public class OrderService
             _logger.LogError(ex, "Error creating unified order for user {UserId}", request.UserId);
             throw new InvalidOperationException("خطا در ایجاد سفارش", ex);
         }
-    }
-
-    /// <summary>
-    /// باقی‌ماندهٔ وثیقهٔ یک سفارش: «آنچه قفل شد» منهای «آنچه معاملات آن مصرف کردند».
-    ///
-    /// «آنچه قفل شد» دقیقاً از روی خودِ سفارش بازمحاسبه می‌شود، و این تنها به این دلیل
-    /// ممکن است که قیمت هنگام ثبت سفارش به دقت ستون گرد می‌شود (issue #52). پیش از آن،
-    /// قفل با قیمتِ گرد‌نشده حساب می‌شد و از روی ردیف ذخیره‌شده قابل بازسازی نبود.
-    /// </summary>
-    private async Task<(string Asset, decimal Residual)> ComputeResidualLockAsync(Order order)
-    {
-        var parts = order.Asset.Split('/');
-        var baseAsset = parts[0];
-        var quoteAsset = parts.Length > 1 ? parts[1] : parts[0];
-
-        if (order.Side == OrderSide.Buy)
-        {
-            // باید دقیقاً همان فرمولی باشد که هنگام ثبت سفارش قفل کرد — از جمله جهت
-            // گرد کردن. اگر اینجا Round و آنجا Ceiling باشد، دوباره همان اختلافی ساخته
-            // می‌شود که این کد برای برداشتنش نوشته شده.
-            var locked = CurrenciesConstant.CeilingToCurrencyPrecision(order.Amount * order.Price, quoteAsset);
-            var trades = await _tradeRepository.GetTradesByBuyOrderIdAsync(order.Id);
-            return (quoteAsset, locked - trades.Sum(t => t.QuoteQuantity));
-        }
-
-        var lockedBase = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount, baseAsset);
-        var sellTrades = await _tradeRepository.GetTradesBySellOrderIdAsync(order.Id);
-        return (baseAsset, lockedBase - sellTrades.Sum(t => t.Quantity));
     }
 
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
@@ -419,7 +392,7 @@ public class OrderService
                 // یک کمیت، تضمین می‌کرد که پس از لغوِ یک سفارشِ نیمه‌پرشده باقی‌مانده‌ای
                 // جا بماند — و در جهت دیگر، می‌توانست بیش از مقدار قفل‌شده آزاد کند
                 // (issue #52).
-                var (assetToUnlock, amountToUnlock) = await ComputeResidualLockAsync(order);
+                var (assetToUnlock, amountToUnlock) = await _collateralReconciler.ComputeResidualLockAsync(order);
 
                 if (amountToUnlock > 0)
                 {
