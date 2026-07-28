@@ -172,72 +172,12 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             await _botClient.SendMessage(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
-        public static async Task SendUserOrdersWithPagingAsync(
-        this ITelegramBotClient bot,
-        long chatId,
-        PagedResult<OrderHistoryDto> page,
-        int currentPage,
-        Guid userId)
-        {
-            if (page == null || !page.Items.Any())
-            {
-                await bot.SendMessage(chatId, "هیچ سفارشی یافت نشد.");
-                return;
-            }
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"📋 *سفارشات شما – صفحه {currentPage} از {page.TotalPages}*\n");
-
-            foreach (var o in page.Items)
-            {
-                sb.AppendLine(
-                    $"📌 *سفارش #{o.Id.ToString()[..8]}…*\n" +
-                    $"🏷️ دارایی: *{o.Asset}*\n" +
-                    $"🔺 نوع: *{GetTypeIcon(o.Type)} {o.Type}*\n" +
-                    $"📊 حجم: *{o.Amount}* @ قیمت *{o.Price:#,0}*\n" +
-                    $"📈 بازار: *{o.TradingType}* | نقش: *{o.Role}*\n" +
-                    $"⚡ وضعیت: *{GetStatusEmoji(o.Status)} {o.Status}*\n" +
-                    $"🕓 ثبت: *{o.CreatedAt:yyyy/MM/dd HH:mm}* " +
-                    (o.UpdatedAt.HasValue ? $"| آخرین ویرایش: *{o.UpdatedAt:HH:mm}*" : "") +
-                    (!string.IsNullOrWhiteSpace(o.Notes) ? $"\n📝 یادداشت: _{o.Notes}_" : "") +
-                    "\n➖➖➖➖➖➖➖➖➖\n");
-            }
-
-            // ساخت کیبورد صفحه‌بندی
-            var buttons = new List<InlineKeyboardButton>();
-            if (currentPage > 1)
-                buttons.Add(InlineKeyboardButton.WithCallbackData("⬅️ قبلی", $"orders_{userId}_{currentPage - 1}"));
-            if (currentPage < page.TotalPages)
-                buttons.Add(InlineKeyboardButton.WithCallbackData("بعدی ➡️", $"orders_{userId}_{currentPage + 1}"));
-
-            var keyboard = buttons.Any()
-                ? new InlineKeyboardMarkup(buttons)
-                : null;
-
-            await bot.SendMessage(
-                chatId: chatId,
-                text: sb.ToString(),
-                parseMode: ParseMode.None,
-                replyMarkup: keyboard);
-        }
-
-        // -------------- کمکی -----------------
-        private static string GetTypeIcon(OrderSide type) => type switch
-        {
-            OrderSide.Buy => "🟢",
-            OrderSide.Sell => "🔴",
-            _ => "⚪"
-        };
-
-        private static string GetStatusEmoji(OrderStatus status) => status switch
-        {
-            OrderStatus.Pending => "⏳",
-            OrderStatus.Completed => "✅",
-            OrderStatus.Cancelled => "❌",
-            OrderStatus.Failed => "⚠️",
-            _ => "❓"
-        };
-
+        // SendUserOrdersWithPagingAsync و کمکی‌هایش (GetTypeIcon/GetStatusEmoji) حذف شدند.
+        //
+        // از هیچ‌جا صدا زده نمی‌شد — نسخهٔ زندهٔ فهرست سفارش‌ها در OrderListHandler است.
+        // این نسخهٔ متروک تنها جایی بود که o.Role را به کاربر نشان می‌داد، مقداری که
+        // همیشه Maker است و درست نیست (issue #35). یعنی یک مقدار نادرست فقط یک
+        // فراخوانی با آن فاصله داشت.
 
         public static async Task SendApproveOrRejectUserToAdminsKeyboard(
      this ITelegramBotClient botClient,

@@ -60,8 +60,8 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
 // فقط سرویس‌های مربوط به Orders و Price ثبت شوند
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 //builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<CreateOrderCommandHandler>();
-builder.Services.AddScoped<CreateTakerOrderCommandHandler>();
+// CreateOrderCommandHandler و CreateTakerOrderCommandHandler حذف شدند: هر دو کلاس
+// کاملاً خالی بودند (تمام بدنه کامنت شده) ولی در DI ثبت می‌شدند.
 
 // سرویس‌های مربوط به Symbols
 // builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
