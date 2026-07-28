@@ -29,13 +29,19 @@ public class OrderService
     /// </summary>
     private readonly Services.OrderCollateralReconciler _collateralReconciler;
 
+    /// <summary>در حالت مظنه‌ای، «بهترین قیمت» از مظنه خوانده می‌شود نه از دفتر سفارش (issue #48).</summary>
+    private readonly IQuoteRepository _quoteRepository;
+    private readonly Services.MarketModeProvider _marketMode;
+
     public OrderService(
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
         IMatchingEngine matchingEngine,
         ILogger<OrderService> logger,
         UsersApiClient UsersApiClient,
-        Services.OrderCollateralReconciler collateralReconciler)
+        Services.OrderCollateralReconciler collateralReconciler,
+        IQuoteRepository quoteRepository,
+        Services.MarketModeProvider marketMode)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
@@ -43,6 +49,8 @@ public class OrderService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _usersApiClient = UsersApiClient;
         _collateralReconciler = collateralReconciler ?? throw new ArgumentNullException(nameof(collateralReconciler));
+        _quoteRepository = quoteRepository ?? throw new ArgumentNullException(nameof(quoteRepository));
+        _marketMode = marketMode ?? throw new ArgumentNullException(nameof(marketMode));
     }
 
     /// <summary>
@@ -372,6 +380,32 @@ public class OrderService
     public async Task<BestPricesDto> GetBestBidAskAsync(string asset, TradingType tradingType)
     {
         Log.Information(">--------------------- GetBestBidAskAsync({asset}, {tradingType}) ---------------------<", asset, tradingType);
+
+        // در حالت مظنه‌ای، قیمت‌ها از مظنهٔ منتشرشده می‌آیند و نه از دفتر سفارش (issue #48).
+        //
+        // در این حالت هیچ سفارشی از قبل در دفتر نمی‌خوابد، پس اگر از دفتر بخوانیم بین دو
+        // معامله «قیمتی وجود ندارد» برمی‌گردد — در حالی که ادمین قیمت داده و آماده است.
+        if (_marketMode.GetMode(asset) == MarketMode.Dealer)
+        {
+            var quote = await _quoteRepository.GetActiveAsync(asset);
+
+            if (quote is null)
+            {
+                Log.Information("No active quote published for {Asset}.", asset);
+                return new BestPricesDto { Symbol = asset, BestBidPrice = null, BestAskPrice = null };
+            }
+
+            Log.Information("Quote prices for {Asset}: bid {Bid}, ask {Ask}", asset, quote.BuyPrice, quote.SellPrice);
+
+            // Bid همان قیمتی است که ادمین می‌خرد و Ask قیمتی که می‌فروشد — دقیقاً همان
+            // معنایی که دفتر سفارش هم می‌داد، پس مصرف‌کننده‌ها تغییری نمی‌بینند.
+            return new BestPricesDto
+            {
+                Symbol = asset,
+                BestBidPrice = quote.BuyPrice,
+                BestAskPrice = quote.SellPrice
+            };
+        }
 
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
 
