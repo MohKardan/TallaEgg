@@ -86,15 +86,7 @@ public class OrderService
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
 
-            // مبلغ قفل عمداً رو به بالا گرد می‌شود، در حالی که مصرفِ هر معامله رو به
-            // پایین. این جهت‌های مخالف تضمین می‌کنند «مجموع مصرف ≤ مقدار قفل‌شده»
-            // همیشه برقرار بماند، پس بیش‌مصرف — که یک معاملهٔ معتبر را رد می‌کرد —
-            // غیرممکن می‌شود. توضیح کامل روی CeilingToCurrencyPrecision (issue #52).
-            //
-            // سمت فروش گرد کردن لازم ندارد: وثیقه‌اش خودِ مقدار سفارش است.
-            var amountToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
-                ? CurrenciesConstant.CeilingToCurrencyPrecision(request.Quantity * request.Price, assetToCheck)
-                : CurrenciesConstant.RoundToCurrencyPrecision(request.Quantity, assetToCheck);
+            var (_, amountToCheck) = ComputeCollateral(request.Symbol, orderSide, request.Quantity, request.Price);
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);
@@ -155,27 +147,10 @@ public class OrderService
                 request.Notes
             );
 
+            // قفل وثیقه دیگر اینجا انجام نمی‌شود؛ داخل CreateOrderAsync و پیش از تأیید
+            // سفارش است. تا وقتی سفارش تأیید نشده قابل تطبیق نیست، پس هیچ معامله‌ای
+            // نمی‌تواند پیش از قفل شدن وثیقه‌اش وجود داشته باشد (یافتهٔ ممیزی C-5).
             order = await CreateOrderAsync(limitCommand);
-
-            // 5. For limit orders, lock the balance
-            //if (request.Type == OrderTypeEnum.Limit)
-            if(order != null)
-            {
-                var (lockSuccess, lockMessage, walletDto) = await _walletApiClient.LockBalanceAsync(
-                    userId,
-                    assetToCheck,
-                    amountToCheck);
-
-                if (!lockSuccess)
-                {
-                    _logger.LogWarning("Failed to lock balance for user {UserId}: {Message}", userId, lockMessage);
-                    throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
-                }
-
-                _logger.LogInformation("Successfully locked {Amount} {Asset} for user {UserId}",
-                    amountToCheck, assetToCheck, userId);
-
-            }
 
             // Determine role based on order status
             determinedRole = order.Status == OrderStatus.Completed || order.Status == OrderStatus.Partially
@@ -215,6 +190,30 @@ public class OrderService
         }
     }
 
+    /// <summary>
+    /// وثیقهٔ لازم برای یک سفارش: کدام دارایی و چه مقدار.
+    ///
+    /// تنها تعریف این محاسبه در سیستم. اعتبارسنجی و قفل هر دو از همین استفاده می‌کنند؛
+    /// اگر دو نسخه وجود داشته باشد دیر یا زود از هم جدا می‌شوند — و «چند فرمول برای یک
+    /// کمیت» همان چیزی بود که #52 را ساخت.
+    ///
+    /// مبلغ خرید رو به بالا گرد می‌شود، در حالی که مصرفِ هر معامله رو به پایین. این
+    /// جهت‌های مخالف تضمین می‌کنند «مجموع مصرف ≤ مقدار قفل‌شده» همیشه برقرار بماند
+    /// (توضیح کامل روی CeilingToCurrencyPrecision). سمت فروش گرد کردن لازم ندارد،
+    /// چون وثیقه‌اش خودِ مقدار سفارش است.
+    /// </summary>
+    private static (string Asset, decimal Amount) ComputeCollateral(
+        string symbol, OrderSide side, decimal quantity, decimal price)
+    {
+        var parts = symbol.Split('/');
+        var baseAsset = parts[0];
+        var quoteAsset = parts.Length > 1 ? parts[1] : parts[0];
+
+        return side == OrderSide.Buy
+            ? (quoteAsset, CurrenciesConstant.CeilingToCurrencyPrecision(quantity * price, quoteAsset))
+            : (baseAsset, CurrenciesConstant.RoundToCurrencyPrecision(quantity, baseAsset));
+    }
+
     public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
     {
         // Create order with Pending status
@@ -228,15 +227,48 @@ public class OrderService
             command.Notes
         );
 
-        // Save order to database first
+        // سفارش با وضعیت Pending ذخیره می‌شود و در این وضعیت برای موتور تطبیق نامرئی
+        // است — این همان چیزی است که ترتیب زیر را ممکن می‌کند.
         var createdOrder = await _orderRepository.AddAsync(order);
 
-        // Confirm order first (business validation, balance check already done above)
+        // ► قفل وثیقه پیش از تأیید سفارش.
+        //
+        // پیش‌تر قفل پس از تطبیق انجام می‌شد (یافتهٔ ممیزی C-5): معامله ثبت و commit
+        // می‌شد و تازه بعد وثیقه قفل می‌گردید. چون معامله در تراکنش خودش commit شده بود،
+        // شکست قفل چیزی را برنمی‌گرداند و یک معاملهٔ ثبت‌شدهٔ بدون وثیقه باقی می‌ماند که
+        // تسویه‌اش هرگز موفق نمی‌شد.
+        //
+        // حالا اگر قفل شکست بخورد، سفارش هرگز تأیید نمی‌شود، پس هرگز قابل تطبیق نیست و
+        // هیچ معامله‌ای وجود ندارد که بخواهد گیر کند. ترتیب از یک قرارداد رفتاری به یک
+        // تضمین ساختاری تبدیل می‌شود.
+        var (collateralAsset, collateralAmount) =
+            ComputeCollateral(command.Asset, command.Type, command.Amount, command.Price);
+
+        var (lockSuccess, lockMessage, _) = await _walletApiClient.LockBalanceAsync(
+            command.UserId, collateralAsset, collateralAmount);
+
+        if (!lockSuccess)
+        {
+            _logger.LogWarning(
+                "Failed to lock {Amount} {Asset} for order {OrderId} (user {UserId}): {Message}",
+                collateralAmount, collateralAsset, createdOrder.Id, command.UserId, lockMessage);
+
+            // سفارش به‌صراحت Failed علامت می‌خورد تا در وضعیت Pending رها نشود؛ در آن
+            // صورت endpoint تأیید دستی می‌توانست بعداً بدون وثیقه فعالش کند.
+            await _orderRepository.UpdateStatusAsync(createdOrder.Id, OrderStatus.Failed,
+                $"قفل وثیقه انجام نشد: {lockMessage}");
+
+            throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
+        }
+
+        _logger.LogInformation("Locked {Amount} {Asset} for order {OrderId} (user {UserId}).",
+            collateralAmount, collateralAsset, createdOrder.Id, command.UserId);
+
+        // تأیید سفارش — از این لحظه قابل تطبیق می‌شود، و وثیقه‌اش از قبل قفل است.
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
-        
+
         if (confirmSuccess)
         {
-            // Only send confirmed orders to matching engine
             await _matchingEngine.ProcessOrderAsync(createdOrder);
         }
         else
