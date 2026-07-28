@@ -40,30 +40,9 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
 
-        public static async Task MainMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
-        {
-
-            var keyboard = new ReplyKeyboardMarkup(
-           new[]
-           {
-                new[] { new KeyboardButton(BotBtns.BtnSpot), new KeyboardButton(BotBtns.BtnFutures) },
-
-                new[] { new KeyboardButton(BotBtns.BtnAccounting), new KeyboardButton(BotBtns.BtnHelp) },
-                new[] { new KeyboardButton(BotBtns.BtnWallet), new KeyboardButton(BotBtns.BtnHistory) },
-           }
-            )
-            {
-                ResizeKeyboard = true,
-            };
-
-
-            await _botClient.SendMessage(
-                chatId,
-                "🎯 منوی اصلی\n" +
-    "لطفاً یکی از گزینه‌های زیر را انتخاب کنید:",
-            replyMarkup: keyboard);
-
-        }
+        // MainMenuKeyboard اینجا حذف شد: از هیچ‌جا صدا زده نمی‌شد و تنها جایی بود که دکمهٔ
+        // «📈 آتی» را نشان می‌داد — دکمه‌ای برای بازاری که وجود ندارد و هیچ handlerی هم
+        // نداشت. منوی اصلیِ واقعی جای دیگری ساخته می‌شود.
 
         public static async Task SendContactKeyboardAsync(this ITelegramBotClient _botClient, long chatId)
         {

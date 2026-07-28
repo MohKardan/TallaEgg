@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -34,11 +35,9 @@ public class OrderMatchingRepository
             // Use LINQ instead of raw SQL to avoid conversion issues
             // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
             var orders = await _context.Orders
-                .Where(o => o.Asset == asset && 
-                           o.Side == OrderSide.Buy && 
-                           (o.Status == OrderStatus.Pending || 
-                            o.Status == OrderStatus.Confirmed || 
-                            o.Status == OrderStatus.Partially) &&
+                .Where(Matchable)   // فقط سفارش تأییدشده؛ Pending هنوز وثیقه ندارد
+                .Where(o => o.Asset == asset &&
+                           o.Side == OrderSide.Buy &&
                            o.RemainingAmount > 0)
                 .OrderByDescending(o => o.Price)
                 .ThenBy(o => o.CreatedAt)
@@ -65,11 +64,9 @@ public class OrderMatchingRepository
             // Use LINQ instead of raw SQL to avoid conversion issues
             // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
             var orders = await _context.Orders
-                .Where(o => o.Asset == asset && 
-                           o.Side == OrderSide.Sell && 
-                           (o.Status == OrderStatus.Pending || 
-                            o.Status == OrderStatus.Confirmed || 
-                            o.Status == OrderStatus.Partially) &&
+                .Where(Matchable)   // فقط سفارش تأییدشده؛ Pending هنوز وثیقه ندارد
+                .Where(o => o.Asset == asset &&
+                           o.Side == OrderSide.Sell &&
                            o.RemainingAmount > 0)
                 .OrderBy(o => o.Price)
                 .ThenBy(o => o.CreatedAt)
@@ -234,12 +231,34 @@ public class OrderMatchingRepository
     /// Check if order can be processed
     /// بررسی امکان پردازش سفارش
     /// </summary>
-    private static bool IsOrderProcessable(Order order)
-    {
-        return order.Status == OrderStatus.Pending || 
-               order.Status == OrderStatus.Confirmed || 
-               order.Status == OrderStatus.Partially;
-    }
+    /// <summary>
+    /// آیا این سفارش می‌تواند وارد تطبیق شود؟
+    ///
+    /// <b>Pending عمداً بیرون است.</b> سفارش لحظه‌ای که ذخیره می‌شود Pending است، یعنی
+    /// پیش از آنکه وثیقه‌اش قفل شود. اگر Pending قابل تطبیق باشد، حلقهٔ پس‌زمینه — که هر
+    /// ثانیه اجرا می‌شود — می‌تواند سفارشی را بردارد که هنوز هیچ وثیقه‌ای پشتش نیست، و
+    /// معامله‌ای ثبت شود که تسویه‌اش هرگز موفق نمی‌شود.
+    ///
+    /// این همان یافتهٔ ممیزی C-5 است، در ریشه‌اش. با کنار گذاشتن Pending، ترتیب
+    /// «قفل، سپس تطبیق» یک تضمین ساختاری می‌شود نه یک قرارداد رفتاری: سفارش فقط پس از
+    /// موفقیت قفل به Confirmed می‌رسد، و فقط Confirmed دیده می‌شود.
+    ///
+    /// این باید تنها تعریف «قابل تطبیق» در کل سیستم بماند — پرس‌وجوهای دفتر سفارش و
+    /// بازبینیِ داخل تراکنش هر دو از همین استفاده می‌کنند، وگرنه دیر یا زود از هم جدا
+    /// می‌شوند.
+    ///
+    /// عمداً <see cref="Expression"/> است و نه یک متد معمولی: EF Core نمی‌تواند فراخوانی
+    /// متد دلخواه را به SQL ترجمه کند و پرس‌وجو موقع اجرا استثنا می‌داد — خطایی که
+    /// کامپایلر نمی‌گیرد.
+    /// </summary>
+    private static readonly Expression<Func<Order, bool>> Matchable =
+        o => o.Status == OrderStatus.Confirmed ||
+             o.Status == OrderStatus.Partially;
+
+    /// <summary>نسخهٔ کامپایل‌شدهٔ همان شرط، برای بازبینی روی موجودیتی که از قبل در حافظه است.</summary>
+    private static readonly Func<Order, bool> IsMatchable = Matchable.Compile();
+
+    private static bool IsOrderProcessable(Order order) => IsMatchable(order);
 
     /// <summary>
     /// Update order status based on remaining amount
@@ -358,10 +377,8 @@ public class OrderMatchingRepository
         try
         {
             return await _context.Orders
-                .Where(o => (o.Status == OrderStatus.Pending || 
-                            o.Status == OrderStatus.Confirmed || 
-                            o.Status == OrderStatus.Partially) &&
-                           o.RemainingAmount > 0)
+                .Where(Matchable)
+                .Where(o => o.RemainingAmount > 0)
                 .Select(o => o.Asset)
                 .Distinct()
                 .ToListAsync();

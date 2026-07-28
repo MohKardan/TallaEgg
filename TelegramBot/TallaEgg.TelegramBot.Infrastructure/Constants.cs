@@ -16,7 +16,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         public const string BtnMainMenu = "💰 منوی اصلی";
         public const string BtnSpot = "💰 نقدی";
-        public const string BtnFutures = "📈 آتی";
+        // BtnFutures حذف شد: بازار آتی وجود ندارد و هیچ handlerی برای این دکمه نبود.
         public const string BtnAccounting = "📊 حسابداری";
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
