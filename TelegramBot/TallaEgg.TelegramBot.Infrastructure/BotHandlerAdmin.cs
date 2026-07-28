@@ -395,45 +395,35 @@ namespace TallaEgg.TelegramBot
                         string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
                 }
 
-                // Create buy order
-                var buyOrder = new OrderDto
+                // مظنه منتشر می‌شود — دیگر دو سفارش ۱۰۰۰ گرمی ثبت نمی‌شود (issue #48).
+                //
+                // مقدار ۱۰۰۰ کاملاً دلبخواه بود و حدود ۱۹ میلیارد تومان و ۱۰۰۰ گرم وثیقهٔ
+                // ادمین را فقط برای «اعلام قیمت» قفل می‌کرد. حالا انتشار مظنه هیچ چیزی قفل
+                // نمی‌کند؛ سفارش‌ها فقط وقتی مشتری معامله می‌کند ساخته می‌شوند، دقیقاً به
+                // اندازهٔ مقدار درخواستی، و در همان لحظه مصرف می‌شوند.
+                var buyPricePerGram = CurrenciesConstant.RoundOrderPrice(
+                    buyPrice / CurrenciesConstant.GramsPerMesghal);
+
+                var sellPricePerGram = CurrenciesConstant.RoundOrderPrice(
+                    sellPrice / CurrenciesConstant.GramsPerMesghal);
+
+                var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
+                    defaultAsset, buyPricePerGram, sellPricePerGram, userId);
+
+                if (published)
                 {
-                    Asset = defaultAsset,
-                    Amount = defaultAmount,
-                    Price = buyPrice / 4.3318m, // Convert to grams for MAUA
-                    UserId = userId,
-                    Side = OrderSide.Buy,
-                    Type = OrderType.Limit,
-                    TradingType = TradingType.Spot
-                };
-
-                var (buySuccess, buyMessage) = await _orderApi.SubmitOrderAsync(buyOrder);
-
-                // Create sell order
-                var sellOrder = new OrderDto
+                    await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgAdminQuotePublished,
+                        PersianFormat.Symbol(defaultAsset),
+                        PersianFormat.Number(buyPrice),
+                        PersianFormat.Number(buyPricePerGram),
+                        PersianFormat.Number(sellPrice),
+                        PersianFormat.Number(sellPricePerGram)));
+                }
+                else
                 {
-                    Asset = defaultAsset,
-                    Amount = defaultAmount,
-                    Price = sellPrice / 4.3318m, // Convert to grams for MAUA
-                    UserId = userId,
-                    Side = OrderSide.Sell,
-                    Type = OrderType.Limit,
-                    TradingType = TradingType.Spot
-                };
-
-                var (sellSuccess, sellMessage) = await _orderApi.SubmitOrderAsync(sellOrder);
-
-                // Send result message
-                var resultMessage = string.Format(BotMsgs.MsgAdminPriceSubmitResult,
-                    PersianFormat.Symbol(defaultAsset),
-                    buySuccess ? BotMsgs.MsgAdminOrderOk : string.Format(BotMsgs.MsgAdminOrderFailed, buyMessage),
-                    sellSuccess ? BotMsgs.MsgAdminOrderOk : string.Format(BotMsgs.MsgAdminOrderFailed, sellMessage),
-                    PersianFormat.Number(buyPrice),
-                    PersianFormat.Number(buyOrder.Price),
-                    PersianFormat.Number(sellPrice),
-                    PersianFormat.Number(sellOrder.Price));
-
-                await _botClient.SendMessage(chatId, resultMessage);
+                    await _botClient.SendMessage(chatId,
+                        string.Format(BotMsgs.MsgAdminQuoteFailed, publishMessage));
+                }
             }
             catch (Exception ex)
             {

@@ -949,6 +949,61 @@ namespace TallaEgg.TelegramBot
 
             orderState.Amount = amount;
 
+            // در حالت مظنه‌ای اصلاً قیمتی از مشتری پرسیده نمی‌شود (issue #48): قیمت همان
+            // مظنهٔ منتشرشدهٔ ادمین است. این کل ابهام مثقال/گرم را از جریان مشتری حذف
+            // می‌کند — مشتری فقط مقدار می‌گوید.
+            var activeQuote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+
+            if (activeQuote is not null)
+            {
+                // قیمت مظنه بر حسب گرم ذخیره شده؛ برای نمایش به مثقال تبدیل می‌شود، چون
+                // کاربر قیمت را با همان واحد می‌شناسد.
+                var pricePerGram = orderState.OrderSide == OrderSide.Buy
+                    ? activeQuote.SellPrice   // مشتری می‌خرد ⇒ قیمت فروش ادمین
+                    : activeQuote.BuyPrice;   // مشتری می‌فروشد ⇒ قیمت خرید ادمین
+
+                orderState.Price = pricePerGram;
+                orderState.State = "";
+
+                // از همان قالب‌های تأیید سفارش استفاده می‌شود که برای مسیر عادی نوشته
+                // شده‌اند. یک قالب دوم برای همان اطلاعات، دو جا برای نگهداری می‌ساخت — و
+                // کاربر هم انتظار دارد پیام تأیید همیشه یک شکل باشد.
+                var quoteIsGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
+                var quoteBaseAsset = orderState.Asset.Split('/')[0];
+                var quoteAmountText =
+                    $"{PersianFormat.Amount(orderState.Amount, quoteBaseAsset)} {PersianFormat.Unit(quoteBaseAsset)}";
+                var quoteSideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide);
+                var quoteTotal = CurrenciesConstant.RoundToCurrencyPrecision(
+                    orderState.Amount * pricePerGram, CurrenciesConstant.Toman);
+
+                var quoteMessage = quoteIsGold
+                    ? string.Format(BotMsgs.MsgOrderConfirmationGold,
+                        PersianFormat.Symbol(orderState.Asset),
+                        quoteSideText,
+                        quoteAmountText,
+                        PersianFormat.Number(pricePerGram * CurrenciesConstant.GramsPerMesghal),
+                        PersianFormat.Number(pricePerGram),
+                        PersianFormat.Number(quoteTotal))
+                    : string.Format(BotMsgs.MsgOrderConfirmation,
+                        PersianFormat.Symbol(orderState.Asset),
+                        quoteSideText,
+                        quoteAmountText,
+                        PersianFormat.Number(pricePerGram),
+                        PersianFormat.Number(quoteTotal));
+
+                await _botClient.SendMessage(chatId, quoteMessage,
+                    replyMarkup: new InlineKeyboardMarkup(new[]
+                    {
+                        new InlineKeyboardButton[]
+                        {
+                            InlineKeyboardButton.WithCallbackData(BotBtns.BtnConfirm, InlineCallBackData.confirm_order),
+                            InlineKeyboardButton.WithCallbackData(BotBtns.BtnCancel, InlineCallBackData.cancel_order)
+                        }
+                    }));
+
+                return;
+            }
+
             if (orderState.OrderType == OrderType.Limit)
             {
                 orderState.State = "waiting_for_price";
@@ -1089,21 +1144,30 @@ namespace TallaEgg.TelegramBot
 
             var orderState = _userOrderStates[telegramId];
 
-            // Submit the order using the new Maker/Taker system
-            var order = new OrderDto
-            {
-                Asset = orderState.Asset,
-                Amount = orderState.Amount,
-                Price = orderState.Price,
-                UserId = orderState.UserId,
-                Side = orderState.OrderSide,
-                Type = orderState.OrderType,
-                TradingType = orderState.TradingType
-            };
-
             try
             {
-                var (orderSuccess, orderMessage) = await _orderApi.SubmitOrderAsync(order);
+                // در حالت مظنه‌ای، مشتری مظنهٔ منتشرشده را می‌پذیرد و قیمت نمی‌فرستد
+                // (issue #48). قیمت را سرور از مظنه می‌خواند، پس امکان اختلاف بین آنچه
+                // مشتری دیده و آنچه معامله می‌شود وجود ندارد.
+                //
+                // اگر مظنه‌ای منتشر نشده باشد، به مسیر سفارش عادی برمی‌گردیم — همان رفتار
+                // دفتر سفارش که برای نمادهای دیگر و برای زمانی که این نماد به حالت
+                // OrderBook برود لازم است.
+                var quote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+
+                var (orderSuccess, orderMessage) = quote is not null
+                    ? await _orderApi.AcceptQuoteAsync(
+                        orderState.UserId, orderState.Asset, orderState.OrderSide, orderState.Amount)
+                    : await _orderApi.SubmitOrderAsync(new OrderDto
+                    {
+                        Asset = orderState.Asset,
+                        Amount = orderState.Amount,
+                        Price = orderState.Price,
+                        UserId = orderState.UserId,
+                        Side = orderState.OrderSide,
+                        Type = orderState.OrderType,
+                        TradingType = orderState.TradingType
+                    });
 
                 var backBtn = new KeyboardButton(BotBtns.BtnBack);
                 if (orderSuccess)

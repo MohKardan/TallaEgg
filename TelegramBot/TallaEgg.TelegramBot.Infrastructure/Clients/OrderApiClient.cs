@@ -413,6 +413,103 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    /// <summary>
+    /// انتشار مظنهٔ ادمین. قیمت‌ها بر حسب واحد پایه (تومان بر گرم) فرستاده می‌شوند؛ تبدیل
+    /// از مثقال پیش از فراخوانی این متد انجام شده است.
+    /// </summary>
+    public async Task<(bool success, string message)> PublishQuoteAsync(
+        string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId)
+    {
+        try
+        {
+            var payload = new { symbol, buyPrice, sellPrice, publishedByUserId };
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/quotes", content);
+            var body = await response.Content.ReadAsStringAsync();
+
+            // پیام واقعی سرور برگردانده می‌شود و با متن عمومی جایگزین نمی‌گردد — دلیل رد
+            // شدن (مثلاً اسپرد منفی) برای ادمین مفید است. همان درسی که issue #38 داد.
+            var message = TryReadMessage(body);
+
+            return response.IsSuccessStatusCode
+                ? (true, message ?? "مظنه منتشر شد.")
+                : (false, message ?? $"خطا در انتشار مظنه (کد {(int)response.StatusCode}).");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
+    /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
+    public async Task<QuoteDto?> GetActiveQuoteAsync(string symbol)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/quotes/{symbol}");
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<QuoteDto>>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return parsed?.Data;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود — سرور آن را از مظنهٔ منتشرشده می‌خواند.
+    /// </summary>
+    public async Task<(bool success, string message)> AcceptQuoteAsync(
+        Guid userId, string symbol, OrderSide side, decimal quantity)
+    {
+        try
+        {
+            var payload = new { userId, symbol, side, quantity };
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/quotes/accept", content);
+            var body = await response.Content.ReadAsStringAsync();
+            var message = TryReadMessage(body);
+
+            return response.IsSuccessStatusCode
+                ? (true, message ?? "معامله انجام شد.")
+                : (false, message ?? "انجام معامله ممکن نشد.");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// پیام را از بدنهٔ ApiResponse بیرون می‌کشد. اگر بدنه قابل تجزیه نبود null برمی‌گرداند
+    /// تا فراخوان خودش پیام جایگزین بسازد — خواندن پیام هرگز نباید باعث شکست عملیات شود.
+    /// </summary>
+    private static string? TryReadMessage(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+
+        try
+        {
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<object>>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return string.IsNullOrWhiteSpace(parsed?.Message) ? null : parsed.Message;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     public async Task<(bool success, string message)> CancelOrderAsync(Guid orderId)
     {
         try

@@ -14,6 +14,21 @@ public interface IOrderApiClient
     Task<ApiResponse<List<OrderHistoryDto>>> GetAllActiveOrdersAsync();
     Task<(bool success, string message)> SubmitOrderAsync(OrderDto order);
     Task<(bool success, string message)> CancelOrderAsync(Guid orderId);
+
+    // ── مدل مظنه‌ای (issue #48) ──────────────────────────────────────────────────
+    // قیمت‌ها بر حسب واحد پایه (تومان بر گرم) رد و بدل می‌شوند؛ تبدیل مثقال فقط در لایهٔ
+    // نمایش ربات انجام می‌شود.
+
+    /// <summary>انتشار مظنهٔ ادمین. هیچ سفارشی در دفتر نمی‌گذارد و وثیقه‌ای قفل نمی‌کند.</summary>
+    Task<(bool success, string message)> PublishQuoteAsync(
+        string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId);
+
+    /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
+    Task<QuoteDto?> GetActiveQuoteAsync(string symbol);
+
+    /// <summary>پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود؛ سرور از مظنه می‌خواند.</summary>
+    Task<(bool success, string message)> AcceptQuoteAsync(
+        Guid userId, string symbol, OrderSide side, decimal quantity);
     
     /// <summary>
     /// کنسل کردن تمام سفارشات فعال یک کاربر
