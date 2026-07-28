@@ -1180,6 +1180,14 @@ namespace TallaEgg.TelegramBot
                         {
                             ResizeKeyboard = true
                         });
+
+                    // در مسیر مظنه‌ای معامله همان لحظه انجام شده، پس نتیجه‌اش بلافاصله
+                    // اعلام می‌شود. در مسیر دفتر سفارش، سفارش ممکن است ساعت‌ها منتظر بماند
+                    // و هنوز معامله‌ای وجود ندارد که گزارش شود — به همین دلیل این پیام
+                    // فقط وقتی فرستاده می‌شود که واقعاً معامله‌ای انجام شده باشد، نه صرفاً
+                    // چون سفارش ثبت شد.
+                    if (quote is not null)
+                        await SendTradeExecutedAsync(chatId, orderState);
                 }
                 else
                 {
@@ -1203,6 +1211,48 @@ namespace TallaEgg.TelegramBot
                 _userOrderStates.Remove(telegramId);
             }
         }
+
+        /// <summary>
+        /// گزارش معامله‌ای که انجام شده.
+        ///
+        /// از همان مقادیری استفاده می‌کند که در پیام تأیید به کاربر نشان داده شد، پس عددی
+        /// که کاربر تأیید کرد و عددی که گزارش می‌شود قطعاً یکی است. خواندن دوبارهٔ معامله
+        /// از سرور این تضمین را نمی‌داد و یک فراخوانی شبکه هم اضافه می‌کرد.
+        ///
+        /// اگر ارسال این پیام شکست بخورد نباید چیزی بشکند: معامله انجام و تسویه شده و
+        /// در «تاریخچه معاملات» دیده می‌شود.
+        /// </summary>
+        private async Task SendTradeExecutedAsync(long chatId, OrderState orderState)
+        {
+            try
+            {
+                var baseAsset = orderState.Asset.Split('/')[0];
+                var isGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
+                var isBuy = orderState.OrderSide == OrderSide.Buy;
+
+                // قیمت در حافظه بر حسب گرم است؛ برای نمایش به مثقال تبدیل می‌شود، چون
+                // کاربر قیمت را با همان واحد می‌شناسد.
+                var displayPrice = isGold
+                    ? orderState.Price * CurrenciesConstant.GramsPerMesghal
+                    : orderState.Price;
+
+                var total = CurrenciesConstant.RoundToCurrencyPrecision(
+                    orderState.Amount * orderState.Price, CurrenciesConstant.Toman);
+
+                await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgTradeExecuted,
+                    TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide),
+                    $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}",
+                    isGold ? "قیمت هر مثقال" : "قیمت هر واحد",
+                    PersianFormat.Number(displayPrice),
+                    isBuy ? "پرداختی" : "دریافتی",
+                    PersianFormat.Number(total)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not send the trade-executed message to chat {ChatId}.", chatId);
+            }
+        }
+
         /// <summary>
         /// متن اعلان استارتاپ را می‌سازد: اگر نسخه واقعاً تغییر کرده باشد پیام آپدیت
         /// (به همراه خلاصه تغییرات در صورت وجود)، وگرنه پیام «دوباره در دسترس است».
