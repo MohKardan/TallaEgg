@@ -214,7 +214,15 @@ public class OrderService
             : (baseAsset, CurrenciesConstant.RoundToCurrencyPrecision(quantity, baseAsset));
     }
 
-    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
+    /// <summary>
+    /// سفارش را می‌سازد، وثیقه‌اش را قفل می‌کند و تأییدش می‌کند — ولی تطبیق نمی‌دهد.
+    ///
+    /// این ترتیب (ذخیره در وضعیت Pending که نامرئی است ← قفل ← تأیید) همان تضمین ساختاری
+    /// یافتهٔ C-5 است. عمداً از خودِ تطبیق جدا شده تا مسیر مظنه‌ای بتواند <b>دو</b> سفارش
+    /// بسازد و بعد یک بار تطبیق بدهد، بدون اینکه این منطق در دو جا تکرار شود — تکرار
+    /// فرمول برای یک کار، همان چیزی است که #52 را ساخت.
+    /// </summary>
+    private async Task<(Order Order, bool Confirmed)> CreateLockedAndConfirmedOrderAsync(CreateOrderCommand command)
     {
         // Create order with Pending status
         var order = Order.CreateMakerOrder(
@@ -267,7 +275,30 @@ public class OrderService
         // تأیید سفارش — از این لحظه قابل تطبیق می‌شود، و وثیقه‌اش از قبل قفل است.
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
 
-        if (confirmSuccess)
+        if (!confirmSuccess)
+            _logger.LogWarning("Order {OrderId} was not confirmed.", createdOrder.Id);
+
+        return (createdOrder, confirmSuccess);
+    }
+
+    /// <summary>
+    /// برای مسیر مظنه‌ای: سفارش را می‌سازد، قفل و تأیید می‌کند و <b>تطبیق نمی‌دهد</b>.
+    ///
+    /// مسیر مظنه‌ای دو سفارش می‌سازد و بعد یک بار تطبیق می‌دهد؛ اگر ساختن هر کدام خودش
+    /// تطبیق را اجرا می‌کرد، سفارش اول ممکن بود با چیز دیگری در دفتر تطبیق بخورد و
+    /// جفت‌شدن دو طرف مظنه به هم بریزد.
+    /// </summary>
+    public async Task<Order?> CreateLockedAndConfirmedOrderForQuoteAsync(CreateOrderCommand command)
+    {
+        var (order, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
+        return confirmed ? order : null;
+    }
+
+    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
+    {
+        var (createdOrder, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
+
+        if (confirmed)
         {
             await _matchingEngine.ProcessOrderAsync(createdOrder);
         }
