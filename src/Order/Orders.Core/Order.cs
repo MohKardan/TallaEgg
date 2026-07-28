@@ -247,8 +247,6 @@ public class Order
     public bool IsTaker() => Role == OrderRole.Taker;
 
     public bool IsSpot() => TradingType == TradingType.Spot;
-    
-    public bool IsFutures() => TradingType == TradingType.Futures;
 
     public void UpdateRemainingAmount(decimal newRemainingAmount)
     {
