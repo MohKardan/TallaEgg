@@ -100,76 +100,18 @@ public class Order
         };
     }
 
-    public static Order CreateMarketOrder(
-        string asset,
-        decimal amount,
-        decimal estimatedPrice,
-        Guid userId,
-        OrderSide type,
-        TradingType tradingType,
-        string? notes = null)
-    {
-        if (string.IsNullOrWhiteSpace(asset))
-            throw new ArgumentException("Asset cannot be empty", nameof(asset));
-        
-        if (amount <= 0)
-            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
-        
-        if (estimatedPrice <= 0)
-            throw new ArgumentException("Estimated price must be greater than zero", nameof(estimatedPrice));
-        
-        if (userId == Guid.Empty)
-            throw new ArgumentException("UserId cannot be empty", nameof(userId));
-
-        return new Order
-        {
-            Id = Guid.NewGuid(),
-            Asset = asset.Trim().ToUpperInvariant(),
-            Amount = amount,
-            RemainingAmount = amount,
-            Price = estimatedPrice, // Market orders use estimated price for display purposes
-            UserId = userId,
-            Side = type,
-            Status = OrderStatus.Pending,
-            TradingType = tradingType,
-            Role = OrderRole.Taker, // Market orders are always Takers (remove liquidity)
-            CreatedAt = DateTime.UtcNow,
-            Notes = notes
-        };
-    }
-
-    public static Order CreateTakerOrder(
-        Guid parentOrderId,
-        decimal amount,
-        Guid userId,
-        string? notes = null)
-    {
-        if (parentOrderId == Guid.Empty)
-            throw new ArgumentException("ParentOrderId cannot be empty", nameof(parentOrderId));
-        
-        if (amount <= 0)
-            throw new ArgumentException("Amount must be greater than zero", nameof(amount));
-        
-        if (userId == Guid.NewGuid())
-            throw new ArgumentException("UserId cannot be empty", nameof(userId));
-
-        return new Order
-        {
-            Id = Guid.NewGuid(),
-            Asset = string.Empty, // Will be set from parent order
-            Amount = amount,
-            RemainingAmount = amount, // مقدار اولیه برابر با مقدار باقی‌مانده
-            Price = 0, // Will be set from parent order
-            UserId = userId,
-            Side = OrderSide.Buy, // Will be opposite of parent order
-            Status = OrderStatus.Pending,
-            TradingType = TradingType.Spot, // Will be set from parent order
-            Role = OrderRole.Taker,
-            CreatedAt = DateTime.UtcNow,
-            ParentOrderId = parentOrderId,
-            Notes = notes
-        };
-    }
+    // CreateMarketOrder و CreateTakerOrder حذف شدند.
+    //
+    // هیچ‌کدام از کد تولیدی صدا زده نمی‌شدند — CreateMakerOrder تنها کارخانهٔ واقعی است.
+    // هر دو Role را روی Taker می‌گذاشتند، وضعیتی که هیچ سفارشی در عمل به آن نمی‌رسید و
+    // همین باعث شد هنگام بررسی #35 اول به نظر برسد مدل maker/taker کار می‌کند.
+    //
+    // CreateTakerOrder علاوه بر آن ناقص هم بود: نماد، قیمت و سمت را خالی می‌گذاشت تا
+    // «از سفارش والد پر شود» — کدی که هرگز نوشته نشد. یک بررسی اشتباه هم داشت
+    // (userId == Guid.NewGuid()) که هرگز درست نمی‌شود.
+    //
+    // نقش maker/taker خاصیت یک fill است نه یک سفارش، و Trade آن را درست ثبت می‌کند.
+    // جزئیات در issue #35.
 
     public void Confirm()
     {
@@ -210,41 +152,19 @@ public class Order
         Notes = reason;
     }
 
-    public void AcceptTakerOrder(Order takerOrder)
-    {
-        if (Role != OrderRole.Maker)
-            throw new InvalidOperationException("Only maker orders can accept taker orders");
-        
-        if (Status != OrderStatus.Pending)
-            throw new InvalidOperationException("Only pending maker orders can accept taker orders");
-        
-        if (takerOrder.Role != OrderRole.Taker)
-            throw new ArgumentException("Only taker orders can be accepted");
-        
-        if (takerOrder.Amount > RemainingAmount)
-            throw new ArgumentException("Taker order amount cannot exceed maker order remaining amount");
-        
-        // Update remaining amount
-        RemainingAmount -= takerOrder.Amount;
-        
-        // If maker order is fully filled, complete it
-        if (RemainingAmount <= 0)
-        {
-            Complete();
-        }
-        
-        UpdatedAt = DateTime.UtcNow;
-    }
+    // AcceptTakerOrder حذف شد: غیرقابل‌دسترس بود. شرط takerOrder.Role == Taker داشت،
+    // وضعیتی که هیچ سفارش تولیدی به آن نمی‌رسد. تطبیق واقعی در ExecuteAtomicMatchAsync
+    // انجام می‌شود.
+    //
+    // IsMaker/IsTaker هم حذف شدند: Role همیشه Maker است، پس IsMaker() همیشه true و
+    // IsTaker() همیشه false بود. تنها استفاده‌شان یک فیلترِ همیشه‌درست در محاسبهٔ
+    // «بهترین قیمت» بود که معنادار به نظر می‌رسید ولی چیزی را فیلتر نمی‌کرد.
 
     public decimal GetTotalValue() => RemainingAmount * Price;
 
     public bool IsActive() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed || Status == OrderStatus.Partially;
 
     public bool CanBeCancelled() => Status == OrderStatus.Pending || Status == OrderStatus.Confirmed;
-
-    public bool IsMaker() => Role == OrderRole.Maker;
-    
-    public bool IsTaker() => Role == OrderRole.Taker;
 
     public bool IsSpot() => TradingType == TradingType.Spot;
 

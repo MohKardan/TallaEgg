@@ -346,8 +346,15 @@ public class OrderService
 
         //Log.Information("orders:\n" + JsonConvert.SerializeObject(orders, Formatting.Indented));
 
+        // شرط o.IsMaker() برداشته شد.
+        //
+        // Order.Role همیشه Maker است (هیچ مسیری آن را چیز دیگری نمی‌کند)، پس آن شرط
+        // همیشه درست بود و چیزی را فیلتر نمی‌کرد — ولی معنادار به نظر می‌رسید. خطرش
+        // این بود که اگر روزی Role درست ست شود، این تابع بی‌صدا سفارش‌های taker را از
+        // محاسبهٔ «بهترین قیمت» کنار می‌گذاشت و قیمت اشتباه به کاربر نشان داده می‌شد.
+        //
+        // آنچه واقعاً لازم است همین دو شرط باقی‌مانده است: سفارش باز، در همان بازار.
         var activeOrders = orders.Where(o =>
-            o.IsMaker() &&
             o.IsActive() &&
             o.TradingType == tradingType)
             .ToList();
