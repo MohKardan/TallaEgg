@@ -12,10 +12,14 @@ public class OrdersDbContext : DbContext
     public DbSet<Trade> Trades => Set<Trade>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
+    /// <summary>مظنه‌های منتشرشدهٔ ادمین؛ یک مظنهٔ فعال به‌ازای هر نماد (issue #48).</summary>
+    public DbSet<Quote> Quotes => Set<Quote>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfigurations());
         modelBuilder.ApplyConfiguration(new TradeConfiguration());
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new QuoteConfiguration());
     }
 }
