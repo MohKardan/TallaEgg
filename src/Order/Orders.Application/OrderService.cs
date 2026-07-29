@@ -29,13 +29,19 @@ public class OrderService
     /// </summary>
     private readonly Services.OrderCollateralReconciler _collateralReconciler;
 
+    /// <summary>در حالت مظنه‌ای، «بهترین قیمت» از مظنه خوانده می‌شود نه از دفتر سفارش (issue #48).</summary>
+    private readonly IQuoteRepository _quoteRepository;
+    private readonly Services.MarketModeProvider _marketMode;
+
     public OrderService(
         IOrderRepository orderRepository,
         IWalletApiClient walletApiClient,
         IMatchingEngine matchingEngine,
         ILogger<OrderService> logger,
         UsersApiClient UsersApiClient,
-        Services.OrderCollateralReconciler collateralReconciler)
+        Services.OrderCollateralReconciler collateralReconciler,
+        IQuoteRepository quoteRepository,
+        Services.MarketModeProvider marketMode)
     {
         _orderRepository = orderRepository ?? throw new ArgumentNullException(nameof(orderRepository));
         _walletApiClient = walletApiClient ?? throw new ArgumentNullException(nameof(walletApiClient));
@@ -43,6 +49,8 @@ public class OrderService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _usersApiClient = UsersApiClient;
         _collateralReconciler = collateralReconciler ?? throw new ArgumentNullException(nameof(collateralReconciler));
+        _quoteRepository = quoteRepository ?? throw new ArgumentNullException(nameof(quoteRepository));
+        _marketMode = marketMode ?? throw new ArgumentNullException(nameof(marketMode));
     }
 
     /// <summary>
@@ -214,7 +222,15 @@ public class OrderService
             : (baseAsset, CurrenciesConstant.RoundToCurrencyPrecision(quantity, baseAsset));
     }
 
-    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
+    /// <summary>
+    /// سفارش را می‌سازد، وثیقه‌اش را قفل می‌کند و تأییدش می‌کند — ولی تطبیق نمی‌دهد.
+    ///
+    /// این ترتیب (ذخیره در وضعیت Pending که نامرئی است ← قفل ← تأیید) همان تضمین ساختاری
+    /// یافتهٔ C-5 است. عمداً از خودِ تطبیق جدا شده تا مسیر مظنه‌ای بتواند <b>دو</b> سفارش
+    /// بسازد و بعد یک بار تطبیق بدهد، بدون اینکه این منطق در دو جا تکرار شود — تکرار
+    /// فرمول برای یک کار، همان چیزی است که #52 را ساخت.
+    /// </summary>
+    private async Task<(Order Order, bool Confirmed)> CreateLockedAndConfirmedOrderAsync(CreateOrderCommand command)
     {
         // Create order with Pending status
         var order = Order.CreateMakerOrder(
@@ -267,7 +283,30 @@ public class OrderService
         // تأیید سفارش — از این لحظه قابل تطبیق می‌شود، و وثیقه‌اش از قبل قفل است.
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
 
-        if (confirmSuccess)
+        if (!confirmSuccess)
+            _logger.LogWarning("Order {OrderId} was not confirmed.", createdOrder.Id);
+
+        return (createdOrder, confirmSuccess);
+    }
+
+    /// <summary>
+    /// برای مسیر مظنه‌ای: سفارش را می‌سازد، قفل و تأیید می‌کند و <b>تطبیق نمی‌دهد</b>.
+    ///
+    /// مسیر مظنه‌ای دو سفارش می‌سازد و بعد یک بار تطبیق می‌دهد؛ اگر ساختن هر کدام خودش
+    /// تطبیق را اجرا می‌کرد، سفارش اول ممکن بود با چیز دیگری در دفتر تطبیق بخورد و
+    /// جفت‌شدن دو طرف مظنه به هم بریزد.
+    /// </summary>
+    public async Task<Order?> CreateLockedAndConfirmedOrderForQuoteAsync(CreateOrderCommand command)
+    {
+        var (order, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
+        return confirmed ? order : null;
+    }
+
+    public async Task<Order> CreateOrderAsync(CreateOrderCommand command)
+    {
+        var (createdOrder, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
+
+        if (confirmed)
         {
             await _matchingEngine.ProcessOrderAsync(createdOrder);
         }
@@ -341,6 +380,32 @@ public class OrderService
     public async Task<BestPricesDto> GetBestBidAskAsync(string asset, TradingType tradingType)
     {
         Log.Information(">--------------------- GetBestBidAskAsync({asset}, {tradingType}) ---------------------<", asset, tradingType);
+
+        // در حالت مظنه‌ای، قیمت‌ها از مظنهٔ منتشرشده می‌آیند و نه از دفتر سفارش (issue #48).
+        //
+        // در این حالت هیچ سفارشی از قبل در دفتر نمی‌خوابد، پس اگر از دفتر بخوانیم بین دو
+        // معامله «قیمتی وجود ندارد» برمی‌گردد — در حالی که ادمین قیمت داده و آماده است.
+        if (_marketMode.GetMode(asset) == MarketMode.Dealer)
+        {
+            var quote = await _quoteRepository.GetActiveAsync(asset);
+
+            if (quote is null)
+            {
+                Log.Information("No active quote published for {Asset}.", asset);
+                return new BestPricesDto { Symbol = asset, BestBidPrice = null, BestAskPrice = null };
+            }
+
+            Log.Information("Quote prices for {Asset}: bid {Bid}, ask {Ask}", asset, quote.BuyPrice, quote.SellPrice);
+
+            // Bid همان قیمتی است که ادمین می‌خرد و Ask قیمتی که می‌فروشد — دقیقاً همان
+            // معنایی که دفتر سفارش هم می‌داد، پس مصرف‌کننده‌ها تغییری نمی‌بینند.
+            return new BestPricesDto
+            {
+                Symbol = asset,
+                BestBidPrice = quote.BuyPrice,
+                BestAskPrice = quote.SellPrice
+            };
+        }
 
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
 

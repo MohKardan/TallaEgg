@@ -115,6 +115,12 @@ builder.Services.AddMatchingEngine();
 // «چقدر قفل مانده» فقط یک جا تعریف شده باشد.
 builder.Services.AddScoped<Orders.Application.Services.OrderCollateralReconciler>();
 
+// مدل مظنه‌ای (issue #48): ادمین قیمت منتشر می‌کند و مشتری روی همان قیمت معامله می‌کند،
+// بدون اینکه سفارشی از قبل در دفتر بخوابد.
+builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
+builder.Services.AddScoped<Orders.Application.Services.MarketModeProvider>();
+builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
+
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
 
@@ -196,6 +202,72 @@ app.UseSwagger();
 
 
 // Order management endpoints
+
+// ──────────────────────────── مدل مظنه‌ای (issue #48) ────────────────────────────
+
+/// <summary>
+/// انتشار مظنهٔ ادمین برای یک نماد. هیچ سفارشی در دفتر نمی‌گذارد و هیچ وثیقه‌ای قفل نمی‌کند.
+/// مظنهٔ قبلی همان نماد به‌صورت اتمی غیرفعال می‌شود.
+/// </summary>
+app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository quotes) =>
+{
+    try
+    {
+        var quote = Quote.Publish(request.Symbol, request.BuyPrice, request.SellPrice, request.PublishedByUserId);
+        var published = await quotes.PublishAsync(quote);
+
+        return Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(published), "مظنه منتشر شد."));
+    }
+    catch (ArgumentException ex)
+    {
+        // پیام‌های Quote.Publish برای کاربر نوشته شده‌اند (مثلاً اسپرد منفی)، پس عیناً
+        // برگردانده می‌شوند و با یک متن عمومی جایگزین نمی‌گردند.
+        return Results.BadRequest(ApiResponse<QuoteDto>.Fail(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error publishing quote for {Symbol}", request.Symbol);
+        return Results.BadRequest(ApiResponse<QuoteDto>.Fail("خطا در انتشار مظنه."));
+    }
+});
+
+/// <summary>مظنهٔ فعال یک نماد.</summary>
+app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuoteRepository quotes) =>
+{
+    var symbol = $"{Base}/{Quote}";
+    var quote = await quotes.GetActiveAsync(symbol);
+
+    return quote is null
+        ? Results.NotFound(ApiResponse<QuoteDto>.Fail("مظنه‌ای منتشر نشده است."))
+        : Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(quote)));
+});
+
+// نگاشت اینجاست و نه روی خود DTO: TallaEgg.Core به Orders.Core ارجاع ندارد و نباید
+// داشته باشد — DTO مشترک بین سرویس‌هاست و نباید به مدل دامنهٔ یکی از آن‌ها وابسته شود.
+static QuoteDto ToQuoteDto(Quote q) => new()
+{
+    Id = q.Id,
+    Symbol = q.Symbol,
+    BuyPrice = q.BuyPrice,
+    SellPrice = q.SellPrice,
+    PublishedAt = q.PublishedAt
+};
+
+/// <summary>
+/// پذیرش مظنه توسط مشتری: دو سفارش دقیقاً به اندازهٔ مقدار درخواستی ساخته، قفل و بلافاصله
+/// تطبیق داده می‌شوند. مشتری قیمت وارد نمی‌کند.
+/// </summary>
+app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillService fillService) =>
+{
+    var (success, message, trade) = await fillService.AcceptQuoteAsync(
+        request.UserId, request.Symbol, request.Side, request.Quantity);
+
+    return success
+        ? Results.Ok(ApiResponse<Guid?>.Ok(trade?.Id, message))
+        : Results.BadRequest(ApiResponse<Guid?>.Fail(message));
+});
+
+// ─────────────────────────────────────────────────────────────────────────────────
 
 /// <summary>
 /// ایجاد سفارش واحد - پشتیبانی از تمام انواع سفارشات (Limit/Market) با تشخیص خودکار Maker/Taker
