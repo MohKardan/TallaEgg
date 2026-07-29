@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core;
@@ -14,6 +14,7 @@ using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
+using TallaEgg.TelegramBot.Infrastructure.Messages;
 using Telegram.Bot;
 using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types;
@@ -395,29 +396,23 @@ namespace TallaEgg.TelegramBot
                         string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
                 }
 
-                // مظنه منتشر می‌شود — دیگر دو سفارش ۱۰۰۰ گرمی ثبت نمی‌شود (issue #48).
+                // A quote is published — no more pair of 1000-gram orders (issue #48).
                 //
-                // مقدار ۱۰۰۰ کاملاً دلبخواه بود و حدود ۱۹ میلیارد تومان و ۱۰۰۰ گرم وثیقهٔ
-                // ادمین را فقط برای «اعلام قیمت» قفل می‌کرد. حالا انتشار مظنه هیچ چیزی قفل
-                // نمی‌کند؛ سفارش‌ها فقط وقتی مشتری معامله می‌کند ساخته می‌شوند، دقیقاً به
-                // اندازهٔ مقدار درخواستی، و در همان لحظه مصرف می‌شوند.
-                var buyPricePerGram = CurrenciesConstant.RoundOrderPrice(
-                    buyPrice / CurrenciesConstant.GramsPerMesghal);
-
-                var sellPricePerGram = CurrenciesConstant.RoundOrderPrice(
-                    sellPrice / CurrenciesConstant.GramsPerMesghal);
+                // The 1000 was arbitrary and locked roughly 19 billion toman and 1000 grams
+                // of the admin's collateral purely to announce a price. Publishing a quote
+                // locks nothing; orders are created only when a customer trades, for exactly
+                // the requested quantity, and are consumed in the same moment.
+                //
+                // Conversion and confirmation text come from one call, so the price
+                // published and the price shown cannot drift apart (issue #65).
+                var quote = QuoteMessage.Prepare(defaultAsset, buyPrice, sellPrice);
 
                 var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
-                    defaultAsset, buyPricePerGram, sellPricePerGram, userId);
+                    defaultAsset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
 
                 if (published)
                 {
-                    await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgAdminQuotePublished,
-                        PersianFormat.Symbol(defaultAsset),
-                        PersianFormat.Number(buyPrice),
-                        PersianFormat.Number(buyPricePerGram),
-                        PersianFormat.Number(sellPrice),
-                        PersianFormat.Number(sellPricePerGram)));
+                    await _botClient.SendMessage(chatId, quote.Text);
                 }
                 else
                 {

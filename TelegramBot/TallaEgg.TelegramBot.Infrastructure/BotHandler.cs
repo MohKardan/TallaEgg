@@ -18,6 +18,7 @@ using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
+using TallaEgg.TelegramBot.Infrastructure.Messages;
 using TallaEgg.TelegramBot.Infrastructure.Services;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -965,31 +966,13 @@ namespace TallaEgg.TelegramBot
                 orderState.Price = pricePerGram;
                 orderState.State = "";
 
-                // از همان قالب‌های تأیید سفارش استفاده می‌شود که برای مسیر عادی نوشته
-                // شده‌اند. یک قالب دوم برای همان اطلاعات، دو جا برای نگهداری می‌ساخت — و
-                // کاربر هم انتظار دارد پیام تأیید همیشه یک شکل باشد.
-                var quoteIsGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
-                var quoteBaseAsset = orderState.Asset.Split('/')[0];
-                var quoteAmountText =
-                    $"{PersianFormat.Amount(orderState.Amount, quoteBaseAsset)} {PersianFormat.Unit(quoteBaseAsset)}";
-                var quoteSideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide);
-                var quoteTotal = CurrenciesConstant.RoundToCurrencyPrecision(
-                    orderState.Amount * pricePerGram, CurrenciesConstant.Toman);
-
-                var quoteMessage = quoteIsGold
-                    ? string.Format(BotMsgs.MsgOrderConfirmationGold,
-                        PersianFormat.Symbol(orderState.Asset),
-                        quoteSideText,
-                        quoteAmountText,
-                        PersianFormat.Number(pricePerGram * CurrenciesConstant.GramsPerMesghal),
-                        PersianFormat.Number(pricePerGram),
-                        PersianFormat.Number(quoteTotal))
-                    : string.Format(BotMsgs.MsgOrderConfirmation,
-                        PersianFormat.Symbol(orderState.Asset),
-                        quoteSideText,
-                        quoteAmountText,
-                        PersianFormat.Number(pricePerGram),
-                        PersianFormat.Number(quoteTotal));
+                // The same confirmation templates as the ordinary order path. A second
+                // template carrying the same information would be a second place to
+                // maintain, and the customer expects the confirmation to always look the
+                // same. No per-mesghal override here: the quote is the source of the
+                // price, so the derived figure is the authoritative one.
+                var quoteMessage = OrderConfirmationMessage.Build(
+                    orderState.Asset, orderState.OrderSide, orderState.Amount, pricePerGram);
 
                 await _botClient.SendMessage(chatId, quoteMessage,
                     replyMarkup: new InlineKeyboardMarkup(new[]
@@ -1055,24 +1038,19 @@ namespace TallaEgg.TelegramBot
             orderState.Price = price;
             orderState.State = "";
 
-            var confirmationMsg = "";
-
-            // قیمتی که کاربر وارد می‌کند برای «یک مثقال» است؛ برای طلای آبشده به قیمت
-            // «هر گرم» تبدیل و ذخیره می‌شود. عدد ورودی نگه داشته می‌شود تا در پیام تایید
-            // هم نمایش داده شود، وگرنه کاربر عددی غیر از ورودی خود می‌بیند.
+            // The customer types the price of one mesghal; gold is stored per gram. The
+            // number they typed is kept so the confirmation can show it back to them,
+            // otherwise they see a figure that is not the one they entered.
             var enteredPricePerMesghal = price;
             var isGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
 
             if (isGold)
             {
-                orderState.Price /= 4.3318m;
-                confirmationMsg = BotMsgs.MsgOrderConfirmationGold;
+                // Was a literal 4.3318 here, duplicating the constant. Two copies of a
+                // conversion factor is one copy too many: changing one and not the other
+                // would misprice every gold order with nothing failing.
+                orderState.Price /= CurrenciesConstant.GramsPerMesghal;
             }
-            else
-            {
-                confirmationMsg = BotMsgs.MsgOrderConfirmation;
-            }
-            var totalValue = orderState.Amount * orderState.Price;
 
             var validateCreditAndBalance =
                 await _walletApi.ValidateCreditAndBalanceAsync(orderState.UserId, orderState.Asset, orderState.Amount, orderState.Price);
@@ -1099,27 +1077,16 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            // مقادیر پیش از درج در پیام فارسی‌سازی می‌شوند: نماد به نام فارسی، نوع سفارش
-            // به «خرید/فروش»، و اعداد با ارقام فارسی و محافظ راست‌به‌چپ.
-            var baseAsset = orderState.Asset.Split('/')[0];
-            var amountText = $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}";
-            var sideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide);
-
-            // قالب طلا یک آرگومان بیشتر دارد: قیمت هر مثقال و قیمت هر گرم.
-            var confirmationMessage = isGold
-                ? string.Format(confirmationMsg,
-                    PersianFormat.Symbol(orderState.Asset),
-                    sideText,
-                    amountText,
-                    PersianFormat.Number(enteredPricePerMesghal),
-                    PersianFormat.Number(orderState.Price),
-                    PersianFormat.Number(totalValue))
-                : string.Format(confirmationMsg,
-                    PersianFormat.Symbol(orderState.Asset),
-                    sideText,
-                    amountText,
-                    PersianFormat.Number(orderState.Price),
-                    PersianFormat.Number(totalValue));
+            // The per-mesghal figure shown is the customer's own input, not one derived
+            // back from the stored per-gram price: the division does not round-trip, and a
+            // confirmation quoting a slightly different number than they typed reads as
+            // the bot having mis-recorded the order.
+            var confirmationMessage = OrderConfirmationMessage.Build(
+                orderState.Asset,
+                orderState.OrderSide,
+                orderState.Amount,
+                orderState.Price,
+                displayPricePerMesghal: enteredPricePerMesghal);
 
             var keyboard = new InlineKeyboardMarkup(new[]
             {
@@ -1213,39 +1180,22 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// گزارش معامله‌ای که انجام شده.
+        /// Reports a trade that has actually executed.
         ///
-        /// از همان مقادیری استفاده می‌کند که در پیام تأیید به کاربر نشان داده شد، پس عددی
-        /// که کاربر تأیید کرد و عددی که گزارش می‌شود قطعاً یکی است. خواندن دوبارهٔ معامله
-        /// از سرور این تضمین را نمی‌داد و یک فراخوانی شبکه هم اضافه می‌کرد.
+        /// Uses the same values the customer was shown in the confirmation, so the number
+        /// they approved and the number reported back are necessarily the same. Re-reading
+        /// the trade from the server would not give that guarantee and would add a network
+        /// call.
         ///
-        /// اگر ارسال این پیام شکست بخورد نباید چیزی بشکند: معامله انجام و تسویه شده و
-        /// در «تاریخچه معاملات» دیده می‌شود.
+        /// A failure to send must break nothing: the trade is executed and settled, and it
+        /// is visible under "trade history".
         /// </summary>
         private async Task SendTradeExecutedAsync(long chatId, OrderState orderState)
         {
             try
             {
-                var baseAsset = orderState.Asset.Split('/')[0];
-                var isGold = orderState.Asset == CurrenciesConstant.MAUA_IRT;
-                var isBuy = orderState.OrderSide == OrderSide.Buy;
-
-                // قیمت در حافظه بر حسب گرم است؛ برای نمایش به مثقال تبدیل می‌شود، چون
-                // کاربر قیمت را با همان واحد می‌شناسد.
-                var displayPrice = isGold
-                    ? orderState.Price * CurrenciesConstant.GramsPerMesghal
-                    : orderState.Price;
-
-                var total = CurrenciesConstant.RoundToCurrencyPrecision(
-                    orderState.Amount * orderState.Price, CurrenciesConstant.Toman);
-
-                await _botClient.SendMessage(chatId, string.Format(BotMsgs.MsgTradeExecuted,
-                    TallaEgg.Core.Utilties.Utils.GetEnumDescription(orderState.OrderSide),
-                    $"{PersianFormat.Amount(orderState.Amount, baseAsset)} {PersianFormat.Unit(baseAsset)}",
-                    isGold ? "قیمت هر مثقال" : "قیمت هر واحد",
-                    PersianFormat.Number(displayPrice),
-                    isBuy ? "پرداختی" : "دریافتی",
-                    PersianFormat.Number(total)));
+                await _botClient.SendMessage(chatId, TradeExecutedMessage.Build(
+                    orderState.Asset, orderState.OrderSide, orderState.Amount, orderState.Price));
             }
             catch (Exception ex)
             {
