@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,6 +8,7 @@ using Orders.Infrastructure;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Infrastructure.Clients;
+using Wallet.Tests.Fakes;
 
 namespace Wallet.Tests;
 
@@ -67,24 +68,10 @@ public class OutboxBatchResilienceTests : IDisposable
         }
     }
 
-    private sealed class AlwaysSettlesWalletClient : IWalletApiClient
+    private sealed class AlwaysSettlesWalletClient : StubWalletApiClient
     {
-        public Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade) =>
+        public override Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade) =>
             Task.FromResult((true, "settled"));
-
-        public Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, WalletDTO? Wallet)> LockBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, bool HasSufficientCreditAndBalanceBase, bool HasSufficientCreditAndBalanceQuote)>
-            ValidateCreditAndBalanceAsync(Guid userId, string symbol, decimal amount, decimal price) =>
-            throw new NotSupportedException();
     }
 
     private static string PayloadFor(Guid tradeId) =>

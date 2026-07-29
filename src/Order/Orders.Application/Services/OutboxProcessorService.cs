@@ -122,11 +122,16 @@ public class OutboxProcessorService : BackgroundService
                     // A trade is now recorded but unsettled, with the participants' collateral
                     // still locked. It needs an operator: inspect /api/outbox/unsettled and
                     // re-drive once the cause is fixed (settlement is idempotent).
+                    // The template had four placeholders and three arguments: {Id} appeared
+                    // again in the re-drive URL. Placeholders bind positionally, so the
+                    // fourth had nothing to bind to and the operator's one actionable line
+                    // ended in a literal "{Id}" instead of the id to re-drive. Naming the
+                    // repeat separately and passing it keeps the URL copy-pasteable.
                     _logger.LogError(ex,
                         "SETTLEMENT STUCK — outbox message {Id} (trade {AggregateId}) permanently failed after {Retries} attempts. " +
                         "The trade is recorded but NOT settled and collateral remains locked. " +
-                        "Fix the cause, then POST /api/outbox/{Id}/redrive.",
-                        message.Id, message.AggregateId, message.RetryCount);
+                        "Fix the cause, then POST /api/outbox/{RedriveId}/redrive.",
+                        message.Id, message.AggregateId, message.RetryCount, message.Id);
                 else
                     _logger.LogWarning(ex, "Outbox message {Id} (aggregate {AggregateId}) failed attempt {Retry}; will retry.",
                         message.Id, message.AggregateId, message.RetryCount);

@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,6 +8,7 @@ using Orders.Infrastructure;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Infrastructure.Clients;
+using Wallet.Tests.Fakes;
 
 namespace Wallet.Tests;
 
@@ -57,29 +58,15 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>هر تسویه را می‌پذیرد و شناسهٔ معامله‌ای که برایش صدا زده شده را نگه می‌دارد.</summary>
-    private sealed class RecordingWalletClient : IWalletApiClient
+    private sealed class RecordingWalletClient : StubWalletApiClient
     {
         public List<Guid> SettledTradeIds { get; } = [];
 
-        public Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade)
+        public override Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade)
         {
             SettledTradeIds.Add(trade.Id);
             return Task.FromResult((true, "settled"));
         }
-
-        public Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, WalletDTO? Wallet)> LockBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(Guid userId, string asset, decimal amount) =>
-            throw new NotSupportedException();
-        public Task<(bool Success, string Message, bool HasSufficientCreditAndBalanceBase, bool HasSufficientCreditAndBalanceQuote)>
-            ValidateCreditAndBalanceAsync(Guid userId, string symbol, decimal amount, decimal price) =>
-            throw new NotSupportedException();
     }
 
     private static string PayloadFor(Guid tradeId) =>

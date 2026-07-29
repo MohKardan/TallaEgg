@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Net.Http;
@@ -8,7 +8,7 @@ using TallaEgg.Core;
 
 namespace TallaEgg.TelegramBot;
 
-public class AffiliateApiClient
+public class AffiliateApiClient : IAffiliateApiClient
 {
     private readonly string _apiUrl;
     private readonly HttpClient _httpClient;

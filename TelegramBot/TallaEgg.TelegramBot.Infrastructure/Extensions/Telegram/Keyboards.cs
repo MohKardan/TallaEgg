@@ -9,6 +9,7 @@ using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot;
+using TallaEgg.TelegramBot.Infrastructure.Messaging;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -17,7 +18,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 {
     public static class Keyboards
     {
-        public static async Task RequestContactKeyboard(this ITelegramBotClient _botClient, long chatId)
+        public static async Task RequestContactKeyboard(this IBotMessenger _botClient, long chatId)
         {
             var keyboard = new ReplyKeyboardMarkup(
                  new[]
@@ -33,7 +34,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             };
 
 
-            await _botClient.SendMessage(
+            await _botClient.SendAsync(
                 chatId,
                 "برای ثبت نام شماره خود را از طریق کلید زیر ارسال کنید",
             replyMarkup: keyboard);
@@ -44,7 +45,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         // «📈 آتی» را نشان می‌داد — دکمه‌ای برای بازاری که وجود ندارد و هیچ handlerی هم
         // نداشت. منوی اصلیِ واقعی جای دیگری ساخته می‌شود.
 
-        public static async Task SendContactKeyboardAsync(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendContactKeyboardAsync(this IBotMessenger _botClient, long chatId)
         {
             var sharePhoneButton = new KeyboardButton(BotBtns.BtnSharePhone) { RequestContact = true };
 
@@ -56,7 +57,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 ResizeKeyboard = true
             };
 
-            await _botClient.SendMessage(
+            await _botClient.SendAsync(
                 chatId,
                 BotMsgs.MsgPhoneRequest,
             replyMarkup: keyboard);
@@ -68,7 +69,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         /// <param name="_botClient"></param>
         /// <param name="chatId"></param>
         /// <returns></returns>
-        public static async Task SendMainKeyboardForAdminAsync(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendMainKeyboardForAdminAsync(this IBotMessenger _botClient, long chatId)
         {
             var keyboard = new ReplyKeyboardMarkup(new[]
             {
@@ -81,7 +82,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 ResizeKeyboard = true
             };
 
-            await _botClient.SendMessage(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
+            await _botClient.SendAsync(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
         }
         /// <summary>
         /// منوی اصلی برای کاربر عادی و مدیر فرق میکنه
@@ -89,7 +90,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         /// <param name="_botClient"></param>
         /// <param name="chatId"></param>
         /// <returns></returns>
-        public static async Task SendMainKeyboardForUserAsync(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendMainKeyboardForUserAsync(this IBotMessenger _botClient, long chatId)
         {
             var keyboard = new ReplyKeyboardMarkup(new[]
             {
@@ -100,10 +101,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 ResizeKeyboard = true
             };
 
-            await _botClient.SendMessage(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
+            await _botClient.SendAsync(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
         }
 
-        public static async Task SendAccountingMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendAccountingMenuKeyboard(this IBotMessenger _botClient, long chatId)
         {
 
             var keyboard = new ReplyKeyboardMarkup(
@@ -124,14 +125,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             };
 
 
-            await _botClient.SendMessage(
+            await _botClient.SendAsync(
                 chatId,
                 "📑 منوی حسابداری\n" +
                 "لطفاً یکی از گزینه‌های را انتخاب کنید:",
             replyMarkup: keyboard);
 
         }
-        public static async Task SendAccountingMenuKeyboardForAdmin(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendAccountingMenuKeyboardForAdmin(this IBotMessenger _botClient, long chatId)
         {
 
             var keyboard = new ReplyKeyboardMarkup(
@@ -147,14 +148,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             };
 
 
-            await _botClient.SendMessage(
+            await _botClient.SendAsync(
                 chatId,
                 "📑 منوی حسابداری\n" +
                 "لطفاً یکی از گزینه‌های را انتخاب کنید:",
             replyMarkup: keyboard);
 
         }
-        public static async Task SendSpotSideMenuKeyboard(this ITelegramBotClient _botClient, long chatId)
+        public static async Task SendSpotSideMenuKeyboard(this IBotMessenger _botClient, long chatId)
         {
             var keyboard = new InlineKeyboardMarkup(new[]
             {
@@ -169,7 +170,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 }
             });
 
-            await _botClient.SendMessage(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
+            await _botClient.SendAsync(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
         // SendUserOrdersWithPagingAsync و کمکی‌هایش (GetTypeIcon/GetStatusEmoji) حذف شدند.
@@ -179,51 +180,45 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
         // همیشه Maker است و درست نیست (issue #35). یعنی یک مقدار نادرست فقط یک
         // فراخوانی با آن فاصله داشت.
 
+        /// <summary>
+        /// Notifies every group admin that a user is waiting for approval.
+        ///
+        /// Takes the admin ids rather than looking them up: the lookup needs the raw
+        /// Telegram client, which IBotMessenger deliberately does not expose, and keeping
+        /// the two apart means this — the part that decides what each admin sees — can be
+        /// tested with a fake messenger.
+        /// </summary>
         public static async Task SendApproveOrRejectUserToAdminsKeyboard(
-     this ITelegramBotClient botClient,
-     UserDto user,
-     long groupId)
+            this IBotMessenger messenger,
+            IReadOnlyCollection<long> adminIds,
+            UserDto user)
         {
-            // 1) لیست ادمین‌ها
-            var adminIds = await botClient.GetAdminUserIdsAsync(groupId);
-
-            // 2) متن پیام
             var text =
-     $"📌 درخواست عضویت جدید\n\n" +
-     $"👤 نام: {Utils.EscapeHtml(user.FirstName)} {Utils.EscapeHtml(user.LastName)}\n" +
-     $"🆔 Telegram ID: <code>{user.TelegramId}</code>\n" +
-     $"🔖 Username: {Utils.UsernameLink(user.Username)}\n" +
-     $"📞 Phone: {Utils.EscapeHtml(user.PhoneNumber ?? "-")}\n" +
-     $"📅 ثبت‌نام: <code>{user.CreatedAt:yyyy/MM/dd HH:mm}</code>";
+                $"📌 درخواست عضویت جدید\n\n" +
+                $"👤 نام: {Utils.EscapeHtml(user.FirstName)} {Utils.EscapeHtml(user.LastName)}\n" +
+                $"🆔 Telegram ID: <code>{user.TelegramId}</code>\n" +
+                $"🔖 Username: {Utils.UsernameLink(user.Username)}\n" +
+                $"📞 Phone: {Utils.EscapeHtml(user.PhoneNumber ?? "-")}\n" +
+                $"📅 ثبت‌نام: <code>{user.CreatedAt:yyyy/MM/dd HH:mm}</code>";
 
-            // 3) ساخت اینلاین کیبورد
             var keyboard = new InlineKeyboardMarkup(new[]
             {
-        new[]
-        {
-            InlineKeyboardButton.WithCallbackData(
-                "✅ تأیید",
-                $"approve_{user.TelegramId}"),
-            InlineKeyboardButton.WithCallbackData(
-                "❌ رد",
-                $"reject_{user.TelegramId}")
-        }
-    });
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("✅ تأیید", $"approve_{user.TelegramId}"),
+                    InlineKeyboardButton.WithCallbackData("❌ رد", $"reject_{user.TelegramId}")
+                }
+            });
 
-            // 4) ارسال به هر ادمین
             foreach (var adminId in adminIds)
             {
                 try
                 {
-                    await botClient.SendMessage(
-                        chatId: adminId,
-                        text: text,
-                        parseMode: ParseMode.Html,
-                        replyMarkup: keyboard);
+                    await messenger.SendAsync(adminId, text, keyboard, ParseMode.Html);
                 }
                 catch (Exception ex)
                 {
-                    // لاگ خطا برای ادمینی که پیام نتوانست ارسال شود
+                    // One unreachable admin must not stop the others from being told.
                     Console.WriteLine($"ارسال به ادمین {adminId} ناموفق: {ex.Message}");
                 }
             }

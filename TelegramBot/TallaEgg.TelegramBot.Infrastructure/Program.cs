@@ -14,6 +14,8 @@ using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.TelegramBot.Infrastructure.Conversations;
+using TallaEgg.TelegramBot.Infrastructure.Messaging;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.TelegramBot.Infrastructure.Services;
 using Telegram.Bot;
@@ -124,8 +126,8 @@ public class Program
 
                 services.AddSingleton<IVersionService, VersionService>();
 
-                services.AddSingleton<IBotHandler, BotHandler>();
-
+                // One place, so a test can exercise the same wiring (issue #65).
+                services.AddBotHandler();
 
                 services.AddHostedService<TelegramBotHostedService>();
 
