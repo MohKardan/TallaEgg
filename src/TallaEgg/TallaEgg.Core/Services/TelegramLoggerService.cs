@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace TallaEgg.Core.Services
 {
-    public class TelegramLoggerService
+    public class TelegramLoggerService : ITelegramLogger
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly string _botToken;

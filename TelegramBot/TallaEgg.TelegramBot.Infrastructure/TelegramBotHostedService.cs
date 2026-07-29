@@ -79,6 +79,11 @@ public class TelegramBotHostedService : BackgroundService
             receiverOptions: receiverOptions,
             cancellationToken: _receiverCts.Token);
 
+        // The handler's background work starts here rather than in its constructor, so
+        // that constructing it — in a test, or during container setup — has no side
+        // effects (issue #65).
+        _botHandler.Start(_receiverCts.Token);
+
         _logger.LogInformation("Bot is now running and listening for messages...");
         return Task.CompletedTask;
     }

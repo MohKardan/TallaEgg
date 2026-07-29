@@ -1,6 +1,7 @@
-using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Requests.Wallet;
 using TallaEgg.Core.Responses.Order;
 
 namespace TallaEgg.Infrastructure.Clients;
@@ -16,6 +17,11 @@ public interface IWalletApiClient
     /// دریافت موجودی کاربر برای دارایی مشخص
     /// </summary>
     Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset);
+
+    // Admin credit/debit and the balance screen, used by the bot (issue #65).
+    Task<ApiResponse<IEnumerable<WalletDTO>>> GetUserWalletsBalanceAsync(Guid userId);
+    Task<ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request);
+    Task<ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletRequest request);
     
     /// <summary>
     /// ثبت تراکنش معامله و تغییر بالانس ها

@@ -1,4 +1,4 @@
-using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Requests.Order;
@@ -25,6 +25,9 @@ public interface IOrderApiClient
 
     /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
     Task<QuoteDto?> GetActiveQuoteAsync(string symbol);
+
+    /// <summary>Best bid and ask, used by the market-order path.</summary>
+    Task<ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol);
 
     /// <summary>پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود؛ سرور از مظنه می‌خواند.</summary>
     Task<(bool success, string message)> AcceptQuoteAsync(

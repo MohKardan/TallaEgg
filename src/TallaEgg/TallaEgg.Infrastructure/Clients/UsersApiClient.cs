@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -14,7 +14,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
-public class UsersApiClient
+public class UsersApiClient : IUsersApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;

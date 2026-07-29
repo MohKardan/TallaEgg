@@ -49,11 +49,13 @@ namespace TallaEgg.TelegramBot
         /// </summary>
         private readonly ITelegramBotClient _botClient;
 
-        private readonly OrderApiClient _orderApi;
-        private readonly UsersApiClient _usersApi;
-        private readonly AffiliateApiClient _affiliateApi;
-        private readonly WalletApiClient _walletApi;
-        private readonly TelegramLoggerService _telegramLogger;
+        // Interfaces, not the concrete HTTP clients: a conversation test supplies known
+        // answers instead of standing up five services (issue #65).
+        private readonly IOrderApiClient _orderApi;
+        private readonly IUsersApiClient _usersApi;
+        private readonly IAffiliateApiClient _affiliateApi;
+        private readonly IWalletApiClient _walletApi;
+        private readonly ITelegramLogger _telegramLogger;
         private readonly IVersionService _versionService;
 
         /// <summary>
@@ -69,8 +71,9 @@ namespace TallaEgg.TelegramBot
         public BotHandler(ILogger<BotHandler> logger,
                          ITelegramBotClient botClient, IBotMessenger messenger,
                          IConversationStore conversations,
-                         OrderApiClient orderApi, UsersApiClient usersApi,
-                         AffiliateApiClient affiliateApi, WalletApiClient walletApi, TelegramLoggerService telegramLogger, IVersionService versionService,
+                         IOrderApiClient orderApi, IUsersApiClient usersApi,
+                         IAffiliateApiClient affiliateApi, IWalletApiClient walletApi,
+                         ITelegramLogger telegramLogger, IVersionService versionService,
                          bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -87,28 +90,40 @@ namespace TallaEgg.TelegramBot
             _defaultReferralCode = defaultReferralCode;
             _versionService = versionService;
 
-            // Sweep completed conversations hourly. A safety net, not the mechanism: each
-            // order flow clears its own state on the way out. This only catches whatever
-            // an unexpected exit path left behind.
+        }
+
+        /// <summary>
+        /// Begins the background work: the hourly conversation sweep and the startup
+        /// announcement.
+        ///
+        /// Called by the hosted service rather than from the constructor. Constructing an
+        /// object should not start threads or send messages to every customer — it made
+        /// the handler impossible to build in a test, and it ran before the rest of the
+        /// container had finished being wired.
+        /// </summary>
+        public void Start(CancellationToken cancellationToken = default)
+        {
             _ = Task.Run(async () =>
             {
-                while (true)
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    await Task.Delay(TimeSpan.FromHours(1));
+                    await Task.Delay(TimeSpan.FromHours(1), cancellationToken);
                     try
                     {
                         var removed = _conversations.ClearCompleted();
                         if (removed > 0)
                             _logger.LogInformation("Swept {Count} completed conversations.", removed);
                     }
+                    catch (OperationCanceledException) { return; }
                     catch (Exception ex)
                     {
                         await _telegramLogger.ErrorAsync(ex, "Error in cleanup");
                         _logger.LogError(ex, "Error sweeping completed conversations.");
                     }
                 }
-            });
-            NotifyUpdateToAllUsers();
+            }, cancellationToken);
+
+            _ = NotifyUpdateToAllUsers();
         }
 
         public async Task HandleMessageAsync(Message message)
@@ -414,16 +429,8 @@ namespace TallaEgg.TelegramBot
 
                             await _messenger.DeleteAsync(chatId, message.Id);
 
-                            // قیمت می‌تواند خالی باشد (وقتی در آن سمت بازار سفارشی نیست).
-                            // نمایش صفر گمراه‌کننده است، پس پیام صریح نشان داده می‌شود.
-                            string FormatPrice(decimal? price) => price.HasValue
-                                ? $"{PersianFormat.Number(price.Value)} تومان"
-                                : BotMsgs.MsgPriceNotAvailable;
-
-                            await _messenger.SendAsync(chatId,
-                                            string.Format(BotMsgs.MsgBestPrices,
-                                                FormatPrice(apiResponse.Data.BestBidPrice),
-                                                FormatPrice(apiResponse.Data.BestAskPrice)));
+                            await _messenger.SendAsync(chatId, BestPricesMessage.Build(
+                                apiResponse.Data.BestBidPrice, apiResponse.Data.BestAskPrice));
 
                             assetConversation.BestBidPrice = apiResponse.Data.BestBidPrice;
                             assetConversation.BestAskPrice = apiResponse.Data.BestAskPrice;
@@ -678,35 +685,7 @@ namespace TallaEgg.TelegramBot
             {
                 if (res.Data.Any())
                 {
-                    StringBuilder stringBuilder = new StringBuilder();
-                    stringBuilder.Append(BotMsgs.MsgBalanceHeader);
-
-                    foreach (var item in res.Data)
-                    {
-                        var code = item.Asset;
-                        var unit = PersianFormat.Unit(code);
-
-                        // نام فارسی دارایی؛ کد لاتین هرگز به کاربر نشان داده نمی‌شود.
-                        stringBuilder.Append(string.Format(BotMsgs.MsgBalanceRow,
-                            PersianFormat.Asset(code),
-                            $"{PersianFormat.Amount(item.Balance, code)} {unit}",
-                            $"{PersianFormat.Amount(item.LockedBalance, code)} {unit}"));
-
-                        // در مدل اعتباری موجودی آزاد می‌تواند منفی شود (کاربر با اعتبار
-                        // معامله کرده است). عدد منفی بدون توضیح گیج‌کننده است، پس مبلغ
-                        // بدهی به‌صورت مثبت و با برچسب صریح نمایش داده می‌شود.
-                        if (item.Balance < 0)
-                        {
-                            stringBuilder.Append(string.Format(BotMsgs.MsgBalanceDebtNote,
-                                $"{PersianFormat.Amount(-item.Balance, code)} {unit}"));
-                        }
-
-                        stringBuilder.AppendLine();
-                    }
-
-                    stringBuilder.Append(BotMsgs.MsgBalanceFooter);
-
-                    await _messenger.SendAsync(chatId, stringBuilder.ToString());
+                    await _messenger.SendAsync(chatId, WalletBalanceMessage.Build(res.Data));
 
                 }
                 else
