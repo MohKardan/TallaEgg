@@ -63,8 +63,8 @@ flowchart TB
     QF -->|"تطبیق فوری"| T
     T --> OX --> W
 
-    style Q fill:#e8f5e9,stroke:#2e7d32
-    style QF fill:#fff3e0,stroke:#ef6c00
+    style Q fill:#1b5e20,color:#ffffff,stroke:#a5d6a7,stroke-width:2px
+    style QF fill:#e65100,color:#ffffff,stroke:#ffcc80,stroke-width:2px
 ```
 
 **قاعدهٔ اصلی:** انتشار مظنه هیچ چیزی در دفتر نمی‌گذارد و هیچ وثیقه‌ای قفل نمی‌کند.
@@ -115,15 +115,14 @@ sequenceDiagram
     C->>B: تأیید
     B->>QF: POST /api/quotes/accept
 
-    rect rgb(255, 245, 230)
-        Note over QF,M: یک عملیات
-        QF->>QF: سفارش خرید مشتری (۲٫۲ گرم)
-        QF->>W: قفل وثیقهٔ مشتری
-        QF->>QF: سفارش فروش ادمین (۲٫۲ گرم)
-        QF->>W: قفل وثیقهٔ ادمین
-        QF->>M: ExecuteAtomicMatchAsync
-        M->>OX: معامله + پیام تسویه
-    end
+    Note over QF,M: ▼ همهٔ مراحل زیر، یک عملیات ▼
+    QF->>QF: سفارش خرید مشتری (۲٫۲ گرم)
+    QF->>W: قفل وثیقهٔ مشتری
+    QF->>QF: سفارش فروش ادمین (۲٫۲ گرم)
+    QF->>W: قفل وثیقهٔ ادمین
+    QF->>M: ExecuteAtomicMatchAsync
+    M->>OX: معامله + پیام تسویه
+    Note over QF,M: ▲ پایان عملیات ▲
 
     QF-->>B: موفق
     B-->>C: «سفارش ثبت شد»
@@ -145,8 +144,8 @@ flowchart LR
     Q -->|"مشتری می‌خرد"| B["از ادمین می‌خرد<br/>⇒ SellPrice<br/>۷۳٬۵۰۰٬۰۰۰"]
     Q -->|"مشتری می‌فروشد"| S["به ادمین می‌فروشد<br/>⇒ BuyPrice<br/>۷۳٬۰۰۰٬۰۰۰"]
 
-    style B fill:#e8f5e9,stroke:#2e7d32
-    style S fill:#ffebee,stroke:#c62828
+    style B fill:#1b5e20,color:#ffffff,stroke:#a5d6a7,stroke-width:2px
+    style S fill:#b71c1c,color:#ffffff,stroke:#ef9a9a,stroke-width:2px
 ```
 
 این نگاشت عمداً روی **خود موجودیت `Quote`** است (`PriceFor(side)`) و نه در سرویس.
@@ -170,7 +169,7 @@ flowchart TB
     T -->|"MakerOrderId — الزامی"| O1
     T -->|"TakerOrderId — الزامی"| O1
 
-    style T fill:#e3f2fd,stroke:#1565c0
+    style T fill:#0d47a1,color:#ffffff,stroke:#90caf9,stroke-width:2px
 ```
 
 `Trade` بدون سفارش وجود ندارد. ساختنش یا **تغییر schema** می‌خواست یا **مسیر دوم ساخت
@@ -201,9 +200,9 @@ flowchart TB
     OBK --> TR
     TR --> SET["همان مسیر تسویه"]
 
-    style D fill:#e8f5e9,stroke:#2e7d32
-    style OBK fill:#e3f2fd,stroke:#1565c0
-    style TR fill:#fff3e0,stroke:#ef6c00
+    style D fill:#1b5e20,color:#ffffff,stroke:#a5d6a7,stroke-width:2px
+    style OBK fill:#0d47a1,color:#ffffff,stroke:#90caf9,stroke-width:2px
+    style TR fill:#e65100,color:#ffffff,stroke:#ffcc80,stroke-width:2px
 ```
 
 چون هر دو به یک `Trade` می‌رسند، **بدون هیچ ماشین‌آلات اضافه‌ای** کنار هم کار می‌کنند.
