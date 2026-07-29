@@ -504,43 +504,17 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         }
     }
 
-    /// <summary>
-    /// Create trade with proper Maker/Taker fee calculation
-    /// ایجاد معامله با محاسبه صحیح کارمزد Maker/Taker
-    /// </summary>
-    private Trade CreateMakerTakerTrade(Order makerOrder, Order takerOrder, decimal quantity)
-    {
-        // Fee rates - Maker gets lower fee (0.1%), Taker gets higher fee (0.2%)
-        var makerFeeRate = 0.000m; // 0.1%
-        var takerFeeRate = 0.000m; // 0.2%
-        
-        var price = makerOrder.Price; // Execute at maker's price
-        var quoteQuantity = quantity * price;
-        
-        // Determine buy/sell roles
-        var (buyOrder, sellOrder, buyerUserId, sellerUserId) = 
-            takerOrder.Side == OrderSide.Buy 
-                ? (takerOrder, makerOrder, takerOrder.UserId, makerOrder.UserId)
-                : (makerOrder, takerOrder, makerOrder.UserId, takerOrder.UserId);
-
-        return Trade.Create(
-            buyOrderId: buyOrder.Id,
-            sellOrderId: sellOrder.Id,
-            makerOrderId: makerOrder.Id,
-            takerOrderId: takerOrder.Id,
-            symbol: makerOrder.Asset,
-            price: price,
-            quantity: quantity,
-            quoteQuantity: quoteQuantity,
-            buyerUserId: buyerUserId,
-            sellerUserId: sellerUserId,
-            makerUserId: makerOrder.UserId,
-            takerUserId: takerOrder.UserId,
-            makerFeeRate: makerFeeRate,
-            takerFeeRate: takerFeeRate,
-            feeBuyer: buyerUserId == makerOrder.UserId ? makerFeeRate * quoteQuantity : takerFeeRate * quoteQuantity,
-            feeSeller: sellerUserId == makerOrder.UserId ? makerFeeRate * quoteQuantity : takerFeeRate * quoteQuantity
-        );
-    }
-
+    // یک مسیر ساخت معامله، نه دو تا (issue #40).
+    //
+    // اینجا CreateMakerTakerTrade بود: یک Trade کامل می‌ساخت که هرگز ذخیره نمی‌شد. موتور
+    // بلافاصله ExecuteAtomicMatchAsync را صدا می‌زد و آن، معاملهٔ خودش را با CreateTrade
+    // می‌ساخت — همان که واقعاً ذخیره و برای تسویه صف می‌شد.
+    //
+    // دو مسیر یعنی دو منبع حقیقت: نرخ کارمزد اینجا 0.000 بود و در مخزن 0.001/0.002، و چون
+    // نسخهٔ مخزن ذخیره می‌شد، کارمزدها به واحد ارز مظنه محاسبه شدند و تسویهٔ هر معامله با
+    // «کارمزد از مبلغ معامله بیشتر است» رد شد. تغییر یکی، بی‌صدا در دیگری نادیده گرفته
+    // می‌شد — دقیقاً همان‌طور که آن باگ پنهان ماند.
+    //
+    // حالا Trade.Create فقط از OrderMatchingRepository.CreateTrade فراخوانی می‌شود.
+    // SingleTradeCreationPathTests این را در سطح IL نگه می‌دارد تا مسیر دوم دوباره برنگردد.
 }
