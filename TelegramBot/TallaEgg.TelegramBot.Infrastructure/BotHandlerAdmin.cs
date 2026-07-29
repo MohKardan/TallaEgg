@@ -15,6 +15,7 @@ using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
 using TallaEgg.TelegramBot.Infrastructure.Messages;
+using TallaEgg.TelegramBot.Infrastructure.Messaging;
 using Telegram.Bot;
 using Telegram.Bot.Requests.Abstractions;
 using Telegram.Bot.Types;
@@ -42,7 +43,7 @@ namespace TallaEgg.TelegramBot
                 if (!match.Success)
                 {
                     // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
-                    await _botClient.SendMessage(message.Chat.Id,
+                    await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetPersianNamesList()));
                     return true;
                 }
@@ -58,7 +59,7 @@ namespace TallaEgg.TelegramBot
 
                 if (currency is null)
                 {
-                    await _botClient.SendMessage(message.Chat.Id,
+                    await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
                     return true;
                 }
@@ -83,7 +84,7 @@ namespace TallaEgg.TelegramBot
                         var amountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
                         var newCreditText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
 
-                        await _botClient.SendMessage(
+                        await _messenger.SendAsync(
                            message.Chat.Id,
                            string.Format(BotMsgs.MsgAdminChargeDone,
                                info.PersianName,
@@ -91,7 +92,7 @@ namespace TallaEgg.TelegramBot
                                PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                newCreditText));
 
-                        await _botClient.SendMessage(
+                        await _messenger.SendAsync(
                            userDto.TelegramId,
                            string.Format(BotMsgs.MsgUserCreditIncreased,
                                info.PersianName,
@@ -100,13 +101,13 @@ namespace TallaEgg.TelegramBot
                     }
                     else
                     {
-                        await _botClient.SendMessage(message.Chat.Id,
+                        await _messenger.SendAsync(message.Chat.Id,
                             string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
                 else
                 {
-                    await _botClient.SendMessage(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
+                    await _messenger.SendAsync(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
                 }
 
                 return true;
@@ -123,7 +124,7 @@ namespace TallaEgg.TelegramBot
                 if (!match.Success)
                 {
                     // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
-                    await _botClient.SendMessage(message.Chat.Id,
+                    await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetPersianNamesList()));
                     return true;
                 }
@@ -141,7 +142,7 @@ namespace TallaEgg.TelegramBot
 
                 if (currency is null)
                 {
-                    await _botClient.SendMessage(message.Chat.Id,
+                    await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
                     return true;
                 }
@@ -166,7 +167,7 @@ namespace TallaEgg.TelegramBot
                         var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
                         var newBalanceText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
 
-                        await _botClient.SendMessage(
+                        await _messenger.SendAsync(
                                message.Chat.Id,
                                string.Format(BotMsgs.MsgAdminDeductDone,
                                    info.PersianName,
@@ -174,7 +175,7 @@ namespace TallaEgg.TelegramBot
                                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                    newBalanceText));
 
-                        await _botClient.SendMessage(
+                        await _messenger.SendAsync(
                                userDto.TelegramId,
                                string.Format(BotMsgs.MsgUserBalanceDeducted,
                                    info.PersianName,
@@ -185,13 +186,13 @@ namespace TallaEgg.TelegramBot
                     }
                     else
                     {
-                        await _botClient.SendMessage(message.Chat.Id,
+                        await _messenger.SendAsync(message.Chat.Id,
                             string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
                 else
                 {
-                    await _botClient.SendMessage(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
+                    await _messenger.SendAsync(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
                 }
 
                 return true;
@@ -213,14 +214,14 @@ namespace TallaEgg.TelegramBot
                 {
                     var text = await UserListHandler.BuildUsersListAsync(page.Data!, 1, q);
 
-                    await _botClient.SendMessage(
+                    await _messenger.SendAsync(
                         chatId: chatId,
                         text: text,
                         parseMode: ParseMode.MarkdownV2,
                         replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, 1, q)
                     );
                 }
-                else await _botClient.SendMessage(chatId, page.Message);
+                else await _messenger.SendAsync(chatId, page.Message);
                 return true;
             }
             if (msgText.StartsWith("م "))
@@ -235,7 +236,7 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                    await _messenger.SendAsync(chatId, "شماره تلفن پیدا نشد");
                 }
                 return true;
             }
@@ -251,7 +252,7 @@ namespace TallaEgg.TelegramBot
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId, "شماره تلفن پیدا نشد");
+                    await _messenger.SendAsync(chatId, "شماره تلفن پیدا نشد");
                 }
                 return true;
             }
@@ -276,21 +277,21 @@ namespace TallaEgg.TelegramBot
             //{
             //    case "/admin_referral_on":
             //        _requireReferralCode = true;
-            //        await _botClient.SendMessage(chatId,
+            //        await _messenger.SendAsync(chatId,
             //            "✅ اجباری بودن کد دعوت فعال شد.\n" +
             //            "کاربران جدید باید کد دعوت داشته باشند.");
             //        return true;
 
             //    case "/admin_referral_off":
             //        _requireReferralCode = false;
-            //        await _botClient.SendMessage(chatId,
+            //        await _messenger.SendAsync(chatId,
             //            "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
             //            $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
             //        return true;
 
             //    case "/admin_referral_status":
             //        var status = _requireReferralCode ? "فعال" : "غیرفعال";
-            //        await _botClient.SendMessage(chatId,
+            //        await _messenger.SendAsync(chatId,
             //            $"📊 وضعیت فعلی:\n" +
             //            $"اجباری بودن کد دعوت: {status}\n" +
             //            $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
@@ -329,14 +330,14 @@ namespace TallaEgg.TelegramBot
             await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Approved);
 
             // ویرایش پیام ادمین
-            await _botClient.EditMessageText(
+            await _messenger.EditTextAsync(
                 chatId: originalMsg.Chat.Id,
                 messageId: originalMsg.MessageId,
                 text: originalMsg.Text + BotMsgs.MsgAdminApprovedSuffix,
                 replyMarkup: null);
 
             // اطلاع‌رسانی به کاربر
-            await _botClient.SendMessage(telegramUserId, BotMsgs.MsgUserApproved);
+            await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserApproved);
             await _telegramLogger.Notif<Message>($"کاربر تایید شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
         }
 
@@ -344,14 +345,14 @@ namespace TallaEgg.TelegramBot
         {
             await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Rejected);
 
-            await _botClient.EditMessageText(
+            await _messenger.EditTextAsync(
                 chatId: originalMsg.Chat.Id,
                 messageId: originalMsg.MessageId,
                 text: originalMsg.Text + BotMsgs.MsgAdminRejectedSuffix,
                 replyMarkup: null);
 
             // اطلاع‌رسانی به کاربر
-            await _botClient.SendMessage(telegramUserId, BotMsgs.MsgUserRejected);
+            await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserRejected);
             await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
 
         }
@@ -380,19 +381,19 @@ namespace TallaEgg.TelegramBot
                 const decimal defaultAmount = 1000m;    // Default amount
 
                 // First, cancel all existing active orders for this user
-                //await _botClient.SendMessage(chatId, "⏳ در حال کنسل سفارشات قبلی...");
-                await _botClient.SendMessage(chatId, BotMsgs.MsgAdminProcessing);
+                //await _messenger.SendAsync(chatId, "⏳ در حال کنسل سفارشات قبلی...");
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminProcessing);
 
                 var cancelResults = await CancelUserActiveOrdersAsync(userId);
                 if (cancelResults.CancelledCount > 0)
                 {
-                    await _botClient.SendMessage(chatId,
+                    await _messenger.SendAsync(chatId,
                         string.Format(BotMsgs.MsgAdminPreviousPricesCancelled,
                             PersianFormat.Number(cancelResults.CancelledCount)));
                 }
                 else if (cancelResults.HasError)
                 {
-                    await _botClient.SendMessage(chatId,
+                    await _messenger.SendAsync(chatId,
                         string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
                 }
 
@@ -412,17 +413,17 @@ namespace TallaEgg.TelegramBot
 
                 if (published)
                 {
-                    await _botClient.SendMessage(chatId, quote.Text);
+                    await _messenger.SendAsync(chatId, quote.Text);
                 }
                 else
                 {
-                    await _botClient.SendMessage(chatId,
+                    await _messenger.SendAsync(chatId,
                         string.Format(BotMsgs.MsgAdminQuoteFailed, publishMessage));
                 }
             }
             catch (Exception ex)
             {
-                await _botClient.SendMessage(chatId,
+                await _messenger.SendAsync(chatId,
                     string.Format(BotMsgs.MsgAdminPriceSubmitError, ex.Message));
             }
         }

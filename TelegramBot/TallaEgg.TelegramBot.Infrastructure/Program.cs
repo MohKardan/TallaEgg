@@ -14,6 +14,8 @@ using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.TelegramBot.Infrastructure.Conversations;
+using TallaEgg.TelegramBot.Infrastructure.Messaging;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.TelegramBot.Infrastructure.Services;
 using Telegram.Bot;
@@ -123,6 +125,14 @@ public class Program
                 });
 
                 services.AddSingleton<IVersionService, VersionService>();
+
+                // Everything the handlers say to a chat goes through this; the raw client
+                // stays registered for lifecycle and lookup calls (issue #65).
+                services.AddSingleton<IBotMessenger, TelegramBotMessenger>();
+
+                // Singleton because a conversation must survive between the customer's
+                // messages; a scoped store would forget the flow at every update.
+                services.AddSingleton<IConversationStore, InMemoryConversationStore>();
 
                 services.AddSingleton<IBotHandler, BotHandler>();
 
