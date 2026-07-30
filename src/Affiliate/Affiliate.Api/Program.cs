@@ -71,6 +71,11 @@ else
     builder.Services.AddAuthorization();
 }
 
+// Registered unconditionally, matching the other four services. It was missing entirely,
+// which meant app.UseCors below could not resolve ICorsService and the process died at
+// startup in Production — the one environment nobody runs locally (issue #72).
+builder.Services.AddCors();
+
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
 
@@ -101,15 +106,20 @@ if (app.Environment.IsProduction())
 }
 app.UseAuthorization();
 
-// تنظیم CORS — CORS services are only registered in Production (see AddCors above),
-// so only add the middleware there; otherwise the app fails to start in Development.
-if (app.Environment.IsProduction())
-{
-    app.UseCors(builder => builder
-        .AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader());
-}
+// The environment guard is gone along with the comment that justified it. The comment said
+// "CORS services are only registered in Production (see AddCors above)" — there was no
+// AddCors above, in Production or anywhere else, so the guard was not protecting Development
+// from a missing registration; it was hiding a service that could never start in Production.
+//
+// Now registered unconditionally, so this runs in both, as it does in the other four services.
+//
+// AllowAnyOrigin is what #31 is about. Worth noting there: CORS constrains browsers, and this
+// product has no browser client — the APIs are called only by the bot over loopback. The
+// protection that matters is not opening these ports to the internet at all, which #69 covers.
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 // Affiliate management endpoints
 app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationRequest request, AffiliateService affiliateService) =>
