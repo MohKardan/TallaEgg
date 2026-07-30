@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -113,8 +113,25 @@ public class OrderMatchingRepository
 
         try
         {
-            // 1. Re-fetch orders with lock to ensure they haven't changed
-            // بازخوانی سفارشات برای اطمینان از عدم تغییر
+            // 1. Read the orders as the database currently holds them.
+            //
+            // The reload is explicit because a plain query would not have re-read anything:
+            // when the same DbContext created these orders moments earlier, EF identity
+            // resolution returns the tracked in-memory instance and the query result is
+            // discarded. That is how a match once ran against RemainingAmount = 1.2345 while
+            // the row said 1.23 — the quantity columns hold two decimal places (issue #74).
+            //
+            // The real protection against a racing matcher is the concurrency token on
+            // RemainingAmount, which turns a stale write into an exception. This reload
+            // additionally makes the quantity clamp below reason about real values, so the
+            // ordinary path succeeds instead of failing the concurrency check.
+            foreach (var tracked in new[] { buyOrder, sellOrder })
+            {
+                var entry = _context.Entry(tracked);
+                if (entry.State != EntityState.Detached)
+                    await entry.ReloadAsync();
+            }
+
             var currentBuyOrder = await _context.Orders
                 .FirstOrDefaultAsync(o => o.Id == buyOrder.Id);
 
@@ -141,9 +158,18 @@ public class OrderMatchingRepository
             //    return (false, null, "قیمت خرید کمتر از قیمت فروش است");
             //}
 
-            // 4. Calculate actual tradeable quantity
+            // 4. Calculate actual tradeable quantity.
+            //
+            // Rounded to the base asset's own precision first. A caller can ask for a
+            // quantity finer than the asset supports — a customer typing 1.2345 grams — and
+            // the trade table would store it, while the order table (two decimal places)
+            // could not. Rounding here means one number is used for the trade, the order and
+            // the settlement, whatever the caller passed (issue #74).
+            var baseAssetForQty = currentBuyOrder.Asset.Split('/')[0];
+            var requestedQty = CurrenciesConstant.RoundToCurrencyPrecision(matchQuantity, baseAssetForQty);
+
             var actualMatchQty = Math.Min(
-                Math.Min(matchQuantity, currentBuyOrder.RemainingAmount),
+                Math.Min(requestedQty, currentBuyOrder.RemainingAmount),
                 currentSellOrder.RemainingAmount
             );
 
@@ -188,6 +214,23 @@ public class OrderMatchingRepository
                 currentBuyOrder.Id, currentSellOrder.Id, actualMatchQty, tradePrice);
 
             return (true, trade, string.Empty);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            // Another matcher changed one of these orders between our read and our write, or
+            // our copy was stale. Either way this match must not be applied: the alternative
+            // is the defect in issue #74, where one order pair produced two trades and the
+            // customer paid for both.
+            //
+            // Logged as a warning, not an error: losing the race is the guard working, and
+            // the winner's trade is valid. An error would page someone for correct behaviour.
+            await transaction.RollbackAsync();
+            _logger.LogWarning(ex,
+                "Refused to match Buy={BuyOrderId} with Sell={SellOrderId}: the orders changed " +
+                "concurrently. Another matcher has already filled them.",
+                buyOrder.Id, sellOrder.Id);
+
+            return (false, null, "این سفارش هم‌زمان توسط عملیات دیگری پردازش شد.");
         }
         catch (Exception ex)
         {

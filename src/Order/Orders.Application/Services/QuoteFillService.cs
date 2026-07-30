@@ -1,6 +1,7 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Orders.Core;
 using Orders.Infrastructure;
+using TallaEgg.Core;
 using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Application.Services;
@@ -53,6 +54,20 @@ public class QuoteFillService
     {
         if (quantity <= 0)
             return (false, "مقدار باید بزرگ‌تر از صفر باشد.", null);
+
+        // Rounded once, here, before anything is created — and this value is what both orders
+        // and the match then use.
+        //
+        // The order columns hold two decimal places, so a customer's 1.2345 grams was stored
+        // as 1.23 while the in-memory order kept 1.2345, and the match ran on the unrounded
+        // figure. Rounding at the boundary means the order the customer gets is the order the
+        // confirmation showed them: the confirmation already displays the rounded amount, so
+        // 1.23 is the number they agreed to (issue #74).
+        var baseAsset = symbol.Split('/')[0];
+        quantity = CurrenciesConstant.RoundToCurrencyPrecision(quantity, baseAsset);
+
+        if (quantity <= 0)
+            return (false, $"مقدار وارد‌شده از حداقل قابل معامله کمتر است.", null);
 
         if (!_marketMode.IsDealerMarket(symbol, out var marketMakerUserId))
             return (false, "این نماد در حالت مظنه‌ای نیست.", null);

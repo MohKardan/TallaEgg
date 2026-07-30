@@ -18,9 +18,27 @@ namespace Orders.Infrastructure.Configurations
                 .IsRequired()
                 .HasPrecision(18, 2);
             
+            // RemainingAmount is a concurrency token: every UPDATE to an order carries
+            // "WHERE RemainingAmount = <the value that was read>", so a second writer whose
+            // read is stale — or who raced us — affects zero rows and EF throws
+            // DbUpdateConcurrencyException instead of silently overwriting.
+            //
+            // This is what makes "one fill produces one trade" a database guarantee rather
+            // than a code convention (issue #74). Before it, ExecuteAtomicMatchAsync claimed
+            // in a comment to "re-fetch orders with lock", and did neither: there was no
+            // lock, and because the same DbContext had just created the orders, EF identity
+            // resolution handed back the tracked in-memory copy rather than reading the row.
+            // Two matchers therefore both saw an unspent order and both matched it, and one
+            // customer paid twice.
+            //
+            // A concurrency token rather than an UPDLOCK hint on purpose: it is enforced by
+            // EF for any provider, so it holds under SQLite in tests exactly as under SQL
+            // Server in production. Same reasoning as issue #42, where a primary key on
+            // TradeId made "settled exactly once" structural.
             builder.Property(o => o.RemainingAmount)
                 .IsRequired()
-                .HasPrecision(18, 2);
+                .HasPrecision(18, 2)
+                .IsConcurrencyToken();
             
             builder.Property(o => o.Price)
                 .IsRequired()
