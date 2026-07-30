@@ -104,13 +104,20 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             await _botClient.SendAsync(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
         }
 
+        /// <summary>
+        /// The customer's accounting menu.
+        ///
+        /// No quote history here: it is the record of the prices the shop set, including its
+        /// margin, which is the shop's business and not the customer's. A customer's own
+        /// accounting is the trades they made.
+        /// </summary>
         public static async Task SendAccountingMenuKeyboard(this IBotMessenger _botClient, long chatId)
         {
 
             var keyboard = new ReplyKeyboardMarkup(
                 new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnQuoteHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                })
             {
