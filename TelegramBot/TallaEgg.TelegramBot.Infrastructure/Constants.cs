@@ -21,9 +21,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
         public const string BtnHistory = "📋 تاریخچه";
-        public const string BtnOrderHistory = "📋 تاریخچه سفارشات";
+
+        /// <summary>
+        /// Quote history replaced order history in the accounting menu. In the dealer model
+        /// an order exists only for the instant of a fill, so "my orders" showed a list that
+        /// was either empty or made of rows already completed — nothing a customer could act
+        /// on. The published prices are the thing with a history worth reading.
+        /// </summary>
+        public const string BtnQuoteHistory = "📋 تاریخچه مظنه‌ها";
+
         public const string BtnTradeHistory = "📊 تاریخچه معاملات";
-        public const string BtnActiveOrders = "⚡ سفارشات فعال";
         public const string BtnWalletsBalance = "💵 موجودی";
         public const string BtnWallet = "💳 کیف پول";
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
@@ -34,11 +41,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </summary>
         public const string BtnSpotCreateOrder = "📝 ثبت سفارش نقدی";
         /// <summary>
-        /// ثبت قیمت نقدی با ثبت سفارش نقدی هیچ فرقی نمیکند
-        /// بخاطر اینکه برای مصطفی قابل درکتر باشه این اسمو روی دکمه ادمین نمایش میدم
+        /// The admin publishes a quote by typing "buyPrice-sellPrice" (e.g. 71000000-80000000).
+        /// The old label, "ثبت قیمت نقدی", described submitting an order — which is no longer
+        /// what happens: since #48 nothing is placed in a book and no collateral is locked.
         /// </summary>
-        public const string BtnSpotSubmitPrice = "📝 ثبت قیمت نقدی";
-        public const string BtnSpotMarket = "📈 بازار نقدی";
+        public const string BtnSpotSubmitPrice = "💹 اعلام مظنه";
+
+        /// <summary>
+        /// What the customer actually does here is ask for today's price and trade on it.
+        /// The old label, "بازار نقدی" (spot market), described an order book they never see:
+        /// they do not place a resting order and never enter a price of their own.
+        /// </summary>
+        public const string BtnSpotMarket = "💹 دریافت مظنه";
         public const string BtnSpotMarketBuy = "🛒 خرید نقدی";
         public const string BtnSpotMarketSell = "🛍️ فروش نقدی";
     }
@@ -91,34 +105,41 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgEnterPrice = "قیمت هر واحد {0} را به تومان وارد کنید:";
 
         /// <summary>
-        /// تایید سفارش. {0}=نماد فارسی، {1}=نوع سفارش (خرید/فروش)،
-        /// {2}=مقدار همراه واحد، {3}=قیمت هر واحد، {4}=مبلغ کل
+        /// Order confirmation. Icons and the separator before the total match the executed-trade
+        /// message and the trade history, so the same fact keeps the same shape everywhere the
+        /// customer meets it. The total sits below the rule because it is the number they check
+        /// before tapping "confirm".
+        ///
+        /// {0}=نماد فارسی، {1}=سمت با آیکون رنگی، {2}=مقدار همراه واحد،
+        /// {3}=قیمت هر واحد، {4}=مبلغ کل
         /// همهٔ مقادیر باید از قبل با PersianFormat قالب‌بندی شده باشند.
         /// </summary>
-        public const string MsgOrderConfirmation = "📋 تایید سفارش\n\n" +
-                                                  "دارایی: {0}\n" +
-                                                  "نوع سفارش: {1}\n" +
-                                                  "مقدار: {2}\n" +
-                                                  "قیمت هر واحد: {3} تومان\n" +
-                                                  "مبلغ کل: {4} تومان\n\n" +
-                                                  "آیا این سفارش را تایید می‌کنید؟";
+        public const string MsgOrderConfirmation = "📋 تأیید سفارش\n\n" +
+                                                  "🏷️ دارایی: {0}\n" +
+                                                  "{1}\n" +
+                                                  "📊 مقدار: {2}\n" +
+                                                  "💰 قیمت هر واحد: {3} تومان\n" +
+                                                  "➖➖➖➖➖➖➖➖➖\n" +
+                                                  "💵 مبلغ کل: {4} تومان\n\n" +
+                                                  "آیا این سفارش را تأیید می‌کنید؟";
 
         /// <summary>
         /// تایید سفارش طلای آبشده.
         /// قیمت «هر مثقال» همان عددی است که کاربر وارد کرده و قیمت «هر گرم» معادل
         /// محاسبه‌شدهٔ آن است. نمایش هر دو ضروری است، وگرنه کاربر عددی متفاوت از
         /// ورودی خود می‌بیند و گمان می‌کند اشتباه ثبت شده است.
-        /// {0}=دارایی، {1}=نوع سفارش، {2}=مقدار با واحد،
+        /// {0}=دارایی، {1}=سمت با آیکون رنگی، {2}=مقدار با واحد،
         /// {3}=قیمت هر مثقال، {4}=قیمت هر گرم، {5}=مبلغ کل
         /// </summary>
-        public const string MsgOrderConfirmationGold = "📋 تایید سفارش\n\n" +
-                                                       "دارایی: {0}\n" +
-                                                       "نوع سفارش: {1}\n" +
-                                                       "مقدار: {2}\n" +
-                                                       "قیمت هر مثقال: {3} تومان\n" +
-                                                       "قیمت هر گرم: {4} تومان\n" +
-                                                       "مبلغ کل: {5} تومان\n\n" +
-                                                       "آیا این سفارش را تایید می‌کنید؟";
+        public const string MsgOrderConfirmationGold = "📋 تأیید سفارش\n\n" +
+                                                       "🏷️ دارایی: {0}\n" +
+                                                       "{1}\n" +
+                                                       "📊 مقدار: {2}\n" +
+                                                       "💰 قیمت هر مثقال: {3} تومان\n" +
+                                                       "⚖️ قیمت هر گرم: {4} تومان\n" +
+                                                       "➖➖➖➖➖➖➖➖➖\n" +
+                                                       "💵 مبلغ کل: {5} تومان\n\n" +
+                                                       "آیا این سفارش را تأیید می‌کنید؟";
 
         /// <summary>{0} = توضیح دلیل، در صورت وجود</summary>
         public const string MsgInsufficientBalance = "❌ موجودی شما برای این سفارش کافی نیست.\n\n" +
@@ -139,15 +160,23 @@ namespace TallaEgg.TelegramBot.Infrastructure
         ///
         /// مبلغ کل عمداً هست: کاربر باید بدون حساب کردن بداند چقدر پرداخته یا گرفته.
         ///
-        /// {0}=خرید/فروش، {1}=مقدار با واحد، {2}=برچسب قیمت، {3}=قیمت،
-        /// {4}=«پرداختی» یا «دریافتی»، {5}=مبلغ کل
+        /// The icons match those used for the same facts in the trade history
+        /// (<c>TradeListHandler</c>) on purpose: the same thing should look the same
+        /// wherever the customer meets it. The separator before the total is there because
+        /// the total is the one number the customer checks — it is what left or entered
+        /// their account, and it should not have to be found among the others.
+        ///
+        /// {0}=side with its colour icon، {1}=نماد فارسی، {2}=مقدار با واحد،
+        /// {3}=برچسب قیمت، {4}=قیمت، {5}=«پرداختی» یا «دریافتی»، {6}=مبلغ کل
         /// </summary>
-        public const string MsgTradeExecuted = "🎉 معاملهٔ شما انجام شد.\n\n" +
-                                               "نوع: {0}\n" +
-                                               "مقدار: {1}\n" +
-                                               "{2}: {3} تومان\n" +
-                                               "{4}: {5} تومان\n\n" +
-                                               "جزئیات را از «تاریخچه معاملات» ببینید.";
+        public const string MsgTradeExecuted = "✅ معاملهٔ شما انجام شد\n\n" +
+                                               "{0}\n" +
+                                               "🏷️ دارایی: {1}\n" +
+                                               "📊 مقدار: {2}\n" +
+                                               "💰 {3}: {4} تومان\n" +
+                                               "➖➖➖➖➖➖➖➖➖\n" +
+                                               "💵 {5}: {6} تومان\n\n" +
+                                               "جزئیات را از «📊 تاریخچه معاملات» ببینید.";
 
         /// <summary>{0} = دلیل خطا</summary>
         public const string MsgOrderFailed = "❌ سفارش شما ثبت نشد.\n\nدلیل: {0}\n\nلطفاً دوباره تلاش کنید.";
@@ -368,19 +397,33 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// وثیقه‌ای قفل نمی‌کند. متن قبلی «سفارش خرید ثبت شد» را می‌گفت، که همان ابهامی
         /// بود که مدیر را گیج می‌کرد — او «قیمت امروز» را اعلام می‌کرد، نه سفارش.
         ///
-        /// جملهٔ آخر عمداً هست تا مدیر بداند چرا دیگر چیزی از موجودی‌اش قفل نمی‌شود.
+        /// Each side names <b>both</b> parties — "you buy (the customer sells)". The previous
+        /// wording was "خرید شما" alone, which is ambiguous to the person reading it: an admin
+        /// setting prices can just as easily read "your buy" as "the price your customers buy
+        /// at", and those are the two opposite numbers. Naming both parties on the same line
+        /// removes the reading entirely rather than relying on the admin to hold the
+        /// convention in their head.
+        ///
+        /// The per-gram figures are marked as derived, because the admin typed only the
+        /// per-mesghal ones and should not wonder where the others came from.
+        ///
+        /// The margin line is included because it is the number a price-setter actually
+        /// decides, and it is the one they cannot compute at a glance from the other four.
         ///
         /// {0}=نام دارایی، {1}=قیمت خرید هر مثقال، {2}=قیمت خرید هر گرم،
-        /// {3}=قیمت فروش هر مثقال، {4}=قیمت فروش هر گرم
+        /// {3}=قیمت فروش هر مثقال، {4}=قیمت فروش هر گرم، {5}=حاشیه در هر مثقال
         /// </summary>
         public const string MsgAdminQuotePublished = "📊 مظنه منتشر شد\n\n" +
-                                                     "دارایی: {0}\n\n" +
-                                                     "🟢 خرید شما — هر مثقال: {1} تومان\n" +
-                                                     "        هر گرم: {2} تومان\n\n" +
-                                                     "🔴 فروش شما — هر مثقال: {3} تومان\n" +
-                                                     "        هر گرم: {4} تومان\n\n" +
-                                                     "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.\n" +
-                                                     "هیچ مبلغی از موجودی شما قفل نشد؛ وثیقه فقط در لحظهٔ هر معامله و به اندازهٔ همان معامله درگیر می‌شود.";
+                                                     "🏷️ دارایی: {0}\n\n" +
+                                                     "🟢 شما می‌خرید (مشتری می‌فروشد)\n" +
+                                                     "       هر مثقال: {1} تومان\n" +
+                                                     "       هر گرم: {2} تومان\n\n" +
+                                                     "🔴 شما می‌فروشید (مشتری می‌خرد)\n" +
+                                                     "       هر مثقال: {3} تومان\n" +
+                                                     "       هر گرم: {4} تومان\n\n" +
+                                                     "➖➖➖➖➖➖➖➖➖\n" +
+                                                     "📈 حاشیهٔ شما: {5} تومان در هر مثقال\n\n" +
+                                                     "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
         /// <summary>{0} = دلیل ناموفق بودن</summary>
         public const string MsgAdminQuoteFailed = "❌ انتشار مظنه انجام نشد.\n\nدلیل: {0}";

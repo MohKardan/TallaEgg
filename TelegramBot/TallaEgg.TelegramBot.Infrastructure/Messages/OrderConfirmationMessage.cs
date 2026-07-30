@@ -45,7 +45,11 @@ public static class OrderConfirmationMessage
         var baseAsset = symbol.Split('/')[0];
 
         var amountText = $"{PersianFormat.Amount(quantity, baseAsset)} {PersianFormat.Unit(baseAsset)}";
-        var sideText = TallaEgg.Core.Utilties.Utils.GetEnumDescription(side);
+
+        // Same coloured label as the executed-trade message and the trade history. The
+        // customer is about to commit money, so the direction should be the most legible
+        // thing on the screen, not a word buried after "نوع سفارش:".
+        var sideText = side == OrderSide.Buy ? "🟢 خرید" : "🔴 فروش";
 
         var total = CurrenciesConstant.RoundToCurrencyPrecision(
             quantity * pricePerGram, CurrenciesConstant.Toman);

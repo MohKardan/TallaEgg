@@ -31,6 +31,18 @@ public sealed class FakeOrderApiClient : IOrderApiClient
 
     public Task<QuoteDto?> GetActiveQuoteAsync(string symbol) => Task.FromResult(ActiveQuote);
 
+    /// <summary>Quotes returned by the history endpoint, newest first.</summary>
+    public List<QuoteDto> QuoteHistory { get; } = [];
+
+    public Task<PagedResult<QuoteDto>> GetQuoteHistoryAsync(string symbol, int pageNumber = 1, int pageSize = 5) =>
+        Task.FromResult(new PagedResult<QuoteDto>
+        {
+            Items = QuoteHistory.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList(),
+            TotalCount = QuoteHistory.Count,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        });
+
     public Task<(bool success, string message)> AcceptQuoteAsync(
         Guid userId, string symbol, OrderSide side, decimal quantity)
     {
@@ -85,6 +97,12 @@ public sealed class FakeUsersApiClient : IUsersApiClient
         throw new NotSupportedException(nameof(UpdateUserStatusAsync));
     public Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber) =>
         throw new NotSupportedException(nameof(GetUserIdByPhoneNumberAsync));
+
+    /// <summary>Users reachable by id, for resolving the other side of a trade.</summary>
+    public Dictionary<Guid, UserDto> UsersById { get; } = [];
+
+    public Task<UserDto?> GetUserByIdAsync(Guid userId) =>
+        Task.FromResult(UsersById.TryGetValue(userId, out var found) ? found : null);
 }
 
 public sealed class FakeAffiliateApiClient : IAffiliateApiClient

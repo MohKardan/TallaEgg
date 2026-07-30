@@ -22,4 +22,12 @@ public interface IUsersApiClient
     Task<ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber);
     Task<ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, UserStatus newStatus);
     Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber);
+
+    /// <summary>
+    /// Looks a user up by their internal id; null when no such user exists.
+    ///
+    /// Needed because trades carry user ids, not phone numbers, so naming the other side of
+    /// a trade in the admin's history requires this direction of lookup.
+    /// </summary>
+    Task<UserDto?> GetUserByIdAsync(Guid userId);
 }

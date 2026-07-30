@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
@@ -250,8 +250,35 @@ static QuoteDto ToQuoteDto(Quote q) => new()
     Symbol = q.Symbol,
     BuyPrice = q.BuyPrice,
     SellPrice = q.SellPrice,
-    PublishedAt = q.PublishedAt
+    PublishedAt = q.PublishedAt,
+    IsActive = q.IsActive,
+    DeactivatedAt = q.DeactivatedAt
 };
+
+/// <summary>
+/// Published quotes for a symbol, newest first, including ones already replaced.
+///
+/// This is what the bot's quote history reads. It replaced order history in the customer
+/// menu: in the dealer model an order lives only for the instant of a fill, so a customer's
+/// order list was always either empty or entirely completed rows — nothing to act on. The
+/// prices the shop published are the history that means something.
+/// </summary>
+app.MapGet("/api/quotes/{Base}/{Quote}/history", async (
+    string Base, string Quote, IQuoteRepository quotes, int page = 1, int size = 5) =>
+{
+    var symbol = $"{Base}/{Quote}";
+    var (items, total) = await quotes.GetHistoryAsync(symbol, page, size);
+
+    var result = new PagedResult<QuoteDto>
+    {
+        Items = items.Select(ToQuoteDto).ToList(),
+        TotalCount = total,
+        PageNumber = page,
+        PageSize = size
+    };
+
+    return Results.Ok(ApiResponse<PagedResult<QuoteDto>>.Ok(result));
+});
 
 /// <summary>
 /// پذیرش مظنه توسط مشتری: دو سفارش دقیقاً به اندازهٔ مقدار درخواستی ساخته، قفل و بلافاصله

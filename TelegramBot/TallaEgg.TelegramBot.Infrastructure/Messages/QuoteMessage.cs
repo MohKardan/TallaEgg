@@ -34,12 +34,18 @@ public static class QuoteMessage
         var sellPricePerGram = CurrenciesConstant.RoundOrderPrice(
             sellPricePerMesghal / CurrenciesConstant.GramsPerMesghal);
 
+        // The margin is quoted per mesghal, the unit the admin typed, so it is directly
+        // comparable to the two prices above it. Deriving it from the per-gram figures
+        // instead would show a number 4.3318x smaller than the units around it.
+        var marginPerMesghal = sellPricePerMesghal - buyPricePerMesghal;
+
         var text = string.Format(BotMsgs.MsgAdminQuotePublished,
             PersianFormat.Symbol(symbol),
             PersianFormat.Number(buyPricePerMesghal),
             PersianFormat.Number(buyPricePerGram),
             PersianFormat.Number(sellPricePerMesghal),
-            PersianFormat.Number(sellPricePerGram));
+            PersianFormat.Number(sellPricePerGram),
+            PersianFormat.Number(marginPerMesghal));
 
         return new QuotePublication(buyPricePerGram, sellPricePerGram, text);
     }

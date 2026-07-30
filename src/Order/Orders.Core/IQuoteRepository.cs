@@ -1,4 +1,4 @@
-namespace Orders.Core;
+﻿namespace Orders.Core;
 
 public interface IQuoteRepository
 {
@@ -13,4 +13,14 @@ public interface IQuoteRepository
     /// می‌کند؛ در حالت دوم معاملهٔ کاملاً معتبری رد می‌شود.
     /// </summary>
     Task<Quote> PublishAsync(Quote quote);
+
+    /// <summary>
+    /// Published quotes for a symbol, newest first, including ones already replaced.
+    ///
+    /// The superseded rows are the point. Deactivating rather than deleting was a deliberate
+    /// choice when quotes were introduced (#48), so that it stays possible to see which price
+    /// was in force when any given trade happened. Without a way to read them, that history
+    /// existed but nobody could look at it.
+    /// </summary>
+    Task<(IReadOnlyList<Quote> Items, int TotalCount)> GetHistoryAsync(string symbol, int pageNumber, int pageSize);
 }

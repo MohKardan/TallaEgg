@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
@@ -178,7 +178,7 @@ public class BotConversationFlowTests
         await WalkToConfirmationAsync(amount: "2.5");
 
         var confirmation = _messenger.Texts.Last();
-        Assert.Contains("تایید سفارش", confirmation);
+        Assert.Contains("تأیید سفارش", confirmation);
         Assert.Contains("قیمت هر مثقال", confirmation);
         Assert.Contains("قیمت هر گرم", confirmation);
         Assert.DoesNotContain("{", confirmation);

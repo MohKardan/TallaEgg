@@ -25,6 +25,8 @@ public interface IOrderApiClient
 
     /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
     Task<QuoteDto?> GetActiveQuoteAsync(string symbol);
+    /// <summary>Published quotes for a symbol, newest first, including replaced ones.</summary>
+    Task<PagedResult<QuoteDto>> GetQuoteHistoryAsync(string symbol, int pageNumber = 1, int pageSize = 5);
 
     /// <summary>Best bid and ask, used by the market-order path.</summary>
     Task<ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol);

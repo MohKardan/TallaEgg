@@ -75,7 +75,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             {
                 //new KeyboardButton[] { new KeyboardButton(BotBtns.BtnSpotCreateOrder) },
                 new KeyboardButton[] { new KeyboardButton(BotBtns.BtnSpotSubmitPrice) },
-                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnActiveOrders), new KeyboardButton(BotBtns.BtnAccounting) },
+                new KeyboardButton[] { new KeyboardButton(BotBtns.BtnAccounting) },
                 new KeyboardButton[] { new KeyboardButton(BotBtns.BtnHelp) }
             })
             {
@@ -110,16 +110,9 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                 new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnQuoteHistory)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
-               }
-               //new[]
-               //{
-               //     new[] { new KeyboardButton(BotBtns.BtnOrderHistory), new KeyboardButton(BotBtns.BtnTradeHistory)},
-               //     new[] { new KeyboardButton(BotBtns.BtnActiveOrders), new KeyboardButton(BotBtns.BtnWalletsBalance)},
-               //     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
-               //}
-                            )
+               })
             {
                 ResizeKeyboard = true,
             };
@@ -138,8 +131,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnOrderHistory), new KeyboardButton(BotBtns.BtnTradeHistory)},
-                    new[] { new KeyboardButton(BotBtns.BtnActiveOrders) },
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnQuoteHistory)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                }
                             )
