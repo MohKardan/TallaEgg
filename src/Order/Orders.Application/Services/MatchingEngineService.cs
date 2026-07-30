@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -158,6 +158,10 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 return false;
             }
 
+            var marketMode = scope.ServiceProvider.GetRequiredService<MarketModeProvider>();
+            if (!ShouldMatchInBackground(marketMode, order.Asset))
+                return false;
+
             // Get matching orders from order book
             var matchingOrders = await GetMatchingOrdersAsync(matchingRepository, order);
             
@@ -239,9 +243,12 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
             // Process each asset independently
             // پردازش مستقل هر دارایی
-            var tasks = activeAssets.Select(asset => 
-                ProcessSingleAssetAsync(asset, cancellationToken)
-            ).ToArray();
+            var marketMode = scope.ServiceProvider.GetRequiredService<MarketModeProvider>();
+
+            var tasks = activeAssets
+                .Where(asset => ShouldMatchInBackground(marketMode, asset))
+                .Select(asset => ProcessSingleAssetAsync(asset, cancellationToken))
+                .ToArray();
 
             await Task.WhenAll(tasks);
         }
@@ -249,6 +256,39 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         {
             _logger.LogError(ex, "💥 Error processing all pending orders");
         }
+    }
+
+    /// <summary>
+    /// Whether this background loop should match a symbol at all.
+    ///
+    /// In Dealer mode it must not. A quote acceptance creates both orders, matches them
+    /// completely and consumes them inside one operation (<c>QuoteFillService</c>), so there
+    /// is never resting liquidity for this loop to pair up — its only possible effect is to
+    /// reach the same pair the fill is already matching.
+    ///
+    /// That is exactly what happened in issue #74: one order pair produced two trades, one
+    /// from the fill and one from this loop, and the customer paid for both. The semaphore
+    /// added in #53 serialises this loop against itself; it does not cover the fill path,
+    /// which calls the repository directly. Removing the second matcher is a smaller and
+    /// surer fix than trying to make two matchers agree.
+    ///
+    /// The concurrency token on RemainingAmount would now refuse the loser of such a race, so
+    /// this is the second line of defence rather than the only one — but a refusal still
+    /// produces a rolled-back transaction and a warning for a situation that should not arise.
+    /// </summary>
+    /// <param name="marketMode">
+    /// Resolved from the caller's scope rather than injected: this service is a singleton and
+    /// <see cref="MarketModeProvider"/> is scoped, and it deliberately re-reads configuration
+    /// on each call so a mode change needs no restart.
+    /// </param>
+    private bool ShouldMatchInBackground(MarketModeProvider marketMode, string asset)
+    {
+        if (marketMode.GetMode(asset) != MarketMode.Dealer)
+            return true;
+
+        _logger.LogDebug(
+            "Skipping {Asset}: it is a dealer market, where fills are matched synchronously.", asset);
+        return false;
     }
 
     /// <summary>

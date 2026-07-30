@@ -464,6 +464,47 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>
+    /// Published quotes for a symbol, newest first, including replaced ones.
+    ///
+    /// Returns an empty page rather than null on failure, so the caller renders "no quotes
+    /// yet" instead of having to distinguish a network error from an empty history. The
+    /// distinction matters to an operator reading logs, not to the customer reading a list.
+    /// </summary>
+    public async Task<PagedResult<QuoteDto>> GetQuoteHistoryAsync(string symbol, int pageNumber = 1, int pageSize = 5)
+    {
+        var empty = new PagedResult<QuoteDto>
+        {
+            Items = new List<QuoteDto>(),
+            TotalCount = 0,
+            PageNumber = pageNumber,
+            PageSize = pageSize
+        };
+
+        try
+        {
+            var response = await _httpClient.GetAsync(
+                $"{_baseUrl}/quotes/{symbol}/history?page={pageNumber}&size={pageSize}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Quote history request for {Symbol} returned {Status}.", symbol, response.StatusCode);
+                return empty;
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<PagedResult<QuoteDto>>>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return parsed?.Data ?? empty;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not read quote history for {Symbol}.", symbol);
+            return empty;
+        }
+    }
+
+    /// <summary>
     /// پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود — سرور آن را از مظنهٔ منتشرشده می‌خواند.
     /// </summary>
     public async Task<(bool success, string message)> AcceptQuoteAsync(

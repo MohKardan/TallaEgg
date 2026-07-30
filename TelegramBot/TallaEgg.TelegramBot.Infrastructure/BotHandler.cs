@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core;
+using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
@@ -312,14 +313,11 @@ namespace TallaEgg.TelegramBot
                 case BotBtns.BtnAccounting:
                     await HandleAccountingMenuAsync(chatId);
                     break;
-                case BotBtns.BtnOrderHistory:
-                    await ShowOrderHistory(chatId, userId);
+                case BotBtns.BtnQuoteHistory:
+                    await ShowQuoteHistory(chatId);
                     break;
                 case BotBtns.BtnTradeHistory:
                     await ShowTradeHistory(chatId, userId);
-                    break;
-                case BotBtns.BtnActiveOrders:
-                    await ShowActiveOrders(chatId, userId);
                     break;
                 case BotBtns.BtnWalletsBalance:
                     await ShowWalletsBalance(chatId, userId);
@@ -488,7 +486,10 @@ namespace TallaEgg.TelegramBot
 
                             // uid همان کاربری است که فهرست را می‌بیند؛ برای تعیین اینکه هر
                             // معامله از دید او خرید بوده یا فروش لازم است.
-                            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid);
+                            var pagerIsAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+                            var pagerPhones = await ResolveCounterpartyPhonesAsync(page.Data, uid, pagerIsAdmin);
+
+                            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid, pagerPhones);
 
                             // ویرایش پیام قبلی
                             await _messenger.EditTextAsync(
@@ -499,6 +500,35 @@ namespace TallaEgg.TelegramBot
                             );
 
                             // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
+                            await _messenger.AnswerCallbackAsync(callbackQuery.Id);
+                        }
+                    }
+                    else if (data.StartsWith(QuoteHistoryHandler.CallbackPrefix))
+                    {
+                        // quotes_{BASE}/{QUOTE}_{page} — the symbol contains a '/', not a '_',
+                        // so splitting on the last underscore keeps the symbol intact.
+                        var payload = data[QuoteHistoryHandler.CallbackPrefix.Length..];
+                        var split = payload.LastIndexOf('_');
+
+                        if (split > 0 && int.TryParse(payload[(split + 1)..], out var quotePage))
+                        {
+                            var symbol = payload[..split];
+                            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+
+                            if (!isAdmin)
+                            {
+                                await _messenger.AnswerCallbackAsync(callbackQuery.Id);
+                                return;
+                            }
+
+                            var quotePageResult = await _orderApi.GetQuoteHistoryAsync(symbol, quotePage, pageSize: 5);
+
+                            await _messenger.EditTextAsync(
+                                chatId: callbackQuery.Message.Chat.Id,
+                                messageId: callbackQuery.Message.MessageId,
+                                text: QuoteHistoryHandler.BuildQuoteHistoryAsync(quotePageResult, quotePage, isAdmin),
+                                replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(quotePageResult, quotePage, symbol));
+
                             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
                         }
                     }
@@ -618,20 +648,101 @@ namespace TallaEgg.TelegramBot
 
             await _messenger.SendAsync(chatId, helpText);
         }
-        private async Task ShowOrderHistory(long chatId, Guid userId)
+        /// <summary>
+        /// The prices the shop has published, newest first.
+        ///
+        /// Replaced order history in the accounting menu. An order in the dealer model is
+        /// created and consumed inside a single fill, so a customer's order list only ever
+        /// held completed rows — it looked like information and was not.
+        /// </summary>
+        private async Task ShowQuoteHistory(long chatId)
         {
+            const string symbol = CurrenciesConstant.MAUA_IRT;
 
-            var page = await _orderApi.GetUserOrdersAsync(userId, pageNumber: 1, pageSize: 5);
-            if (page.Success)
+            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+
+            // The button is only on the admin keyboard, but a keyboard label is just text a
+            // customer can type or replay from an old message. The check belongs here, where
+            // the data is read, not only in the menu that offers it.
+            if (!isAdmin)
             {
-                var text = await OrderListHandler.BuildOrdersListAsync(page.Data!, 1);
-
-                await _messenger.SendAsync(
-                    chatId: chatId,
-                    text: text,
-                    replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
-                );
+                await ShowMainMenuAsync(chatId);
+                return;
             }
+
+            var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 5);
+
+            await _messenger.SendAsync(
+                chatId,
+                QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin),
+                replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, symbol));
+        }
+
+        /// <summary>
+        /// Phone numbers for the other side of each trade on a page, or null when the viewer
+        /// is not an admin.
+        ///
+        /// Resolves the distinct ids only. A page holds at most five trades and the shop
+        /// trades with a handful of customers, so this is normally one or two lookups rather
+        /// than one per row.
+        ///
+        /// A lookup that fails is skipped rather than propagated: a missing phone number
+        /// should cost the admin one line of a list, not the whole list.
+        /// </summary>
+        private async Task<IReadOnlyDictionary<Guid, string>?> ResolveCounterpartyPhonesAsync(
+            PagedResult<TradeHistoryDto>? page, Guid viewerUserId, bool isAdmin)
+        {
+            if (!isAdmin || page is null) return null;
+
+            var counterpartyIds = page.Items
+                .Select(t => t.BuyerUserId == viewerUserId ? t.SellerUserId : t.BuyerUserId)
+                .Where(id => id != viewerUserId)
+                .Distinct()
+                .ToList();
+
+            var phones = new Dictionary<Guid, string>();
+
+            foreach (var id in counterpartyIds)
+            {
+                try
+                {
+                    var user = await _usersApi.GetUserByIdAsync(id);
+                    if (!string.IsNullOrWhiteSpace(user?.PhoneNumber))
+                        phones[id] = user!.PhoneNumber!;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not resolve the phone number for user {UserId}.", id);
+                }
+            }
+
+            return phones;
+        }
+
+        /// <summary>
+        /// One customer's trades, for an admin who looked them up by phone number.
+        ///
+        /// Built from the customer's point of view, so buy and sell read the way that customer
+        /// experienced them. No counterparty column: every row's counterparty is the shop, and
+        /// repeating the admin's own number on each line would be noise.
+        /// </summary>
+        private async Task ShowCustomerTradeHistoryAsync(long chatId, Guid customerUserId, string phone)
+        {
+            var page = await _orderApi.GetUserTradesAsync(customerUserId, pageNumber: 1, pageSize: 5);
+
+            if (!page.Success)
+            {
+                await _messenger.SendAsync(chatId, "خواندن معاملات این مشتری انجام نشد.");
+                return;
+            }
+
+            var header = $"👤 معاملات مشتری {PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone))}\n\n";
+            var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1, customerUserId);
+
+            await _messenger.SendAsync(
+                chatId,
+                header + text,
+                replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, customerUserId));
         }
 
         private async Task ShowTradeHistory(long chatId, Guid userId)
@@ -639,42 +750,16 @@ namespace TallaEgg.TelegramBot
             var page = await _orderApi.GetUserTradesAsync(userId, pageNumber: 1, pageSize: 5);
             if (page.Success)
             {
-                var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1, userId);
+                var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+                var phones = await ResolveCounterpartyPhonesAsync(page.Data, userId, isAdmin);
+
+                var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1, userId, phones);
 
                 await _messenger.SendAsync(
                     chatId: chatId,
                     text: text,
                     replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, 1, userId)
                 );
-            }
-        }
-
-        private async Task ShowActiveOrders(long chatId, Guid userId)
-        {
-            var role = await GetUserRoleAsync(chatId);
-            var isAdmin = role == TallaEgg.Core.Enums.User.UserRole.Admin;
-
-            var response = isAdmin 
-                ? await _orderApi.GetAllActiveOrdersAsync()
-                : await _orderApi.GetUserActiveOrdersAsync(userId);
-
-            if (response.Success)
-            {
-                var text = await ActiveOrdersHandler.BuildActiveOrdersListAsync(response.Data!, isAdmin);
-                var keyboard = ActiveOrdersHandler.BuildCancelOrderKeyboard(response.Data!, isAdmin);
-
-                // متن ساده ارسال می‌شود؛ با MarkdownV2 نشانه‌های قالب‌بندی escape می‌شدند
-                // و به‌صورت ستارهٔ خام به کاربر نمایش داده می‌شدند.
-                await _messenger.SendAsync(
-                    chatId: chatId,
-                    text: text,
-                    replyMarkup: keyboard
-                );
-            }
-            else
-            {
-                await _messenger.SendAsync(chatId,
-                    string.Format(BotMsgs.MsgActiveOrdersFailed, response.Message));
             }
         }
 

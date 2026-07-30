@@ -248,7 +248,11 @@ namespace TallaEgg.TelegramBot
                 var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
                 if (useId.HasValue)
                 {
-                    await ShowActiveOrders(chatId, useId.Value);
+                    // Was "show this customer's active orders". In the dealer model an order
+                    // exists only for the instant of a fill, so that list was always empty and
+                    // the command answered nothing. Their completed trades are what the admin
+                    // is actually looking for when they type a customer's number.
+                    await ShowCustomerTradeHistoryAsync(chatId, useId.Value, phone);
                 }
                 else
                 {

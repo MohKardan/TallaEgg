@@ -26,6 +26,15 @@ namespace TallaEgg.Core.DTOs.Order
         public decimal SellPrice { get; set; }
 
         public DateTime PublishedAt { get; set; }
+
+        /// <summary>
+        /// Whether this is the quote customers are currently trading on. False for a quote
+        /// that has been replaced by a newer one.
+        /// </summary>
+        public bool IsActive { get; set; }
+
+        /// <summary>When a newer quote replaced this one; null while it is still active.</summary>
+        public DateTime? DeactivatedAt { get; set; }
     }
 
     /// <summary>درخواست انتشار مظنه توسط ادمین. قیمت‌ها بر حسب واحد پایه (تومان بر گرم).</summary>

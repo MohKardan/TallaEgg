@@ -44,11 +44,18 @@ public static class TradeExecutedMessage
         var total = CurrenciesConstant.RoundToCurrencyPrecision(
             quantity * pricePerGram, CurrenciesConstant.Toman);
 
+        // Two independent signals for one fact: the coloured word here, and the direction of
+        // the money below. Colour alone is not enough for someone who does not distinguish
+        // the emoji or who is skimming. Same pair of labels as the trade history, so the
+        // customer learns one vocabulary rather than two.
+        var sideLabel = isBuy ? "🟢 خرید" : "🔴 فروش";
+
         // "پرداختی" (paid) vs "دریافتی" (received): the same amount means opposite things
         // to the two sides of a trade, and a single neutral label leaves the customer
         // unable to tell which happened.
         return string.Format(BotMsgs.MsgTradeExecuted,
-            TallaEgg.Core.Utilties.Utils.GetEnumDescription(side),
+            sideLabel,
+            PersianFormat.Symbol(symbol),
             $"{PersianFormat.Amount(quantity, baseAsset)} {PersianFormat.Unit(baseAsset)}",
             isGold ? "قیمت هر مثقال" : "قیمت هر واحد",
             PersianFormat.Number(displayPrice),

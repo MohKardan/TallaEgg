@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 
@@ -26,6 +26,32 @@ public class QuoteRepository : IQuoteRepository
             .Where(q => q.Symbol == normalized && q.IsActive)
             .OrderByDescending(q => q.PublishedAt)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<(IReadOnlyList<Quote> Items, int TotalCount)> GetHistoryAsync(
+        string symbol, int pageNumber, int pageSize)
+    {
+        var normalized = symbol.Trim().ToUpperInvariant();
+
+        // Clamped rather than trusted: these arrive from an HTTP query string, and a page
+        // size of zero would divide by zero when the caller computes the page count, while a
+        // huge one would build a message Telegram refuses to send.
+        pageNumber = Math.Max(1, pageNumber);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var query = _context.Quotes.Where(q => q.Symbol == normalized);
+
+        var total = await query.CountAsync();
+
+        // Ordered by PublishedAt, not by Id: ids are Guids and carry no order at all, so
+        // paging on them would return the same rows on different pages.
+        var items = await query
+            .OrderByDescending(q => q.PublishedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, total);
     }
 
     public async Task<Quote> PublishAsync(Quote quote)

@@ -31,8 +31,21 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         /// نیست، بلکه به این بستگی دارد که بیننده کدام طرف معامله بوده: یک معاملهٔ واحد
         /// برای یک طرف خرید است و برای طرف دیگر فروش.
         /// </param>
+        /// <param name="counterpartyPhones">
+        /// Phone number per counterparty user id, for the rows where it should be shown.
+        ///
+        /// Only populated for the admin. The admin is one side of every trade, so without the
+        /// other party named their history is a list of identical-looking rows and they cannot
+        /// tell which customer any of them was with. A customer needs no such row: every trade
+        /// they have is with the shop, so naming it adds nothing and would expose a number
+        /// they have no reason to hold.
+        ///
+        /// Passed in rather than looked up here so this stays a pure builder that a test can
+        /// call without a users service (issue #65).
+        /// </param>
         public static async Task<string> BuildTradesListAsync(
-            PagedResult<TradeHistoryDto> page, int currentPage, Guid viewerUserId)
+            PagedResult<TradeHistoryDto> page, int currentPage, Guid viewerUserId,
+            IReadOnlyDictionary<Guid, string>? counterpartyPhones = null)
         {
             if (page == null || !page.Items.Any())
             {
@@ -66,6 +79,18 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
                 sb.AppendLine($"📌 معاملهٔ {PersianFormat.Ltr(t.Id.ToString()[..8])}");
                 sb.AppendLine(sideLabel);
+
+                // Who the trade was with. The counterparty is whichever side the viewer is
+                // not — derived from isBuyer rather than assumed, so it stays correct when
+                // the viewer is on either side.
+                var counterpartyId = isBuyer ? t.SellerUserId : t.BuyerUserId;
+                if (counterpartyPhones is not null &&
+                    counterpartyPhones.TryGetValue(counterpartyId, out var phone) &&
+                    !string.IsNullOrWhiteSpace(phone))
+                {
+                    sb.AppendLine($"👤 طرف معامله: {PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone))}");
+                }
+
                 sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(t.Symbol)}");
                 sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(t.Quantity, baseAsset)} {unit}");
                 sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
