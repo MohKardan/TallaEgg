@@ -30,4 +30,14 @@ public interface IUsersApiClient
     /// a trade in the admin's history requires this direction of lookup.
     /// </summary>
     Task<UserDto?> GetUserByIdAsync(Guid userId);
+
+    /// <summary>
+    /// Changes a user's role. The Users service has exposed this since the beginning; nothing
+    /// reached it, so roles could only be changed with a hand-written SQL UPDATE.
+    ///
+    /// That is why the bot needs it: a freshly created database contains no operator at all,
+    /// and without a way to grant one from inside the product the whole dealer flow is
+    /// unreachable on a new server.
+    /// </summary>
+    Task<(bool success, string message)> UpdateRoleAsync(Guid userId, UserRole newRole);
 }

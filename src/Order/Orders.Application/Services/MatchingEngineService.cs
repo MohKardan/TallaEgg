@@ -35,14 +35,17 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     /// شناسهٔ کاربر بازارگردان (ادمین). اگر تنظیم شده باشد و RequireMarketMakerCounterparty
     /// روشن باشد، هر معامله باید یک طرفش این کاربر باشد.
     /// </summary>
-    private readonly Guid? _marketMakerUserId;
-
-    /// <summary>
-    /// آیا الزام «یک طرف معامله باید بازارگردان باشد» فعال است؟ در مدل فعلی کسب‌وکار
-    /// مشتری‌ها فقط با ادمین معامله می‌کنند، اما وقتی بازار نظیربه‌نظیر باز شود این
-    /// تنظیم خاموش می‌شود (نه اینکه کد حذف شود).
-    /// </summary>
-    private readonly bool _requireMarketMakerCounterparty;
+    // The single-market-maker rule that used to live here is gone.
+    //
+    // It compared both sides of a candidate match against one configured user id. There is no
+    // longer a single market maker to compare against: the counterparty of a quote fill is
+    // whoever published that quote, so "the market maker" is a property of a quote rather than
+    // of the system. The rule was also already unreachable — Matching:RequireMarketMakerCounterparty
+    // makes every unlisted symbol a Dealer market, and dealer symbols never enter this loop at
+    // all (issue #74).
+    //
+    // If peer-to-peer trading is ever opened, the rule has to be restated in terms of the new
+    // model — probably "at least one side is an administrator" — rather than restored as it was.
 
     public MatchingEngineService(
         IServiceScopeFactory scopeFactory,
@@ -55,19 +58,6 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         _logger = logger;
         _serviceProvider = serviceProvider;
 
-        _requireMarketMakerCounterparty =
-            configuration.GetValue("Matching:RequireMarketMakerCounterparty", defaultValue: false);
-
-        var marketMakerId = configuration.GetValue<string?>("Matching:MarketMakerUserId", null);
-        _marketMakerUserId = Guid.TryParse(marketMakerId, out var parsed) ? parsed : null;
-
-        if (_requireMarketMakerCounterparty && _marketMakerUserId is null)
-        {
-            // خاموش می‌ماند تا تطبیق به‌کلی متوقف نشود؛ اما باید دیده شود.
-            _logger.LogError(
-                "Matching:RequireMarketMakerCounterparty is enabled but Matching:MarketMakerUserId is not set. " +
-                "The market-maker rule will NOT be enforced.");
-        }
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -448,21 +438,6 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 "Skipping self-match for user {UserId} between orders {IncomingOrderId} and {CandidateOrderId}.",
                 incomingOrder.UserId, incomingOrder.Id, candidate.Id);
             return false;
-        }
-
-        if (_requireMarketMakerCounterparty && _marketMakerUserId is Guid marketMaker)
-        {
-            var involvesMarketMaker =
-                incomingOrder.UserId == marketMaker || candidate.UserId == marketMaker;
-
-            if (!involvesMarketMaker)
-            {
-                _logger.LogDebug(
-                    "Skipping customer-to-customer match between orders {IncomingOrderId} and {CandidateOrderId}: " +
-                    "neither side is the market maker.",
-                    incomingOrder.Id, candidate.Id);
-                return false;
-            }
         }
 
         return true;

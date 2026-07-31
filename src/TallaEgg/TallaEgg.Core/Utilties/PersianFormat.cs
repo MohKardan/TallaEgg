@@ -1,4 +1,4 @@
-namespace TallaEgg.Core.Utilties
+﻿namespace TallaEgg.Core.Utilties
 {
     /// <summary>
     /// قالب‌بندی اعداد و متن برای پیام‌های فارسی ربات.
@@ -13,8 +13,17 @@ namespace TallaEgg.Core.Utilties
     /// </summary>
     public static class PersianFormat
     {
-        /// <summary>نشانگر راست‌به‌چپ (Right-to-Left Mark) — جهت متن را تثبیت می‌کند.</summary>
+        // این سه نویسه نامرئی‌اند و در ویرایشگر دیده نمی‌شوند. کد یونیکدشان در توضیح هر
+        // کدام نوشته شده و تست PersianDateTimeTests مقدارشان را می‌سنجد، چون خرابیِ ناشی
+        // از یک کپی‌وپیست اشتباه در متن برنامه اصلاً به چشم نمی‌آید.
+        /// <summary>نشانگر راست‌به‌چپ (Right-to-Left Mark, U+200F).</summary>
         public const string Rlm = "‏";
+
+        /// <summary>آغاز جداسازِ چپ‌به‌راست (Left-to-Right Isolate, U+2066).</summary>
+        public const string Lri = "⁦";
+
+        /// <summary>پایان جداساز (Pop Directional Isolate, U+2069).</summary>
+        public const string Pdi = "⁩";
 
         private const char ArabicIndicZero = '۰'; // ۰ فارسی
 
@@ -84,11 +93,26 @@ namespace TallaEgg.Core.Utilties
                 .Replace(".", PersianDecimalSeparator.ToString());
 
         /// <summary>
-        /// قطعه‌متن چپ‌به‌راست (عدد، شماره نسخه، شماره کارت) را با نشانگر راست‌به‌چپ
-        /// در دو طرف احاطه می‌کند تا داخل جملهٔ فارسی جای درست خود نمایش داده شود.
+        /// قطعه‌متن چپ‌به‌راست (عدد، تاریخ، شماره نسخه) را در یک «جداسازِ چپ‌به‌راست»
+        /// یونیکد می‌گذارد تا داخل جملهٔ فارسی دقیقاً به همان ترتیبی که نوشته شده دیده شود.
+        ///
+        /// <para>
+        /// <b>قبلاً با RLM در دو طرف احاطه می‌شد و این غلط بود.</b> RLM یک نویسهٔ «قویِ
+        /// راست‌به‌چپ» است، پس جهت داخل قطعه را راست‌به‌چپ می‌کرد. برای یک عدد تنها فرقی
+        /// نمی‌کرد، ولی به محض اینکه قطعه <b>دو</b> گروه عدد داشت — مثل «۱۴۰۵/۰۵/۰۹ ۱۲:۰۷» —
+        /// فاصلهٔ میانشان جهت راست‌به‌چپ می‌گرفت و الگوریتم دوسویهٔ یونیکد **جای تاریخ و ساعت
+        /// را عوض می‌کرد**: کاربر «۱۲:۰۷ ۱۴۰۵/۰۵/۰۹» می‌دید.
+        /// </para>
+        ///
+        /// <para>
+        /// U+2066 (LRI) تا U+2069 (PDI) پاسخ استاندارد همین مسئله است: کل قطعه یک واحدِ
+        /// چپ‌به‌راستِ جدا می‌شود، ترتیب داخلش حفظ می‌شود و جهت متن اطرافش هم دست‌نخورده
+        /// می‌ماند. این رفتار در خودِ استاندارد یونیکد تعریف شده و به تنظیمات دستگاه یا
+        /// زبان سیستم وابسته نیست.
+        /// </para>
         /// </summary>
         public static string Ltr(string? text) =>
-            string.IsNullOrEmpty(text) ? string.Empty : $"{Rlm}{text}{Rlm}";
+            string.IsNullOrEmpty(text) ? string.Empty : $"{Lri}{text}{Pdi}";
 
         /// <summary>
         /// نام فارسی جفت معاملاتی برای نمایش به کاربر (مثل «آبشده/تومان»).
@@ -106,10 +130,22 @@ namespace TallaEgg.Core.Utilties
             CurrenciesConstant.GetCurrencyInfo(assetCode)?.Unit ?? string.Empty;
 
         /// <summary>
-        /// تاریخ و ساعت را به قالب فارسی‌خوان تبدیل می‌کند (ارقام فارسی، محافظت‌شده).
+        /// تاریخ و ساعت را همان‌طور که کاربر ایرانی انتظار دارد نمایش می‌دهد:
+        /// **تقویم شمسی، به وقت تهران (UTC+۳:۳۰)، با ارقام فارسی**.
+        ///
+        /// <para>
+        /// این تنها راهِ نمایش تاریخ در پیام‌های ربات است. قبلاً هر جا به سلیقهٔ خودش
+        /// قالب‌بندی می‌کرد و همه هم میلادی و به وقت UTC بودند؛ یعنی معامله‌ای که ساعت ۱۳:۲۲
+        /// به وقت تهران انجام شده بود، ۰۹:۵۲ نمایش داده می‌شد و تاریخش هم میلادی بود.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>نحوهٔ ذخیره‌سازی تغییری نمی‌کند.</b> در دیتابیس همه چیز میلادی و UTC می‌ماند —
+        /// که برای مرتب‌سازی، مقایسه و تطبیق حساب‌ها درست است. این تابع فقط لایهٔ نمایش است
+        /// و هیچ ربطی به ذخیره‌سازی ندارد.
+        /// </para>
         /// </summary>
         public static string DateTimeText(DateTime value) =>
-            Ltr(ToPersianDigits(value.ToString("yyyy/MM/dd HH:mm",
-                System.Globalization.CultureInfo.InvariantCulture)));
+            Ltr(ToPersianDigits(Utils.ConvertToPersianDate(value)));
     }
 }

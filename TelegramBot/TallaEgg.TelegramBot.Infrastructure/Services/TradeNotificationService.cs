@@ -1,4 +1,5 @@
 using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
@@ -165,7 +166,9 @@ public class TradeNotificationService
     /// </remarks>
     private string FormatBuyerTradeMessage(TradeMatchNotificationDto notification)
     {
-        var shamsiDateTime = notification.TradeDateTime.ToString("yyyy/MM/dd HH:mm:ss");
+        // The variable was already called "shamsi" and had never been anything of the sort —
+        // it formatted a Gregorian date in UTC. Now it is what its name claims.
+        var shamsiDateTime = PersianFormat.DateTimeText(notification.TradeDateTime);
         
         return $"🎉 **خرید موفق انجام شد!**\n\n" +
                $"💰 **جزئیات معامله:**\n" +
@@ -196,7 +199,9 @@ public class TradeNotificationService
     /// </remarks>
     private string FormatSellerTradeMessage(TradeMatchNotificationDto notification)
     {
-        var shamsiDateTime = notification.TradeDateTime.ToString("yyyy/MM/dd HH:mm:ss");
+        // The variable was already called "shamsi" and had never been anything of the sort —
+        // it formatted a Gregorian date in UTC. Now it is what its name claims.
+        var shamsiDateTime = PersianFormat.DateTimeText(notification.TradeDateTime);
         
         return $"💸 **فروش موفق انجام شد!**\n\n" +
                $"💰 **جزئیات معامله:**\n" +

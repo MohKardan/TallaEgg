@@ -7,6 +7,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.TelegramBot.Core.Utilties;
 using Telegram.Bot.Types.ReplyMarkups;
+using PersianFormat = TallaEgg.Core.Utilties.PersianFormat;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 {
@@ -38,9 +39,11 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 else
                     sb.AppendLine("📞 —");
 
-                sb.AppendLine($"📅 ثبت‌نام: {u.CreatedAt:yyyy/MM/dd HH:mm}");
+                // Through the shared formatter, so these read as Jalali in Tehran time like
+                // every other date the bot shows. They were Gregorian and in UTC.
+                sb.AppendLine($"📅 ثبت‌نام: {PersianFormat.DateTimeText(u.CreatedAt)}");
                 if (u.LastActiveAt.HasValue)
-                    sb.AppendLine($"🕓 آخرین فعالیت: {u.LastActiveAt:yyyy/MM/dd HH:mm}");
+                    sb.AppendLine($"🕓 آخرین فعالیت: {PersianFormat.DateTimeText(u.LastActiveAt.Value)}");
                 sb.AppendLine($"⚡ وضعیت: {Utils.EscapeMarkdownV2(u.Status.ToString())}");
 
                 if (!string.IsNullOrWhiteSpace(u.PhoneNumber))

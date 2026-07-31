@@ -130,7 +130,7 @@ using (var scope = app.Services.CreateScope())
     {
         await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 
-        var adminId = Guid.Parse("5564f136-b9fb-4719-b4dc-b0833fa24761");
+        var adminId = TallaEgg.Core.BootstrapConstant.RootAdminUserId;
         var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
 
         if (existingAdmin == null)
@@ -140,7 +140,10 @@ using (var scope = app.Services.CreateScope())
                 Id = adminId,
                 FirstName = "مدیر",
                 LastName = "کل",
-                InvitationCode = "admin",
+                // Shared with the bot's fallback referral code. Registration rejects any code
+                // that belongs to no user, so on an empty database this row's code is the only
+                // one that can ever work — and the two sides had drifted apart.
+                InvitationCode = TallaEgg.Core.BootstrapConstant.RootInvitationCode,
                 IsActive = true,
                 CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
                 Role = UserRole.SuperAdmin

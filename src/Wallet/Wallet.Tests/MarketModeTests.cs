@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Application.Services;
 using TallaEgg.Core.Enums.Order;
@@ -8,15 +8,22 @@ namespace Wallet.Tests;
 /// <summary>
 /// حالت بازار هر نماد (issue #48).
 ///
+/// <para>
 /// نکتهٔ اصلی این تست‌ها سازگاری با گذشته است: تنظیم
 /// <c>Matching:RequireMarketMakerCounterparty</c> از قبل وجود داشت و دقیقاً همین قاعده را
 /// بیان می‌کرد. اگر <c>MarketMode</c> آن را نادیده می‌گرفت، دو تعریف موازی برای یک قاعده
 /// داشتیم — همان الگویی که در این کدبیس بارها به باگ ختم شده.
+/// </para>
+///
+/// <para>
+/// <b>«بازارگردان کیست» دیگر اینجا نیست.</b> این کلاس فقط می‌گوید یک نماد در کدام حالت کار
+/// می‌کند. طرف مقابلِ معامله حالا خودِ مظنه است — منتشرکننده‌اش — که در
+/// <see cref="QuoteFillCounterpartyTests"/> پوشش داده می‌شود.
+/// </para>
 /// </summary>
 public class MarketModeTests
 {
     private const string Symbol = "MAUA/IRT";
-    private static readonly Guid MarketMaker = Guid.Parse("ace3a6e8-b507-45ca-9fcf-46b3810b0c1e");
 
     private static MarketModeProvider Provider(params (string Key, string Value)[] settings)
     {
@@ -79,42 +86,5 @@ public class MarketModeTests
         var provider = Provider(($"Matching:MarketModes:{Symbol}", "چیز نامعتبر"));
 
         Assert.Equal(MarketMode.OrderBook, provider.GetMode(Symbol));
-    }
-
-    // ── تشخیص بازار مظنه‌ای ─────────────────────────────────────────────────────
-
-    [Fact]
-    public void DealerModeWithAMarketMakerIsDetected()
-    {
-        var provider = Provider(
-            ($"Matching:MarketModes:{Symbol}", "Dealer"),
-            ("Matching:MarketMakerUserId", MarketMaker.ToString()));
-
-        Assert.True(provider.IsDealerMarket(Symbol, out var id));
-        Assert.Equal(MarketMaker, id);
-    }
-
-    /// <summary>
-    /// حالت Dealer بدون تعیین بازارگردان یک اشتباه پیکربندی است: معلوم نیست طرف مقابلِ
-    /// مشتری کیست. false برمی‌گردد (و خطا لاگ می‌شود) تا تطبیق به‌کلی متوقف نشود، ولی
-    /// قاعده هم بی‌صدا اعمال نگردد.
-    /// </summary>
-    [Fact]
-    public void DealerModeWithoutAMarketMakerIsNotTreatedAsDealer()
-    {
-        var provider = Provider(($"Matching:MarketModes:{Symbol}", "Dealer"));
-
-        Assert.False(provider.IsDealerMarket(Symbol, out var id));
-        Assert.Equal(Guid.Empty, id);
-    }
-
-    [Fact]
-    public void OrderBookModeIsNotADealerMarket()
-    {
-        var provider = Provider(
-            ($"Matching:MarketModes:{Symbol}", "OrderBook"),
-            ("Matching:MarketMakerUserId", MarketMaker.ToString()));
-
-        Assert.False(provider.IsDealerMarket(Symbol, out _));
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,6 +9,7 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.TelegramBot.Core.Utilties;
+using PersianFormat = TallaEgg.Core.Utilties.PersianFormat;
 using Telegram.Bot;
 using TallaEgg.TelegramBot.Infrastructure.Messaging;
 using Telegram.Bot.Types;
@@ -192,13 +194,28 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             IReadOnlyCollection<long> adminIds,
             UserDto user)
         {
-            var text =
-                $"📌 درخواست عضویت جدید\n\n" +
-                $"👤 نام: {Utils.EscapeHtml(user.FirstName)} {Utils.EscapeHtml(user.LastName)}\n" +
-                $"🆔 Telegram ID: <code>{user.TelegramId}</code>\n" +
-                $"🔖 Username: {Utils.UsernameLink(user.Username)}\n" +
-                $"📞 Phone: {Utils.EscapeHtml(user.PhoneNumber ?? "-")}\n" +
-                $"📅 ثبت‌نام: <code>{user.CreatedAt:yyyy/MM/dd HH:mm}</code>";
+            // Joined from the parts that are actually present. EscapeHtml turns an empty value
+            // into "-", so a person with no surname used to be announced as "Mohammad -".
+            var fullName = string.Join(' ', new[] { user.FirstName, user.LastName }
+                .Where(part => !string.IsNullOrWhiteSpace(part))
+                .Select(part => Utils.EscapeHtml(part)));
+
+            if (string.IsNullOrWhiteSpace(fullName))
+                fullName = "-";
+
+            // Numbers are wrapped so they read left-to-right inside a right-to-left message and
+            // are shown in Persian digits, as every other number the bot displays is.
+            var text = string.Format(
+                BotMsgs.MsgMembershipRequest,
+                fullName,
+                PersianFormat.Ltr(PersianFormat.ToPersianDigits(user.PhoneNumber ?? "-")),
+                Utils.UsernameLink(user.Username),
+                // No <code> wrapper. Telegram lays a code entity out left-to-right on its own,
+                // which fought with the surrounding right-to-left line and left this one field
+                // looking scrambled while the phone number beside it — same kind of value,
+                // no wrapper — read correctly.
+                PersianFormat.Ltr(PersianFormat.ToPersianDigits(user.TelegramId.ToString(CultureInfo.InvariantCulture))),
+                PersianFormat.DateTimeText(user.CreatedAt));
 
             var keyboard = new InlineKeyboardMarkup(new[]
             {
@@ -209,7 +226,13 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                 }
             });
 
-            foreach (var adminId in adminIds)
+            // Never ask somebody to decide about themselves. An administrator who registers is
+            // in this list, so the card about their own account came straight back to them with
+            // buttons approving or rejecting themselves.
+            //
+            // Filtered here rather than at the call site because it is a property of the card,
+            // not of one caller: any future place that sends it would have to remember.
+            foreach (var adminId in adminIds.Where(id => id != user.TelegramId))
             {
                 try
                 {
