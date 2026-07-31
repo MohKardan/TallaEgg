@@ -69,14 +69,25 @@ namespace TallaEgg.TelegramBot
         private bool _requireReferralCode;
         private string _defaultReferralCode;
 
+        /// <summary>
+        /// Telegram ids that are operators no matter what the database says. See
+        /// <see cref="Infrastructure.Options.BotSettingsOptions.OwnerTelegramIds"/> for why
+        /// this cannot be a stored role.
+        /// </summary>
+        private readonly IReadOnlySet<long> _ownerTelegramIds;
+
         public BotHandler(ILogger<BotHandler> logger,
                          ITelegramBotClient botClient, IBotMessenger messenger,
                          IConversationStore conversations,
                          IOrderApiClient orderApi, IUsersApiClient usersApi,
                          IAffiliateApiClient affiliateApi, IWalletApiClient walletApi,
                          ITelegramLogger telegramLogger, IVersionService versionService,
-                         bool requireReferralCode = false, string defaultReferralCode = "ADMIN2024")
+                         bool requireReferralCode = false,
+                         string defaultReferralCode = BootstrapConstant.RootInvitationCode,
+                         IEnumerable<long>? ownerTelegramIds = null)
         {
+            _ownerTelegramIds = ownerTelegramIds?.ToHashSet() ?? [];
+
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _botClient = botClient;
@@ -143,7 +154,13 @@ namespace TallaEgg.TelegramBot
 
                 if (user == null)
                 {
-                    await _messenger.SendAsync(chatId, "حساب شما پیدا نشد. لطفاً ابتدا با دستور شروع ثبت‌نام کنید.");
+                    // /start is the registration command, so telling somebody to send it while
+                    // they are sending it is noise — and it arrived as the reply to their very
+                    // first message, which reads like a rejection. Anything else still gets the
+                    // prompt.
+                    if (!(message.Text ?? string.Empty).StartsWith("/start"))
+                        await _messenger.SendAsync(chatId, BotMsgs.MsgAccountNotFound);
+
                     await HandleNewUserAsync(chatId, telegramId, message);
                     return;
                 }
@@ -159,7 +176,19 @@ namespace TallaEgg.TelegramBot
                     return;
                 }
 
-                if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved)
+                // A configured owner is exempt from the approval gate, and this is the whole
+                // reason the exemption exists: a new account is created Pending, approval
+                // arrives only as a callback from an administrator of a hard-coded Telegram
+                // group, and the operator commands live inside the else-branch below. On an
+                // empty database that is a closed loop — the one person who is supposed to
+                // appoint the first administrator sits behind an approval only an existing
+                // administrator can give.
+                //
+                // Ownership already comes from configuration, which is to say from whoever
+                // controls the deployment. Requiring a second, in-product approval on top of
+                // that adds no protection; it only makes the product impossible to start.
+                if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved
+                    && !_ownerTelegramIds.Contains(telegramId))
                 {
                     await _messenger.SendAsync(
                          chatId,
@@ -169,9 +198,8 @@ namespace TallaEgg.TelegramBot
                 else
                 {
                     // احتمالا بهتره که در آینده این کار را رول حسابدار انجام دهد
-                    // Check if user is admin
                     //if (await IsTelegramAdmin(user))
-                    if (user.Role == TallaEgg.Core.Enums.User.UserRole.Admin)
+                    if (IsOperator(user))
                     {
                         // Check for admin commands first
                         bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
@@ -268,6 +296,46 @@ namespace TallaEgg.TelegramBot
                     await _messenger.SendAsync(chatId, BotMsgs.MsgPhoneSuccess,
                         replyMarkup: new ReplyKeyboardRemove());
                     await ShowMainMenuAsync(chatId);
+
+                    // A configured owner approves themselves, because there is nobody else to
+                    // do it. Their authority already comes from the configuration file; asking
+                    // them to also tick a box about themselves is a formality that on an empty
+                    // system nobody can perform. Approving the row as well as exempting them at
+                    // the gate keeps the stored state honest — they show as Approved in the user
+                    // list, rather than looking Pending forever while behaving otherwise.
+                    if (_ownerTelegramIds.Contains(telegramId))
+                    {
+                        await _usersApi.UpdateUserStatusAsync(telegramId, UserStatus.Approved);
+
+                        // ...and given the Admin role, not merely treated as one.
+                        //
+                        // Being an operator by configuration is enough to reach the commands,
+                        // but it is not enough to be the shop: the account that publishes a
+                        // quote becomes the counterparty of every fill against it, and only an
+                        // Admin is exempt from the balance check that would otherwise refuse
+                        // those trades. Leaving the stored role at RegularUser would give the
+                        // owner a menu they cannot actually use.
+                        //
+                        // This is what removes the last manual step from a first deployment:
+                        // configure one Telegram id, register, and the shop exists.
+                        if (response.Data is not null && response.Data.Role != UserRole.Admin)
+                        {
+                            var (promoted, promotionMessage) =
+                                await _usersApi.UpdateRoleAsync(response.Data.Id, UserRole.Admin);
+
+                            if (promoted)
+                                _logger.LogInformation(
+                                    "Configured owner {UserId} was granted the Admin role on registration.",
+                                    response.Data.Id);
+                            else
+                                _logger.LogError(
+                                    "Configured owner {UserId} could not be granted the Admin role: {Message}",
+                                    response.Data.Id, promotionMessage);
+                        }
+
+                        return;
+                    }
+
                     // Looking the admins up needs the raw client; deciding what they see
                     // does not. Splitting the two keeps the message itself testable.
                     var adminIds = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
@@ -437,19 +505,28 @@ namespace TallaEgg.TelegramBot
                         await _messenger.SendSpotSideMenuKeyboard(chatId);
 
                     }
-                    else if (data.StartsWith("approve_"))
+                    // Both branches activate or bar an account, and neither checked who was
+                    // asking. Callback data is not a secret — it is client-side text that any
+                    // Telegram client can send back — so "approve_<id>" was effectively an open
+                    // endpoint for approving accounts. It went unnoticed because the buttons are
+                    // only ever delivered to group administrators, but delivery is not a
+                    // permission check.
+                    else if (data.StartsWith("approve_") || data.StartsWith("reject_"))
                     {
-                        var telegramUserId = data["approve_".Length..];
+                        if (!await IsOperatorAsync(telegramId))
+                        {
+                            await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgNotAuthorized);
+                            return;
+                        }
 
-                        await ApproveUser(long.Parse(telegramUserId), telegramId, message);
+                        var approving = data.StartsWith("approve_");
+                        var prefixLength = (approving ? "approve_" : "reject_").Length;
+                        var targetTelegramId = long.Parse(data[prefixLength..]);
 
-                    }
-                    else if (data.StartsWith("reject_"))
-                    {
-                        var telegramUserId = data["reject_".Length..];
-
-                        await RejectUser(long.Parse(telegramUserId), telegramId, message);
-
+                        if (approving)
+                            await ApproveUser(targetTelegramId, telegramId, message);
+                        else
+                            await RejectUser(targetTelegramId, telegramId, message);
                     }
                     else if (data.StartsWith("orders_"))
                     {
@@ -486,7 +563,7 @@ namespace TallaEgg.TelegramBot
 
                             // uid همان کاربری است که فهرست را می‌بیند؛ برای تعیین اینکه هر
                             // معامله از دید او خرید بوده یا فروش لازم است.
-                            var pagerIsAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+                            var pagerIsAdmin = await IsOperatorAsync(chatId);
                             var pagerPhones = await ResolveCounterpartyPhonesAsync(page.Data, uid, pagerIsAdmin);
 
                             var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid, pagerPhones);
@@ -513,7 +590,7 @@ namespace TallaEgg.TelegramBot
                         if (split > 0 && int.TryParse(payload[(split + 1)..], out var quotePage))
                         {
                             var symbol = payload[..split];
-                            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+                            var isAdmin = await IsOperatorAsync(chatId);
 
                             if (!isAdmin)
                             {
@@ -599,19 +676,55 @@ namespace TallaEgg.TelegramBot
 
             if (user == null)
             {
-                await _messenger.SendAsync(chatId, "حساب شما پیدا نشد. لطفاً ابتدا با دستور شروع ثبت‌نام کنید.");
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAccountNotFound);
                 throw new Exception("User not found");
             }
 
             return user.Role;
         }
+
+        /// <summary>
+        /// Whether this person may use the administrative side of the bot.
+        ///
+        /// <para>
+        /// Three things count, and the call sites used to check only the first:
+        /// </para>
+        /// <list type="bullet">
+        ///   <item><description><see cref="UserRole.Admin"/> — the shop operator.</description></item>
+        ///   <item><description><see cref="UserRole.SuperAdmin"/> — strictly more privileged, yet
+        ///   <c>role == Admin</c> excluded it. Granting someone the higher of the two roles took
+        ///   their admin menu away, which is exactly backwards, and now that roles can be changed
+        ///   from inside the bot it is a mistake anyone could make in one message.</description></item>
+        ///   <item><description>A configured owner — see
+        ///   <see cref="Infrastructure.Options.BotSettingsOptions.OwnerTelegramIds"/>. Without this
+        ///   an empty database has no operator and no way to appoint one.</description></item>
+        /// </list>
+        /// </summary>
+        private bool IsOperator(UserDto user) =>
+            user.Role is UserRole.Admin or UserRole.SuperAdmin
+            || _ownerTelegramIds.Contains(user.TelegramId);
+
+        /// <summary>
+        /// The same question asked when only the chat is at hand. In a private chat — the only
+        /// place this bot is used — the chat id and the Telegram user id are the same value,
+        /// which is the assumption every other lookup here already makes.
+        /// </summary>
+        private async Task<bool> IsOperatorAsync(long chatId)
+        {
+            if (_ownerTelegramIds.Contains(chatId))
+                return true;
+
+            var role = await GetUserRoleAsync(chatId);
+            return role is UserRole.Admin or UserRole.SuperAdmin;
+        }
+
         private async Task ShowMainMenuAsync(long chatId)
         {
             //bool isAdmin = await IsTelegramAdmin(user);
             //isAdmin = true; // for test
             ////if (isAdmin)
 
-            if (await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin)
+            if (await IsOperatorAsync(chatId))
             {
                 await _messenger.SendMainKeyboardForAdminAsync(chatId);
             }
@@ -623,7 +736,7 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandleAccountingMenuAsync(long chatId)
         {
-            if (await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin)
+            if (await IsOperatorAsync(chatId))
             {
                 await _messenger.SendAccountingMenuKeyboardForAdmin(chatId);
             }
@@ -659,7 +772,7 @@ namespace TallaEgg.TelegramBot
         {
             const string symbol = CurrenciesConstant.MAUA_IRT;
 
-            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+            var isAdmin = await IsOperatorAsync(chatId);
 
             // The button is only on the admin keyboard, but a keyboard label is just text a
             // customer can type or replay from an old message. The check belongs here, where
@@ -750,7 +863,7 @@ namespace TallaEgg.TelegramBot
             var page = await _orderApi.GetUserTradesAsync(userId, pageNumber: 1, pageSize: 5);
             if (page.Success)
             {
-                var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+                var isAdmin = await IsOperatorAsync(chatId);
                 var phones = await ResolveCounterpartyPhonesAsync(page.Data, userId, isAdmin);
 
                 var text = await TradeListHandler.BuildTradesListAsync(page.Data!, 1, userId, phones);
@@ -1130,7 +1243,7 @@ namespace TallaEgg.TelegramBot
             var hasSufficientBalance = orderState.OrderSide == OrderSide.Buy
                 ? validateCreditAndBalance.HasSufficientCreditAndBalanceQuote : validateCreditAndBalance.HasSufficientCreditAndBalanceBase;
 
-            var isAdmin = await GetUserRoleAsync(chatId) == TallaEgg.Core.Enums.User.UserRole.Admin;
+            var isAdmin = await IsOperatorAsync(chatId);
 
             if (!isAdmin)    
             if (!validateCreditAndBalance.Success || !hasSufficientBalance)

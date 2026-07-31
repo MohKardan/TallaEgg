@@ -31,14 +31,19 @@ public class PersianFormatTests
     }
 
     [Fact]
-    public void Number_WrapsValueInRightToLeftMarksSoItDoesNotScrambleInPersianText()
+    public void Number_WrapsValueInALeftToRightIsolateSoItDoesNotScrambleInPersianText()
     {
         var result = PersianFormat.Number(1000m);
 
-        // The RLM guard is what keeps the number from being reordered by the bidi
-        // algorithm when embedded in a Persian sentence.
-        Assert.StartsWith(PersianFormat.Rlm, result);
-        Assert.EndsWith(PersianFormat.Rlm, result);
+        // The isolate is what keeps the number from being reordered by the bidi algorithm
+        // when embedded in a Persian sentence. It replaced a pair of RLM marks, which made
+        // the inside right-to-left — harmless for a single number like this one, and the
+        // reason the fault only surfaced on a date, where two number runs swapped places.
+        //
+        // Ordinal: a culture-sensitive comparison ignores invisible formatting characters,
+        // so these assertions would hold whatever the string really contained.
+        Assert.StartsWith(PersianFormat.Lri, result, StringComparison.Ordinal);
+        Assert.EndsWith(PersianFormat.Pdi, result, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -78,6 +83,9 @@ public class PersianFormatTests
         Assert.Equal("تومان", PersianFormat.Unit(CurrenciesConstant.Toman));
     }
 
-    /// <summary>Removes the RLM guards so the visible text can be asserted directly.</summary>
-    private static string Strip(string value) => value.Replace(PersianFormat.Rlm, "");
+    /// <summary>Removes the direction guards so the visible text can be asserted directly.</summary>
+    private static string Strip(string value) => value
+        .Replace(PersianFormat.Lri, "")
+        .Replace(PersianFormat.Pdi, "")
+        .Replace(PersianFormat.Rlm, "");
 }

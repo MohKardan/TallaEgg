@@ -418,6 +418,76 @@ public class UsersApiClient : IUsersApiClient
             return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
         }
     }
+    /// <summary>
+    /// Changes a user's role through <c>POST /api/user/update-role</c>.
+    ///
+    /// <para>
+    /// Returns the service's own message rather than a generic one. A role change is rare and
+    /// consequential, so when it fails the operator needs to know whether the user was not
+    /// found, the service was unreachable, or the request was rejected — "failed" alone would
+    /// leave them guessing at the one moment they cannot afford to.
+    /// </para>
+    ///
+    /// <para>
+    /// The endpoint answers <c>{ success, message }</c>, not the usual <c>ApiResponse&lt;T&gt;</c>
+    /// envelope, so the payload is read into a matching shape instead.
+    /// </para>
+    /// </summary>
+    public async Task<(bool success, string message)> UpdateRoleAsync(Guid userId, TallaEgg.Core.Enums.User.UserRole newRole)
+    {
+        var json = JsonConvert.SerializeObject(new { UserId = userId, NewRole = newRole });
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        try
+        {
+            using var response = await _httpClient.PostAsync($"{_baseUrl}/user/update-role", content);
+            var payload = await response.Content.ReadAsStringAsync();
+
+            var parsed = JsonConvert.DeserializeObject<UpdateRoleResponse>(payload);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Users API returned {StatusCode} while updating role of {UserId} to {NewRole}. Payload: {Payload}",
+                    (int)response.StatusCode, userId, newRole, payload);
+
+                // 404 and 400 both carry a usable message; fall back only when they do not.
+                return (false, string.IsNullOrWhiteSpace(parsed?.Message)
+                    ? "تغییر سطح دسترسی ناموفق بود."
+                    : parsed!.Message!);
+            }
+
+            if (parsed is null)
+            {
+                _logger.LogError("Users API returned invalid payload while updating role of {UserId}. Payload: {Payload}", userId, payload);
+                return (false, "پاسخ نامعتبر از سرویس کاربران دریافت شد.");
+            }
+
+            return (parsed.Success, string.IsNullOrWhiteSpace(parsed.Message) ? "انجام شد." : parsed.Message);
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Users API request timed out while updating role of {UserId}", userId);
+            return (false, "پاسخ‌گویی سرویس کاربران زمان‌بر شد.");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Users API communication error while updating role of {UserId}", userId);
+            return (false, "خطای ارتباط با سرویس کاربران.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while updating role of {UserId}", userId);
+            return (false, "خطای غیرمنتظره در تغییر سطح دسترسی.");
+        }
+    }
+
+    /// <summary>The bare shape <c>/api/user/update-role</c> answers with.</summary>
+    private sealed class UpdateRoleResponse
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+    }
+
     public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
         try

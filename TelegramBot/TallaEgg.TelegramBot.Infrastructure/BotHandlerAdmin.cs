@@ -5,6 +5,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Enums.Wallet;
 using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Utilties;
@@ -262,7 +263,25 @@ namespace TallaEgg.TelegramBot
             }
 
 
-            //دستور ثبت قیمت جفتی برای ادمین    
+            if (msgText.StartsWith("ن "))
+            {
+                await HandleChangeRoleCommandAsync(chatId, msgText, user);
+                return true;
+            }
+
+            if (msgText.StartsWith("ت "))
+            {
+                await HandleSetUserStatusCommandAsync(chatId, msgText, "ت", UserStatus.Approved);
+                return true;
+            }
+
+            if (msgText.StartsWith("ر "))
+            {
+                await HandleSetUserStatusCommandAsync(chatId, msgText, "ر", UserStatus.Rejected);
+                return true;
+            }
+
+            //دستور ثبت قیمت جفتی برای ادمین
             // Handle price pair format: buyPrice-sellPrice (e.g., 8523690-8529630)
             var pricePairRegex = new Regex(@"^(\d+)-(\d+)$", RegexOptions.Compiled);
             var pricePairMatch = pricePairRegex.Match(msgText);
@@ -311,6 +330,107 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
+        /// <c>ن [شمارهٔ تلفن] [نقش]</c> — changes a user's role.
+        ///
+        /// <para>
+        /// The Users service has had <c>POST /api/user/update-role</c> from the start and nothing
+        /// ever called it, so in practice a role could only be changed with a hand-written SQL
+        /// UPDATE against the database. That is tolerable on a developer's machine and impossible
+        /// on a server, and it is the reason a freshly deployed instance has no operator.
+        /// </para>
+        ///
+        /// <para>
+        /// <b>The user id is echoed back on success.</b> It is not decoration:
+        /// <c>Matching:MarketMakerUserId</c> is a configuration value naming a specific row, and
+        /// on a new database that row does not exist yet with any predictable id. Whoever is made
+        /// the dealer has an id that was generated when they registered, and it has to be copied
+        /// into the configuration by hand. Printing it here is the difference between one message
+        /// and a database query.
+        /// </para>
+        /// </summary>
+        private async Task HandleChangeRoleCommandAsync(long chatId, string msgText, UserDto actor)
+        {
+            // Same shape as the charge command: a phone number, then the argument.
+            var match = Regex.Match(msgText.Trim(),
+                @"^ن\s+(?<phone>\d{10,11})\s+(?<role>.+)$",
+                RegexOptions.Compiled);
+
+            if (!match.Success)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminRoleFormatError, UserRoleNames.AssignableList()));
+                return;
+            }
+
+            var phone = match.Groups["phone"].Value;
+
+            if (!UserRoleNames.TryParse(match.Groups["role"].Value, out var newRole))
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminRoleUnknown,
+                        match.Groups["role"].Value.Trim(),
+                        UserRoleNames.AssignableList()));
+                return;
+            }
+
+            var target = await _usersApi.GetUserAsync(phone);
+            if (target is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUserNotFound);
+                return;
+            }
+
+            // Refusing self-change is what stops the only operator from locking everyone out of
+            // the administrative side in one message. There is no undo from inside the bot: once
+            // the last Admin becomes an ordinary user, the command that would restore them is no
+            // longer reachable. The recovery path is OwnerTelegramIds, which needs a config edit
+            // and a restart — worth avoiding for the sake of one refusal here.
+            if (target.Id == actor.Id)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminRoleSelfChange);
+                return;
+            }
+
+            if (target.Role == newRole)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminRoleUnchanged,
+                        PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                        UserRoleNames.Display(newRole)));
+                return;
+            }
+
+            var previousRole = target.Role;
+            var (success, message) = await _usersApi.UpdateRoleAsync(target.Id, newRole);
+
+            if (!success)
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminOperationFailed, message));
+                return;
+            }
+
+            await _messenger.SendAsync(chatId,
+                string.Format(BotMsgs.MsgAdminRoleChanged,
+                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                    UserRoleNames.Display(previousRole),
+                    UserRoleNames.Display(newRole),
+                    PersianFormat.Ltr(target.Id.ToString())));
+
+            // A privilege change is worth an audit line even though nothing reads it yet; when
+            // someone asks later how an account became an operator, this is the only record.
+            _logger.LogWarning("Role of {TargetUserId} ({Phone}) changed from {OldRole} to {NewRole} by {ActorUserId}.",
+                target.Id, phone, previousRole, newRole, actor.Id);
+
+            // Telling the person is not a courtesy: their menu changes on their next message and
+            // an unexplained change of what the bot offers reads as a fault.
+            if (target.TelegramId != 0)
+            {
+                await _messenger.SendAsync(target.TelegramId,
+                    string.Format(BotMsgs.MsgUserRoleChanged, UserRoleNames.Display(newRole)));
+            }
+        }
+
+        /// <summary>
         /// با این فقط چک میکنیم ببینیم تو گروه تلگرام ادمین هست یا نه
         /// 
         /// </summary>
@@ -328,6 +448,84 @@ namespace TallaEgg.TelegramBot
 
             return false;
         }
+
+        /// <summary>
+        /// <c>ت [شمارهٔ تلفن]</c> and <c>ر [شمارهٔ تلفن]</c> — approve or reject an account from
+        /// inside the bot.
+        ///
+        /// <para>
+        /// Until now the only way to approve anybody was an inline button delivered to the
+        /// administrators of one hard-coded Telegram group (<c>Constants.GroupId</c>). That makes
+        /// activation depend on a Telegram group rather than on the product: if the bot is not a
+        /// member of that group — and a newly deployed bot is not — <c>GetChatAdministrators</c>
+        /// throws, the exception is swallowed by the catch-all in <c>HandleMessageAsync</c>, and
+        /// the account stays Pending with nobody informed. Every new account would be stuck, not
+        /// only the first one.
+        /// </para>
+        ///
+        /// <para>
+        /// The button path still works and is untouched; this is a second route that depends on
+        /// nothing outside the product.
+        /// </para>
+        /// </summary>
+        private async Task HandleSetUserStatusCommandAsync(
+            long chatId, string msgText, string prefix, UserStatus newStatus)
+        {
+            var match = Regex.Match(msgText.Trim(), $@"^{prefix}\s+(?<phone>\d{{10,11}})$", RegexOptions.Compiled);
+
+            if (!match.Success)
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminStatusFormatError, prefix));
+                return;
+            }
+
+            var phone = match.Groups["phone"].Value;
+            var target = await _usersApi.GetUserAsync(phone);
+
+            if (target is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUserNotFound);
+                return;
+            }
+
+            // The status endpoint is keyed on the Telegram id, so an account that has none
+            // cannot be reached through it. The seeded administrator row is exactly that: it
+            // exists to own the bootstrap invitation code and is not a person.
+            if (target.TelegramId == 0)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminStatusNoTelegramAccount);
+                return;
+            }
+
+            if (target.Status == newStatus)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminStatusUnchanged,
+                        PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                        StatusName(newStatus)));
+                return;
+            }
+
+            var result = await _usersApi.UpdateUserStatusAsync(target.TelegramId, newStatus);
+
+            if (!result.Success)
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
+                return;
+            }
+
+            await _messenger.SendAsync(chatId,
+                string.Format(BotMsgs.MsgAdminStatusChanged,
+                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
+                    StatusName(newStatus)));
+
+            await _messenger.SendAsync(target.TelegramId,
+                newStatus == UserStatus.Approved ? BotMsgs.MsgUserApproved : BotMsgs.MsgUserRejected);
+        }
+
+        /// <summary>Only the two statuses these commands can set need a name.</summary>
+        private static string StatusName(UserStatus status) =>
+            status == UserStatus.Approved ? "تایید‌شده" : "رد‌شده";
 
         private async Task ApproveUser(long telegramUserId, long adminTgId, Message originalMsg)
         {

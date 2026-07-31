@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using TallaEgg.Core.Enums.Order;
 
@@ -46,38 +46,5 @@ public class MarketModeProvider
         return _configuration.GetValue("Matching:RequireMarketMakerCounterparty", defaultValue: false)
             ? MarketMode.Dealer
             : MarketMode.OrderBook;
-    }
-
-    /// <summary>شناسهٔ کاربر بازارگردان، یا null اگر تنظیم نشده باشد.</summary>
-    public Guid? GetMarketMakerUserId()
-    {
-        var raw = _configuration["Matching:MarketMakerUserId"];
-        return Guid.TryParse(raw, out var parsed) ? parsed : null;
-    }
-
-    /// <summary>
-    /// آیا این نماد در حالت مظنه‌ای کار می‌کند و بازارگردانش مشخص است؟
-    ///
-    /// اگر حالت Dealer باشد ولی بازارگردان تنظیم نشده باشد، خطا لاگ می‌شود و false
-    /// برمی‌گردد — تطبیق به‌کلی متوقف نمی‌شود، ولی یک اشتباه در کانفیگ بی‌صدا نمی‌ماند.
-    /// </summary>
-    public bool IsDealerMarket(string symbol, out Guid marketMakerUserId)
-    {
-        marketMakerUserId = Guid.Empty;
-
-        if (GetMode(symbol) != MarketMode.Dealer)
-            return false;
-
-        var id = GetMarketMakerUserId();
-        if (id is null)
-        {
-            _logger.LogError(
-                "Symbol {Symbol} is in Dealer mode but Matching:MarketMakerUserId is not set. " +
-                "The dealer rule will NOT be enforced.", symbol);
-            return false;
-        }
-
-        marketMakerUserId = id.Value;
-        return true;
     }
 }

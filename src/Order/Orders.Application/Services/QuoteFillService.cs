@@ -3,6 +3,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using TallaEgg.Core;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Infrastructure.Clients;
 
 namespace Orders.Application.Services;
 
@@ -29,6 +30,7 @@ public class QuoteFillService
     private readonly OrderService _orderService;
     private readonly MarketModeProvider _marketMode;
     private readonly OrderMatchingRepository _matchingRepository;
+    private readonly IWalletApiClient _walletApiClient;
     private readonly ILogger<QuoteFillService> _logger;
 
     public QuoteFillService(
@@ -36,12 +38,14 @@ public class QuoteFillService
         OrderService orderService,
         MarketModeProvider marketMode,
         OrderMatchingRepository matchingRepository,
+        IWalletApiClient walletApiClient,
         ILogger<QuoteFillService> logger)
     {
         _quoteRepository = quoteRepository;
         _orderService = orderService;
         _marketMode = marketMode;
         _matchingRepository = matchingRepository;
+        _walletApiClient = walletApiClient;
         _logger = logger;
     }
 
@@ -69,19 +73,80 @@ public class QuoteFillService
         if (quantity <= 0)
             return (false, $"مقدار وارد‌شده از حداقل قابل معامله کمتر است.", null);
 
-        if (!_marketMode.IsDealerMarket(symbol, out var marketMakerUserId))
+        if (_marketMode.GetMode(symbol) != MarketMode.Dealer)
             return (false, "این نماد در حالت مظنه‌ای نیست.", null);
+
+        var quote = await _quoteRepository.GetActiveAsync(symbol);
+
+        if (quote is null)
+        {
+            // The only thing that can name a counterparty is a published quote, so its absence
+            // is now a hard stop rather than a detail. Logged as a warning because on a running
+            // shop it means nobody has posted a price — the customer cannot fix it and the
+            // operator needs to know.
+            _logger.LogWarning(
+                "Refusing quote fill for {UserId}: no active quote is published for {Symbol}.",
+                customerUserId, symbol);
+
+            return (false, "در حال حاضر مظنه‌ای منتشر نشده است.", null);
+        }
+
+        // ► طرف مقابلِ معامله، همان کسی است که این مظنه را منتشر کرده.
+        //
+        // پیش‌تر یک شناسه در فایل پیکربندی بود. آن مقدار روی دیتابیسی که از صفر ساخته می‌شود
+        // قابل دانستن نبود، پس استقرار به «بالا بیاور، ثبت‌نام کن، شناسه را کپی کن، ری‌استارت
+        // کن» تبدیل می‌شد — و مقدار غلط در این میان بی‌اثر نبود: سیستم بالا می‌آمد و هر
+        // معامله را رد می‌کرد.
+        //
+        // خودِ مظنه از قبل می‌داند چه کسی منتشرش کرده، پس این اطلاعات هرگز لازم نبود جای
+        // دیگری نگه‌داری شود. اقتصادش هم درست‌تر است: مشتری روی قیمتی معامله می‌کند که آن
+        // شخص اعلام کرده، پس معامله باید روی دفتر همان شخص بنشیند. با یک ادمین رفتار دقیقاً
+        // مثل قبل است؛ با چند ادمین، هر کدام دفتر خودشان را دارند بدون هیچ تنظیم اضافه‌ای.
+        var marketMakerUserId = quote.PublishedByUserId;
 
         // ادمین نمی‌تواند مظنهٔ خودش را بپذیرد: طرفین یکی می‌شدند و تسویه هم آن را رد
         // می‌کرد — بهتر است همین‌جا با پیام روشن جلویش گرفته شود.
         if (customerUserId == marketMakerUserId)
             return (false, "بازارگردان نمی‌تواند مظنهٔ خودش را بپذیرد.", null);
 
-        var quote = await _quoteRepository.GetActiveAsync(symbol);
-        if (quote is null)
-            return (false, "در حال حاضر مظنه‌ای منتشر نشده است.", null);
-
         var price = quote.PriceFor(customerSide);
+
+        // ► بررسی موجودی و اعتبار مشتری، پیش از ساختن هر سفارشی.
+        //
+        // این بررسی در مدل دفترِ سفارش داخل SubmitOrderAsync انجام می‌شد، و مسیر مظنه‌ای
+        // (issue #48) از آن مسیر عبور نمی‌کند — پس بی‌سروصدا کنار گذاشته شده بود. تنها
+        // چیزی که باقی مانده بود قفلِ وثیقه بود، و LockBalance هیچ بررسی موجودی ندارد:
+        // گاردش در Wallet.cs کامنت شده تا حسابِ بازارگردان بتواند منفی شود.
+        //
+        // نتیجه این بود که هر کاربر تازه، بدون یک ریال اعتبار، می‌توانست معامله کند و
+        // موجودی‌اش منفی می‌شد. روی دیتابیس قبلی دیده نمی‌شد چون همه از پیش اعتبار
+        // داشتند؛ روی دیتابیس خالی بلافاصله ظاهر شد.
+        //
+        // بازارگردان عمداً مستثنی است: در مدل معامله‌گری او همیشه طرف مقابل است و
+        // موقعیتِ منفی‌اش همان دفترِ کسب‌وکار است، نه یک خطا.
+        var (checkSucceeded, checkMessage, hasBaseAsset, hasQuoteAsset) =
+            await _walletApiClient.ValidateCreditAndBalanceAsync(customerUserId, symbol, quantity, price);
+
+        if (!checkSucceeded)
+        {
+            _logger.LogWarning(
+                "Refusing quote fill for {UserId} on {Symbol}: balance check failed — {Message}",
+                customerUserId, symbol, checkMessage);
+
+            return (false, "بررسی موجودی انجام نشد. لطفاً دوباره تلاش کنید.", null);
+        }
+
+        // خرید با دارایی مظنه پرداخت می‌شود و فروش با دارایی پایه.
+        var hasEnough = customerSide == OrderSide.Buy ? hasQuoteAsset : hasBaseAsset;
+
+        if (!hasEnough)
+        {
+            _logger.LogInformation(
+                "Refusing quote fill for {UserId}: not enough {Side} funds for {Quantity} {Symbol} at {Price}.",
+                customerUserId, customerSide, quantity, symbol, price);
+
+            return (false, "موجودی یا اعتبار شما برای این معامله کافی نیست.", null);
+        }
 
         // هر دو سفارش با یک قیمت و یک مقدار ساخته می‌شوند، پس تطبیق حتماً کامل انجام
         // می‌شود و چیزی در دفتر باقی نمی‌ماند.

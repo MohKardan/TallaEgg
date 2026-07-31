@@ -2,7 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using TallaEgg.Core.Services;
+using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot;
 using TallaEgg.TelegramBot.Core.Interfaces;
@@ -123,6 +125,65 @@ public class BotHandlerRegistrationTests
         Assert.Same(
             scopeA.ServiceProvider.GetRequiredService<IConversationStore>(),
             scopeB.ServiceProvider.GetRequiredService<IConversationStore>());
+    }
+
+    /// <summary>
+    /// The operator list must survive the trip from the configuration file into the handler.
+    ///
+    /// <para>
+    /// It is registered under <c>BotSettings</c> alongside settings that were never actually
+    /// read: the handler used to be built by the activator, which can only supply constructor
+    /// arguments it can resolve from the container, so <c>RequireReferralCode</c> and
+    /// <c>DefaultReferralCode</c> silently fell back to their compiled-in defaults. That went
+    /// unnoticed for as long as the defaults happened to equal the configured values.
+    /// </para>
+    ///
+    /// <para>
+    /// The same silence would be far worse here. An unread owner list is an empty owner list,
+    /// and on a database created from empty an empty owner list means nobody can be granted a
+    /// role — the deployment would look configured and be unusable, with no error to explain it.
+    /// So the binding is asserted rather than assumed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheOwnerListBindsFromTheConfigurationFileShape()
+    {
+        // The nesting and the JSON array exactly as appsettings.global.json writes them, after
+        // Program.cs has stripped the "Services:{app}:" prefix.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["BotSettings:RequireReferralCode"] = "true",
+                ["BotSettings:DefaultReferralCode"] = "ADMIN2024",
+                ["BotSettings:OwnerTelegramIds:0"] = "6389449308",
+                ["BotSettings:OwnerTelegramIds:1"] = "12345"
+            })
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddOptions<TelegramBotOptions>().Bind(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var settings = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value.BotSettings;
+
+        Assert.Equal([6389449308L, 12345L], settings.OwnerTelegramIds);
+
+        // The two that were previously ignored, now that the handler is built by hand.
+        Assert.True(settings.RequireReferralCode);
+        Assert.Equal("ADMIN2024", settings.DefaultReferralCode);
+    }
+
+    /// <summary>An absent list is empty, not null — the handler must not have to guard for it.</summary>
+    [Fact]
+    public void AnAbsentOwnerListIsEmpty()
+    {
+        var services = new ServiceCollection();
+        services.AddOptions<TelegramBotOptions>()
+            .Bind(new ConfigurationBuilder().AddInMemoryCollection().Build());
+
+        using var provider = services.BuildServiceProvider();
+
+        Assert.Empty(provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value.BotSettings.OwnerTelegramIds);
     }
 
     /// <summary>

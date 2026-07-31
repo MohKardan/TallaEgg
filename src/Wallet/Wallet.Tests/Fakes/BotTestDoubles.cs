@@ -83,18 +83,55 @@ public sealed class FakeUsersApiClient : IUsersApiClient
 {
     public UserDto? User { get; set; }
 
+    /// <summary>
+    /// Users reachable by phone number. When empty, <see cref="User"/> answers every lookup,
+    /// which is what the order-placing flows rely on; the role command needs two distinct
+    /// people (the operator and the target) so it fills this instead.
+    /// </summary>
+    public Dictionary<string, UserDto> UsersByPhone { get; } = [];
+
     public Task<UserDto?> GetUserAsync(long telegramId) => Task.FromResult(User);
-    public Task<UserDto?> GetUserAsync(string phone) => Task.FromResult(User);
+
+    public Task<UserDto?> GetUserAsync(string phone) => Task.FromResult(
+        UsersByPhone.Count == 0
+            ? User
+            : UsersByPhone.TryGetValue(phone, out var found) ? found : null);
+
+    /// <summary>Every role change asked for, and what the call was told to answer.</summary>
+    public List<(Guid UserId, UserRole NewRole)> RoleChanges { get; } = [];
+    public (bool Success, string Message) RoleChangeResult { get; set; } = (true, "نقش کاربر با موفقیت به‌روزرسانی شد.");
+
+    public Task<(bool success, string message)> UpdateRoleAsync(Guid userId, UserRole newRole)
+    {
+        RoleChanges.Add((userId, newRole));
+        return Task.FromResult(RoleChangeResult);
+    }
 
     public Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? searchTerm = null) =>
         throw new NotSupportedException(nameof(GetUsersAsync));
+    /// <summary>Every registration attempted, with the invitation code it was made under.</summary>
+    public List<(long TelegramId, string InvitationCode)> Registrations { get; } = [];
+
     public Task<(bool success, string message, Guid? userId)> RegisterUserAsync(
-        long telegramId, string invitationCode, string? username, string? firstName, string? lastName) =>
-        throw new NotSupportedException(nameof(RegisterUserAsync));
+        long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
+    {
+        Registrations.Add((telegramId, invitationCode));
+        return Task.FromResult((true, "ok", (Guid?)Guid.NewGuid()));
+    }
+    /// <summary>What <c>UpdatePhoneAsync</c> answers; null means it succeeds with <see cref="User"/>.</summary>
+    public ApiResponse<UserDto>? PhoneUpdateResult { get; set; }
+
     public Task<ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber) =>
-        throw new NotSupportedException(nameof(UpdatePhoneAsync));
-    public Task<ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, UserStatus newStatus) =>
-        throw new NotSupportedException(nameof(UpdateUserStatusAsync));
+        Task.FromResult(PhoneUpdateResult ?? ApiResponse<UserDto>.Ok(User!, "ok"));
+    /// <summary>Every status change asked for, and what the call was told to answer.</summary>
+    public List<(long TelegramId, UserStatus NewStatus)> StatusChanges { get; } = [];
+    public ApiResponse<UserDto>? StatusChangeResult { get; set; }
+
+    public Task<ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, UserStatus newStatus)
+    {
+        StatusChanges.Add((telegramId, newStatus));
+        return Task.FromResult(StatusChangeResult ?? ApiResponse<UserDto>.Ok(new UserDto(), "ok"));
+    }
     public Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber) =>
         throw new NotSupportedException(nameof(GetUserIdByPhoneNumberAsync));
 

@@ -1,10 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Conversations;
 using TallaEgg.TelegramBot.Infrastructure.Messaging;
+using TallaEgg.TelegramBot.Infrastructure.Options;
+using TallaEgg.TelegramBot.Infrastructure.Services;
+using Telegram.Bot;
 
 namespace TallaEgg.TelegramBot.Infrastructure;
 
@@ -39,7 +44,33 @@ public static class BotHandlerRegistration
         // a scoped store would forget the flow at every update.
         services.AddSingleton<IConversationStore, InMemoryConversationStore>();
 
-        services.AddSingleton<IBotHandler, BotHandler>();
+        // Built by hand rather than by the activator. The activator can only supply constructor
+        // arguments it can resolve from the container, so the settings below fell back to their
+        // compiled-in defaults and the configured values were never read — silently, because a
+        // default is indistinguishable from a deliberate choice.
+        //
+        // That was harmless while the defaults happened to equal the configuration, and stops
+        // being harmless with OwnerTelegramIds: an unread owner list is an empty owner list, and
+        // an empty owner list on a fresh database means nobody can ever be granted a role.
+        services.AddSingleton<IBotHandler>(provider =>
+        {
+            var settings = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value.BotSettings;
+
+            return new BotHandler(
+                provider.GetRequiredService<ILogger<BotHandler>>(),
+                provider.GetRequiredService<ITelegramBotClient>(),
+                provider.GetRequiredService<IBotMessenger>(),
+                provider.GetRequiredService<IConversationStore>(),
+                provider.GetRequiredService<IOrderApiClient>(),
+                provider.GetRequiredService<IUsersApiClient>(),
+                provider.GetRequiredService<IAffiliateApiClient>(),
+                provider.GetRequiredService<IWalletApiClient>(),
+                provider.GetRequiredService<ITelegramLogger>(),
+                provider.GetRequiredService<IVersionService>(),
+                settings.RequireReferralCode,
+                settings.DefaultReferralCode,
+                settings.OwnerTelegramIds);
+        });
 
         return services;
     }

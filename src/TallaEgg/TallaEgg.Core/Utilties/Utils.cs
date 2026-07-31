@@ -107,15 +107,29 @@ namespace TallaEgg.Core.Utilties
             var local = ToTehranTime(dateTime);
             var pc = new PersianCalendar();
 
-            // PersianCalendar در محدودهٔ تاریخ‌های خیلی قدیمی استثنا می‌دهد. تاریخ نمایشی
-            // هرگز نباید باعث شکست یک پیام شود، پس در آن حالت به قالب میلادی برمی‌گردیم.
+            // همهٔ قالب‌بندی‌ها با InvariantCulture انجام می‌شوند.
+            //
+            // بدون آن، هر قالبی به CurrentCulture تکیه می‌کرد — یعنی خروجی به «تنظیمات
+            // زبانِ ماشینی که سرویس رویش اجرا می‌شود» وابسته می‌شد. روی این دستگاه فرهنگ
+            // en-US است و درست به نظر می‌رسید؛ روی سروری با فرهنگ fa-IR، تقویمِ پیش‌فرضِ
+            // همان فرهنگ اعمال می‌شد و مسیر جایگزینِ پایین سالِ شمسی چاپ می‌کرد، یعنی یک
+            // تاریخ شمسی که برچسبش می‌گفت میلادی است. این همان وابستگی‌ای است که نباید
+            // وجود داشته باشد.
             try
             {
-                return $"{pc.GetYear(local):0000}/{pc.GetMonth(local):00}/{pc.GetDayOfMonth(local):00} {local:HH:mm}";
+                var year = pc.GetYear(local);
+                var month = pc.GetMonth(local);
+                var day = pc.GetDayOfMonth(local);
+
+                return string.Format(CultureInfo.InvariantCulture,
+                    "{0:0000}/{1:00}/{2:00} {3:00}:{4:00}",
+                    year, month, day, local.Hour, local.Minute);
             }
             catch (ArgumentOutOfRangeException)
             {
-                return local.ToString("yyyy/MM/dd HH:mm");
+                // PersianCalendar برای تاریخ‌های خیلی قدیمی استثنا می‌دهد. تاریخِ نمایشی
+                // هرگز نباید باعث شکست یک پیام شود، پس به قالب میلادی برمی‌گردیم.
+                return local.ToString("yyyy/MM/dd HH:mm", CultureInfo.InvariantCulture);
             }
         }
 
@@ -124,31 +138,31 @@ namespace TallaEgg.Core.Utilties
         /// ساعت تهران را دارد. بدون این تبدیل، معامله‌ای که ساعت ۱۳:۲۲ به وقت تهران انجام
         /// شده، ۰۹:۵۲ نمایش داده می‌شد.
         ///
-        /// شناسهٔ منطقهٔ زمانی روی ویندوز و لینوکس متفاوت است، پس هر دو امتحان می‌شوند.
-        /// اگر هیچ‌کدام موجود نبود، افست ثابت +۳:۳۰ استفاده می‌شود؛ ایران از سال ۱۴۰۱
-        /// ساعت تابستانی ندارد، پس این افست ثابت امروز درست است.
+        /// افست ثابت +۳:۳۰ است، نه جست‌وجو در پایگاه منطقه‌های زمانی سیستم‌عامل.
+        ///
+        /// ایران از سال ۱۴۰۱ ساعت تابستانی ندارد، پس ایران همیشه UTC+۳:۳۰ است و افست ثابت
+        /// همان جواب درست را می‌دهد. در عوض، تکیه بر پایگاه سیستم‌عامل سه ریسک داشت که
+        /// هیچ‌کدام سودی نداشتند: شناسهٔ منطقه روی ویندوز و لینوکس فرق دارد، سرور ممکن است
+        /// اصلاً پایگاه tz نداشته باشد (نصب‌های حداقلیِ کانتینر)، و یک پایگاهِ قدیمی هنوز
+        /// قاعدهٔ ساعت تابستانیِ منسوخ را اعمال می‌کند و ساعت را یک ساعت جابه‌جا نشان می‌دهد.
+        ///
+        /// نتیجه این است که نمایش تاریخ روی هر ماشینی یکسان است و به پیکربندی سرور وابسته
+        /// نیست — که برای استقرار اهمیت دارد.
         /// </summary>
-        private static DateTime ToTehranTime(DateTime dateTime)
+        public static DateTime ToTehranTime(DateTime dateTime)
         {
-            // فقط زمان‌های UTC تبدیل می‌شوند. اگر فراخوانی مقدار Local یا Unspecified بدهد،
-            // تبدیل دوباره باعث جابه‌جایی اشتباه می‌شد.
+            // زمان‌های Local قبلاً تبدیل شده‌اند؛ تبدیل دوباره جابه‌جایی اشتباه می‌ساخت.
+            // Unspecified مثل UTC رفتار می‌کند، چون همهٔ زمان‌های این سامانه با
+            // DateTime.UtcNow ساخته می‌شوند و پس از رفت‌وبرگشت از دیتابیس Kind خود را
+            // از دست می‌دهند.
             if (dateTime.Kind == DateTimeKind.Local)
                 return dateTime;
 
-            var utc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
-
-            foreach (var id in new[] { "Iran Standard Time", "Asia/Tehran" })
-            {
-                try
-                {
-                    return TimeZoneInfo.ConvertTimeFromUtc(utc, TimeZoneInfo.FindSystemTimeZoneById(id));
-                }
-                catch (TimeZoneNotFoundException) { }
-                catch (InvalidTimeZoneException) { }
-            }
-
-            return utc.AddHours(3).AddMinutes(30);
+            return dateTime.AddHours(3).AddMinutes(30);
         }
+
+        /// <summary>افست ثابت ایران نسبت به UTC. ایران ساعت تابستانی ندارد.</summary>
+        public static readonly TimeSpan TehranOffset = new(3, 30, 0);
     }
     /// <summary>
     /// برای تشخیص نوع کیف پول اینجوری خیلی راحت تره
