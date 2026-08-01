@@ -1,0 +1,72 @@
+# Builds and tests every pull request (issue #71).
+#
+# Until this existed nothing ran the test suite except a developer choosing to, so a pull
+# request that broke it merged green. That matters more here than usual: merges to main go
+# through `gh pr merge --admin`, which bypasses the required review, so this check is the
+# only gate left.
+#
+# Release, not Debug. Release is what a server runs and nothing was building it. `#if DEBUG`
+# blocks compile differently there — the TLS bypasses in #31 are exactly that shape — and a
+# Release build would have caught the Affiliate.Api startup crash (#72) class of problem
+# before it reached a running service.
+#
+# Deliberately not here: deployment. One server and two developers is better served by
+# `git pull` and a restart than by a pipeline, and a half-working deploy pipeline three weeks
+# before the science-park review would be a pure loss. Revisit after it.
+
+name: build-and-test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push supersedes the previous run on the same branch. Without this, a branch pushed
+# three times queues three full builds and the first two are already irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # Restore is separate so a package-resolution failure is reported as its own step
+      # rather than buried in build output.
+      - name: Restore
+        run: dotnet restore TallaEgg.sln
+
+      - name: Build (Release)
+        run: dotnet build TallaEgg.sln --configuration Release --no-restore
+
+      # --no-build so this runs the assemblies the step above produced. Without it `dotnet
+      # test` would rebuild, and a Debug rebuild here would quietly defeat the point of
+      # building in Release.
+      #
+      # The suite needs no database and no configuration file: it runs against SQLite in
+      # memory and builds any configuration it needs in memory too. Verified, not assumed —
+      # the runner has no `config/appsettings.global.json`, so a test that read one would
+      # fail here rather than on someone's machine.
+      - name: Test (Release)
+        run: >
+          dotnet test src/Wallet/Wallet.Tests/Wallet.Tests.csproj
+          --configuration Release
+          --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ${{ github.workspace }}/test-results
+
+      - name: Upload test results
+        # Results are most useful precisely when the step above failed.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
