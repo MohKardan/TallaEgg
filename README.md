@@ -1,69 +1,101 @@
 # TallaEgg Trading Platform
 
 ## Overview
-Our minimum viable product (MVP) for gold sellers works as follows: the seller can set their buy and sell prices, for example, 4700–4800, and then in-store customers can view these prices and buy or sell gold through their trusted seller.
-When a user starts the bot and registers, a message containing the new user’s information is sent to the administrator. If this user is an in-store customer of the seller (the administrator) and their identity is verified, the administrator approves them, after which the user can access the bot’s services. Otherwise, they will not have access to its features. To buy or sell, a user must either have a cash balance or be credited manually by the administrator.
-Approved users can trade based on the seller’s buy and sell prices, view their order and trade history, and, if needed, physically exchange their gold.
+
+TallaEgg lets a gold shop trade with its own customers over Telegram.
+
+The shop publishes a two-sided quote — the price it will buy at and the price it will sell at, entered as a single `71000000-80000000` pair. Approved customers see that quote and take either side of it. Every trade has the shop as its counterparty; customers never trade with each other.
+
+A new user who starts the bot registers, shares their phone number, and waits for the shop to approve them. Until then they have no access. To trade they need either a balance or credit, which the shop grants manually — credit is a ceiling their gold balance may go negative against, so ten grams of credit is what lets a customer sell ten grams they do not yet hold.
+
+Approved customers can trade at the published quote, review their trade history, and settle physically with the shop.
 
 https://private-user-images.githubusercontent.com/45781438/530709572-98e34f7f-e778-45ec-8516-4a3372e6764b.mp4
 
 https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c32-4a05-9fe5-81720a5f2567.mp4
 
 ## Key Capabilities
-- RESTful minimal APIs for users, wallets, orders, and affiliate programs that return a unified `ApiResponse<T>` envelope.
-- Matching engine background service with maker/taker logic, database-level locking, and scheduled order book processing.
-- Wallet domain with deposit, withdrawal, balance locking, trade settlement, transaction history, and default wallet provisioning.
-- Invitation and affiliate tracking including code creation, validation, usage counting, and per-user reporting.
-- Telegram bot infrastructure that consumes the platform APIs, streams trade notifications, and exposes a lightweight notification API for other services.
+
+- **Dealer quote model** — the shop publishes a quote; orders are created only at fill time and consumed immediately, so no collateral sits locked in a resting order book.
+- Atomic trade settlement over a transactional outbox, idempotent on the trade id, with collateral locked before an order becomes matchable.
+- Wallet domain with deposits, withdrawals, balance locking, gold-denominated credit, transaction history, and default wallet provisioning.
+- RESTful minimal APIs for users, wallets, and orders returning a unified `ApiResponse<T>` envelope.
+- Telegram bot that consumes the platform APIs and exposes a small notification API for other services.
 - Centralised configuration (`config/appsettings.global.json`), Serilog logging, and typed HTTP clients across services.
+- A matching engine for peer-to-peer order books remains in the codebase but **does not run for dealer symbols** — see [Trading model](#trading-model).
 
 ## Repository Layout
+
 | Path | Description |
 | --- | --- |
-| src/User | Users service (API, Application, Core, Infrastructure) for onboarding, profile updates, roles, and default wallets |
-| src/Wallet | Wallet service with EF Core persistence, wallet operations, and transaction endpoints |
-| src/Order | Orders service, application layer, and matching engine background service |
-| src/Affiliate | Affiliate microservice for invitation codes and referral tracking |
-| src/TallaEgg | Shared core/application/infrastructure libraries plus orchestration API |
-| TelegramBot | Telegram bot core, infrastructure host, clients, and automated tests |
-| config/appsettings.global.json | Shared configuration consumed by all services |
-| tools, publish, publishes | Helper scripts and deployment artifacts |
+| `src/User` | Users service — onboarding, phone/role/status, default wallets |
+| `src/Wallet` | Wallet service — balances, locking, settlement, transaction history |
+| `src/Order` | Orders service — quotes, quote fills, trades, matching engine |
+| `src/Affiliate` | Affiliate service — invitation codes (**not currently functional**, see below) |
+| `src/TallaEgg` | Shared core/application/infrastructure libraries plus a legacy orchestration API |
+| `src/Wallet/Wallet.Tests` | The test suite for the whole platform (see [Testing](#testing)) |
+| `TelegramBot` | Telegram bot host, handlers, and typed API clients |
+| `config/appsettings.global.json` | Shared configuration consumed by every service — **never committed** |
+| `docs/` | Architecture, operations, process, OKRs, and the business proposal |
+| `governance/` | Charter, bylaws, meeting notes, and `P-XXXX` proposals |
+| `scripts/`, `publishes/` | Helper scripts and deployment artefacts |
+| `SoftwareArchitecture/` | Diagrams |
+
+## Trading model
+
+The platform supports two market modes per symbol, set in configuration:
+
+| Mode | Behaviour |
+| --- | --- |
+| **`Dealer`** (current) | The shop publishes a quote. A customer accepting it creates both orders and matches them in one operation. The background matching engine **skips these symbols entirely** — it would otherwise reach the same order pair a fill is already matching and produce two trades from one. |
+| `OrderBook` | Classic maker/taker matching through the background engine. Not used in production today. |
+
+`MAUA/IRT` (gold / toman) runs in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
 
 ## Tech Stack
+
 - .NET 9.0 with C# 12, minimal APIs, and background services.
-- Entity Framework Core 9 with SQL Server providers.
+- Entity Framework Core 9 with the SQL Server provider.
 - Serilog for structured logging to console and rolling files.
-- Telegram.Bot client plus proxy-aware wrappers for bot connectivity.
-- Hosted services and typed `HttpClient` wrappers for inter-service calls.
+- Telegram.Bot over long polling — **no inbound ports are required**.
+- Typed `HttpClient` wrappers for inter-service calls.
 
 ## Prerequisites
-- .NET SDK 9.0 (preview channel as of this repository).
-- Local or network-accessible SQL Server (Express/localdb works for development).
-- Telegram bot token (store in an environment variable such as `TELEGRAM_BOT_TOKEN`).
-- Optional: PowerShell 7+ or Bash for running the helper scripts.
+
+- .NET SDK 9.0.
+- SQL Server reachable from the host. `(localdb)\MSSQLLocalDB` works for development; see [#68](https://github.com/MohKardan/TallaEgg/issues/68) for the move to a deployable instance.
+- A Telegram bot token from [@BotFather](https://t.me/BotFather).
+- Your own Telegram numeric user id (ask [@userinfobot](https://t.me/userinfobot)) — this is what makes you the shop operator on a fresh database.
 
 ## Configuration
-All services load shared settings from `config/appsettings.global.json` and then flatten the service-specific section that matches the hosting assembly. Copy the template below, replace connection strings, ports, and secrets with values that match your environment, and do **not** commit real credentials:
+
+Every service loads `config/appsettings.global.json`, then flattens the section under `Services:` matching its own assembly name. There is no per-service `appsettings.json` to maintain.
+
+**This file is never committed** — it holds a live bot token. Create it from the template below.
 
 ```json
 {
   "ConnectionStrings": {
-    "UsersDb": "Server=localhost;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
-    "WalletDb": "Server=localhost;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
-    "OrdersDb": "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
-    "AffiliateDb": "Server=localhost;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;"
+    "UsersDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
+    "WalletDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
+    "OrdersDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+    "AffiliateDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "Services": {
     "Users.Api": {
       "Urls": [ "http://localhost:5136" ],
-      "WalletApiUrl": "http://localhost:60933/api"
+      "WalletApiUrl": "http://localhost:60933/"
     },
     "Wallet.Api": {
       "Urls": [ "https://localhost:60932", "http://localhost:60933" ]
     },
     "Orders.Api": {
       "Urls": [ "https://localhost:7140", "http://localhost:5140" ],
-      "WalletApiUrl": "http://localhost:60933/api"
+      "WalletApiUrl": "http://localhost:60933/api",
+      "Matching": {
+        "RequireMarketMakerCounterparty": true,
+        "MarketModes": { "MAUA/IRT": "Dealer" }
+      }
     },
     "Affiliate.Api": {
       "Urls": [ "https://localhost:60811", "http://localhost:60812" ]
@@ -77,18 +109,29 @@ All services load shared settings from `config/appsettings.global.json` and then
       "WalletApiUrl": "http://localhost:60933/api",
       "BotSettings": {
         "RequireReferralCode": false,
-        "DefaultReferralCode": "ADMIN2024"
+        "DefaultReferralCode": "admin",
+        "OwnerTelegramIds": [ 123456789 ]
       },
-      "TelegramBotToken": "set-with-env-or-user-secrets"
+      "TelegramBotToken": "<token from BotFather>"
     }
   }
 }
 ```
 
-Override `TelegramBotToken` and other sensitive values via environment variables or `dotnet user-secrets` in development. The services also honour environment variables used by `Host.CreateDefaultBuilder`.
+### The settings that matter
+
+| Setting | Why it matters |
+| --- | --- |
+| `BotSettings:OwnerTelegramIds` | The only thing that lets anyone in on an empty database. A configured owner is approved and given the `Admin` role automatically when they register. Put **your own** Telegram id here. |
+| `BotSettings:DefaultReferralCode` | Must be `admin` — the code carried by the administrator row `Users.Api` seeds. Registration rejects any code that belongs to no user, so a mismatch here means **nobody can register at all**. |
+| `Matching:MarketModes` | Without `"MAUA/IRT": "Dealer"` the symbol falls back to `OrderBook` and every quote fill is refused. |
+| `TelegramBotToken` | Read from this file. `TELEGRAM_BOT_TOKEN` is only a fallback for the standalone notification API, **not** for the bot itself. |
 
 ## Database Setup
-Every API calls `Database.MigrateAsync()` on startup, so running each service will create or update its database automatically once migrations are present. To initialise them ahead of time you can execute:
+
+Every API calls `Database.MigrateAsync()` at startup, so the schema is created on first run. No manual step is needed for Users, Wallet, or Orders.
+
+To apply migrations ahead of time:
 
 ```
 dotnet restore
@@ -96,43 +139,83 @@ dotnet tool install --global dotnet-ef
 dotnet ef database update --project src/User/Users.Api/Users.Api.csproj
 dotnet ef database update --project src/Wallet/Wallet.Api/Wallet.Api.csproj
 dotnet ef database update --project src/Order/Orders.Api/Orders.Api.csproj
-dotnet ef database update --project src/Affiliate/Affiliate.Api/Affiliate.Api.csproj
 ```
 
-The Users service seeds a super admin account (`Id = 5564f136-b9fb-4719-b4dc-b0833fa24761`). Update or disable this seed before going beyond development.
+`Users.Api` seeds one administrator row (`5564f136-b9fb-4719-b4dc-b0833fa24761`) whose only purpose is to own the bootstrap invitation code. It has no Telegram id and cannot be signed in as.
+
+> **Affiliate has no migrations.** `Affiliate.Api` calls `MigrateAsync()` but ships zero migration files, so it starts cleanly and then fails every request with `Invalid object name 'Invitations'`. Nothing currently calls it — the bot's only invitation call is commented out — so it can be left out of a deployment.
+
+## First run
+
+On an empty database, this is the whole setup. There is no SQL to run and no id to copy between files.
+
+1. Put your Telegram id in `BotSettings:OwnerTelegramIds` and start the services.
+2. Send `/start` to the bot, then share your phone number when prompted.
+   → You are approved and given the `Admin` role automatically.
+3. Publish a quote by sending the buy and sell price as one pair, e.g. `79000000-79500000`.
+4. Have a customer `/start` and share their number, then approve them: `ت <their phone>`.
+5. Grant them credit: `ش <their phone> 10 طلا`.
+6. They can now trade at the published quote.
+
+### Operator commands
+
+Prices are per mesghal; gold amounts are in grams. Numbers may be typed in Persian or Latin digits.
+
+| Command | Effect |
+| --- | --- |
+| `<buy>-<sell>` | Publish a quote, e.g. `79000000-79500000` |
+| `ت <phone>` | Approve an account |
+| `ر <phone>` | Reject an account |
+| `ن <phone> <role>` | Change a role — `کاربر عادی`, `حسابدار`, `مدیر`, `مدیر ارشد` |
+| `ش <phone> <amount> <asset>` | Credit an account, e.g. `ش 09121234567 500000 تومان` |
+| `د <phone> <amount> <asset>` | Debit an account |
+| `م <phone>` | Show balances |
+| `س <phone>` | Show a user's open orders |
+| `ک [search]` | List users |
 
 ## Running Locally
-From the repository root you can start each component using the following commands in separate terminals:
+
+Build once, then start each service in its own terminal. Building while services are running fails on locked DLLs.
 
 ```
-dotnet run --project src/User/Users.Api/Users.Api.csproj
-dotnet run --project src/Affiliate/Affiliate.Api/Affiliate.Api.csproj
-dotnet run --project src/Wallet/Wallet.Api/Wallet.Api.csproj
-dotnet run --project src/Order/Orders.Api/Orders.Api.csproj
-dotnet run --project src/TallaEgg/TallaEgg.Api/TallaEgg.Api.csproj
-dotnet run --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
+dotnet build TallaEgg.sln
+
+dotnet run --no-build --project src/User/Users.Api/Users.Api.csproj
+dotnet run --no-build --project src/Wallet/Wallet.Api/Wallet.Api.csproj
+dotnet run --no-build --project src/Order/Orders.Api/Orders.Api.csproj
+dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
 ```
 
-Swagger UI is available at `/api-docs` (for example `http://localhost:5136/api-docs` for the Users API). The Telegram infrastructure host also spins up a minimal API at `/api/telegram/notifications/trade-match` for receiving trade match notifications.
+`Affiliate.Api` is not needed (see above). `src/TallaEgg/TallaEgg.Api` is a legacy orchestration API that nothing calls.
+
+Swagger UI is at `/api-docs` on each service — for example `http://localhost:5136/api-docs`. The bot host also exposes `/api/telegram/notifications/trade-match`.
 
 ## Service Highlights
-- **Users.Api**: registration with invitation codes, phone updates, role/status management, default wallet provisioning, and lookups by Telegram ID, phone, or role.
-- **Wallet.Api**: balance queries, deposits, withdrawals, lock/unlock operations, trade settlement endpoint, transaction history, and default wallet creation.
-- **Orders.Api**: order creation, confirmation, cancellation, active order listing, trade history, best bid/ask computation, and maker/taker aware matching engine.
-- **Affiliate.Api**: create, validate, and redeem invitation codes plus per-user invitation reports.
-- **Telegram Bot**: long-polling bot hosted in `TallaEgg.TelegramBot.Infrastructure`, typed API clients, trade notification service, and proxy-aware bot client factory.
+
+- **Users.Api** — registration with invitation codes, phone updates, role and status management, default wallet provisioning, lookups by Telegram id, phone, or role.
+- **Wallet.Api** — balances, deposits, withdrawals, lock/unlock, atomic trade settlement, transaction history.
+- **Orders.Api** — quote publishing and history, quote fills, trade history, best bid/ask, and the (dormant for dealer symbols) matching engine.
+- **Telegram Bot** — long-polling host, typed API clients, trade notifications, and the operator command surface above.
+- **Affiliate.Api** — invitation codes. Present but non-functional; see the note under Database Setup.
 
 ## Testing
-Run the full test suite with:
 
 ```
 dotnet test TallaEgg.sln
 ```
 
-`TallaEgg.TelegramBot.Tests` covers bot command handlers and client integrations; add more domain-specific tests alongside the corresponding projects.
+**`src/Wallet/Wallet.Tests` is the only test project in the solution** and holds the suite for the whole platform — wallet, orders, matching, quote fills, bot handlers, and formatting. Its name is historical; new tests belong here regardless of which service they cover.
+
+Two older projects under `TelegramBot/TallaEgg.TelegramBot.Tests` are **not** in the solution and do not currently compile, so `dotnet test` never runs them.
 
 ## Logging
-Each service writes structured logs to the console and to rolling files under its local `logs/` directory (for example `src/Order/Orders.Api/logs`). Ensure the directories exist or adjust the Serilog sinks before deploying.
+
+Each service writes to the console and to rolling files under its own `logs/` directory — for example `src/Order/Orders.Api/logs/orders-api-<date>.log`.
 
 ## Deployment
-The repository includes publishing scripts under `publish/` and `publish-all.*`. Review and adapt them for your environment; they assume local build outputs and do not handle secrets.
+
+Long polling means the bot needs **no inbound ports**. The remaining work to make a deployment repeatable is tracked in [#68](https://github.com/MohKardan/TallaEgg/issues/68) (move off LocalDB), [#69](https://github.com/MohKardan/TallaEgg/issues/69) (production URLs), [#70](https://github.com/MohKardan/TallaEgg/issues/70) (process supervision), and [#71](https://github.com/MohKardan/TallaEgg/issues/71) (CI).
+
+Publishing scripts live under `publishes/` and `publish-all.ps1`. They assume local build outputs and do not handle secrets.
+
+> **Production is a code path this project has never executed.** `launchSettings.json` forces the Development environment locally and is not used by a published deployment, so the `Production` branches — including `UseAuthentication` and the API-key check — have never run. That is what makes [#71](https://github.com/MohKardan/TallaEgg/issues/71) (build and smoke-test in Release under CI) worth more than it looks.
