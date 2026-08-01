@@ -1,4 +1,4 @@
-using TallaEgg.TelegramBot.Infrastructure;
+﻿using TallaEgg.TelegramBot.Infrastructure;
 
 namespace Wallet.Tests;
 
@@ -33,7 +33,7 @@ public class UserHelpMatchesTheMenuTests
     [Fact]
     public void TheHelpNamesTheQuoteButton()
     {
-        Assert.True(Mentions(BotMsgs.MsgUserHelp, BotBtns.BtnSpotMarket),
+        Assert.True(Mentions(BotMsgs.MsgUserHelp, "DELIBERATE-CI-VERIFICATION-FAILURE"),
             $"help must name the quote button ({BotBtns.BtnSpotMarket})");
     }
 
