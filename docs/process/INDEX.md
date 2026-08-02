@@ -251,6 +251,11 @@ When one of these is created, move its line into "Existing today" in the same PR
 - If blocked: move to "Blocked", pull next task
 - If done early: pull next task, don't multitask
 
+### 6. Scope Discipline
+✅ **DO**: Keep changes to the smallest scope that accomplishes the task
+✅ **DO**: Flag unrelated issues you notice and let the task owner decide if they become work
+❌ **DON'T**: Refactor, rename, or "clean up" code that wasn't part of the request
+
 ---
 
 ## Start-of-Sprint Checklist (for Tech Lead / Sprint Planner)

@@ -82,6 +82,17 @@ placement at repo root is existing history, not a pattern to copy.
 
 ## 3. Development Process Standards
 
+### Scope Discipline
+- Keep every change to the smallest scope that accomplishes the task at hand.
+- **Never rewrite or refactor code that was not part of the request** — not adjacent code that
+  looks untidy, not a naming convention that disagrees with this document, not tests that would
+  read better written another way.
+- If something nearby looks wrong, flag it and let the task owner decide whether it becomes
+  separate work. Do not fix it inline as part of an unrelated change.
+- New code follows this document; existing code that predates or contradicts it is left as-is
+  until a task specifically asks for it to change.
+- Applies equally to human developers and AI coding agents.
+
 ### Definition of Done (for each task)
 - [ ] Code compiles without warnings
 - [ ] All unit tests written and passing
