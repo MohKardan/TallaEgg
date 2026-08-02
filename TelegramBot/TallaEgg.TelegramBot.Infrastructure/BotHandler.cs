@@ -336,9 +336,14 @@ namespace TallaEgg.TelegramBot
                         return;
                     }
 
-                    // Looking the admins up needs the raw client; deciding what they see
-                    // does not. Splitting the two keeps the message itself testable.
-                    var adminIds = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
+                    // Who gets asked to approve a new registration must be the same "who is an
+                    // operator" the product already uses everywhere else (IsOperator, "ت"/"ر").
+                    // It used to be "whoever administers one hard-coded Telegram group" instead —
+                    // unrelated to that answer, and it throws outright when the bot is not a
+                    // member of that group, which silently drops the notification for everyone.
+                    var adminIds = (await _usersApi.GetOperatorTelegramIdsAsync())
+                        .Union(_ownerTelegramIds)
+                        .ToList();
                     await _messenger.SendApproveOrRejectUserToAdminsKeyboard(adminIds, response.Data);
                 }
                 else
