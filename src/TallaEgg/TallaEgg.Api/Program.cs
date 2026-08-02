@@ -7,6 +7,7 @@ using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
 using System.Text.Json;
+using TallaEgg.Core;
 using TallaEgg.Core.Models;
 using Users.Application;
 using Users.Core;
@@ -47,8 +48,7 @@ if (urls is { Length: > 0 })
 
 // تنظیم اتصال به دیتابیس SQL Server (در appsettings.json هم می‌توان قرار داد)
 builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
-        "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
 // تنظیم اتصال به دیتابیس اصلی TallaEgg

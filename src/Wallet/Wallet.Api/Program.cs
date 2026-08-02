@@ -59,8 +59,7 @@ builder.Host.UseSerilog();
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<WalletDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("WalletDb") ??
-        "Server=localhost;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
+    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "WalletDb"),
         b => b.MigrationsAssembly("Wallet.Api")));
 
 

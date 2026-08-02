@@ -44,8 +44,7 @@ if (urls is { Length: > 0 })
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<AffiliateDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AffiliateDb") ??
-        "Server=localhost;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;",
+    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "AffiliateDb"),
         b => b.MigrationsAssembly("Affiliate.Api")));
 
 // فقط در production محافظت فعال شود

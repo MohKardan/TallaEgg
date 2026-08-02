@@ -56,8 +56,7 @@ if (urls is { Length: > 0 })
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("OrdersDb") ??
-        "Server=localhost;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
         b => b.MigrationsAssembly("Orders.Infrastructure"))
     .LogTo(Console.WriteLine, LogLevel.None)); // Disable all EF Core logging
 
