@@ -54,8 +54,7 @@ if (urls is { Length: > 0 })
 
 // تنظیم اتصال به دیتابیس SQL Server
 builder.Services.AddDbContext<UsersDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("UsersDb") ??
-        "Server=localhost;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
+    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "UsersDb"),
         b => b.MigrationsAssembly("Users.Api")));
 
 // فقط در production محافظت فعال شود
