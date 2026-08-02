@@ -488,6 +488,47 @@ public class UsersApiClient : IUsersApiClient
         public string? Message { get; set; }
     }
 
+    public async Task<List<long>> GetOperatorTelegramIdsAsync()
+    {
+        var ids = new List<long>();
+
+        foreach (var role in new[] { "Admin", "SuperAdmin" })
+        {
+            try
+            {
+                using var response = await _httpClient.GetAsync($"{_baseUrl}/users/by-role/{role}");
+                var payload = await response.Content.ReadAsStringAsync();
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Users API returned {StatusCode} while fetching users with role {Role}. Payload: {Payload}",
+                        (int)response.StatusCode, role, payload);
+                    continue;
+                }
+
+                var users = JsonConvert.DeserializeObject<List<OperatorLookupUser>>(payload);
+                if (users is null) continue;
+
+                // TelegramId 0 is the auto-seeded SuperAdmin row (Users.Api/Program.cs) — no
+                // human is signed in as it, and sending a Telegram message to chat id 0 would
+                // just fail.
+                ids.AddRange(users.Where(u => u.TelegramId != 0).Select(u => u.TelegramId));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while fetching users with role {Role}", role);
+            }
+        }
+
+        return ids.Distinct().ToList();
+    }
+
+    /// <summary>The bare shape <c>/api/users/by-role/{role}</c> answers with — only what this lookup needs.</summary>
+    private sealed class OperatorLookupUser
+    {
+        public long TelegramId { get; set; }
+    }
+
     public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
         try

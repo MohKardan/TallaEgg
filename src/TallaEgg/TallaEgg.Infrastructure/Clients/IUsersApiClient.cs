@@ -40,4 +40,15 @@ public interface IUsersApiClient
     /// unreachable on a new server.
     /// </summary>
     Task<(bool success, string message)> UpdateRoleAsync(Guid userId, UserRole newRole);
+
+    /// <summary>
+    /// Telegram ids of every current Admin and SuperAdmin.
+    ///
+    /// Needed to decide who gets the new-registration approve/reject card. That used to be
+    /// answered by asking Telegram who administers one hard-coded group — a question that has
+    /// nothing to do with who the product actually recognizes as an operator, and throws
+    /// outright when the bot is not a member of that group. This asks the Users service
+    /// instead, which is the same source of truth the "ت"/"ر" commands already trust.
+    /// </summary>
+    Task<List<long>> GetOperatorTelegramIdsAsync();
 }

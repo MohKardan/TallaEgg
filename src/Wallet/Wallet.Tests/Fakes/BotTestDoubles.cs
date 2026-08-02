@@ -140,6 +140,11 @@ public sealed class FakeUsersApiClient : IUsersApiClient
 
     public Task<UserDto?> GetUserByIdAsync(Guid userId) =>
         Task.FromResult(UsersById.TryGetValue(userId, out var found) ? found : null);
+
+    /// <summary>What the operator lookup answers; tests set this to whoever should be notified.</summary>
+    public List<long> OperatorTelegramIds { get; set; } = [];
+
+    public Task<List<long>> GetOperatorTelegramIdsAsync() => Task.FromResult(OperatorTelegramIds);
 }
 
 public sealed class FakeAffiliateApiClient : IAffiliateApiClient

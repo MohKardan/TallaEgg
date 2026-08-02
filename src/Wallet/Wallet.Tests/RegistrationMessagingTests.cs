@@ -275,6 +275,43 @@ public class RegistrationMessagingTests
     }
 
     /// <summary>
+    /// Who receives the card must come from the product's own idea of an operator — Admin or
+    /// SuperAdmin in the database, or a configured owner — not from asking Telegram who
+    /// administers one hard-coded group. A newly appointed admin is in neither Telegram group
+    /// nor the old lookup's world, so they never saw the card even though "ت"/"ر" already let
+    /// them act on it.
+    ///
+    /// <para>
+    /// <c>botClient: null!</c> in <see cref="Build"/> is the proof: the old code reached for the
+    /// Telegram group lookup on that null client, threw, and the exception was swallowed by the
+    /// handler's own catch-all — silently sending nobody the card. This test passing at all
+    /// means the new path no longer touches the bot client for this decision.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task TheCardGoesToDatabaseOperatorsAndConfiguredOwners_NotATelegramGroup()
+    {
+        const long DatabaseAdminId = 111222333;
+
+        _usersApi.User = new UserDto
+        {
+            Id = Guid.NewGuid(),
+            TelegramId = StrangerTelegramId,
+            FirstName = "کاربر",
+            Status = UserStatus.Pending,
+            Role = UserRole.RegularUser
+        };
+        _usersApi.OperatorTelegramIds = [DatabaseAdminId];
+
+        var handler = Build(owners: [OwnerTelegramId]);
+
+        await ShareContactAsync(handler, StrangerTelegramId, "09121234567");
+
+        Assert.Contains(_messenger.Sent, m => m.ChatId == DatabaseAdminId);
+        Assert.Contains(_messenger.Sent, m => m.ChatId == OwnerTelegramId);
+    }
+
+    /// <summary>
     /// Every label is Persian. Half the card used to be English — "Telegram ID", "Username",
     /// "Phone" beside "نام" and "ثبت‌نام" — and a left-to-right label inside a right-to-left
     /// message breaks the direction of the line, so the card rendered scrambled rather than
