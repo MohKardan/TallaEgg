@@ -1,0 +1,192 @@
+# Stands up the whole platform (Users/Wallet/Orders APIs + the Telegram bot) on a
+# GitHub-hosted runner so a human can manually test it over real Telegram.
+#
+# Why this exists: the usual sandboxed dev container this repo is often built in has no
+# outbound access to api.telegram.org and no SQL Server, so the bot can never actually be
+# tested there. A GitHub-hosted runner has neither restriction and this repo is public, so
+# the run is free. It is a temporary test session, not a deployment: the database lives in
+# an ephemeral service container and everything stops when the job ends.
+#
+# Requires two repository secrets (Settings > Secrets and variables > Actions):
+#   TELEGRAM_BOT_TOKEN  - a bot token from @BotFather
+#   OWNER_TELEGRAM_ID   - your numeric Telegram user id (ask @userinfobot), so you're
+#                          auto-approved as Admin on /start
+# Optional secret:
+#   MSSQL_SA_PASSWORD   - falls back to a fixed dev-only password if unset
+
+name: manual-test-run
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_minutes:
+        description: 'How long to keep the services running (minutes, max 300)'
+        required: false
+        default: '180'
+
+concurrency:
+  group: manual-test-run
+  cancel-in-progress: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(inputs.duration_minutes) + 20 }}
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD || 'DevOnly!Passw0rd' }}
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "sqlcmd -C -S localhost -U sa -P $MSSQL_SA_PASSWORD -Q 'SELECT 1' || /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $MSSQL_SA_PASSWORD -Q 'SELECT 1' || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P $MSSQL_SA_PASSWORD -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 15
+
+    steps:
+      - name: Guard duration input
+        env:
+          DURATION_MINUTES: ${{ inputs.duration_minutes }}
+        run: |
+          if [ "$DURATION_MINUTES" -gt 300 ]; then
+            echo "duration_minutes must be <= 300 (leaves headroom under GitHub's job time limit)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Write config/appsettings.global.json
+        env:
+          SA_PASSWORD: ${{ secrets.MSSQL_SA_PASSWORD || 'DevOnly!Passw0rd' }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          OWNER_ID: ${{ secrets.OWNER_TELEGRAM_ID }}
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$OWNER_ID" ]; then
+            echo "Missing TELEGRAM_BOT_TOKEN and/or OWNER_TELEGRAM_ID repository secrets."
+            exit 1
+          fi
+          cat > config/appsettings.global.json <<EOF
+          {
+            "Logging": { "LogLevel": { "Default": "Information", "Microsoft.AspNetCore": "Warning" } },
+            "AllowedHosts": "*",
+            "ConnectionStrings": {
+              "UsersDb": "Server=localhost,1433;Database=TallaEggUsers;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;",
+              "WalletDb": "Server=localhost,1433;Database=TallaEggWallet;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;",
+              "OrdersDb": "Server=localhost,1433;Database=TallaEggOrders;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;",
+              "AffiliateDb": "Server=localhost,1433;Database=TallaEggAffiliate;User Id=sa;Password=${SA_PASSWORD};TrustServerCertificate=True;"
+            },
+            "Services": {
+              "Users.Api": {
+                "Urls": [ "http://localhost:5136" ],
+                "WalletApiUrl": "http://localhost:60933/"
+              },
+              "Wallet.Api": {
+                "Urls": [ "http://localhost:60933" ]
+              },
+              "Orders.Api": {
+                "Urls": [ "http://localhost:5140" ],
+                "WalletApiUrl": "http://localhost:60933/api",
+                "Matching": {
+                  "RequireMarketMakerCounterparty": true,
+                  "MarketModes": { "MAUA/IRT": "Dealer" }
+                }
+              },
+              "TallaEgg.TelegramBot.Infrastructure": {
+                "Urls": [ "http://localhost:57546" ],
+                "OrderApiUrl": "http://localhost:5140/api",
+                "UsersApiUrl": "http://localhost:5136/api",
+                "AffiliateApiUrl": "http://localhost:60812/api",
+                "PricesApiUrl": "http://localhost:5140/api",
+                "WalletApiUrl": "http://localhost:60933/api",
+                "BotSettings": {
+                  "RequireReferralCode": false,
+                  "DefaultReferralCode": "admin",
+                  "OwnerTelegramIds": [ ${OWNER_ID} ]
+                },
+                "TelegramBotToken": "${BOT_TOKEN}"
+              }
+            },
+            "FeatureFlags": { "QuarantineStubEndpoints": true }
+          }
+          EOF
+
+      - name: Build (Release)
+        run: dotnet build TallaEgg.sln --configuration Release
+
+      - name: Start services
+        run: |
+          mkdir -p run-logs
+          start() {
+            name=$1; project=$2
+            nohup dotnet run --no-build --configuration Release --project "$project" \
+              > "run-logs/$name.log" 2>&1 &
+            echo $! > "run-logs/$name.pid"
+          }
+          start users src/User/Users.Api/Users.Api.csproj
+          start wallet src/Wallet/Wallet.Api/Wallet.Api.csproj
+          start orders src/Order/Orders.Api/Orders.Api.csproj
+          sleep 5
+          start bot TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
+
+      - name: Wait for services to come up
+        run: |
+          check() {
+            name=$1; url=$2
+            for i in $(seq 1 30); do
+              if curl -sf "$url" -o /dev/null; then
+                echo "$name is up"
+                return 0
+              fi
+              sleep 2
+            done
+            echo "$name did not come up in time"
+            echo "---- $name log (tail) ----"
+            tail -n 100 "run-logs/$name.log" || true
+            return 1
+          }
+          check users   http://localhost:5136/api-docs/index.html
+          check wallet  http://localhost:60933/api-docs/index.html
+          check orders  http://localhost:5140/api-docs/index.html
+          sleep 5
+          echo "---- bot log (tail, first check) ----"
+          tail -n 50 run-logs/bot.log || true
+
+      - name: Ready — ping your bot on Telegram now
+        env:
+          DURATION_MINUTES: ${{ inputs.duration_minutes }}
+        run: |
+          echo "All services are up. Swagger UIs (only reachable from inside this runner, not from your browser):"
+          echo "  Users:  http://localhost:5136/api-docs"
+          echo "  Wallet: http://localhost:60933/api-docs"
+          echo "  Orders: http://localhost:5140/api-docs"
+          echo ""
+          echo "Open Telegram and send /start to your bot now."
+          echo "Services will keep running for ${DURATION_MINUTES} more minutes."
+
+      - name: Keep alive for manual testing
+        env:
+          DURATION_MINUTES: ${{ inputs.duration_minutes }}
+        run: |
+          minutes=$DURATION_MINUTES
+          end=$((SECONDS + minutes * 60))
+          while [ $SECONDS -lt $end ]; do
+            sleep 60
+            remaining=$(( (end - SECONDS) / 60 ))
+            echo "[$(date -u +%H:%M:%S)] still running, ~${remaining}m left"
+          done
+
+      - name: Final logs
+        if: always()
+        run: |
+          for f in run-logs/*.log; do
+            echo "==== $f (last 80 lines) ===="
+            tail -n 80 "$f" || true
+          done
