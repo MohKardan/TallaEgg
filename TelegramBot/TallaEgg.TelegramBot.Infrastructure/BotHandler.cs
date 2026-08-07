@@ -771,11 +771,14 @@ namespace TallaEgg.TelegramBot
 
         private async Task ShowHelpAsync(long chatId)
         {
-            var role = await GetUserRoleAsync(chatId);
-            
-            var helpText = BotMsgs.MsgUserHelp;
+            // IsOperatorAsync, not a raw role check: MsgAdminMainHelp describes the operator's
+            // own menu (which SuperAdmin and a configured owner also see via IsOperator), not
+            // only the literal Admin role.
+            var isOperator = await IsOperatorAsync(chatId);
 
-            if (role == TallaEgg.Core.Enums.User.UserRole.Admin)
+            var helpText = isOperator ? BotMsgs.MsgAdminMainHelp : BotMsgs.MsgUserHelp;
+
+            if (isOperator)
             {
                 helpText += BotMsgs.MsgAdminHelp + "\n\n";
             }
