@@ -31,7 +31,12 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ fromJSON(inputs.duration_minutes) + 20 }}
+    # A constant, not derived from duration_minutes: GitHub's expression language has no
+    # arithmetic operators, so `fromJSON(inputs.duration_minutes) + 20` fails to parse and
+    # takes the whole file down with it. 320 = the 300-minute input cap plus headroom for
+    # build and startup. A shorter run simply ends when its keep-alive loop finishes; this
+    # value only caps a job that hangs.
+    timeout-minutes: 320
 
     services:
       sqlserver:
