@@ -155,9 +155,33 @@ jobs:
           check users   http://localhost:5136/api-docs/index.html
           check wallet  http://localhost:60933/api-docs/index.html
           check orders  http://localhost:5140/api-docs/index.html
-          sleep 5
-          echo "---- bot log (tail, first check) ----"
-          tail -n 50 run-logs/bot.log || true
+
+          # The bot has no HTTP endpoint worth polling, so wait on the log line it prints once
+          # long polling has started. Without this the job would sit idle for the full duration
+          # with a dead bot, and the person testing would only find out by getting no reply.
+          #
+          # It is slower to come up than the APIs: it runs a series of connectivity probes and
+          # a getMe call against api.telegram.org first, so allow several minutes.
+          for i in $(seq 1 90); do
+            if grep -q "listening for messages" run-logs/bot.log; then
+              echo "bot is up"
+              break
+            fi
+            # A wrong token or an unreachable Telegram fails in a way that never produces the
+            # ready line, so stop on those rather than waiting out the whole loop.
+            if grep -qE "Bot is valid: False|Unhandled exception|Application startup exception" run-logs/bot.log; then
+              echo "bot failed to start"
+              tail -n 100 run-logs/bot.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if ! grep -q "listening for messages" run-logs/bot.log; then
+            echo "bot did not come up in time"
+            tail -n 100 run-logs/bot.log
+            exit 1
+          fi
 
       - name: Ready — ping your bot on Telegram now
         env:
