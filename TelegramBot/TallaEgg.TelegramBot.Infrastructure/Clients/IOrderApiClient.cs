@@ -44,4 +44,15 @@ public interface IOrderApiClient
     Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null);
     
     Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request);
-} 
+
+    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+
+    /// <summary>تنظیمات فعلی مظنهٔ اتومات یک نماد.</summary>
+    Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol);
+
+    /// <summary>تغییر اسپرد مظنهٔ اتومات یک نماد.</summary>
+    Task<(bool success, string message)> UpdateAutoQuoteSpreadAsync(string symbol, decimal spreadPercent, Guid updatedByUserId);
+
+    /// <summary>روشن/خاموش کردن مظنهٔ اتومات یک نماد.</summary>
+    Task<(bool success, string message)> SetAutoQuoteEnabledAsync(string symbol, bool isEnabled, Guid updatedByUserId);
+}

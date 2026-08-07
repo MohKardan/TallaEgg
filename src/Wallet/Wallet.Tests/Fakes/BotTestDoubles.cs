@@ -76,6 +76,32 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         throw new NotSupportedException(nameof(CancelAllUserActiveOrdersAsync));
     public Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request) =>
         throw new NotSupportedException(nameof(NotifyMatchingEngineAsync));
+
+    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+
+    public AutoQuoteSettingsDto? AutoQuoteSettings { get; set; }
+
+    public Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol) => Task.FromResult(AutoQuoteSettings);
+
+    /// <summary>Every spread update asked for.</summary>
+    public List<(string Symbol, decimal SpreadPercent, Guid UpdatedByUserId)> SpreadUpdates { get; } = [];
+    public (bool Success, string Message) SpreadUpdateResult { get; set; } = (true, "اسپرد به‌روزرسانی شد.");
+
+    public Task<(bool success, string message)> UpdateAutoQuoteSpreadAsync(string symbol, decimal spreadPercent, Guid updatedByUserId)
+    {
+        SpreadUpdates.Add((symbol, spreadPercent, updatedByUserId));
+        return Task.FromResult(SpreadUpdateResult);
+    }
+
+    /// <summary>Every enable/disable toggle asked for.</summary>
+    public List<(string Symbol, bool IsEnabled, Guid UpdatedByUserId)> EnabledToggles { get; } = [];
+    public (bool Success, string Message) EnabledToggleResult { get; set; } = (true, "انجام شد.");
+
+    public Task<(bool success, string message)> SetAutoQuoteEnabledAsync(string symbol, bool isEnabled, Guid updatedByUserId)
+    {
+        EnabledToggles.Add((symbol, isEnabled, updatedByUserId));
+        return Task.FromResult(EnabledToggleResult);
+    }
 }
 
 /// <summary>Answers with one known, approved customer.</summary>

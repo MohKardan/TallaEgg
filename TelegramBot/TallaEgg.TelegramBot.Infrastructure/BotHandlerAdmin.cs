@@ -281,6 +281,18 @@ namespace TallaEgg.TelegramBot
                 return true;
             }
 
+            if (msgText.StartsWith("اسپرد "))
+            {
+                await HandleAutoQuoteSpreadCommandAsync(chatId, msgText, user);
+                return true;
+            }
+
+            if (msgText.StartsWith("اتومات "))
+            {
+                await HandleAutoQuoteToggleCommandAsync(chatId, msgText, user);
+                return true;
+            }
+
             //دستور ثبت قیمت جفتی برای ادمین
             // Handle price pair format: buyPrice-sellPrice (e.g., 8523690-8529630)
             var pricePairRegex = new Regex(@"^(\d+)-(\d+)$", RegexOptions.Compiled);
@@ -557,6 +569,58 @@ namespace TallaEgg.TelegramBot
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserRejected);
             await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
 
+        }
+
+        /// <summary>
+        /// <c>اسپرد [درصد]</c> — sets the spread the automatic quote publisher applies around
+        /// the fetched gold price for MAUA/IRT (issue #90). Does not itself turn auto-quote on;
+        /// see <see cref="HandleAutoQuoteToggleCommandAsync"/>.
+        /// </summary>
+        private async Task HandleAutoQuoteSpreadCommandAsync(long chatId, string msgText, UserDto actor)
+        {
+            var match = Regex.Match(msgText.Trim(), @"^اسپرد\s+(?<percent>[\d.]+)$", RegexOptions.Compiled);
+
+            if (!match.Success || !decimal.TryParse(match.Groups["percent"].Value, out var spreadPercent))
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAutoQuoteSpreadFormatError);
+                return;
+            }
+
+            var (success, message) = await _orderApi.UpdateAutoQuoteSpreadAsync(
+                CurrenciesConstant.MAUA_IRT, spreadPercent, actor.Id);
+
+            await _messenger.SendAsync(chatId, success
+                ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, PersianFormat.Number(spreadPercent, decimals: 2))
+                : string.Format(BotMsgs.MsgAutoQuoteSpreadFailed, message));
+        }
+
+        /// <summary>
+        /// <c>اتومات روشن</c> / <c>اتومات خاموش</c> — turns automatic quote publishing on or
+        /// off for MAUA/IRT (issue #90). A manually published quote (<c>buyPrice-sellPrice</c>)
+        /// always overrides the automatic one regardless of this setting.
+        /// </summary>
+        private async Task HandleAutoQuoteToggleCommandAsync(long chatId, string msgText, UserDto actor)
+        {
+            var trimmed = msgText.Trim();
+            bool? enable = trimmed switch
+            {
+                "اتومات روشن" => true,
+                "اتومات خاموش" => false,
+                _ => null
+            };
+
+            if (enable is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAutoQuoteToggleFormatError);
+                return;
+            }
+
+            var (success, message) = await _orderApi.SetAutoQuoteEnabledAsync(
+                CurrenciesConstant.MAUA_IRT, enable.Value, actor.Id);
+
+            await _messenger.SendAsync(chatId, success
+                ? (enable.Value ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
+                : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, message));
         }
 
         /// <summary>

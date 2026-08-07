@@ -123,6 +123,32 @@ builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
 
+// Automated quote publishing (issue #90): fetches a live gold price and publishes a quote the
+// same way an admin does by hand. Off for a symbol until an admin turns it on via the bot.
+// A named HttpClient per provider rather than AddHttpClient<TInterface,TImplementation>: two
+// implementations share IGoldPriceProvider, and each needs its own API token/key, which is a
+// plain configuration string DI cannot inject as a constructor parameter on its own.
+builder.Services.AddHttpClient("NerkhGoldPriceProvider");
+builder.Services.AddHttpClient("BrsApiGoldPriceProvider");
+
+var nerkhApiToken = builder.Configuration["AutoQuote:NerkhApiToken"];
+var brsApiKey = builder.Configuration["AutoQuote:BrsApiKey"];
+
+builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infrastructure.AutoQuoteSettingsRepository>();
+
+builder.Services.AddScoped<Orders.Core.IGoldPriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhGoldPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("NerkhGoldPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.NerkhGoldPriceProvider>>(),
+    nerkhApiToken));
+
+builder.Services.AddScoped<Orders.Core.IGoldPriceProvider>(sp => new Orders.Infrastructure.Clients.BrsApiGoldPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiGoldPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiGoldPriceProvider>>(),
+    brsApiKey));
+
+builder.Services.AddScoped<Orders.Application.Services.GoldPriceProviderChain>();
+builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
+
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -240,6 +266,59 @@ app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuot
         ? Results.NotFound(ApiResponse<QuoteDto>.Fail("مظنه‌ای منتشر نشده است."))
         : Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(quote)));
 });
+
+// ─────────────────────── مظنهٔ اتومات (issue #90) ───────────────────────
+
+/// <summary>تنظیمات فعلی مظنهٔ اتومات یک نماد.</summary>
+app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string Quote, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
+{
+    var symbol = $"{Base}/{Quote}";
+    var settings = await settingsRepo.GetOrCreateAsync(symbol);
+
+    return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings)));
+});
+
+/// <summary>تغییر اسپرد مظنهٔ اتومات یک نماد.</summary>
+app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
+    string Base, string Quote, UpdateAutoQuoteSpreadRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
+{
+    var symbol = $"{Base}/{Quote}";
+
+    try
+    {
+        var settings = await settingsRepo.GetOrCreateAsync(symbol);
+        settings.UpdateSpread(request.SpreadPercent, request.UpdatedByUserId);
+        await settingsRepo.SaveAsync(settings);
+
+        return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings), "اسپرد به‌روزرسانی شد."));
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(ApiResponse<AutoQuoteSettingsDto>.Fail(ex.Message));
+    }
+});
+
+/// <summary>روشن/خاموش کردن مظنهٔ اتومات یک نماد.</summary>
+app.MapPost("/api/autoquote-settings/{Base}/{Quote}/enabled", async (
+    string Base, string Quote, SetAutoQuoteEnabledRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
+{
+    var symbol = $"{Base}/{Quote}";
+
+    var settings = await settingsRepo.GetOrCreateAsync(symbol);
+    settings.SetEnabled(request.IsEnabled, request.UpdatedByUserId);
+    await settingsRepo.SaveAsync(settings);
+
+    return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings),
+        request.IsEnabled ? "مظنهٔ اتومات روشن شد." : "مظنهٔ اتومات خاموش شد."));
+});
+
+static AutoQuoteSettingsDto ToAutoQuoteSettingsDto(Orders.Core.AutoQuoteSettings s) => new()
+{
+    Symbol = s.Symbol,
+    SpreadPercent = s.SpreadPercent,
+    IsEnabled = s.IsEnabled,
+    UpdatedAt = s.UpdatedAt
+};
 
 // نگاشت اینجاست و نه روی خود DTO: TallaEgg.Core به Orders.Core ارجاع ندارد و نباید
 // داشته باشد — DTO مشترک بین سرویس‌هاست و نباید به مدل دامنهٔ یکی از آن‌ها وابسته شود.
