@@ -368,12 +368,30 @@ namespace TallaEgg.TelegramBot
                     break;
 
                 case BotBtns.BtnSpotSubmitPrice:
+                    // For an operator this button is a status check, not the start of a
+                    // conversation: quotes are published with the "buyPrice-sellPrice"
+                    // command (or the auto-quote publisher), never through this flow, so
+                    // walking an admin through symbol/price/quantity prompts here answered a
+                    // question nobody was asking. Showing the latest published quote is the
+                    // thing an admin actually wants from this button.
+                    if (await IsOperatorAsync(chatId))
+                    {
+                        await ShowLatestQuoteAsync(chatId);
+                        break;
+                    }
+
+                    // A non-operator reaching this (a replayed or forwarded button label)
+                    // still gets the ordinary quote flow, same as BtnSpotMarket.
+                    _conversations.GetOrStart(telegramId, userId).OrderType = OrderType.Limit;
+                    await ShowSymbolsAsync(chatId, telegramId);
+                    break;
+
                 case BotBtns.BtnSpotCreateOrder:
                 case BotBtns.BtnSpotMarket:
 
-                    OrderType orderType = (msgText == BotBtns.BtnSpotCreateOrder ||
-                                           msgText == BotBtns.BtnSpotSubmitPrice) ?
-                                           OrderType.Limit : OrderType.Market;
+                    OrderType orderType = msgText == BotBtns.BtnSpotCreateOrder
+                        ? OrderType.Limit
+                        : OrderType.Market;
 
                     // Starts the conversation if the customer has none: this is the first
                     // step of the order flow, so there is nothing yet to find.
@@ -773,6 +791,21 @@ namespace TallaEgg.TelegramBot
         /// created and consumed inside a single fill, so a customer's order list only ever
         /// held completed rows — it looked like information and was not.
         /// </summary>
+        /// <summary>
+        /// The single most recent quote for MAUA/IRT, active or not — what "💹 اعلام مظنه"
+        /// shows an operator. Reuses <see cref="QuoteHistoryHandler"/>'s renderer with a
+        /// one-item page rather than a second formatter for what is the same data at a
+        /// different page size.
+        /// </summary>
+        private async Task ShowLatestQuoteAsync(long chatId)
+        {
+            const string symbol = CurrenciesConstant.MAUA_IRT;
+
+            var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 1);
+
+            await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true));
+        }
+
         private async Task ShowQuoteHistory(long chatId)
         {
             const string symbol = CurrenciesConstant.MAUA_IRT;
