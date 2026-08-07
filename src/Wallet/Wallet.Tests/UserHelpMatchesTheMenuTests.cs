@@ -72,6 +72,34 @@ public class UserHelpMatchesTheMenuTests
             "the customer's accounting menu has trade history only, not an order list");
     }
 
+    // ── the operator's own main-menu help, same rule ────────────────────────────
+
+    /// <summary>
+    /// The operator's menu has «💹 اعلام مظنه», not the customer's «💹 دریافت مظنه» — before
+    /// this, an operator's help described a button that was not on their own keyboard.
+    /// </summary>
+    [Fact]
+    public void TheAdminMainHelpNamesTheAnnounceQuoteButton()
+    {
+        Assert.True(Mentions(BotMsgs.MsgAdminMainHelp, BotBtns.BtnSpotSubmitPrice),
+            $"admin help must name the announce-quote button ({BotBtns.BtnSpotSubmitPrice})");
+    }
+
+    [Fact]
+    public void TheAdminMainHelpNamesTheAccountingButton()
+    {
+        Assert.True(Mentions(BotMsgs.MsgAdminMainHelp, BotBtns.BtnAccounting),
+            $"admin help must name the accounting button ({BotBtns.BtnAccounting})");
+    }
+
+    /// <summary>The customer's quote button is not on the operator's keyboard at all.</summary>
+    [Fact]
+    public void TheAdminMainHelpDoesNotNameTheCustomerQuoteButton()
+    {
+        Assert.False(Mentions(BotMsgs.MsgAdminMainHelp, BotBtns.BtnSpotMarket),
+            $"admin help must not advertise the customer's quote button ({BotBtns.BtnSpotMarket}), which is not on the operator's menu");
+    }
+
     // ── the operator help, same rule ────────────────────────────────────────────
 
     /// <summary>
