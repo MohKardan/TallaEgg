@@ -15,11 +15,15 @@ public class OrdersDbContext : DbContext
     /// <summary>مظنه‌های منتشرشدهٔ ادمین؛ یک مظنهٔ فعال به‌ازای هر نماد (issue #48).</summary>
     public DbSet<Quote> Quotes => Set<Quote>();
 
+    /// <summary>اسپرد و روشن/خاموش بودن مظنهٔ اتومات برای هر نماد (issue #90).</summary>
+    public DbSet<AutoQuoteSettings> AutoQuoteSettings => Set<AutoQuoteSettings>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfigurations());
         modelBuilder.ApplyConfiguration(new TradeConfiguration());
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         modelBuilder.ApplyConfiguration(new QuoteConfiguration());
+        modelBuilder.ApplyConfiguration(new AutoQuoteSettingsConfiguration());
     }
 }

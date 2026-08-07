@@ -555,6 +555,31 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// <summary>{0} = دلیل خطا</summary>
         public const string MsgAdminPriceSubmitError = "❌ ثبت قیمت‌ها انجام نشد.\n\nدلیل: {0}";
 
+        // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────
+
+        public const string MsgAutoQuoteSpreadFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                             "قالب صحیح:\n" +
+                                                             "اسپرد [درصد]\n\n" +
+                                                             "نمونه: اسپرد 0.5";
+
+        /// <summary>{0} = درصد اسپرد جدید</summary>
+        public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات روی {0}٪ تنظیم شد.";
+
+        /// <summary>{0} = دلیل خطا</summary>
+        public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد انجام نشد.\n\nدلیل: {0}";
+
+        public const string MsgAutoQuoteToggleFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                             "قالب صحیح:\n" +
+                                                             "اتومات روشن\n" +
+                                                             "اتومات خاموش";
+
+        public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات روشن شد.";
+
+        public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات خاموش شد.";
+
+        /// <summary>{0} = دلیل خطا</summary>
+        public const string MsgAutoQuoteToggleFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+
         /// <summary>
         /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).
         /// {0} = نسخه فعلی

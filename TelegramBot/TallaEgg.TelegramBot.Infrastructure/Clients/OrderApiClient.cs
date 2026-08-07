@@ -443,6 +443,71 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+
+    public async Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/autoquote-settings/{symbol}");
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<AutoQuoteSettingsDto>>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return parsed?.Data;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<(bool success, string message)> UpdateAutoQuoteSpreadAsync(string symbol, decimal spreadPercent, Guid updatedByUserId)
+    {
+        try
+        {
+            var payload = new { spreadPercent, updatedByUserId };
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/autoquote-settings/{symbol}/spread", content);
+            var body = await response.Content.ReadAsStringAsync();
+            var message = TryReadMessage(body);
+
+            return response.IsSuccessStatusCode
+                ? (true, message ?? "اسپرد به‌روزرسانی شد.")
+                : (false, message ?? $"خطا در به‌روزرسانی اسپرد (کد {(int)response.StatusCode}).");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
+    public async Task<(bool success, string message)> SetAutoQuoteEnabledAsync(string symbol, bool isEnabled, Guid updatedByUserId)
+    {
+        try
+        {
+            var payload = new { isEnabled, updatedByUserId };
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/autoquote-settings/{symbol}/enabled", content);
+            var body = await response.Content.ReadAsStringAsync();
+            var message = TryReadMessage(body);
+
+            return response.IsSuccessStatusCode
+                ? (true, message ?? "انجام شد.")
+                : (false, message ?? $"خطا (کد {(int)response.StatusCode}).");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
     /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
     public async Task<QuoteDto?> GetActiveQuoteAsync(string symbol)
     {
