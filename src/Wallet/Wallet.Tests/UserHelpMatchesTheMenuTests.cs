@@ -87,6 +87,9 @@ public class UserHelpMatchesTheMenuTests
     [InlineData("م [")]   // balances
     [InlineData("س [")]   // open orders
     [InlineData("ک [")]   // list users
+    [InlineData("اسپرد [")]     // auto-quote spread
+    [InlineData("اتومات روشن")] // auto-quote on
+    [InlineData("اتومات خاموش")] // auto-quote off
     public void TheAdminHelpNamesEveryOperatorCommand(string command)
     {
         Assert.True(Mentions(BotMsgs.MsgAdminHelp, command),
