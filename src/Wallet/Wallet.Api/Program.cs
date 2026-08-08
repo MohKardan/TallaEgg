@@ -10,6 +10,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Requests.Trade;
 using TallaEgg.Core.Requests.Wallet;
 using Wallet.Application;
@@ -89,6 +90,7 @@ else
 builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<WalletMapper>();
+builder.Services.AddTallaEggErrorHandling();
 
 // اضافه کردن CORS
 builder.Services.AddCors();
@@ -110,6 +112,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+app.UseTallaEggErrorHandling();
 
 // --- مایگریشن و سیید اولیه ---
 using (var scope = app.Services.CreateScope())

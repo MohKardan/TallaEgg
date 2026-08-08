@@ -13,6 +13,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Requests.User;
 using Users.Api;
 using Users.Application;
@@ -83,6 +84,7 @@ else
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserMapper>();
+builder.Services.AddTallaEggErrorHandling();
 
 // HttpClient برای فراخوانی Wallet API
 builder.Services.AddHttpClient("WalletAPI", client =>
@@ -119,6 +121,7 @@ builder.Host.UseSerilog();
 
 var app = builder.Build();
 
+app.UseTallaEggErrorHandling();
 
 // --- مایگریشن و سیید اولیه ---
 using (var scope = app.Services.CreateScope())
@@ -210,13 +213,15 @@ app.UseSwaggerUI(c =>
 /// <response code="400">Invalid request data or validation error</response>
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
 {
+    // RegisterUserAsync throws a plain Exception with a user-facing message when the invitation
+    // code is invalid — that message is the point, not boilerplate, so it stays local. See #88.
     try
     {
         var user = await userService.RegisterUserAsync(
             request.TelegramId,
             request.InvitationCode,
-            request.Username, 
-            request.FirstName, 
+            request.Username,
+            request.FirstName,
             request.LastName);
 
         return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
@@ -238,12 +243,14 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
 /// <response code="404">User not found</response>
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
+    // UpdateUserPhoneAsync throws InvalidOperationException("کاربر یافت نشد.") — a user-facing
+    // message, not boilerplate, so it stays local. See #88.
     try
     {
         var response = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
         return Results.Ok(ApiResponse<UserDto>.Ok(response, "Phone number updated successfully"));
     }
-    catch (Exception ex)
+    catch (InvalidOperationException ex)
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
@@ -276,29 +283,19 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 /// <response code="404">کاربر پیدا نشد</response>
 app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userService) =>
 {
-    try
-    {
-        var user = await userService.GetUserByIdAsync(userId);
-        
-        if (user == null)
-        {
-            return Results.Json(
-                ApiResponse<UserDto>.NotFound("کاربر مورد نظر یافت نشد."),
-                statusCode: 404
-            );
-        }
+    var user = await userService.GetUserByIdAsync(userId);
 
-        return Results.Json(
-            ApiResponse<UserDto>.Ok(user, "اطلاعات کاربر با موفقیت دریافت شد.")
-        );
-    }
-    catch (Exception ex)
+    if (user == null)
     {
         return Results.Json(
-            ApiResponse<UserDto>.Error($"خطا در دریافت اطلاعات کاربر: {ex.Message}"),
-            statusCode: 500
+            ApiResponse<UserDto>.NotFound("کاربر مورد نظر یافت نشد."),
+            statusCode: 404
         );
     }
+
+    return Results.Json(
+        ApiResponse<UserDto>.Ok(user, "اطلاعات کاربر با موفقیت دریافت شد.")
+    );
 });
 
 /// <summary>
@@ -328,17 +325,8 @@ app.MapGet("/api/users/list", async (
     var page = pageNumber ?? 1;
     var size = Math.Clamp(pageSize ?? 10, 1, 100);
 
-    try
-    {
-        var users = await userService.GetUsersAsync(q, page, size);
-       return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
-
-    }
-    catch (Exception ex)
-    {
-       return Results.BadRequest(ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطا در دریافت اطلاعات"));
-    }
-
+    var users = await userService.GetUsersAsync(q, page, size);
+    return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
 });
 
 /// <summary>
@@ -352,12 +340,14 @@ app.MapGet("/api/users/list", async (
 /// <response code="404">User not found</response>
 app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
+    // UpdateUserStatusAsync throws InvalidOperationException("کاربر یافت نشد.") — a user-facing
+    // message, not boilerplate, so it stays local. See #88.
     try
     {
         var user = await userService.UpdateUserStatusAsync(request.TelegramId, request.NewStatus);
         return Results.Ok(ApiResponse<UserDto>.Ok(user, "وضعیت کاربر با موفقیت به‌روزرسانی شد."));
     }
-    catch (Exception ex)
+    catch (InvalidOperationException ex)
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
@@ -374,28 +364,14 @@ app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserServi
 /// <response code="404">Invitation code not found</response>
 app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
 {
-    try
-    {
-        var userId = await userService.GetUserIdByInvitationCode(invitationCode);
-        return Results.Ok(userId);
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var userId = await userService.GetUserIdByInvitationCode(invitationCode);
+    return Results.Ok(userId);
 });
 
 app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phonenumber, UserService userService) =>
 {
-    try
-    {
-        var userId = await userService.GetUserIdByPhoneNumber(phonenumber);
-        return Results.Ok(userId);
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var userId = await userService.GetUserIdByPhoneNumber(phonenumber);
+    return Results.Ok(userId);
 });
 
 /// <summary>
@@ -408,15 +384,8 @@ app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phone
 /// <response code="400">Invalid invitation code or error occurred</response>
 app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
 {
-    try
-    {
-        var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
-        return Results.Ok(new { isValid = result.isValid, message = result.message });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
+    return Results.Ok(new { isValid = result.isValid, message = result.message });
 });
 
 /// <summary>
@@ -429,15 +398,8 @@ app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest re
 /// <response code="400">Invalid request data or validation error</response>
 app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitationRequest request, UserService userService) =>
 {
-    try
-    {
-        var user = await userService.RegisterUserAsync(request.User);
-        return Results.Ok(new { success = true, userId = user.Id });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var user = await userService.RegisterUserAsync(request.User);
+    return Results.Ok(new { success = true, userId = user.Id });
 });
 
 /// <summary>
@@ -451,18 +413,11 @@ app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitat
 /// <response code="404">User not found</response>
 app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
 {
-    try
-    {
-        var user = await userService.UpdateUserRoleAsync(request.UserId, request.NewRole);
-        if (user == null)
-            return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
-        
-        return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var user = await userService.UpdateUserRoleAsync(request.UserId, request.NewRole);
+    if (user == null)
+        return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
+
+    return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
 });
 
 /// <summary>
@@ -475,18 +430,11 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserS
 /// <response code="400">Invalid role or error occurred</response>
 app.MapGet("/api/users/by-role/{role}", async (string role, UserService userService) =>
 {
-    try
-    {
-        if (!Enum.TryParse<UserRole>(role, true, out var userRole))
-            return Results.BadRequest(new { success = false, message = "نقش نامعتبر است." });
+    if (!Enum.TryParse<UserRole>(role, true, out var userRole))
+        return Results.BadRequest(new { success = false, message = "نقش نامعتبر است." });
 
-        var users = await userService.GetUsersByRoleAsync(userRole);
-        return Results.Ok(users);
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var users = await userService.GetUsersByRoleAsync(userRole);
+    return Results.Ok(users);
 });
 
 /// <summary>
@@ -499,15 +447,8 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
 /// <response code="400">Error occurred during check</response>
 app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>
 {
-    try
-    {
-        var exists = await userService.UserExistsAsync(telegramId);
-        return Results.Ok(new { exists = exists });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var exists = await userService.UserExistsAsync(telegramId);
+    return Results.Ok(new { exists = exists });
 });
 
 /// <summary>
@@ -521,41 +462,31 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 /// <response code="404">کاربر یافت نشد</response>
 app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, UserService userService) =>
 {
-    try
-    {
-        var user = await userService.GetUserByIdAsync(userId);
-        if (user == null)
-        {
-            return Results.Json(
-                ApiResponse<object>.NotFound("کاربر مورد نظر یافت نشد."),
-                statusCode: 404
-            );
-        }
-
-        // فراخوانی endpoint کیف پول
-        using var httpClient = new HttpClient();
-        httpClient.BaseAddress = new Uri("https://localhost:7001/");
-        var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadAsStringAsync();
-            return Results.Json(
-                ApiResponse<object>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
-            );
-        }
-        else
-        {
-            return Results.Json(
-                ApiResponse<object>.Error("خطا در ایجاد کیف پول‌های پیش‌فرض."),
-                statusCode: 500
-            );
-        }
-    }
-    catch (Exception ex)
+    var user = await userService.GetUserByIdAsync(userId);
+    if (user == null)
     {
         return Results.Json(
-            ApiResponse<object>.Error($"خطا در ایجاد کیف پول‌های پیش‌فرض: {ex.Message}"),
+            ApiResponse<object>.NotFound("کاربر مورد نظر یافت نشد."),
+            statusCode: 404
+        );
+    }
+
+    // فراخوانی endpoint کیف پول
+    using var httpClient = new HttpClient();
+    httpClient.BaseAddress = new Uri("https://localhost:7001/");
+    var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+
+    if (response.IsSuccessStatusCode)
+    {
+        var content = await response.Content.ReadAsStringAsync();
+        return Results.Json(
+            ApiResponse<object>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
+        );
+    }
+    else
+    {
+        return Results.Json(
+            ApiResponse<object>.Error("خطا در ایجاد کیف پول‌های پیش‌فرض."),
             statusCode: 500
         );
     }

@@ -8,6 +8,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using System.Text.Json;
 using TallaEgg.Core;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Models;
 using Users.Application;
 using Users.Core;
@@ -70,6 +71,8 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 // اضافه کردن CORS
 builder.Services.AddCors();
 
+builder.Services.AddTallaEggErrorHandling();
+
 // پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -79,6 +82,8 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 var app = builder.Build();
+
+app.UseTallaEggErrorHandling();
 
 // تنظیم CORS
 app.UseCors(builder => builder
