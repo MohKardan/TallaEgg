@@ -4,11 +4,18 @@ using Microsoft.Extensions.Logging;
 namespace TallaEgg.TelegramBot.Simulator;
 
 /// <summary>
-/// Wipes whatever a previous simulation run left behind, scoped strictly to the reserved
-/// Telegram id range (<see cref="SimulationOptions.TelegramIdBase"/>+) so a real user's data
-/// can never be touched. Runs first, every time: the whole point of a clean slate is that
-/// every run exercises registration-through-settlement from scratch rather than building on
-/// state a previous run happened to leave around.
+/// Wipes whatever a previous simulation run left behind, scoped strictly to
+/// <c>TelegramId &lt; 0</c> so a real user's data can never be touched. Runs first, every
+/// time: the whole point of a clean slate is that every run exercises
+/// registration-through-settlement from scratch rather than building on state a previous run
+/// happened to leave around.
+///
+/// The filter used to be "TelegramId >= 900,000,000", on the theory that a real Telegram
+/// user id would never reach that. It reached it: a real dev account in this database is
+/// 6,389,449,308, and a run's reset deleted that account, its wallets, and its trade history
+/// before this was caught. Negative is the range genuinely guaranteed empty — see
+/// <see cref="SimulationOptions.TelegramIdBase"/> — so the predicate no longer depends on a
+/// threshold that growth in real Telegram ids could ever catch up to again.
 ///
 /// Plain SQL, not the services' EF DbContexts — each service owns its own database with no
 /// cross-database foreign keys, so a direct, minimal delete is simpler than pulling in three
@@ -46,8 +53,7 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
         var ids = new List<Guid>();
         await using var conn = new SqlConnection(usersDbConnectionString);
         await conn.OpenAsync(ct);
-        await using var cmd = new SqlCommand("SELECT Id FROM Users WHERE TelegramId >= @Base", conn);
-        cmd.Parameters.AddWithValue("@Base", SimulationOptions.TelegramIdBase);
+        await using var cmd = new SqlCommand("SELECT Id FROM Users WHERE TelegramId < 0", conn);
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
         {
@@ -118,11 +124,10 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
     {
         await using var conn = new SqlConnection(usersDbConnectionString);
         await conn.OpenAsync(ct);
-        await using var cmd = new SqlCommand("DELETE FROM Users WHERE TelegramId >= @Base", conn)
+        await using var cmd = new SqlCommand("DELETE FROM Users WHERE TelegramId < 0", conn)
         {
             CommandTimeout = CommandTimeoutSeconds
         };
-        cmd.Parameters.AddWithValue("@Base", SimulationOptions.TelegramIdBase);
         var deleted = await cmd.ExecuteNonQueryAsync(ct);
         logger.LogInformation("Reset: deleted {Count} Users rows.", deleted);
     }

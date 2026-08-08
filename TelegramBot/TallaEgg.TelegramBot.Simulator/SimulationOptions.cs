@@ -12,11 +12,19 @@ public sealed class SimulationOptions
     public int Seed { get; init; } = 42;
 
     /// <summary>
-    /// Telegram ids for simulated users start here. High enough that it can never collide
-    /// with a real Telegram user id, and low enough to leave room below it for admin/owner
-    /// test ids if ever needed.
+    /// Telegram ids for simulated users start here and count down (more negative per user).
+    ///
+    /// A first version used a large positive base (900,000,000) on the theory that a real
+    /// Telegram user id would never reach it — wrong: modern Telegram user ids run well past
+    /// that (a real dev account in this database is 6,389,449,308), and a run's reset step
+    /// deleted that account along with its wallets and trade history before this was caught.
+    ///
+    /// Negative is the one range genuinely guaranteed empty: Telegram user ids are always
+    /// positive (negative ids belong to group chats, which don't apply here), and the seeded
+    /// bootstrap admin is TelegramId 0. No magic threshold to get wrong, and no future growth
+    /// in real Telegram ids can ever reach it.
     /// </summary>
-    public const long TelegramIdBase = 900_000_000;
+    public const long TelegramIdBase = -1_000_000_000;
 
     public static SimulationOptions FromArgs(string[] args)
     {
