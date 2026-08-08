@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TallaEgg.Core;
+using TallaEgg.Core.ErrorHandling;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,6 +78,7 @@ builder.Services.AddCors();
 
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
+builder.Services.AddTallaEggErrorHandling();
 
 // پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
 Log.Logger = new LoggerConfiguration()
@@ -87,6 +89,8 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 var app = builder.Build();
+
+app.UseTallaEggErrorHandling();
 
 // --- مایگریشن و سیید اولیه ---
 using (var scope = app.Services.CreateScope())
@@ -129,16 +133,18 @@ app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationReque
 
 app.MapPost("/api/affiliate/use-invitation", async (UseInvitationRequest request, AffiliateService affiliateService) =>
 {
+    // UseInvitationAsync throws InvalidOperationException with a user-facing message when the
+    // code is invalid — that message is the point, not boilerplate, so it stays local. See #88.
     try
     {
         var invitation = await affiliateService.UseInvitationAsync(
-            request.InvitationCode, 
-            request.UsedByUserId, 
-            request.UserAgent, 
+            request.InvitationCode,
+            request.UsedByUserId,
+            request.UserAgent,
             request.IpAddress);
         return Results.Ok(new { success = true, invitationId = invitation.Id });
     }
-    catch (Exception ex)
+    catch (InvalidOperationException ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
@@ -146,19 +152,12 @@ app.MapPost("/api/affiliate/use-invitation", async (UseInvitationRequest request
 
 app.MapPost("/api/affiliate/create-invitation", async (CreateInvitationRequest request, AffiliateService affiliateService) =>
 {
-    try
-    {
-        var invitation = await affiliateService.CreateInvitationAsync(
-            request.CreatedByUserId, 
-            request.Type, 
-            request.MaxUses, 
-            request.ExpiresAt);
-        return Results.Ok(new { success = true, invitation = invitation });
-    }
-    catch (Exception ex)
-    {
-        return Results.BadRequest(new { success = false, message = ex.Message });
-    }
+    var invitation = await affiliateService.CreateInvitationAsync(
+        request.CreatedByUserId,
+        request.Type,
+        request.MaxUses,
+        request.ExpiresAt);
+    return Results.Ok(new { success = true, invitation = invitation });
 });
 
 app.MapGet("/api/affiliate/user-invitations/{userId}", async (Guid userId, AffiliateService affiliateService) =>

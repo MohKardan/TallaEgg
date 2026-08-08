@@ -16,6 +16,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Responses.Order;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -102,6 +103,7 @@ builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient,
 // اضافه کردن CORS
 builder.Services.AddCors();
 
+builder.Services.AddTallaEggErrorHandling();
 
 builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
@@ -191,6 +193,8 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 var app = builder.Build();
+
+app.UseTallaEggErrorHandling();
 
 // --- مایگریشن و سیید اولیه ---
 using (var scope = app.Services.CreateScope())
