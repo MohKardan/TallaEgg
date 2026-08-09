@@ -1,6 +1,9 @@
 ﻿<Project>
   <ItemGroup>
-    <Content Include="$(MSBuildThisFileDirectory)config\appsettings.global.json">
+    <!-- config/appsettings.global.json is git-ignored (issue #33), so a fresh clone or CI
+         checkout won't have it yet — only include it when a local copy actually exists. -->
+    <Content Include="$(MSBuildThisFileDirectory)config\appsettings.global.json"
+             Condition="Exists('$(MSBuildThisFileDirectory)config\appsettings.global.json')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
