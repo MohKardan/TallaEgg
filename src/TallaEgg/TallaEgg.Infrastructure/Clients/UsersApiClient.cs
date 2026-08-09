@@ -26,9 +26,11 @@ public class UsersApiClient : IUsersApiClient
         _baseUrl = ResolveUsersApiBaseUrl(configuration) ?? "http://localhost:5001/api";
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
+#if DEBUG
+        // DEV ONLY: accept self-signed certs for local inter-service calls.
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+#endif
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }

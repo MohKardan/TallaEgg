@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TallaEgg.Core;
+using TallaEgg.Core.Cors;
 using TallaEgg.Core.ErrorHandling;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,7 +75,9 @@ else
 // Registered unconditionally, matching the other four services. It was missing entirely,
 // which meant app.UseCors below could not resolve ICorsService and the process died at
 // startup in Production — the one environment nobody runs locally (issue #72).
-builder.Services.AddCors();
+//
+// Now a whitelist read from configuration instead of AllowAnyOrigin (issue #31).
+builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
@@ -115,14 +118,7 @@ app.UseAuthorization();
 // from a missing registration; it was hiding a service that could never start in Production.
 //
 // Now registered unconditionally, so this runs in both, as it does in the other four services.
-//
-// AllowAnyOrigin is what #31 is about. Worth noting there: CORS constrains browsers, and this
-// product has no browser client — the APIs are called only by the bot over loopback. The
-// protection that matters is not opening these ports to the internet at all, which #69 covers.
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+app.UseTallaEggCors();
 
 // Affiliate management endpoints
 app.MapPost("/api/affiliate/validate-invitation", async (ValidateInvitationRequest request, AffiliateService affiliateService) =>
