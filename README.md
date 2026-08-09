@@ -35,7 +35,7 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 | `src/TallaEgg` | Shared core/application/infrastructure libraries plus a legacy orchestration API |
 | `src/Wallet/Wallet.Tests` | The test suite for the whole platform (see [Testing](#testing)) |
 | `TelegramBot` | Telegram bot host, handlers, and typed API clients |
-| `config/appsettings.global.json` | Shared configuration consumed by every service — currently tracked, and it should not be ([#33](https://github.com/MohKardan/TallaEgg/issues/33)) |
+| `config/appsettings.global.json` | Shared configuration consumed by every service — git-ignored ([#33](https://github.com/MohKardan/TallaEgg/issues/33)); copy it from `config/appsettings.global.example.json` |
 | `docs/` | Architecture, operations, process, OKRs, and the business proposal |
 | `governance/` | Charter, bylaws, meeting notes, and `P-XXXX` proposals |
 | `scripts/`, `publishes/` | Helper scripts and deployment artefacts |
@@ -71,11 +71,10 @@ The platform supports two market modes per symbol, set in configuration:
 
 Every service loads `config/appsettings.global.json`, then flattens the section under `Services:` matching its own assembly name. There is no per-service `appsettings.json` to maintain.
 
-> ⚠️ **This file is currently tracked in git and contains a live bot token.** That is a known
-> defect, not the intended design — see [#33](https://github.com/MohKardan/TallaEgg/issues/33),
-> which covers rotating the token and moving the file out of source control before deployment.
-> Until that lands, treat the committed values as compromised: the repository is public, so
-> anyone can read them. Do not add further secrets to this file.
+> ⚠️ **This file used to be tracked in git and its old contents (a bot token and the shared API
+> key) are still readable in this public repo's history.** Treat both as compromised until they
+> are rotated — see [#33](https://github.com/MohKardan/TallaEgg/issues/33). The file itself is
+> now git-ignored; do not re-add it or any other secret to source control.
 
 Create your own copy from the template below.
 
@@ -132,6 +131,17 @@ Create your own copy from the template below.
 | `BotSettings:DefaultReferralCode` | Must be `admin` — the code carried by the administrator row `Users.Api` seeds. Registration rejects any code that belongs to no user, so a mismatch here means **nobody can register at all**. |
 | `Matching:MarketModes` | Without `"MAUA/IRT": "Dealer"` the symbol falls back to `OrderBook` and every quote fill is refused. |
 | `TelegramBotToken` | Read from this file. `TELEGRAM_BOT_TOKEN` is only a fallback for the standalone notification API, **not** for the bot itself. |
+
+### Shared API key
+
+Wallet.Api, Users.Api, Orders.Api, and Affiliate.Api authenticate inter-service calls with a
+shared key sent via the `X-API-Key` header (`TallaEgg.Core.APIKeyConstant`). It is read from the
+`TALLAEGG_API_KEY` environment variable, not from any tracked file.
+
+- **Development**: none of the four services enforce this — API-key authentication is only wired
+  up when `ASPNETCORE_ENVIRONMENT=Production`. Leave the variable unset locally.
+- **Production**: set `TALLAEGG_API_KEY` before starting any service; each one throws at startup
+  if it is missing.
 
 ## Database Setup
 
