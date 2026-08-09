@@ -379,9 +379,10 @@ FodyWeavers.xsd
 .env.production.local
 
 # Configuration files (keep base configs, ignore environment-specific)
+# config/appsettings.global.json holds live per-developer settings and is intentionally NOT
+# force-included here — see issue #33. Only the sanitized example template is tracked.
 appsettings.*.json
 !appsettings.json
-!config/appsettings.global.json
 !config/appsettings.global.example.json
 !appsettings.Example.json
 *.user
@@ -689,8 +690,8 @@ chocolatey/
 # ==========================================
 
 # Keep important configuration files
+# config/appsettings.global.json is deliberately excluded here too — see issue #33.
 !appsettings.json
-!config/appsettings.global.json
 !config/appsettings.global.example.json
 !appsettings.Example.json
 !appsettings.Template.json

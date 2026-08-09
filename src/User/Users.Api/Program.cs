@@ -65,7 +65,7 @@ if (builder.Environment.IsProduction())
     builder.Services.AddAuthentication("ApiKey")
         .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
         {
-            options.ApiKey = APIKeyConstant.TallaEggApiKey;
+            options.ApiKey = APIKeyConstant.RequireTallaEggApiKey();
         });
 
     // Authorization Policy سراسری فقط برای production
