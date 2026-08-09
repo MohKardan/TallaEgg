@@ -140,84 +140,79 @@ namespace TallaEgg.TelegramBot
 
         public async Task HandleMessageAsync(Message message)
         {
-            try
+            // No local catch here (issue #99) — this used to swallow every exception with a
+            // log line and total silence to the user, which TelegramBotHostedService.
+            // HandleUpdateAsync's own catch can never see or recover from because nothing
+            // propagates past this point. Letting it bubble means the caller's catch — which
+            // does log to disk and reply with a fallback message — is the one and only place
+            // an unhandled exception from a customer's message is handled, for every message,
+            // not just the ones that happen not to hit this now-removed try.
+            var chatId = message.Chat.Id;
+            var telegramId = message.From?.Id ?? 0;
+            await _telegramLogger.LogAsync<Message>($"✔➕ new message:",message);
+
+
+            message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
+
+            // Check if user exists
+            var user = await _usersApi.GetUserAsync(telegramId);
+
+            if (user == null)
             {
-                var chatId = message.Chat.Id;
-                var telegramId = message.From?.Id ?? 0;
-                await _telegramLogger.LogAsync<Message>($"✔➕ new message:",message);
+                // /start is the registration command, so telling somebody to send it while
+                // they are sending it is noise — and it arrived as the reply to their very
+                // first message, which reads like a rejection. Anything else still gets the
+                // prompt.
+                if (!(message.Text ?? string.Empty).StartsWith("/start"))
+                    await _messenger.SendAsync(chatId, BotMsgs.MsgAccountNotFound);
 
-
-                message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
-
-                // Check if user exists
-                var user = await _usersApi.GetUserAsync(telegramId);
-
-                if (user == null)
-                {
-                    // /start is the registration command, so telling somebody to send it while
-                    // they are sending it is noise — and it arrived as the reply to their very
-                    // first message, which reads like a rejection. Anything else still gets the
-                    // prompt.
-                    if (!(message.Text ?? string.Empty).StartsWith("/start"))
-                        await _messenger.SendAsync(chatId, BotMsgs.MsgAccountNotFound);
-
-                    await HandleNewUserAsync(chatId, telegramId, message);
-                    return;
-                }
-
-                // Keyed on the Telegram user id, as every other access is. This one line
-                // used the chat id; the two are equal in a private chat, so it worked, but
-                // the entry was written under one key and read under another anywhere else.
-                _conversations.GetOrStart(telegramId, user.Id);
-
-                if (string.IsNullOrEmpty(user?.PhoneNumber))
-                {
-                    await HandlePhoneNumberRequestAsync(chatId, telegramId, message);
-                    return;
-                }
-
-                // A configured owner is exempt from the approval gate, and this is the whole
-                // reason the exemption exists: a new account is created Pending, approval
-                // arrives only as a callback from an administrator of a hard-coded Telegram
-                // group, and the operator commands live inside the else-branch below. On an
-                // empty database that is a closed loop — the one person who is supposed to
-                // appoint the first administrator sits behind an approval only an existing
-                // administrator can give.
-                //
-                // Ownership already comes from configuration, which is to say from whoever
-                // controls the deployment. Requiring a second, in-product approval on top of
-                // that adds no protection; it only makes the product impossible to start.
-                if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved
-                    && !_ownerTelegramIds.Contains(telegramId))
-                {
-                    await _messenger.SendAsync(
-                         chatId,
-                         string.Format(BotMsgs.MsgAccountNotApproved, user.FirstName).AutoRtl()
-                     );
-                }
-                else
-                {
-                    // احتمالا بهتره که در آینده این کار را رول حسابدار انجام دهد
-                    //if (await IsTelegramAdmin(user))
-                    if (IsOperator(user))
-                    {
-                        // Check for admin commands first
-                        bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
-                        if (isAdminCmd) return;
-                    }
-
-                    await HandleMainMenuAsync(chatId, telegramId, message, user.Id);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                await _telegramLogger.ErrorAsync(ex, "❌ Error in HandleUpdateAsync");
-
-                Console.WriteLine($"❌ Error in HandleUpdateAsync: {ex.Message}");
-
+                await HandleNewUserAsync(chatId, telegramId, message);
+                return;
             }
 
+            // Keyed on the Telegram user id, as every other access is. This one line
+            // used the chat id; the two are equal in a private chat, so it worked, but
+            // the entry was written under one key and read under another anywhere else.
+            _conversations.GetOrStart(telegramId, user.Id);
+
+            if (string.IsNullOrEmpty(user?.PhoneNumber))
+            {
+                await HandlePhoneNumberRequestAsync(chatId, telegramId, message);
+                return;
+            }
+
+            // A configured owner is exempt from the approval gate, and this is the whole
+            // reason the exemption exists: a new account is created Pending, approval
+            // arrives only as a callback from an administrator of a hard-coded Telegram
+            // group, and the operator commands live inside the else-branch below. On an
+            // empty database that is a closed loop — the one person who is supposed to
+            // appoint the first administrator sits behind an approval only an existing
+            // administrator can give.
+            //
+            // Ownership already comes from configuration, which is to say from whoever
+            // controls the deployment. Requiring a second, in-product approval on top of
+            // that adds no protection; it only makes the product impossible to start.
+            if (user.Status != TallaEgg.Core.Enums.User.UserStatus.Approved
+                && !_ownerTelegramIds.Contains(telegramId))
+            {
+                await _messenger.SendAsync(
+                     chatId,
+                     string.Format(BotMsgs.MsgAccountNotApproved, user.FirstName).AutoRtl()
+                 );
+            }
+            else
+            {
+                // احتمالا بهتره که در آینده این کار را رول حسابدار انجام دهد
+                //if (await IsTelegramAdmin(user))
+                if (IsOperator(user))
+                {
+                    // Check for admin commands first
+                    bool isAdminCmd = await HandleAdminCommandsAsync(chatId, telegramId, message, user);
+                    if (isAdminCmd) return;
+                }
+
+                await HandleMainMenuAsync(chatId, telegramId, message, user.Id);
+            }
         }
 
         private async Task HandleNewUserAsync(long chatId, long telegramId, Message message)
@@ -1395,12 +1390,16 @@ namespace TallaEgg.TelegramBot
                         });
                 }
             }
-            catch (Exception ex)
-            {
-                await _messenger.SendAsync(chatId, $"خطا در ثبت سفارش: {ex.Message}");
-            }
             finally
             {
+                // Business failures (insufficient balance, no quote, etc.) already come back
+                // as (orderSuccess: false, orderMessage) above and are shown to the customer
+                // there — this method only ever throws for something genuinely unexpected, and
+                // the catch that used to sit here sent the customer ex.Message verbatim, with
+                // no logging anywhere (issue #99). Letting it bubble reaches
+                // TelegramBotHostedService.HandleUpdateAsync's catch, which does both. The
+                // conversation must still be cleared on that path — same as any other exit —
+                // or the next order silently inherits this one's half-filled state.
                 _conversations.Clear(telegramId);
             }
         }

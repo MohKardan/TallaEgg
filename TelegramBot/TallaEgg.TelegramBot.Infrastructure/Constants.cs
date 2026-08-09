@@ -411,6 +411,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgNotAuthorized = "شما اجازهٔ این کار را ندارید.";
 
         /// <summary>
+        /// پاسخ عمومی وقتی پردازش پیام کاربر با خطای غیرمنتظره (بدون پاسخ اختصاصی از خود
+        /// هندلر) متوقف شود — issue #99. تنها جایی که پیام خام exception به کاربر نمی‌رسد.
+        /// </summary>
+        public const string MsgUnexpectedError = "❌ مشکلی پیش آمد.\n\nلطفاً دوباره تلاش کنید. اگر ادامه داشت، به طلافروشی خود اطلاع دهید.";
+
+        /// <summary>
         /// وقتی پیامی از کسی می‌رسد که هنوز ثبت‌نام نکرده است.
         ///
         /// «/start» عمداً به همین شکل و بدون هیچ نشانه‌گذاری نوشته شده تا تلگرام خودش آن را
@@ -569,9 +575,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         /// <summary>{0} = دلیل ناموفق بودن</summary>
         public const string MsgAdminQuoteFailed = "❌ انتشار مظنه انجام نشد.\n\nدلیل: {0}";
-
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgAdminPriceSubmitError = "❌ ثبت قیمت‌ها انجام نشد.\n\nدلیل: {0}";
 
         // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────
 

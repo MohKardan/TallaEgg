@@ -641,56 +641,54 @@ namespace TallaEgg.TelegramBot
         /// </remarks>
         private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, decimal buyPrice, decimal sellPrice)
         {
-            try
-            {
-                const string defaultAsset = CurrenciesConstant.MAUA_IRT; // Default asset for admin price pair orders
-                const decimal defaultAmount = 1000m;    // Default amount
+            // No local catch here (issue #99) — publish failure already comes back as
+            // (published: false, publishMessage) below and is shown to the admin there. The
+            // catch that used to wrap this method only ever fired for something genuinely
+            // unexpected, sent the admin ex.Message verbatim, and logged nowhere. Letting it
+            // bubble reaches TelegramBotHostedService.HandleUpdateAsync's catch, which does
+            // both.
+            const string defaultAsset = CurrenciesConstant.MAUA_IRT; // Default asset for admin price pair orders
+            const decimal defaultAmount = 1000m;    // Default amount
 
-                // First, cancel all existing active orders for this user
-                //await _messenger.SendAsync(chatId, "⏳ در حال کنسل سفارشات قبلی...");
-                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminProcessing);
+            // First, cancel all existing active orders for this user
+            //await _messenger.SendAsync(chatId, "⏳ در حال کنسل سفارشات قبلی...");
+            await _messenger.SendAsync(chatId, BotMsgs.MsgAdminProcessing);
 
-                var cancelResults = await CancelUserActiveOrdersAsync(userId);
-                if (cancelResults.CancelledCount > 0)
-                {
-                    await _messenger.SendAsync(chatId,
-                        string.Format(BotMsgs.MsgAdminPreviousPricesCancelled,
-                            PersianFormat.Number(cancelResults.CancelledCount)));
-                }
-                else if (cancelResults.HasError)
-                {
-                    await _messenger.SendAsync(chatId,
-                        string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
-                }
-
-                // A quote is published — no more pair of 1000-gram orders (issue #48).
-                //
-                // The 1000 was arbitrary and locked roughly 19 billion toman and 1000 grams
-                // of the admin's collateral purely to announce a price. Publishing a quote
-                // locks nothing; orders are created only when a customer trades, for exactly
-                // the requested quantity, and are consumed in the same moment.
-                //
-                // Conversion and confirmation text come from one call, so the price
-                // published and the price shown cannot drift apart (issue #65).
-                var quote = QuoteMessage.Prepare(defaultAsset, buyPrice, sellPrice);
-
-                var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
-                    defaultAsset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
-
-                if (published)
-                {
-                    await _messenger.SendAsync(chatId, quote.Text);
-                }
-                else
-                {
-                    await _messenger.SendAsync(chatId,
-                        string.Format(BotMsgs.MsgAdminQuoteFailed, publishMessage));
-                }
-            }
-            catch (Exception ex)
+            var cancelResults = await CancelUserActiveOrdersAsync(userId);
+            if (cancelResults.CancelledCount > 0)
             {
                 await _messenger.SendAsync(chatId,
-                    string.Format(BotMsgs.MsgAdminPriceSubmitError, ex.Message));
+                    string.Format(BotMsgs.MsgAdminPreviousPricesCancelled,
+                        PersianFormat.Number(cancelResults.CancelledCount)));
+            }
+            else if (cancelResults.HasError)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminCancelPreviousFailed, cancelResults.ErrorMessage));
+            }
+
+            // A quote is published — no more pair of 1000-gram orders (issue #48).
+            //
+            // The 1000 was arbitrary and locked roughly 19 billion toman and 1000 grams
+            // of the admin's collateral purely to announce a price. Publishing a quote
+            // locks nothing; orders are created only when a customer trades, for exactly
+            // the requested quantity, and are consumed in the same moment.
+            //
+            // Conversion and confirmation text come from one call, so the price
+            // published and the price shown cannot drift apart (issue #65).
+            var quote = QuoteMessage.Prepare(defaultAsset, buyPrice, sellPrice);
+
+            var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
+                defaultAsset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
+
+            if (published)
+            {
+                await _messenger.SendAsync(chatId, quote.Text);
+            }
+            else
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminQuoteFailed, publishMessage));
             }
         }
 
