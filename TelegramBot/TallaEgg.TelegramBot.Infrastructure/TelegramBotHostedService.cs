@@ -172,9 +172,15 @@ public class TelegramBotHostedService : BackgroundService
 
     private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        // Resolved once so both the log entry and the fallback reply below can use them —
+        // whichever branch below throws, this is who was talking to the bot (issue #99).
+        var chatId = update.Message?.Chat.Id ?? update.CallbackQuery?.Message?.Chat.Id;
+        var telegramId = update.Message?.From?.Id ?? update.CallbackQuery?.From?.Id;
+        var handler = update.Message is not null ? "HandleMessageAsync" : "HandleCallbackQueryAsync";
+
         try
         {
-            
+
             if (update.Message is not null && update.Message.Chat.Type == ChatType.Private)
             {
                 var preview = update.Message.Text is null
@@ -191,7 +197,24 @@ public class TelegramBotHostedService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling update");
+            _logger.LogError(ex,
+                "Unhandled exception in {Handler}. ChatId={ChatId} TelegramId={TelegramId} UpdateType={UpdateType}",
+                handler, chatId, telegramId, update.Type);
+
+            // Without this the customer sees nothing at all — the exception was already
+            // logged above, but until now that was the only trace of it anywhere, including
+            // to the one person actually waiting on a reply.
+            if (chatId is { } id)
+            {
+                try
+                {
+                    await botClient.SendMessage(id, BotMsgs.MsgUnexpectedError, cancellationToken: cancellationToken);
+                }
+                catch (Exception sendEx)
+                {
+                    _logger.LogError(sendEx, "Could not send the fallback error message to ChatId={ChatId}.", id);
+                }
+            }
         }
     }
 

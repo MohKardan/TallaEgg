@@ -28,6 +28,14 @@ public class Program
 
     public static async Task Main(string[] args)
     {
+        // Matches the 5 API services' own pattern (issue #88) — console for a live session,
+        // file for everything else. Before this the bot had no file sink at all: an
+        // exception left no trace once the console it printed to was gone (issue #99).
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
         _ = Task.Run(() => TelegramNotificationApi.RunNotificationApi(args));
 
         using var host = CreateHostBuilder(args).Build();
@@ -36,6 +44,7 @@ public class Program
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
+            .UseSerilog()
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
                 var sharedConfigPath = ResolveSharedConfigPath(SharedConfigFileName);
