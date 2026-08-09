@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using TallaEgg.Core;
+using TallaEgg.Core.Cors;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -100,8 +101,8 @@ builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient,
     client.BaseAddress = new Uri(walletApiUrl);
 });
 
-// اضافه کردن CORS
-builder.Services.AddCors();
+// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddTallaEggErrorHandling();
 
@@ -215,10 +216,7 @@ if (app.Environment.IsProduction())
 app.UseAuthorization();
 
 // تنظیم CORS
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+app.UseTallaEggCors();
 
 
 

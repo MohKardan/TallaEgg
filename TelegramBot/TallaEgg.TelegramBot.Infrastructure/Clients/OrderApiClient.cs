@@ -26,9 +26,11 @@ public class OrderApiClient : IOrderApiClient
         _baseUrl = configuration["OrderApiUrl"] ?? "http://localhost:5135/api";
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        // برای حل مشکل SSL در محیط توسعه
         var handler = new HttpClientHandler();
+#if DEBUG
+        // DEV ONLY: accept self-signed certs for local inter-service calls.
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+#endif
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }

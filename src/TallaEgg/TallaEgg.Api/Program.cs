@@ -8,6 +8,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using System.Text.Json;
 using TallaEgg.Core;
+using TallaEgg.Core.Cors;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Models;
 using Users.Application;
@@ -68,8 +69,8 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 // builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
 // builder.Services.AddScoped<ISymbolService, SymbolService>();
 
-// اضافه کردن CORS
-builder.Services.AddCors();
+// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddTallaEggErrorHandling();
 
@@ -86,10 +87,7 @@ var app = builder.Build();
 app.UseTallaEggErrorHandling();
 
 // تنظیم CORS
-app.UseCors(builder => builder
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+app.UseTallaEggCors();
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {
