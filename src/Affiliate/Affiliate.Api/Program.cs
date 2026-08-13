@@ -86,7 +86,7 @@ builder.Services.AddTallaEggErrorHandling();
 // پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/affiliate-api-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.File("logs/affiliate-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();

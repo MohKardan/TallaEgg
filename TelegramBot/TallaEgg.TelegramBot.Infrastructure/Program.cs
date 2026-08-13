@@ -33,7 +33,7 @@ public class Program
         // exception left no trace once the console it printed to was gone (issue #99).
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
-            .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day)
+            .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
             .CreateLogger();
 
         _ = Task.Run(() => TelegramNotificationApi.RunNotificationApi(args));
@@ -44,6 +44,10 @@ public class Program
 
     private static IHostBuilder CreateHostBuilder(string[] args) =>
         Host.CreateDefaultBuilder(args)
+            // No-op outside an actual Windows Service Control Manager session (e.g. local
+            // `dotnet run`), so this is always safe to include. Lets `sc.exe create` manage
+            // this process directly — no third-party supervisor needed (issue #70).
+            .UseWindowsService()
             .UseSerilog()
             .ConfigureAppConfiguration((context, configBuilder) =>
             {

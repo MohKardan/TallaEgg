@@ -25,6 +25,10 @@ using CancelActiveOrdersResponseDto = TallaEgg.Core.DTOs.Order.CancelActiveOrder
 
 var builder = WebApplication.CreateBuilder(args);
 
+// No-op outside an actual Windows Service Control Manager session (e.g. local `dotnet run`),
+// so this is always safe to include. Lets `sc.exe create` manage this process directly —
+// no third-party supervisor needed (issue #70).
+builder.Host.UseWindowsService();
 
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
@@ -188,7 +192,7 @@ builder.Services.AddSwaggerGen(c =>
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console()
-    .WriteTo.File("logs/orders-api-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.File("logs/orders-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();

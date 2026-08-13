@@ -21,6 +21,11 @@ using Wallet.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// No-op outside an actual Windows Service Control Manager session (e.g. local `dotnet run`),
+// so this is always safe to include. Lets `sc.exe create` manage this process directly —
+// no third-party supervisor needed (issue #70).
+builder.Host.UseWindowsService();
+
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
 builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
@@ -54,7 +59,7 @@ if (urls is { Length: > 0 })
 // پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day)
+    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();

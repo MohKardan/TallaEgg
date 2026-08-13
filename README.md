@@ -236,6 +236,14 @@ dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/
 
 Swagger UI is at `/api-docs` on each service — for example `http://localhost:5136/api-docs`. The bot host also exposes `/api/telegram/notifications/trade-match`.
 
+## Production Deployment
+
+On a server, the four deployed services (not Affiliate.Api or TallaEgg.Api — see above) run as
+native Windows services instead of a terminal per process, so they restart automatically after a
+crash or reboot. See
+[`docs/operations/WINDOWS_DEPLOYMENT.md`](docs/operations/WINDOWS_DEPLOYMENT.md) — issue #70 —
+for the one-time setup and the `scripts/windows-services/` install scripts.
+
 ## Service Highlights
 
 - **Users.Api** — registration with invitation codes, phone updates, role and status management, default wallet provisioning, lookups by Telegram id, phone, or role.
