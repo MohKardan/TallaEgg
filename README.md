@@ -92,10 +92,10 @@ Create your own copy from the template below.
       "WalletApiUrl": "http://localhost:60933/"
     },
     "Wallet.Api": {
-      "Urls": [ "https://localhost:60932", "http://localhost:60933" ]
+      "Urls": [ "http://localhost:60933" ]
     },
     "Orders.Api": {
-      "Urls": [ "https://localhost:7140", "http://localhost:5140" ],
+      "Urls": [ "http://localhost:5140" ],
       "WalletApiUrl": "http://localhost:60933/api",
       "Matching": {
         "RequireMarketMakerCounterparty": true,
@@ -103,7 +103,7 @@ Create your own copy from the template below.
       }
     },
     "Affiliate.Api": {
-      "Urls": [ "https://localhost:60811", "http://localhost:60812" ]
+      "Urls": [ "http://localhost:60812" ]
     },
     "TallaEgg.TelegramBot.Infrastructure": {
       "Urls": [ "http://localhost:57546" ],
@@ -132,6 +132,30 @@ Create your own copy from the template below.
 | `Matching:MarketModes` | Without `"MAUA/IRT": "Dealer"` the symbol falls back to `OrderBook` and every quote fill is refused. |
 | `TelegramBotToken` | Read from this file. `TELEGRAM_BOT_TOKEN` is only a fallback for the standalone notification API, **not** for the bot itself. |
 
+### Ports and bind addresses
+
+Every `Urls` entry above is plain HTTP on loopback (`localhost`), on purpose — see
+[#69](https://github.com/MohKardan/TallaEgg/issues/69):
+
+- The bot reaches Telegram by **long polling**; it dials out, Telegram never dials in.
+- The four real APIs are only ever called by the bot, on the same host.
+- So **no inbound port needs to be open**, and no HTTPS bind address is needed either — a
+  `https://localhost:...` entry requires a dev certificate that will not exist on a server, and
+  the only thing between an internet-facing port and the database would be the shared API key
+  above. Binding to loopback is the actual security control here, not a placeholder to replace.
+
+| Service | Port | Purpose |
+| --- | --- | --- |
+| Users.Api | 5136 | Registration, roles, wallet provisioning |
+| Wallet.Api | 60933 | Balances, settlement |
+| Orders.Api | 5140 | Quotes, trades, matching |
+| Affiliate.Api | 60812 | Not deployed — see [Database Setup](#database-setup) |
+| TallaEgg.TelegramBot.Infrastructure | 57546 | Bot's own notification endpoint |
+| TallaEgg.Api | 5135 | Not deployed — legacy, nothing calls it |
+
+On a real server, confirm none of these show up in `netstat`/`ss` on a public interface — only on
+`127.0.0.1`.
+
 ### Shared API key
 
 Wallet.Api, Users.Api, Orders.Api, and Affiliate.Api authenticate inter-service calls with a
@@ -142,6 +166,12 @@ shared key sent via the `X-API-Key` header (`TallaEgg.Core.APIKeyConstant`). It 
   up when `ASPNETCORE_ENVIRONMENT=Production`. Leave the variable unset locally.
 - **Production**: set `TALLAEGG_API_KEY` before starting any service; each one throws at startup
   if it is missing.
+
+> **`ASPNETCORE_ENVIRONMENT` must be set explicitly on a server.** Locally `dotnet run` always
+> reports `Development` because of `launchSettings.json` — that file is not used by a published
+> deployment, so a server defaults to `Production` the moment it's set (or left implicit) outside
+> `dotnet run`. Until [#69](https://github.com/MohKardan/TallaEgg/issues/69), the `Production`
+> code path — API-key auth, no Swagger redirect exemption — had never actually been exercised.
 
 ## Database Setup
 
