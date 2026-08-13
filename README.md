@@ -63,7 +63,10 @@ The platform supports two market modes per symbol, set in configuration:
 ## Prerequisites
 
 - .NET SDK 9.0.
-- SQL Server reachable from the host. `(localdb)\MSSQLLocalDB` works for development; see [#68](https://github.com/MohKardan/TallaEgg/issues/68) for the move to a deployable instance.
+- **SQL Server Express** reachable from the host (a named `SQLEXPRESS` instance, Windows
+  Authentication). Not LocalDB — LocalDB is a per-user, on-demand instance that doesn't exist on
+  a server, which is exactly what broke deployment before [#68](https://github.com/MohKardan/TallaEgg/issues/68).
+  Express is the same engine a real (single-machine) deployment runs, just installed locally.
 - A Telegram bot token from [@BotFather](https://t.me/BotFather).
 - Your own Telegram numeric user id (ask [@userinfobot](https://t.me/userinfobot)) — this is what makes you the shop operator on a fresh database.
 
@@ -81,10 +84,10 @@ Create your own copy from the template below.
 ```json
 {
   "ConnectionStrings": {
-    "UsersDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
-    "WalletDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
-    "OrdersDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
-    "AffiliateDb": "Server=(localdb)\\MSSQLLocalDB;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;"
+    "UsersDb": "Server=localhost\\SQLEXPRESS;Database=TallaEggUsers;Trusted_Connection=True;TrustServerCertificate=True;",
+    "WalletDb": "Server=localhost\\SQLEXPRESS;Database=TallaEggWallet;Trusted_Connection=True;TrustServerCertificate=True;",
+    "OrdersDb": "Server=localhost\\SQLEXPRESS;Database=TallaEggOrders;Trusted_Connection=True;TrustServerCertificate=True;",
+    "AffiliateDb": "Server=localhost\\SQLEXPRESS;Database=TallaEggAffiliate;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "Services": {
     "Users.Api": {
@@ -268,8 +271,18 @@ Each service writes to the console and to rolling files under its own `logs/` di
 
 ## Deployment
 
-Long polling means the bot needs **no inbound ports**. The remaining work to make a deployment repeatable is tracked in [#68](https://github.com/MohKardan/TallaEgg/issues/68) (move off LocalDB), [#69](https://github.com/MohKardan/TallaEgg/issues/69) (production URLs), [#70](https://github.com/MohKardan/TallaEgg/issues/70) (process supervision), and [#71](https://github.com/MohKardan/TallaEgg/issues/71) (CI).
+Long polling means the bot needs **no inbound ports**. KR1's deployment work
+([#68](https://github.com/MohKardan/TallaEgg/issues/68) database,
+[#69](https://github.com/MohKardan/TallaEgg/issues/69) production URLs,
+[#70](https://github.com/MohKardan/TallaEgg/issues/70) process supervision, and
+[#71](https://github.com/MohKardan/TallaEgg/issues/71) CI) is done — see
+[Production Deployment](#production-deployment) above and
+[`docs/operations/WINDOWS_DEPLOYMENT.md`](docs/operations/WINDOWS_DEPLOYMENT.md) for the actual
+steps. `Production` has been run and verified locally against SQL Server Express, not just
+Development — the note that used to be here about it never having executed is no longer true.
 
-Publishing scripts live under `publishes/` and `publish-all.ps1`. They assume local build outputs and do not handle secrets.
-
-> **Production is a code path this project has never executed.** `launchSettings.json` forces the Development environment locally and is not used by a published deployment, so the `Production` branches — including `UseAuthentication` and the API-key check — have never run. That is what makes [#71](https://github.com/MohKardan/TallaEgg/issues/71) (build and smoke-test in Release under CI) worth more than it looks.
+> **The root `publish-all.ps1` and `publishes/` folder predate that work and are stale**: they
+> publish five services (including the two #69 decided not to deploy), still reference the HTTPS
+> bind addresses #69 removed, and assume manual `dotnet *.dll` startup rather than a supervised
+> service. Use `scripts/windows-services/` instead; the old ones haven't been deleted only
+> because nobody has confirmed they're safe to remove yet.
