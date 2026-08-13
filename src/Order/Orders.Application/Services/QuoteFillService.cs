@@ -73,8 +73,12 @@ public class QuoteFillService
         if (quantity <= 0)
             return (false, $"مقدار وارد‌شده از حداقل قابل معامله کمتر است.", null);
 
+        // این پیام قبلاً می‌گفت «این نماد در حالت مظنه‌ای نیست» — که به گوش مشتری یک قاعدهٔ
+        // محصول می‌رسید، درحالی‌که همیشه یعنی یک تنظیم جا افتاده (issue #73). مشتری کاری از
+        // دستش برنمی‌آید؛ فقط باید بداند بعداً دوباره امتحان کند. جزئیات برای اپراتور در
+        // MarketModeStartupValidator لاگ می‌شود، نه اینجا.
         if (_marketMode.GetMode(symbol) != MarketMode.Dealer)
-            return (false, "این نماد در حالت مظنه‌ای نیست.", null);
+            return (false, "این نماد موقتاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.", null);
 
         var quote = await _quoteRepository.GetActiveAsync(symbol);
 

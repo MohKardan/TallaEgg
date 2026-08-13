@@ -54,6 +54,15 @@ public class QuoteRepository : IQuoteRepository
         return (items, total);
     }
 
+    public async Task<IReadOnlyList<string>> GetActiveSymbolsAsync()
+    {
+        return await _context.Quotes
+            .Where(q => q.IsActive)
+            .Select(q => q.Symbol)
+            .Distinct()
+            .ToListAsync();
+    }
+
     public async Task<Quote> PublishAsync(Quote quote)
     {
         await using var tx = await _context.Database.BeginTransactionAsync();
