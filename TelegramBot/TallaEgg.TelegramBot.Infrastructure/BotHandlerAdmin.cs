@@ -293,6 +293,12 @@ namespace TallaEgg.TelegramBot
                 return true;
             }
 
+            if (msgText.StartsWith("نماد "))
+            {
+                await HandleSymbolActiveCommandAsync(chatId, msgText, user);
+                return true;
+            }
+
             //دستور ثبت قیمت جفتی برای ادمین
             // Handle price pair format: buyPrice-sellPrice, with an optional trailing symbol
             // keyword (e.g., 8523690-8529630 یا 8523690-8529630 سکه). No keyword means MAUA/IRT
@@ -583,25 +589,13 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// Resolves the optional trailing symbol keyword on the auto-quote and manual-quote
-        /// commands ("سکه", "بیت"/"بیتکوین") to a trading-pair symbol. No keyword, or an empty
-        /// one, means MAUA/IRT — every admin habit from before these symbols existed keeps
-        /// working unchanged. Returns null for a keyword that matches nothing, so the caller can
-        /// tell "no symbol given" apart from "unrecognised symbol".
+        /// Resolves the optional trailing symbol keyword on the auto-quote, manual-quote, and
+        /// active/inactive commands to a trading-pair symbol — delegates to
+        /// <see cref="CurrenciesConstant.ResolveSymbolByAlias"/> so a symbol added purely via
+        /// config (with its own <c>Aliases</c> entry) is recognised here with no code change.
         /// </summary>
-        private static string? ResolveAdminQuoteSymbol(string? keyword)
-        {
-            var trimmed = keyword?.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                return CurrenciesConstant.MAUA_IRT;
-
-            return trimmed switch
-            {
-                "سکه" => CurrenciesConstant.SEKE_BAHAR_IRT,
-                "بیت" or "بیتکوین" or "بیت‌کوین" => CurrenciesConstant.BTC_IRT,
-                _ => null
-            };
-        }
+        private static string? ResolveAdminQuoteSymbol(string? keyword) =>
+            CurrenciesConstant.ResolveSymbolByAlias(keyword);
 
         /// <summary>
         /// <c>اسپرد [درصد]</c> / <c>اسپرد [درصد] [نماد]</c> — sets the spread the automatic
@@ -664,6 +658,39 @@ namespace TallaEgg.TelegramBot
             await _messenger.SendAsync(chatId, success
                 ? (enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
                 : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, message));
+        }
+
+        /// <summary>
+        /// <c>نماد فعال</c> / <c>نماد غیرفعال</c> (+ optional trailing symbol keyword) — turns a
+        /// symbol tradable or not: shown in the customer's symbol picker, eligible for
+        /// auto-quote, usable for a manual quote. No symbol keyword means MAUA/IRT, the same
+        /// convention as <see cref="HandleAutoQuoteToggleCommandAsync"/>. Independent of
+        /// auto-quote's own on/off switch — a symbol can be tradable with only manual quotes.
+        /// </summary>
+        private async Task HandleSymbolActiveCommandAsync(long chatId, string msgText, UserDto actor)
+        {
+            var match = Regex.Match(msgText.Trim(), @"^نماد\s+(?<state>فعال|غیرفعال)(?:\s+(?<symbol>\S+))?$", RegexOptions.Compiled);
+
+            if (!match.Success)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgSymbolActiveFormatError);
+                return;
+            }
+
+            var makeActive = match.Groups["state"].Value == "فعال";
+
+            var symbol = ResolveAdminQuoteSymbol(match.Groups["symbol"].Success ? match.Groups["symbol"].Value : null);
+            if (symbol is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUnknownQuoteSymbol);
+                return;
+            }
+
+            var (success, message) = await _orderApi.SetSymbolActiveAsync(symbol, makeActive, actor.Id);
+
+            await _messenger.SendAsync(chatId, success
+                ? (makeActive ? BotMsgs.MsgSymbolActivated : BotMsgs.MsgSymbolDeactivated)
+                : string.Format(BotMsgs.MsgSymbolActiveFailed, message));
         }
 
         /// <summary>

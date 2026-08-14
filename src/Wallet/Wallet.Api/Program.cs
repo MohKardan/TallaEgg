@@ -50,6 +50,9 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
+// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
+
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
 if (urls is { Length: > 0 })
 {

@@ -52,6 +52,21 @@ The platform supports two market modes per symbol, set in configuration:
 
 `MAUA/IRT` (gold / toman), `SEKE_BAHAR/IRT` (Bahar Azadi coin / toman), and `BTC/IRT` (Bitcoin / toman) run in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
 
+### Adding a trading symbol
+
+Two independent things determine whether customers can trade a symbol, deliberately kept apart:
+
+| What | Where it lives | How it changes |
+| --- | --- | --- |
+| **Metadata** — decimal precision, min/max quantity, Persian display name, which nerkh.io/brsapi.ir instrument prices it | `Symbols:{Base}/{Quote}` in `appsettings.global.json` (see the block already there for the three symbols above) | Edit the file, restart the affected service(s). No code change, no rebuild. |
+| **Active or not** — shown in the customer's symbol picker, eligible for auto-quote, usable for a manual quote | A database row per symbol (`SymbolSettings`, next to `AutoQuoteSettings`) | A bot command, immediately, no restart: `نماد فعال [سکه\|بیت]` / `نماد غیرفعال [...]`. No keyword means MAUA/IRT. |
+
+A symbol that fits the standard shape — Toman-denominated, priced by nerkh.io and/or brsapi.ir the same way gold/coin/Bitcoin already are — needs **only a config block**, then an admin turning it on. `TallaEgg.Core.CurrenciesConstant` ships with the three symbols above as compiled defaults (so the test suite and a fresh clone need no config file at all); a config block for a *new* key adds a fourth entry on top, and a block for an *existing* key overrides only the fields it sets.
+
+`Matching:MarketModes` (above) is separate again — it decides `Dealer` vs `OrderBook`, and still needs its own entry per symbol.
+
+A symbol priced by a source neither nerkh.io nor brsapi.ir covers still needs a new class implementing `Orders.Core.IReferencePriceProvider` — that's the one part of this that's unavoidably code, because it's a new external integration, not a new symbol definition.
+
 ## Tech Stack
 
 - .NET 9.0 with C# 12, minimal APIs, and background services.

@@ -13,10 +13,12 @@ namespace Orders.Application.Services;
 /// changes (issue #90).
 ///
 /// <para>
-/// Originally MAUA/IRT only; generalized to loop over <see cref="CurrenciesConstant.AllTradingPairs"/>
-/// when coin and Bitcoin quoting were added, so a new active symbol needs no change here — only
-/// a <see cref="CurrenciesConstant"/> entry and, per symbol, an admin explicitly opting in (see
-/// <see cref="AutoQuoteSettings"/>).
+/// Originally MAUA/IRT only; generalized to loop over every symbol <see cref="ISymbolSettingsRepository"/>
+/// reports active when coin and Bitcoin quoting were added, so a newly activated symbol needs no
+/// change here — only a bot command to turn it on (<see cref="SymbolSettings"/>) and, per symbol,
+/// an admin explicitly opting into auto-quote too (see <see cref="AutoQuoteSettings"/>). The two
+/// are independent switches on purpose: a symbol can be tradable with only manual quotes, or not
+/// tradable at all regardless of its auto-quote setting.
 /// </para>
 ///
 /// A manually published quote always overrides the automatic one on the next customer action,
@@ -42,11 +44,13 @@ public class AutoQuotePublisherService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            foreach (var pair in CurrenciesConstant.AllTradingPairs.Where(p => p.IsActive))
+            var activeSymbols = await ActiveSymbolsAsync(stoppingToken);
+
+            foreach (var symbol in activeSymbols)
             {
                 try
                 {
-                    await PublishIfDueAsync(pair.Symbol, stoppingToken);
+                    await PublishIfDueAsync(symbol, stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -57,7 +61,7 @@ public class AutoQuotePublisherService : BackgroundService
                     // A misconfiguration or a bug for one symbol must never take the rest of the
                     // shop down — manual quotes and trading, and every other symbol's auto-quote,
                     // are unrelated to this one failing (same rule already established for #73).
-                    _logger.LogError(ex, "Unexpected error auto-publishing a quote for {Symbol}.", pair.Symbol);
+                    _logger.LogError(ex, "Unexpected error auto-publishing a quote for {Symbol}.", symbol);
                 }
             }
 
@@ -69,6 +73,13 @@ public class AutoQuotePublisherService : BackgroundService
         }
 
         _logger.LogInformation("AutoQuotePublisherService stopped.");
+    }
+
+    private async Task<IReadOnlyList<string>> ActiveSymbolsAsync(CancellationToken ct)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var symbolSettingsRepo = scope.ServiceProvider.GetRequiredService<ISymbolSettingsRepository>();
+        return await symbolSettingsRepo.GetActiveSymbolsAsync();
     }
 
     /// <summary>internal so the tick logic can be tested directly, without waiting on the poll loop.</summary>

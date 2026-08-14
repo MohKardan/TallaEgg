@@ -1,4 +1,6 @@
-﻿namespace TallaEgg.Core
+using Microsoft.Extensions.Configuration;
+
+namespace TallaEgg.Core
 {
     public class CurrenciesConstant
     {
@@ -25,52 +27,6 @@
         /// </summary>
         public const decimal GramsPerMesghal = 4.3318m;
 
-        // 🔹 مجموعه‌ای از اطلاعات ارزها
-        public static readonly List<CurrencyInfo> AllCurrencies = new List<CurrencyInfo>
-        {
-            new CurrencyInfo
-            {
-                Code = Maua,
-                PersianName = "آبشده",
-                Unit = "گرم",
-                DecimalPlaces = 2,
-                IsTradable = true
-            },
-            new CurrencyInfo
-            {
-                Code = Toman,
-                PersianName = "تومان",
-                Unit = "تومان",
-                DecimalPlaces = 0,
-                IsTradable = false
-            },
-            new CurrencyInfo
-            {
-                Code = Credit_MAUA,
-                PersianName = "اعتبار آبشده",
-                Unit = "گرم",
-                DecimalPlaces = 2,
-                IsTradable = false
-            },
-            new CurrencyInfo
-            {
-                Code = SekeBahar,
-                PersianName = "سکه تمام بهار آزادی",
-                Unit = "سکه",
-                DecimalPlaces = 2,
-                IsTradable = true
-            },
-            new CurrencyInfo
-            {
-                Code = Btc,
-                PersianName = "بیت‌کوین",
-                Unit = "بیت‌کوین",
-                DecimalPlaces = 8,
-                IsTradable = true
-            }
-        };
-
-
         // 🔹 ثابت‌های جفت‌های معاملاتی
         public const string BTC_USDT = "BTC/USDT";
         public const string ETH_USDT = "ETH/USDT";
@@ -80,91 +36,179 @@
         public const string MAUA_IRT = "MAUA/IRT";
         public const string SEKE_BAHAR_IRT = "SEKE_BAHAR/IRT";
 
-        // 🔹 مجموعه‌ای از اطلاعات جفت‌های معاملاتی
-        public static readonly List<TradingPairInfo> AllTradingPairs = new List<TradingPairInfo>
+        /// <summary>
+        /// Compiled defaults for every symbol this platform trades today. A process that never
+        /// calls <see cref="Configure"/> sees exactly these — nothing about existing behaviour
+        /// depends on a config file being present (the test suite's CI runner has none, by
+        /// design — see build-and-test.yml).
+        ///
+        /// <para>
+        /// <b>Adding a new symbol does not require editing this dictionary.</b> A block under
+        /// <c>Symbols:{Base}/{Quote}</c> in <c>config/appsettings.global.json</c> — decimal
+        /// precision, min/max quantity, Persian display name, and which external price provider
+        /// instrument feeds it — is enough; see README's "Adding a trading symbol" section. This
+        /// dictionary only needs a new entry if the symbol should also work with zero config
+        /// present (i.e. it becomes one of the platform's built-in defaults).
+        /// </para>
+        /// </summary>
+        private static readonly Dictionary<string, TradingPairInfo> DefaultTradingPairs =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                [BTC_USDT] = new TradingPairInfo
+                {
+                    Symbol = BTC_USDT, BaseAsset = "BTC", QuoteAsset = "USDT", PersianName = "بیت‌کوین/تتر",
+                    MinQuantity = 0.001m, MaxQuantity = 1000m, PriceDecimalPlaces = 2, QuantityDecimalPlaces = 6,
+                    MinNotional = 10m, BaseAssetPersianName = "بیت‌کوین", BaseUnit = "بیت‌کوین", BaseDecimalPlaces = 8
+                },
+                [ETH_USDT] = new TradingPairInfo
+                {
+                    Symbol = ETH_USDT, BaseAsset = "ETH", QuoteAsset = "USDT", PersianName = "اتریوم/تتر",
+                    MinQuantity = 0.01m, MaxQuantity = 10000m, PriceDecimalPlaces = 2, QuantityDecimalPlaces = 4,
+                    MinNotional = 10m, BaseAssetPersianName = "اتریوم", BaseUnit = "اتریوم", BaseDecimalPlaces = 8
+                },
+                [BTC_IRT] = new TradingPairInfo
+                {
+                    Symbol = BTC_IRT, BaseAsset = Btc, QuoteAsset = Toman, PersianName = "بیت‌کوین/تومان",
+                    MinQuantity = 0.0001m, MaxQuantity = 100m, PriceDecimalPlaces = 0, QuantityDecimalPlaces = 8,
+                    MinNotional = 1000000m, BaseAssetPersianName = "بیت‌کوین", BaseUnit = "بیت‌کوین",
+                    BaseDecimalPlaces = 8, Aliases = new List<string> { "بیت", "بیتکوین", "بیت‌کوین" }
+                },
+                [MAUA_IRT] = new TradingPairInfo
+                {
+                    Symbol = MAUA_IRT, BaseAsset = Maua, QuoteAsset = Toman, PersianName = "آبشده/تومان",
+                    MinQuantity = 0.1m, MaxQuantity = 1000m, PriceDecimalPlaces = 0, QuantityDecimalPlaces = 3,
+                    MinNotional = 100000m, BaseAssetPersianName = "آبشده", BaseUnit = "گرم", BaseDecimalPlaces = 2
+                },
+                [SEKE_BAHAR_IRT] = new TradingPairInfo
+                {
+                    Symbol = SEKE_BAHAR_IRT, BaseAsset = SekeBahar, QuoteAsset = Toman,
+                    PersianName = "سکه تمام بهار آزادی/تومان", MinQuantity = 0.01m, MaxQuantity = 50m,
+                    PriceDecimalPlaces = 0, QuantityDecimalPlaces = 2, MinNotional = 1000000m,
+                    BaseAssetPersianName = "سکه تمام بهار آزادی", BaseUnit = "سکه", BaseDecimalPlaces = 2,
+                    Aliases = new List<string> { "سکه" }
+                }
+            };
+
+        private static Dictionary<string, TradingPairInfo> _pairs =
+            new(DefaultTradingPairs, StringComparer.OrdinalIgnoreCase);
+
+        // Toman and the gold credit ceiling are structural to the whole system — the one unit of
+        // account, and a credit facility tied specifically to gold — rather than "a symbol", so
+        // they are fixed entries instead of being derived from a trading pair like every base
+        // asset below is.
+        private static readonly CurrencyInfo TomanInfo = new()
+        { Code = Toman, PersianName = "تومان", Unit = "تومان", DecimalPlaces = 0, IsTradable = false };
+
+        private static readonly CurrencyInfo CreditMauaInfo = new()
+        { Code = Credit_MAUA, PersianName = "اعتبار آبشده", Unit = "گرم", DecimalPlaces = 2, IsTradable = false };
+
+        private static Dictionary<string, CurrencyInfo> _currencies = BuildCurrencies(_pairs);
+
+        /// <summary>
+        /// Merges the "Symbols" section of the shared config file on top of the compiled
+        /// defaults: an unrecognised key becomes a brand-new trading pair, a known one has only
+        /// the fields the config block actually sets overridden. Call once at each service's
+        /// startup (see each Program.cs). Safe to skip — every symbol traded today has a
+        /// compiled default, so a process that never calls this behaves exactly as if it had; the
+        /// call only matters for a symbol nobody has written a <see cref="TradingPairInfo"/> for.
+        /// </summary>
+        public static void Configure(IConfiguration configuration)
         {
-            new TradingPairInfo
+            _pairs = MergeWithConfiguration(_pairs, configuration);
+            _currencies = BuildCurrencies(_pairs);
+        }
+
+        /// <summary>
+        /// The pure merge <see cref="Configure"/> applies — split out so it can be unit-tested
+        /// against an arbitrary starting dictionary and configuration, without mutating this
+        /// class's shared static state (which every test in the process reads).
+        /// </summary>
+        public static Dictionary<string, TradingPairInfo> MergeWithConfiguration(
+            IReadOnlyDictionary<string, TradingPairInfo> current, IConfiguration configuration)
+        {
+            var merged = new Dictionary<string, TradingPairInfo>(current, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var child in configuration.GetSection("Symbols").GetChildren())
             {
-                Symbol = BTC_USDT,
-                BaseAsset = "BTC",
-                QuoteAsset = "USDT",
-                PersianName = "بیت‌کوین/تتر",
-                IsActive = false,
-                MinQuantity = 0.001m,
-                MaxQuantity = 1000m,
-                PriceDecimalPlaces = 2,
-                QuantityDecimalPlaces = 6,
-                MinNotional = 10m // حداقل ارزش معامله
-            },
-            new TradingPairInfo
-            {
-                Symbol = ETH_USDT,
-                BaseAsset = "ETH",
-                QuoteAsset = "USDT",
-                PersianName = "اتریوم/تتر",
-                IsActive = false,
-                MinQuantity = 0.01m,
-                MaxQuantity = 10000m,
-                PriceDecimalPlaces = 2,
-                QuantityDecimalPlaces = 4,
-                MinNotional = 10m
-            },
-            new TradingPairInfo
-            {
-                Symbol = BTC_IRT,
-                BaseAsset = Btc,
-                QuoteAsset = Toman,
-                PersianName = "بیت‌کوین/تومان",
-                IsActive = true,
-                MinQuantity = 0.0001m,
-                MaxQuantity = 100m,
-                PriceDecimalPlaces = 0,
-                QuantityDecimalPlaces = 8,
-                MinNotional = 1000000m // 1 میلیون تومان
-            },
-            new TradingPairInfo
-            {
-                Symbol = MAUA_IRT,
-                BaseAsset = Maua,
-                QuoteAsset = Toman,
-                PersianName = "آبشده/تومان",
-                IsActive = true,
-                MinQuantity = 0.1m,
-                MaxQuantity = 1000m,
-                PriceDecimalPlaces = 0,
-                QuantityDecimalPlaces = 3,
-                MinNotional = 100000m // 100 هزار تومان
-            },
-            new TradingPairInfo
-            {
-                Symbol = SEKE_BAHAR_IRT,
-                BaseAsset = SekeBahar,
-                QuoteAsset = Toman,
-                PersianName = "سکه تمام بهار آزادی/تومان",
-                IsActive = true,
-                MinQuantity = 0.01m,
-                MaxQuantity = 50m,
-                PriceDecimalPlaces = 0,
-                QuantityDecimalPlaces = 2,
-                MinNotional = 1000000m // 1 میلیون تومان
+                var info = merged.TryGetValue(child.Key, out var existing) ? Clone(existing) : new TradingPairInfo();
+                child.Bind(info);
+                info.Symbol = child.Key;
+
+                if (string.IsNullOrWhiteSpace(info.BaseAsset) || string.IsNullOrWhiteSpace(info.QuoteAsset))
+                {
+                    var parts = child.Key.Split('/');
+                    if (parts.Length == 2)
+                    {
+                        if (string.IsNullOrWhiteSpace(info.BaseAsset)) info.BaseAsset = parts[0];
+                        if (string.IsNullOrWhiteSpace(info.QuoteAsset)) info.QuoteAsset = parts[1];
+                    }
+                }
+
+                merged[child.Key] = info;
             }
+
+            return merged;
+        }
+
+        private static TradingPairInfo Clone(TradingPairInfo source) => new()
+        {
+            Symbol = source.Symbol,
+            BaseAsset = source.BaseAsset,
+            QuoteAsset = source.QuoteAsset,
+            PersianName = source.PersianName,
+            MinQuantity = source.MinQuantity,
+            MaxQuantity = source.MaxQuantity,
+            PriceDecimalPlaces = source.PriceDecimalPlaces,
+            QuantityDecimalPlaces = source.QuantityDecimalPlaces,
+            MinNotional = source.MinNotional,
+            BaseAssetPersianName = source.BaseAssetPersianName,
+            BaseUnit = source.BaseUnit,
+            BaseDecimalPlaces = source.BaseDecimalPlaces,
+            Aliases = new List<string>(source.Aliases)
         };
 
-        // 🔹 دیکشنری برای دسترسی سریع (case-insensitive)
-        private static readonly Dictionary<string, CurrencyInfo> _map =
-            AllCurrencies.ToDictionary(c => c.Code, c => c, StringComparer.OrdinalIgnoreCase);
+        private static Dictionary<string, CurrencyInfo> BuildCurrencies(Dictionary<string, TradingPairInfo> pairs)
+        {
+            var map = new Dictionary<string, CurrencyInfo>(StringComparer.OrdinalIgnoreCase)
+            {
+                [Toman] = TomanInfo,
+                [Credit_MAUA] = CreditMauaInfo
+            };
+
+            foreach (var pair in pairs.Values)
+            {
+                if (string.IsNullOrWhiteSpace(pair.BaseAsset)) continue;
+
+                map[pair.BaseAsset] = new CurrencyInfo
+                {
+                    Code = pair.BaseAsset,
+                    PersianName = string.IsNullOrWhiteSpace(pair.BaseAssetPersianName) ? pair.BaseAsset : pair.BaseAssetPersianName,
+                    Unit = pair.BaseUnit,
+                    DecimalPlaces = pair.BaseDecimalPlaces,
+                    IsTradable = true
+                };
+            }
+
+            return map;
+        }
+
+        // 🔹 مجموعه‌ای از اطلاعات ارزها
+        public static List<CurrencyInfo> AllCurrencies => _currencies.Values.ToList();
+
+        // 🔹 مجموعه‌ای از اطلاعات جفت‌های معاملاتی
+        public static List<TradingPairInfo> AllTradingPairs => _pairs.Values.ToList();
 
         // 🔹 دریافت کد همه ارزها (با فرمت اصلی)
         public static List<string> GetAllCodes() =>
-            AllCurrencies.Select(c => c.Code).ToList();
+            _currencies.Values.Select(c => c.Code).ToList();
 
         // 🔹 گرفتن مشخصات ارز (case-insensitive)
         public static CurrencyInfo GetCurrencyInfo(string code) =>
-            _map.TryGetValue(code, out var info) ? info : null;
+            _currencies.TryGetValue(code, out var info) ? info : null;
 
         // 🔹 بررسی معتبر بودن ارز (case-insensitive)
         public static bool IsValidCurrency(string code) =>
-            _map.ContainsKey(code);
+            _currencies.ContainsKey(code);
 
         /// <summary>
         /// گرد کردن یک مبلغ به دقت واقعی همان دارایی (مثلاً تومان: بدون اعشار، آبشده: دو رقم).
@@ -263,13 +307,9 @@
         public static decimal RoundOrderPrice(decimal price) =>
             Math.Round(price, OrderPriceDecimalPlaces, MidpointRounding.AwayFromZero);
 
-        // 🔹 دیکشنری جفت‌های معاملاتی برای دسترسی سریع (case-insensitive)
-        private static readonly Dictionary<string, TradingPairInfo> _pairMap =
-            AllTradingPairs.ToDictionary(p => p.Symbol, p => p, StringComparer.OrdinalIgnoreCase);
-
         /// <summary>گرفتن مشخصات جفت معاملاتی (case-insensitive). اگر پیدا نشود null.</summary>
         public static TradingPairInfo? GetTradingPairInfo(string symbol) =>
-            symbol is not null && _pairMap.TryGetValue(symbol, out var info) ? info : null;
+            symbol is not null && _pairs.TryGetValue(symbol, out var info) ? info : null;
 
         /// <summary>
         /// نام فارسی ارز برای نمایش به کاربر. اگر ارز ناشناس باشد خود کد برگردانده می‌شود.
@@ -290,11 +330,11 @@
             var trimmed = input.Trim();
 
             // ابتدا تطبیق با کد ارز
-            if (_map.TryGetValue(trimmed, out var byCode))
+            if (_currencies.TryGetValue(trimmed, out var byCode))
                 return byCode.Code;
 
             // سپس تطبیق با نام فارسی
-            var byName = AllCurrencies.FirstOrDefault(c =>
+            var byName = _currencies.Values.FirstOrDefault(c =>
                 string.Equals(c.PersianName, trimmed, StringComparison.OrdinalIgnoreCase));
 
             return byName?.Code;
@@ -304,7 +344,7 @@
         /// فهرست نام‌های فارسی ارزها برای نمایش در پیام خطا (به‌جای کدهای لاتین).
         /// </summary>
         public static string GetPersianNamesList() =>
-            string.Join("، ", AllCurrencies.Select(c => c.PersianName));
+            string.Join("، ", _currencies.Values.Select(c => c.PersianName));
 
         /// <summary>
         /// نام فارسی جفت معاملاتی برای نمایش به کاربر (مثل «آبشده/تومان»).
@@ -323,9 +363,30 @@
 
             return symbol ?? string.Empty;
         }
+
+        /// <summary>
+        /// یک نماد را از روی کلیدواژهٔ فارسی دستورهای ادمین («سکه»، «بیت») برمی‌گرداند —
+        /// از <see cref="TradingPairInfo.Aliases"/> هر نماد می‌خواند، پس اضافه‌کردن یک
+        /// نماد جدید با کلیدواژهٔ خودش نیازی به تغییر این متد ندارد. کلیدواژهٔ خالی یعنی
+        /// آبشده — عادت ادمین از قبل از وجود این نمادهای دیگر. کلیدواژه‌ای که به هیچ
+        /// نمادی نمی‌خورد null برمی‌گرداند، تا فراخوان بتواند «کلیدواژه‌ای داده نشده» را
+        /// از «کلیدواژهٔ ناشناخته» تشخیص دهد.
+        /// </summary>
+        public static string? ResolveSymbolByAlias(string? keyword)
+        {
+            var trimmed = keyword?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return MAUA_IRT;
+
+            foreach (var pair in _pairs.Values)
+            {
+                if (pair.Aliases.Contains(trimmed, StringComparer.OrdinalIgnoreCase))
+                    return pair.Symbol;
+            }
+
+            return null;
+        }
     }
-
-
 
     public class CurrencyInfo
     {
@@ -350,9 +411,6 @@
         /// <summary>نام فارسی</summary>
         public string PersianName { get; set; } = string.Empty;
 
-        /// <summary>آیا فعال است؟</summary>
-        public bool IsActive { get; set; }
-
         /// <summary>حداقل مقدار قابل معامله</summary>
         public decimal MinQuantity { get; set; }
 
@@ -367,6 +425,17 @@
 
         /// <summary>حداقل ارزش معامله</summary>
         public decimal MinNotional { get; set; }
-    }
 
+        /// <summary>نام فارسی دارایی پایه به‌تنهایی (مثل «آبشده»)</summary>
+        public string BaseAssetPersianName { get; set; } = string.Empty;
+
+        /// <summary>واحد نمایش دارایی پایه (مثل «گرم» یا «سکه»)</summary>
+        public string BaseUnit { get; set; } = string.Empty;
+
+        /// <summary>تعداد اعشار دارایی پایه، برای گرد کردن مبالغ (CurrenciesConstant.RoundToCurrencyPrecision)</summary>
+        public int BaseDecimalPlaces { get; set; }
+
+        /// <summary>کلیدواژه‌های فارسی که دستورهای ادمین در بات برای این نماد می‌پذیرند (مثل «سکه»)</summary>
+        public List<string> Aliases { get; set; } = new();
+    }
 }

@@ -510,6 +510,48 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    /// <summary>نمادهایی که الان قابل معامله‌اند — خالی اگر سرور در دسترس نبود.</summary>
+    public async Task<List<string>> GetActiveSymbolsAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/symbols/active");
+            if (!response.IsSuccessStatusCode) return new List<string>();
+
+            var body = await response.Content.ReadAsStringAsync();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<List<string>>>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            return parsed?.Data ?? new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
+
+    public async Task<(bool success, string message)> SetSymbolActiveAsync(string symbol, bool isActive, Guid updatedByUserId)
+    {
+        try
+        {
+            var payload = new { isActive, updatedByUserId };
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/symbols/{symbol}/active", content);
+            var body = await response.Content.ReadAsStringAsync();
+            var message = TryReadMessage(body);
+
+            return response.IsSuccessStatusCode
+                ? (true, message ?? "انجام شد.")
+                : (false, message ?? $"خطا (کد {(int)response.StatusCode}).");
+        }
+        catch (Exception ex)
+        {
+            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+        }
+    }
+
     /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
     public async Task<QuoteDto?> GetActiveQuoteAsync(string symbol)
     {

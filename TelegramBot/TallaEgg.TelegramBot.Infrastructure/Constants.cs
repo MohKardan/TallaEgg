@@ -620,10 +620,26 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAutoQuoteToggleFailed = "❌ انجام نشد.\n\nدلیل: {0}";
 
         /// <summary>
-        /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، یا قیمت‌جفتی شناخته‌شده نیست.
+        /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، «نماد»، یا قیمت‌جفتی شناخته‌شده
+        /// نیست.
         /// </summary>
         public const string MsgAdminUnknownQuoteSymbol = "❌ این نماد شناخته‌شده نیست.\n\n" +
                                                           "نمادهای معتبر: (خالی = آبشده)، سکه، بیت";
+
+        // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────
+
+        public const string MsgSymbolActiveFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                          "قالب صحیح:\n" +
+                                                          "نماد فعال\n" +
+                                                          "نماد غیرفعال\n\n" +
+                                                          "با نماد دیگر: نماد فعال سکه";
+
+        public const string MsgSymbolActivated = "✅ نماد فعال شد و برای مشتریان قابل‌معامله است.";
+
+        public const string MsgSymbolDeactivated = "⏸️ نماد غیرفعال شد.";
+
+        /// <summary>{0} = دلیل خطا</summary>
+        public const string MsgSymbolActiveFailed = "❌ انجام نشد.\n\nدلیل: {0}";
 
         /// <summary>
         /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).

@@ -55,4 +55,12 @@ public interface IOrderApiClient
 
     /// <summary>روشن/خاموش کردن مظنهٔ اتومات یک نماد.</summary>
     Task<(bool success, string message)> SetAutoQuoteEnabledAsync(string symbol, bool isEnabled, Guid updatedByUserId);
+
+    // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────────
+
+    /// <summary>نمادهایی که الان قابل معامله‌اند.</summary>
+    Task<List<string>> GetActiveSymbolsAsync();
+
+    /// <summary>فعال/غیرفعال کردن یک نماد.</summary>
+    Task<(bool success, string message)> SetSymbolActiveAsync(string symbol, bool isActive, Guid updatedByUserId);
 }

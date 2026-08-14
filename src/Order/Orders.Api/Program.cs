@@ -54,6 +54,9 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
+// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
+
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
 if (urls is { Length: > 0 })
 {
@@ -135,25 +138,26 @@ builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorSer
 // Bitcoin — see Orders.Core.IReferencePriceProvider) and publishes a quote the same way an
 // admin does by hand. Off for a symbol until an admin turns it on via the bot.
 // A named HttpClient per provider rather than AddHttpClient<TInterface,TImplementation>: two
-// implementations share IReferencePriceProvider, and each needs its own API token/key, which is
-// a plain configuration string DI cannot inject as a constructor parameter on its own.
+// implementations share IReferencePriceProvider. Each now takes IConfiguration directly (not
+// just its own token/key) so it can also resolve a config-driven instrument mapping for a
+// symbol added without a code change — see NerkhPriceProvider/BrsApiPriceProvider.InstrumentFor.
 builder.Services.AddHttpClient("NerkhPriceProvider");
 builder.Services.AddHttpClient("BrsApiPriceProvider");
 
-var nerkhApiToken = builder.Configuration["AutoQuote:NerkhApiToken"];
-var brsApiKey = builder.Configuration["AutoQuote:BrsApiKey"];
-
 builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infrastructure.AutoQuoteSettingsRepository>();
+
+// فعال/غیرفعال بودن هر نماد، تغییرپذیر با دستور ادمین در بات — نه یک const که rebuild بخواهد.
+builder.Services.AddScoped<Orders.Core.ISymbolSettingsRepository, Orders.Infrastructure.SymbolSettingsRepository>();
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhPriceProvider(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("NerkhPriceProvider"),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.NerkhPriceProvider>>(),
-    nerkhApiToken));
+    sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BrsApiPriceProvider(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiPriceProvider"),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiPriceProvider>>(),
-    brsApiKey));
+    sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
@@ -330,6 +334,36 @@ static AutoQuoteSettingsDto ToAutoQuoteSettingsDto(Orders.Core.AutoQuoteSettings
     Symbol = s.Symbol,
     SpreadPercent = s.SpreadPercent,
     IsEnabled = s.IsEnabled,
+    UpdatedAt = s.UpdatedAt
+};
+
+// ─────────────────────── فعال/غیرفعال بودن نماد ─────────────────────────
+
+/// <summary>نمادهایی که الان قابل معامله‌اند — بات از این برای منوی انتخاب نماد استفاده می‌کند.</summary>
+app.MapGet("/api/symbols/active", async (Orders.Core.ISymbolSettingsRepository settingsRepo) =>
+{
+    var symbols = await settingsRepo.GetActiveSymbolsAsync();
+    return Results.Ok(ApiResponse<List<string>>.Ok(symbols.ToList()));
+});
+
+/// <summary>فعال/غیرفعال کردن یک نماد.</summary>
+app.MapPost("/api/symbols/{Base}/{Quote}/active", async (
+    string Base, string Quote, SetSymbolActiveRequest request, Orders.Core.ISymbolSettingsRepository settingsRepo) =>
+{
+    var symbol = $"{Base}/{Quote}";
+
+    var settings = await settingsRepo.GetOrCreateAsync(symbol);
+    settings.SetActive(request.IsActive, request.UpdatedByUserId);
+    await settingsRepo.SaveAsync(settings);
+
+    return Results.Ok(ApiResponse<SymbolSettingsDto>.Ok(ToSymbolSettingsDto(settings),
+        request.IsActive ? "نماد فعال شد." : "نماد غیرفعال شد."));
+});
+
+static SymbolSettingsDto ToSymbolSettingsDto(Orders.Core.SymbolSettings s) => new()
+{
+    Symbol = s.Symbol,
+    IsActive = s.IsActive,
     UpdatedAt = s.UpdatedAt
 };
 
