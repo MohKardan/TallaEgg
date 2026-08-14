@@ -10,8 +10,10 @@ using TallaEgg.Core;
 namespace Wallet.Tests;
 
 /// <summary>
-/// One tick of the auto-quote publisher (issue #90): whether it publishes at all, and whether
-/// what it publishes is arithmetically what an admin would have typed by hand.
+/// One tick of the auto-quote publisher (issue #90): whether it publishes at all, whether what
+/// it publishes is arithmetically what an admin would have typed by hand, and — since the coin
+/// and Bitcoin symbols were added — whether each symbol is published independently of the
+/// others.
 ///
 /// Runs against a real <see cref="OrdersDbContext"/> (SQLite in-memory), the same pattern
 /// <c>OutboxDueSelectionTests</c> uses for the other <c>BackgroundService</c> in this project —
@@ -39,7 +41,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
         services.AddScoped(_ => new OrdersDbContext(Options()));
         services.AddScoped<IAutoQuoteSettingsRepository, AutoQuoteSettingsRepository>();
         services.AddScoped<IQuoteRepository, QuoteRepository>();
-        services.AddScoped(_ => new GoldPriceProviderChain([_stubProvider], NullLogger<GoldPriceProviderChain>.Instance));
+        services.AddScoped(_ => new ReferencePriceProviderChain([_stubProvider], NullLogger<ReferencePriceProviderChain>.Instance));
         _provider = services.BuildServiceProvider();
     }
 
@@ -52,37 +54,42 @@ public class AutoQuotePublisherServiceTests : IDisposable
         _connection.Dispose();
     }
 
-    /// <summary>The one gold price source the test container knows about; mutable per test.</summary>
-    private sealed class StubProvider : IGoldPriceProvider
+    /// <summary>
+    /// The one reference price source the test container knows about; mutable per test.
+    /// Returns the same price regardless of symbol asked about, since these tests each
+    /// exercise one symbol's tick logic at a time — <see cref="ReferencePriceProviderChainTests"/>
+    /// covers per-symbol routing at the chain level.
+    /// </summary>
+    private sealed class StubProvider : IReferencePriceProvider
     {
         public string Name => "stub";
         public decimal? Price { get; set; }
-        public Task<decimal?> GetMesghalPriceAsync(CancellationToken cancellationToken = default) =>
+        public Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default) =>
             Task.FromResult(Price);
     }
 
-    private async Task RunTickAsync()
+    private async Task RunTickAsync(string symbol = Symbol)
     {
         var service = new AutoQuotePublisherService(
             _provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<AutoQuotePublisherService>.Instance);
 
-        await service.PublishIfDueAsync(CancellationToken.None);
+        await service.PublishIfDueAsync(symbol, CancellationToken.None);
     }
 
-    private async Task SeedSettingsAsync(bool isEnabled, decimal spreadPercent, Guid updatedBy)
+    private async Task SeedSettingsAsync(bool isEnabled, decimal spreadPercent, Guid updatedBy, string symbol = Symbol)
     {
         using var db = new OrdersDbContext(Options());
-        var settings = AutoQuoteSettings.CreateDefault(Symbol);
+        var settings = AutoQuoteSettings.CreateDefault(symbol);
         settings.UpdateSpread(spreadPercent, updatedBy);
         settings.SetEnabled(isEnabled, updatedBy);
         db.AutoQuoteSettings.Add(settings);
         await db.SaveChangesAsync();
     }
 
-    private async Task<Quote?> ActiveQuoteAsync()
+    private async Task<Quote?> ActiveQuoteAsync(string symbol = Symbol)
     {
         using var db = new OrdersDbContext(Options());
-        return await db.Quotes.Where(q => q.Symbol == Symbol && q.IsActive).SingleOrDefaultAsync();
+        return await db.Quotes.Where(q => q.Symbol == symbol && q.IsActive).SingleOrDefaultAsync();
     }
 
     [Fact]
@@ -108,14 +115,17 @@ public class AutoQuotePublisherServiceTests : IDisposable
     }
 
     /// <summary>
-    /// 4,331,800 Toman/mesghal ÷ 4.3318 g/mesghal is exactly 1,000,000 Toman/gram — chosen so
-    /// the spread math below has no rounding to reason about.
+    /// The provider now returns Toman per traded unit directly — mesghal-to-gram conversion
+    /// moved into the gold-specific providers (<c>NerkhPriceProvider</c>,
+    /// <c>BrsApiPriceProvider</c>) since it doesn't apply to the coin or Bitcoin symbols. So the
+    /// publisher's own math is just the spread, applied to whatever the chain returned: 1% of
+    /// 1,000,000 is 10,000 either side.
     /// </summary>
     [Fact]
-    public async Task PublishesTheSpreadAroundTheConvertedPerGramPrice()
+    public async Task PublishesTheSpreadAroundTheReferencePrice()
     {
         await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
-        _stubProvider.Price = 4_331_800m;
+        _stubProvider.Price = 1_000_000m;
 
         await RunTickAsync();
 
@@ -130,7 +140,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
     {
         var admin = Guid.NewGuid();
         await SeedSettingsAsync(isEnabled: true, spreadPercent: 0.5m, admin);
-        _stubProvider.Price = 4_331_800m;
+        _stubProvider.Price = 1_000_000m;
 
         await RunTickAsync();
 
@@ -143,13 +153,35 @@ public class AutoQuotePublisherServiceTests : IDisposable
     {
         await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
 
-        _stubProvider.Price = 4_331_800m;
+        _stubProvider.Price = 1_000_000m;
         await RunTickAsync();
 
-        _stubProvider.Price = 4_500_000m;
+        _stubProvider.Price = 1_050_000m;
         await RunTickAsync();
 
         using var db = new OrdersDbContext(Options());
         Assert.Single(db.Quotes.Where(q => q.Symbol == Symbol && q.IsActive));
+    }
+
+    /// <summary>
+    /// Added alongside the coin and Bitcoin symbols: each symbol's <c>AutoQuoteSettings</c> row
+    /// is independent, so one being enabled and another disabled must not cross-contaminate —
+    /// the publisher loop in <c>ExecuteAsync</c> calls this per symbol, but the per-symbol
+    /// isolation is what <see cref="PublishIfDueAsync"/> itself is responsible for.
+    /// </summary>
+    [Fact]
+    public async Task EachSymbolPublishesIndependently()
+    {
+        var coin = CurrenciesConstant.SEKE_BAHAR_IRT;
+
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid(), symbol: Symbol);
+        await SeedSettingsAsync(isEnabled: false, spreadPercent: 1m, Guid.NewGuid(), symbol: coin);
+
+        _stubProvider.Price = 1_000_000m;
+        await RunTickAsync(Symbol);
+        await RunTickAsync(coin);
+
+        Assert.NotNull(await ActiveQuoteAsync(Symbol));
+        Assert.Null(await ActiveQuoteAsync(coin));
     }
 }

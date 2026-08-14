@@ -294,15 +294,26 @@ namespace TallaEgg.TelegramBot
             }
 
             //دستور ثبت قیمت جفتی برای ادمین
-            // Handle price pair format: buyPrice-sellPrice (e.g., 8523690-8529630)
-            var pricePairRegex = new Regex(@"^(\d+)-(\d+)$", RegexOptions.Compiled);
-            var pricePairMatch = pricePairRegex.Match(msgText);
+            // Handle price pair format: buyPrice-sellPrice, with an optional trailing symbol
+            // keyword (e.g., 8523690-8529630 یا 8523690-8529630 سکه). No keyword means MAUA/IRT
+            // (issue: multi-symbol quoting, see the coin/Bitcoin work in this conversation).
+            var pricePairRegex = new Regex(@"^(?<buy>\d+)-(?<sell>\d+)(?:\s+(?<symbol>\S+))?$", RegexOptions.Compiled);
+            var pricePairMatch = pricePairRegex.Match(msgText.Trim());
             if (pricePairMatch.Success)
             {
-                var buyPrice = decimal.Parse(pricePairMatch.Groups[1].Value);
-                var sellPrice = decimal.Parse(pricePairMatch.Groups[2].Value);
+                var symbol = ResolveAdminQuoteSymbol(
+                    pricePairMatch.Groups["symbol"].Success ? pricePairMatch.Groups["symbol"].Value : null);
 
-                await HandlePricePairOrdersAsync(chatId, user.Id, buyPrice, sellPrice);
+                if (symbol is null)
+                {
+                    await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUnknownQuoteSymbol);
+                    return true;
+                }
+
+                var buyPrice = decimal.Parse(pricePairMatch.Groups["buy"].Value);
+                var sellPrice = decimal.Parse(pricePairMatch.Groups["sell"].Value);
+
+                await HandlePricePairOrdersAsync(chatId, user.Id, symbol, buyPrice, sellPrice);
                 return true;
             }
 
@@ -572,13 +583,35 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// <c>اسپرد [درصد]</c> — sets the spread the automatic quote publisher applies around
-        /// the fetched gold price for MAUA/IRT (issue #90). Does not itself turn auto-quote on;
-        /// see <see cref="HandleAutoQuoteToggleCommandAsync"/>.
+        /// Resolves the optional trailing symbol keyword on the auto-quote and manual-quote
+        /// commands ("سکه", "بیت"/"بیتکوین") to a trading-pair symbol. No keyword, or an empty
+        /// one, means MAUA/IRT — every admin habit from before these symbols existed keeps
+        /// working unchanged. Returns null for a keyword that matches nothing, so the caller can
+        /// tell "no symbol given" apart from "unrecognised symbol".
+        /// </summary>
+        private static string? ResolveAdminQuoteSymbol(string? keyword)
+        {
+            var trimmed = keyword?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return CurrenciesConstant.MAUA_IRT;
+
+            return trimmed switch
+            {
+                "سکه" => CurrenciesConstant.SEKE_BAHAR_IRT,
+                "بیت" or "بیتکوین" or "بیت‌کوین" => CurrenciesConstant.BTC_IRT,
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// <c>اسپرد [درصد]</c> / <c>اسپرد [درصد] [نماد]</c> — sets the spread the automatic
+        /// quote publisher applies around the fetched reference price for a symbol (issue #90).
+        /// No symbol keyword means MAUA/IRT. Does not itself turn auto-quote on; see
+        /// <see cref="HandleAutoQuoteToggleCommandAsync"/>.
         /// </summary>
         private async Task HandleAutoQuoteSpreadCommandAsync(long chatId, string msgText, UserDto actor)
         {
-            var match = Regex.Match(msgText.Trim(), @"^اسپرد\s+(?<percent>[\d.]+)$", RegexOptions.Compiled);
+            var match = Regex.Match(msgText.Trim(), @"^اسپرد\s+(?<percent>[\d.]+)(?:\s+(?<symbol>\S+))?$", RegexOptions.Compiled);
 
             if (!match.Success || !decimal.TryParse(match.Groups["percent"].Value, out var spreadPercent))
             {
@@ -586,8 +619,15 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
+            var symbol = ResolveAdminQuoteSymbol(match.Groups["symbol"].Success ? match.Groups["symbol"].Value : null);
+            if (symbol is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUnknownQuoteSymbol);
+                return;
+            }
+
             var (success, message) = await _orderApi.UpdateAutoQuoteSpreadAsync(
-                CurrenciesConstant.MAUA_IRT, spreadPercent, actor.Id);
+                symbol, spreadPercent, actor.Id);
 
             await _messenger.SendAsync(chatId, success
                 ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, PersianFormat.Number(spreadPercent, decimals: 2))
@@ -595,31 +635,34 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// <c>اتومات روشن</c> / <c>اتومات خاموش</c> — turns automatic quote publishing on or
-        /// off for MAUA/IRT (issue #90). A manually published quote (<c>buyPrice-sellPrice</c>)
-        /// always overrides the automatic one regardless of this setting.
+        /// <c>اتومات روشن</c> / <c>اتومات خاموش</c> (+ optional trailing symbol keyword) — turns
+        /// automatic quote publishing on or off for a symbol (issue #90). No symbol keyword
+        /// means MAUA/IRT. A manually published quote (<c>buyPrice-sellPrice</c>) always
+        /// overrides the automatic one regardless of this setting.
         /// </summary>
         private async Task HandleAutoQuoteToggleCommandAsync(long chatId, string msgText, UserDto actor)
         {
-            var trimmed = msgText.Trim();
-            bool? enable = trimmed switch
-            {
-                "اتومات روشن" => true,
-                "اتومات خاموش" => false,
-                _ => null
-            };
+            var match = Regex.Match(msgText.Trim(), @"^اتومات\s+(?<state>روشن|خاموش)(?:\s+(?<symbol>\S+))?$", RegexOptions.Compiled);
 
-            if (enable is null)
+            if (!match.Success)
             {
                 await _messenger.SendAsync(chatId, BotMsgs.MsgAutoQuoteToggleFormatError);
                 return;
             }
 
-            var (success, message) = await _orderApi.SetAutoQuoteEnabledAsync(
-                CurrenciesConstant.MAUA_IRT, enable.Value, actor.Id);
+            var enable = match.Groups["state"].Value == "روشن";
+
+            var symbol = ResolveAdminQuoteSymbol(match.Groups["symbol"].Success ? match.Groups["symbol"].Value : null);
+            if (symbol is null)
+            {
+                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUnknownQuoteSymbol);
+                return;
+            }
+
+            var (success, message) = await _orderApi.SetAutoQuoteEnabledAsync(symbol, enable, actor.Id);
 
             await _messenger.SendAsync(chatId, success
-                ? (enable.Value ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
+                ? (enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
                 : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, message));
         }
 
@@ -628,18 +671,20 @@ namespace TallaEgg.TelegramBot
         /// </summary>
         /// <param name="chatId">شناسه چت تلگرام برای ارسال پیام</param>
         /// <param name="userId">شناسه کاربر در سیستم</param>
+        /// <param name="asset">نماد جفت معاملاتی (مثل MAUA/IRT یا SEKE_BAHAR/IRT)</param>
         /// <param name="buyPrice">قیمت خرید وارد شده توسط ادمین</param>
         /// <param name="sellPrice">قیمت فروش وارد شده توسط ادمین</param>
         /// <returns>Task که عملیات async را نشان می‌دهد</returns>
         /// <remarks>
         /// این تابع:
         /// 1. ابتدا تمام سفارشات فعال کاربر را کنسل می‌کند
-        /// 2. قیمت‌های ورودی را برای طلا (تقسیم بر 4.3318) تنظیم می‌کند
+        /// 2. قیمت‌های ورودی را برای طلا (تقسیم بر 4.3318) تنظیم می‌کند؛ برای نمادهای دیگر
+        ///    بدون تبدیل باقی می‌مانند
         /// 3. یک سفارش خرید با قیمت پایین‌تر و 1000 واحد پیش‌فرض ایجاد می‌کند
         /// 4. یک سفارش فروش با قیمت بالاتر و 1000 واحد پیش‌فرض ایجاد می‌کند
         /// 5. نتیجه عملیات را به ادمین گزارش می‌دهد
         /// </remarks>
-        private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, decimal buyPrice, decimal sellPrice)
+        private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, string asset, decimal buyPrice, decimal sellPrice)
         {
             // No local catch here (issue #99) — publish failure already comes back as
             // (published: false, publishMessage) below and is shown to the admin there. The
@@ -647,7 +692,6 @@ namespace TallaEgg.TelegramBot
             // unexpected, sent the admin ex.Message verbatim, and logged nowhere. Letting it
             // bubble reaches TelegramBotHostedService.HandleUpdateAsync's catch, which does
             // both.
-            const string defaultAsset = CurrenciesConstant.MAUA_IRT; // Default asset for admin price pair orders
             const decimal defaultAmount = 1000m;    // Default amount
 
             // First, cancel all existing active orders for this user
@@ -676,10 +720,10 @@ namespace TallaEgg.TelegramBot
             //
             // Conversion and confirmation text come from one call, so the price
             // published and the price shown cannot drift apart (issue #65).
-            var quote = QuoteMessage.Prepare(defaultAsset, buyPrice, sellPrice);
+            var quote = QuoteMessage.Prepare(asset, buyPrice, sellPrice);
 
             var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
-                defaultAsset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
+                asset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
 
             if (published)
             {

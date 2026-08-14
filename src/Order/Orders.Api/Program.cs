@@ -131,30 +131,31 @@ builder.Services.AddScoped<Orders.Application.Services.MarketModeStartupValidato
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
 
-// Automated quote publishing (issue #90): fetches a live gold price and publishes a quote the
-// same way an admin does by hand. Off for a symbol until an admin turns it on via the bot.
+// Automated quote publishing (issue #90): fetches a live reference price (gold, coin, or
+// Bitcoin — see Orders.Core.IReferencePriceProvider) and publishes a quote the same way an
+// admin does by hand. Off for a symbol until an admin turns it on via the bot.
 // A named HttpClient per provider rather than AddHttpClient<TInterface,TImplementation>: two
-// implementations share IGoldPriceProvider, and each needs its own API token/key, which is a
-// plain configuration string DI cannot inject as a constructor parameter on its own.
-builder.Services.AddHttpClient("NerkhGoldPriceProvider");
-builder.Services.AddHttpClient("BrsApiGoldPriceProvider");
+// implementations share IReferencePriceProvider, and each needs its own API token/key, which is
+// a plain configuration string DI cannot inject as a constructor parameter on its own.
+builder.Services.AddHttpClient("NerkhPriceProvider");
+builder.Services.AddHttpClient("BrsApiPriceProvider");
 
 var nerkhApiToken = builder.Configuration["AutoQuote:NerkhApiToken"];
 var brsApiKey = builder.Configuration["AutoQuote:BrsApiKey"];
 
 builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infrastructure.AutoQuoteSettingsRepository>();
 
-builder.Services.AddScoped<Orders.Core.IGoldPriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhGoldPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("NerkhGoldPriceProvider"),
-    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.NerkhGoldPriceProvider>>(),
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("NerkhPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.NerkhPriceProvider>>(),
     nerkhApiToken));
 
-builder.Services.AddScoped<Orders.Core.IGoldPriceProvider>(sp => new Orders.Infrastructure.Clients.BrsApiGoldPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiGoldPriceProvider"),
-    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiGoldPriceProvider>>(),
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BrsApiPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiPriceProvider>>(),
     brsApiKey));
 
-builder.Services.AddScoped<Orders.Application.Services.GoldPriceProviderChain>();
+builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
 
 // Configure JSON serialization

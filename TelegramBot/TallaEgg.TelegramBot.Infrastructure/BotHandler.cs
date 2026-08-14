@@ -790,24 +790,24 @@ namespace TallaEgg.TelegramBot
         /// held completed rows — it looked like information and was not.
         /// </summary>
         /// <summary>
-        /// The single most recent quote for MAUA/IRT, active or not — what "💹 اعلام مظنه"
-        /// shows an operator. Reuses <see cref="QuoteHistoryHandler"/>'s renderer with a
-        /// one-item page rather than a second formatter for what is the same data at a
-        /// different page size.
+        /// The single most recent quote for every active Dealer-mode symbol, active or not —
+        /// what "💹 اعلام مظنه" shows an operator. One message per symbol, since each comes from
+        /// its own <see cref="_orderApi.GetQuoteHistoryAsync"/> page. Reuses
+        /// <see cref="QuoteHistoryHandler"/>'s renderer with a one-item page rather than a
+        /// second formatter for what is the same data at a different page size.
         /// </summary>
         private async Task ShowLatestQuoteAsync(long chatId)
         {
-            const string symbol = CurrenciesConstant.MAUA_IRT;
+            foreach (var pair in CurrenciesConstant.AllTradingPairs.Where(p => p.IsActive))
+            {
+                var page = await _orderApi.GetQuoteHistoryAsync(pair.Symbol, pageNumber: 1, pageSize: 1);
 
-            var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 1);
-
-            await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true));
+                await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true));
+            }
         }
 
         private async Task ShowQuoteHistory(long chatId)
         {
-            const string symbol = CurrenciesConstant.MAUA_IRT;
-
             var isAdmin = await IsOperatorAsync(chatId);
 
             // The button is only on the admin keyboard, but a keyboard label is just text a
@@ -819,12 +819,18 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 5);
+            // One message (with its own paging keyboard) per active symbol — paging then
+            // continues to work exactly as it does today, since each keyboard's callback data
+            // already carries the symbol it pages within (QuoteHistoryHandler.CallbackPrefix).
+            foreach (var pair in CurrenciesConstant.AllTradingPairs.Where(p => p.IsActive))
+            {
+                var page = await _orderApi.GetQuoteHistoryAsync(pair.Symbol, pageNumber: 1, pageSize: 5);
 
-            await _messenger.SendAsync(
-                chatId,
-                QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin),
-                replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, symbol));
+                await _messenger.SendAsync(
+                    chatId,
+                    QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin),
+                    replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, pair.Symbol));
+            }
         }
 
         /// <summary>

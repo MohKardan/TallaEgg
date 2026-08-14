@@ -197,7 +197,7 @@ public class MessageBuilderTests
     [Fact]
     public void Quote_ConvertsTheAdminsMesghalPricesToPerGram()
     {
-        var quote = QuoteMessage.Prepare(Gold, buyPricePerMesghal: 79_000_000m, sellPricePerMesghal: 80_000_000m);
+        var quote = QuoteMessage.Prepare(Gold, buyPrice: 79_000_000m, sellPrice: 80_000_000m);
 
         Assert.Equal(
             CurrenciesConstant.RoundOrderPrice(79_000_000m / CurrenciesConstant.GramsPerMesghal),
@@ -241,9 +241,36 @@ public class MessageBuilderTests
     [Fact]
     public void Quote_KeepsTheBuyPriceBelowTheSellPrice()
     {
-        var quote = QuoteMessage.Prepare(Gold, buyPricePerMesghal: 79_000_000m, sellPricePerMesghal: 80_000_000m);
+        var quote = QuoteMessage.Prepare(Gold, buyPrice: 79_000_000m, sellPrice: 80_000_000m);
 
         Assert.True(quote.BuyPricePerGram < quote.SellPricePerGram,
             $"buy {quote.BuyPricePerGram} should be below sell {quote.SellPricePerGram}");
+    }
+
+    /// <summary>
+    /// MAUA/IRT is the only symbol with a mesghal/gram duality. For every other symbol what
+    /// the admin typed already is the per-unit price — dividing it by 4.3318 would misprice
+    /// every trade on that symbol by the same factor the mesghal conversion exists to avoid.
+    /// </summary>
+    [Fact]
+    public void Quote_ForANonGoldSymbol_PublishesThePriceUnconverted()
+    {
+        var quote = QuoteMessage.Prepare(Crypto, buyPrice: 3_000_000_000m, sellPrice: 3_010_000_000m);
+
+        Assert.Equal(3_000_000_000m, quote.BuyPricePerGram);
+        Assert.Equal(3_010_000_000m, quote.SellPricePerGram);
+    }
+
+    [Fact]
+    public void Quote_ForANonGoldSymbol_TextShowsThePriceOnceNotTwice()
+    {
+        var quote = QuoteMessage.Prepare(Crypto, buyPrice: 3_000_000_000m, sellPrice: 3_010_000_000m);
+
+        Assert.Contains(Fa(3_000_000_000m), quote.Text);
+        Assert.Contains(Fa(3_010_000_000m), quote.Text);
+        Assert.DoesNotContain("{", quote.Text);
+        // No mesghal/gram duality for this symbol, so the mesghal-specific label must not
+        // leak into a message about it.
+        Assert.DoesNotContain("مثقال", quote.Text);
     }
 }

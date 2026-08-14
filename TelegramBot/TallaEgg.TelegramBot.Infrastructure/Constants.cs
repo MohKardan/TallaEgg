@@ -573,6 +573,22 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "📈 حاشیهٔ شما: {5} تومان در هر مثقال\n\n" +
                                                      "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
+        /// <summary>
+        /// Same confirmation as <see cref="MsgAdminQuotePublished"/>, for a symbol with no
+        /// mesghal/gram duality (the coin and Bitcoin quoted with the addition of these — issue
+        /// tracked in the conversation, not a numbered GitHub issue). The admin's number is
+        /// already the per-unit price, so there is nothing to derive and show twice.
+        ///
+        /// {0}=نام دارایی، {1}=قیمت خرید، {2}=قیمت فروش، {3}=حاشیه، {4}=واحد (مثل «سکه»)
+        /// </summary>
+        public const string MsgAdminQuotePublishedSimple = "📊 مظنه منتشر شد\n\n" +
+                                                     "🏷️ دارایی: {0}\n\n" +
+                                                     "🟢 شما می‌خرید (مشتری می‌فروشد): {1} تومان به ازای هر {4}\n" +
+                                                     "🔴 شما می‌فروشید (مشتری می‌خرد): {2} تومان به ازای هر {4}\n\n" +
+                                                     "➖➖➖➖➖➖➖➖➖\n" +
+                                                     "📈 حاشیهٔ شما: {3} تومان به ازای هر {4}\n\n" +
+                                                     "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
+
         /// <summary>{0} = دلیل ناموفق بودن</summary>
         public const string MsgAdminQuoteFailed = "❌ انتشار مظنه انجام نشد.\n\nدلیل: {0}";
 
@@ -580,8 +596,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         public const string MsgAutoQuoteSpreadFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                              "قالب صحیح:\n" +
-                                                             "اسپرد [درصد]\n\n" +
-                                                             "نمونه: اسپرد 0.5";
+                                                             "اسپرد [درصد] [نماد اختیاری]\n\n" +
+                                                             "نمونه: اسپرد 0.5\n" +
+                                                             "نمونه: اسپرد 0.5 سکه";
 
         /// <summary>{0} = درصد اسپرد جدید</summary>
         public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات روی {0}٪ تنظیم شد.";
@@ -592,7 +609,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAutoQuoteToggleFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                              "قالب صحیح:\n" +
                                                              "اتومات روشن\n" +
-                                                             "اتومات خاموش";
+                                                             "اتومات خاموش\n\n" +
+                                                             "با نماد دیگر: اتومات روشن سکه";
 
         public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات روشن شد.";
 
@@ -600,6 +618,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         /// <summary>{0} = دلیل خطا</summary>
         public const string MsgAutoQuoteToggleFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+
+        /// <summary>
+        /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، یا قیمت‌جفتی شناخته‌شده نیست.
+        /// </summary>
+        public const string MsgAdminUnknownQuoteSymbol = "❌ این نماد شناخته‌شده نیست.\n\n" +
+                                                          "نمادهای معتبر: (خالی = آبشده)، سکه، بیت";
 
         /// <summary>
         /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).

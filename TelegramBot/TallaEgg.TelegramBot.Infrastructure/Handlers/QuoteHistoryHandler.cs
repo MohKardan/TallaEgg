@@ -59,7 +59,9 @@ public static class QuoteHistoryHandler
             // the customer actually speak in.
             var buyDisplay = isGold ? q.BuyPrice * CurrenciesConstant.GramsPerMesghal : q.BuyPrice;
             var sellDisplay = isGold ? q.SellPrice * CurrenciesConstant.GramsPerMesghal : q.SellPrice;
-            var unitLabel = isGold ? "هر مثقال" : "هر واحد";
+            var unitLabel = isGold
+                ? "هر مثقال"
+                : $"هر {CurrenciesConstant.GetCurrencyInfo(q.Symbol.Split('/')[0])?.Unit ?? "واحد"}";
 
             // The active quote is the one being traded on right now; every other row is
             // history. Saying so removes the guess about whether the top row is still live.

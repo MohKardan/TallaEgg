@@ -15,6 +15,10 @@
 
         public const string Credit_MAUA = "CREDIT_MAUA";
 
+        public const string SekeBahar = "SEKE_BAHAR";
+
+        public const string Btc = "BTC";
+
         /// <summary>
         /// وزن یک مثقال به گرم. قیمت‌ها توسط کاربر و مدیر بر حسب «هر مثقال» وارد
         /// می‌شوند و برای ذخیره‌سازی به «هر گرم» تبدیل می‌شوند.
@@ -47,6 +51,22 @@
                 Unit = "گرم",
                 DecimalPlaces = 2,
                 IsTradable = false
+            },
+            new CurrencyInfo
+            {
+                Code = SekeBahar,
+                PersianName = "سکه تمام بهار آزادی",
+                Unit = "سکه",
+                DecimalPlaces = 2,
+                IsTradable = true
+            },
+            new CurrencyInfo
+            {
+                Code = Btc,
+                PersianName = "بیت‌کوین",
+                Unit = "بیت‌کوین",
+                DecimalPlaces = 8,
+                IsTradable = true
             }
         };
 
@@ -58,6 +78,7 @@
         public const string BTC_IRT = "BTC/IRT";
         public const string ETH_IRT = "ETH/IRT";
         public const string MAUA_IRT = "MAUA/IRT";
+        public const string SEKE_BAHAR_IRT = "SEKE_BAHAR/IRT";
 
         // 🔹 مجموعه‌ای از اطلاعات جفت‌های معاملاتی
         public static readonly List<TradingPairInfo> AllTradingPairs = new List<TradingPairInfo>
@@ -91,10 +112,10 @@
             new TradingPairInfo
             {
                 Symbol = BTC_IRT,
-                BaseAsset = "BTC",
+                BaseAsset = Btc,
                 QuoteAsset = Toman,
                 PersianName = "بیت‌کوین/تومان",
-                IsActive = false,
+                IsActive = true,
                 MinQuantity = 0.0001m,
                 MaxQuantity = 100m,
                 PriceDecimalPlaces = 0,
@@ -113,6 +134,19 @@
                 PriceDecimalPlaces = 0,
                 QuantityDecimalPlaces = 3,
                 MinNotional = 100000m // 100 هزار تومان
+            },
+            new TradingPairInfo
+            {
+                Symbol = SEKE_BAHAR_IRT,
+                BaseAsset = SekeBahar,
+                QuoteAsset = Toman,
+                PersianName = "سکه تمام بهار آزادی/تومان",
+                IsActive = true,
+                MinQuantity = 0.01m,
+                MaxQuantity = 50m,
+                PriceDecimalPlaces = 0,
+                QuantityDecimalPlaces = 2,
+                MinNotional = 1000000m // 1 میلیون تومان
             }
         };
 
