@@ -23,4 +23,13 @@ public interface IQuoteRepository
     /// existed but nobody could look at it.
     /// </summary>
     Task<(IReadOnlyList<Quote> Items, int TotalCount)> GetHistoryAsync(string symbol, int pageNumber, int pageSize);
+
+    /// <summary>
+    /// Distinct symbols that currently have an active published quote. Nothing else needs this
+    /// across every symbol at once — <see cref="GetActiveAsync"/> already answers "does this one
+    /// symbol have a quote". It exists for the startup check in issue #73: a symbol with an
+    /// active quote that isn't in Dealer mode is a contradiction only a query across all symbols
+    /// can see.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetActiveSymbolsAsync();
 }

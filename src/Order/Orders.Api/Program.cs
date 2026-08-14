@@ -126,6 +126,7 @@ builder.Services.AddScoped<Orders.Application.Services.OrderCollateralReconciler
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeProvider>();
 builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
+builder.Services.AddScoped<Orders.Application.Services.MarketModeStartupValidator>();
 
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
@@ -207,6 +208,11 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<OrdersDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+
+    // یک نماد با مظنهٔ فعال ولی خارج از حالت Dealer یعنی تناقض بین چیزی که ادمین منتشر
+    // کرده و چیزی که پیکربندی می‌گوید — فقط لاگ می‌کند، سرویس را متوقف نمی‌کند (issue #73).
+    var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
+    await marketModeValidator.ValidateAsync();
 }
 
 
