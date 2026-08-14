@@ -18,6 +18,9 @@ public class OrdersDbContext : DbContext
     /// <summary>اسپرد و روشن/خاموش بودن مظنهٔ اتومات برای هر نماد (issue #90).</summary>
     public DbSet<AutoQuoteSettings> AutoQuoteSettings => Set<AutoQuoteSettings>();
 
+    /// <summary>فعال/غیرفعال بودن هر نماد برای معامله — قابل تغییر با دستور ادمین در بات.</summary>
+    public DbSet<SymbolSettings> SymbolSettings => Set<SymbolSettings>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfigurations());
@@ -25,5 +28,6 @@ public class OrdersDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         modelBuilder.ApplyConfiguration(new QuoteConfiguration());
         modelBuilder.ApplyConfiguration(new AutoQuoteSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new SymbolSettingsConfiguration());
     }
 }

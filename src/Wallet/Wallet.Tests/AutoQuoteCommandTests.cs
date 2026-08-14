@@ -188,6 +188,76 @@ public class AutoQuoteCommandTests
         Assert.Contains(_messenger.Texts, t => t.Contains("قالب"));
     }
 
+    // ── نماد فعال/غیرفعال ────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task AnAdminCanActivateASymbol()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد فعال سکه");
+
+        var toggle = Assert.Single(_orderApi.ActiveToggles);
+        Assert.Equal(CurrenciesConstant.SEKE_BAHAR_IRT, toggle.Symbol);
+        Assert.True(toggle.IsActive);
+        Assert.Equal(AdminId, toggle.UpdatedByUserId);
+    }
+
+    [Fact]
+    public async Task AnAdminCanDeactivateASymbol()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد غیرفعال بیت");
+
+        var toggle = Assert.Single(_orderApi.ActiveToggles);
+        Assert.Equal(CurrenciesConstant.BTC_IRT, toggle.Symbol);
+        Assert.False(toggle.IsActive);
+    }
+
+    /// <summary>No symbol keyword means MAUA/IRT — the same convention as اسپرد/اتومات.</summary>
+    [Fact]
+    public async Task NoSymbolKeywordMeansGold()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد فعال");
+
+        Assert.Equal(CurrenciesConstant.MAUA_IRT, Assert.Single(_orderApi.ActiveToggles).Symbol);
+    }
+
+    [Fact]
+    public async Task AMalformedSymbolActiveCommandIsAnsweredWithTheFormat()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد شاید");
+
+        Assert.Empty(_orderApi.ActiveToggles);
+        Assert.Contains(_messenger.Texts, t => t.Contains("قالب"));
+    }
+
+    [Fact]
+    public async Task AnUnrecognisedSymbolKeywordForActivationIsRejected()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد فعال نقره");
+
+        Assert.Empty(_orderApi.ActiveToggles);
+        Assert.Contains(_messenger.Texts, t => t.Contains("شناخته‌شده نیست"));
+    }
+
+    [Fact]
+    public async Task AnOrdinaryUserCannotActivateASymbol()
+    {
+        var handler = Build(UserRole.RegularUser);
+
+        await SayAsync(handler, "نماد فعال سکه");
+
+        Assert.Empty(_orderApi.ActiveToggles);
+    }
+
     // ── who may run these ───────────────────────────────────────────────────────
 
     [Fact]

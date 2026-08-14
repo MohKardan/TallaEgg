@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 using TallaEgg.Core;
@@ -10,6 +11,13 @@ namespace Orders.Infrastructure.Clients;
 /// endpoint (<c>Gold_Currency.php</c>), keyed with an API key in the query string. Same product
 /// as nerkh.io's gold/coin instruments — cross-checked live and agreed to within 0.1% before
 /// this was written, which is what makes the two a meaningful fallback pair.
+///
+/// <para>
+/// The instrument each symbol maps to (which of brsapi's response arrays, and which symbol
+/// inside it) is a compiled default for the three symbols this platform trades today, and falls
+/// back to <c>Symbols:{symbol}:BrsApi</c> in configuration for anything else — see
+/// <see cref="InstrumentFor"/>.
+/// </para>
 /// </summary>
 public class BrsApiPriceProvider : IReferencePriceProvider
 {
@@ -17,28 +25,36 @@ public class BrsApiPriceProvider : IReferencePriceProvider
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<BrsApiPriceProvider> _logger;
-    private readonly string? _apiKey;
+    private readonly IConfiguration _configuration;
 
     public string Name => "brsapi.ir";
 
-    public BrsApiPriceProvider(HttpClient httpClient, ILogger<BrsApiPriceProvider> logger, string? apiKey)
+    public BrsApiPriceProvider(HttpClient httpClient, ILogger<BrsApiPriceProvider> logger, IConfiguration configuration)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _apiKey = apiKey;
+        _configuration = configuration;
     }
 
     public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_apiKey))
+        var apiKey = _configuration["AutoQuote:BrsApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogWarning("brsapi.ir skipped: no API key configured (Services:Orders.Api:AutoQuote:BrsApiKey).");
             return null;
         }
 
+        var instrument = InstrumentFor(symbol);
+        if (instrument is null)
+        {
+            _logger.LogWarning("brsapi.ir has no configured instrument for {Symbol}.", symbol);
+            return null;
+        }
+
         try
         {
-            using var response = await _httpClient.GetAsync($"{Url}?key={_apiKey}", cancellationToken);
+            using var response = await _httpClient.GetAsync($"{Url}?key={apiKey}", cancellationToken);
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
             if (!response.IsSuccessStatusCode)
@@ -48,23 +64,14 @@ public class BrsApiPriceProvider : IReferencePriceProvider
             }
 
             using var doc = JsonDocument.Parse(body);
+            var (array, instrumentSymbol, convertFromMesghal) = instrument.Value;
 
-            switch (symbol)
-            {
-                case CurrenciesConstant.MAUA_IRT:
-                    var melted = FindGoldPrice(doc, "IR_GOLD_MELTED");
-                    return melted is null ? null : melted / CurrenciesConstant.GramsPerMesghal;
-
-                case CurrenciesConstant.SEKE_BAHAR_IRT:
-                    return FindGoldPrice(doc, "IR_COIN_BAHAR");
-
-                case CurrenciesConstant.BTC_IRT:
-                    return ConvertCryptoToToman(doc, "BTC");
-
-                default:
-                    _logger.LogWarning("brsapi.ir has no configured instrument for {Symbol}.", symbol);
-                    return null;
-            }
+            // brsapi's "cryptocurrency" array is USD-denominated (a JSON string) and needs a
+            // USD/Toman conversion from the same response's "currency" array; "gold" is already
+            // Toman (a JSON number) and covers both metal and coin instruments alike.
+            return array == "cryptocurrency"
+                ? ConvertCryptoToToman(doc, instrumentSymbol)
+                : FindGoldPrice(doc, instrumentSymbol, convertFromMesghal);
         }
         catch (Exception ex)
         {
@@ -73,8 +80,33 @@ public class BrsApiPriceProvider : IReferencePriceProvider
         }
     }
 
+    /// <summary>
+    /// Maps our trading-pair symbol to brsapi.ir's response array and instrument symbol. The
+    /// three symbols traded today are compiled defaults; anything else is looked up under
+    /// <c>Symbols:{symbol}:BrsApi</c> (fields: <c>Array</c> — "gold" or "cryptocurrency" —
+    /// <c>Symbol</c>, and the optional bool <c>ConvertFromMesghal</c>) in configuration.
+    /// </summary>
+    private (string Array, string Symbol, bool ConvertFromMesghal)? InstrumentFor(string symbol)
+    {
+        (string, string, bool)? compiled = symbol switch
+        {
+            CurrenciesConstant.MAUA_IRT => ("gold", "IR_GOLD_MELTED", true),
+            CurrenciesConstant.SEKE_BAHAR_IRT => ("gold", "IR_COIN_BAHAR", false),
+            CurrenciesConstant.BTC_IRT => ("cryptocurrency", "BTC", false),
+            _ => null
+        };
+        if (compiled is not null) return compiled;
+
+        var section = _configuration.GetSection($"Symbols:{symbol}:BrsApi");
+        var array = section["Array"];
+        var instrumentSymbol = section["Symbol"];
+        if (string.IsNullOrWhiteSpace(array) || string.IsNullOrWhiteSpace(instrumentSymbol)) return null;
+
+        return (array, instrumentSymbol, section.GetValue("ConvertFromMesghal", false));
+    }
+
     /// <summary>Toman-denominated instruments — the "gold" array covers metal and coins alike.</summary>
-    private decimal? FindGoldPrice(JsonDocument doc, string targetSymbol)
+    private decimal? FindGoldPrice(JsonDocument doc, string targetSymbol, bool convertFromMesghal)
     {
         foreach (var item in doc.RootElement.GetProperty("gold").EnumerateArray())
         {
@@ -83,7 +115,8 @@ public class BrsApiPriceProvider : IReferencePriceProvider
             // brsapi returns gold prices as a JSON number, unlike nerkh's string — each
             // provider parses its own shape rather than forcing a shared response type onto two
             // APIs that were never designed to agree.
-            return item.GetProperty("price").GetDecimal();
+            var price = item.GetProperty("price").GetDecimal();
+            return convertFromMesghal ? price / CurrenciesConstant.GramsPerMesghal : price;
         }
 
         _logger.LogWarning("brsapi.ir response did not contain gold symbol {Symbol}.", targetSymbol);

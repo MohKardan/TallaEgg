@@ -1,4 +1,5 @@
-﻿using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core;
+using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
@@ -101,6 +102,30 @@ public sealed class FakeOrderApiClient : IOrderApiClient
     {
         EnabledToggles.Add((symbol, isEnabled, updatedByUserId));
         return Task.FromResult(EnabledToggleResult);
+    }
+
+    // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// Defaults to the three symbols the platform actually seeds as active (see the
+    /// AddSymbolSettings migration) — matches a freshly deployed system, so tests written before
+    /// "active" moved to a database call don't all have to opt into a symbol being active just
+    /// to exercise unrelated behaviour. A test about activation/deactivation itself overrides
+    /// this explicitly.
+    /// </summary>
+    public List<string> ActiveSymbols { get; set; } =
+        [CurrenciesConstant.MAUA_IRT, CurrenciesConstant.SEKE_BAHAR_IRT, CurrenciesConstant.BTC_IRT];
+
+    public Task<List<string>> GetActiveSymbolsAsync() => Task.FromResult(ActiveSymbols);
+
+    /// <summary>Every activate/deactivate call asked for.</summary>
+    public List<(string Symbol, bool IsActive, Guid UpdatedByUserId)> ActiveToggles { get; } = [];
+    public (bool Success, string Message) ActiveToggleResult { get; set; } = (true, "انجام شد.");
+
+    public Task<(bool success, string message)> SetSymbolActiveAsync(string symbol, bool isActive, Guid updatedByUserId)
+    {
+        ActiveToggles.Add((symbol, isActive, updatedByUserId));
+        return Task.FromResult(ActiveToggleResult);
     }
 }
 

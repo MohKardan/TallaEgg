@@ -798,9 +798,9 @@ namespace TallaEgg.TelegramBot
         /// </summary>
         private async Task ShowLatestQuoteAsync(long chatId)
         {
-            foreach (var pair in CurrenciesConstant.AllTradingPairs.Where(p => p.IsActive))
+            foreach (var symbol in await _orderApi.GetActiveSymbolsAsync())
             {
-                var page = await _orderApi.GetQuoteHistoryAsync(pair.Symbol, pageNumber: 1, pageSize: 1);
+                var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 1);
 
                 await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true));
             }
@@ -822,14 +822,14 @@ namespace TallaEgg.TelegramBot
             // One message (with its own paging keyboard) per active symbol — paging then
             // continues to work exactly as it does today, since each keyboard's callback data
             // already carries the symbol it pages within (QuoteHistoryHandler.CallbackPrefix).
-            foreach (var pair in CurrenciesConstant.AllTradingPairs.Where(p => p.IsActive))
+            foreach (var symbol in await _orderApi.GetActiveSymbolsAsync())
             {
-                var page = await _orderApi.GetQuoteHistoryAsync(pair.Symbol, pageNumber: 1, pageSize: 5);
+                var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 5);
 
                 await _messenger.SendAsync(
                     chatId,
                     QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin),
-                    replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, pair.Symbol));
+                    replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, symbol));
             }
         }
 
@@ -963,7 +963,7 @@ namespace TallaEgg.TelegramBot
                 }
 
                 // دریافت جفت‌های معاملاتی فعال
-                var activeTradingPairs = GetActiveTradingPairs();
+                var activeTradingPairs = await GetActiveTradingPairsAsync();
 
                 if (!activeTradingPairs.Any())
                 {
@@ -1016,24 +1016,24 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// دریافت لیست جفت‌های معاملاتی فعال با validation
+        /// نمادهایی که الان قابل معامله‌اند — فعال/غیرفعال بودن هر نماد در دیتابیس سرویس
+        /// Orders نگه‌داری می‌شود (نه اینجا)، چون باید با یک دستور ادمین در بات قابل‌تغییر
+        /// باشد، بدون rebuild یا ری‌استارت. متادیتای هر نماد (نام فارسی و غیره) هنوز از
+        /// <see cref="CurrenciesConstant"/> خوانده می‌شود.
         /// </summary>
         /// <returns>لیست جفت‌های معاملاتی فعال</returns>
-        private List<TradingPairInfo> GetActiveTradingPairs()
+        private async Task<List<TradingPairInfo>> GetActiveTradingPairsAsync()
         {
             try
             {
-                if (CurrenciesConstant.AllTradingPairs == null)
-                {
-                    _logger.LogError("CurrenciesConstant.AllTradingPairs is null");
-                    return new List<TradingPairInfo>();
-                }
+                var activeSymbols = await _orderApi.GetActiveSymbolsAsync();
 
-                var activePairs = CurrenciesConstant.AllTradingPairs
-                    .Where(pair => pair != null &&
-                                  pair.IsActive &&
+                var activePairs = activeSymbols
+                    .Select(CurrenciesConstant.GetTradingPairInfo)
+                    .Where(pair => pair is not null &&
                                   !string.IsNullOrWhiteSpace(pair.Symbol) &&
                                   !string.IsNullOrWhiteSpace(pair.PersianName))
+                    .Cast<TradingPairInfo>()
                     .ToList();
 
                 _logger.LogDebug($"Found {activePairs.Count} active trading pairs");
