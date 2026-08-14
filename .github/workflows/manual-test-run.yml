@@ -101,7 +101,7 @@ jobs:
                 "WalletApiUrl": "http://localhost:60933/api",
                 "Matching": {
                   "RequireMarketMakerCounterparty": true,
-                  "MarketModes": { "MAUA/IRT": "Dealer" }
+                  "MarketModes": { "MAUA/IRT": "Dealer", "SEKE_BAHAR/IRT": "Dealer", "BTC/IRT": "Dealer" }
                 }
               },
               "TallaEgg.TelegramBot.Infrastructure": {

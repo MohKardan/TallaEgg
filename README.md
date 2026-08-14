@@ -50,7 +50,7 @@ The platform supports two market modes per symbol, set in configuration:
 | **`Dealer`** (current) | The shop publishes a quote. A customer accepting it creates both orders and matches them in one operation. The background matching engine **skips these symbols entirely** — it would otherwise reach the same order pair a fill is already matching and produce two trades from one. |
 | `OrderBook` | Classic maker/taker matching through the background engine. Not used in production today. |
 
-`MAUA/IRT` (gold / toman) runs in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
+`MAUA/IRT` (gold / toman), `SEKE_BAHAR/IRT` (Bahar Azadi coin / toman), and `BTC/IRT` (Bitcoin / toman) run in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
 
 ## Tech Stack
 
@@ -102,7 +102,7 @@ Create your own copy from the template below.
       "WalletApiUrl": "http://localhost:60933/api",
       "Matching": {
         "RequireMarketMakerCounterparty": true,
-        "MarketModes": { "MAUA/IRT": "Dealer" }
+        "MarketModes": { "MAUA/IRT": "Dealer", "SEKE_BAHAR/IRT": "Dealer", "BTC/IRT": "Dealer" }
       }
     },
     "Affiliate.Api": {
@@ -132,7 +132,7 @@ Create your own copy from the template below.
 | --- | --- |
 | `BotSettings:OwnerTelegramIds` | The only thing that lets anyone in on an empty database. A configured owner is approved and given the `Admin` role automatically when they register. Put **your own** Telegram id here. |
 | `BotSettings:DefaultReferralCode` | Must be `admin` — the code carried by the administrator row `Users.Api` seeds. Registration rejects any code that belongs to no user, so a mismatch here means **nobody can register at all**. |
-| `Matching:MarketModes` | Without `"MAUA/IRT": "Dealer"` the symbol falls back to `OrderBook` and every quote fill is refused. |
+| `Matching:MarketModes` | Without a symbol set to `"Dealer"` (e.g. `"MAUA/IRT": "Dealer"`) it falls back to `OrderBook` and every quote fill for that symbol is refused. |
 | `TelegramBotToken` | Read from this file. `TELEGRAM_BOT_TOKEN` is only a fallback for the standalone notification API, **not** for the bot itself. |
 
 ### Ports and bind addresses

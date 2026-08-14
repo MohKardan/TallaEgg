@@ -86,6 +86,33 @@ public class AutoQuoteCommandTests
         Assert.Contains(_messenger.Texts, t => t.Contains("قالب"));
     }
 
+    /// <summary>
+    /// A trailing symbol keyword targets a different symbol's auto-quote settings — added
+    /// alongside the coin and Bitcoin symbols. No keyword still means MAUA/IRT, covered above.
+    /// </summary>
+    [Fact]
+    public async Task AnAdminCanSetTheSpreadForACoinOrBitcoin()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اسپرد 0.5 سکه");
+
+        var update = Assert.Single(_orderApi.SpreadUpdates);
+        Assert.Equal(CurrenciesConstant.SEKE_BAHAR_IRT, update.Symbol);
+        Assert.Equal(0.5m, update.SpreadPercent);
+    }
+
+    [Fact]
+    public async Task AnUnrecognisedSymbolKeywordIsRejectedWithoutUpdatingAnything()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اسپرد 0.5 نقره");
+
+        Assert.Empty(_orderApi.SpreadUpdates);
+        Assert.Contains(_messenger.Texts, t => t.Contains("شناخته‌شده نیست"));
+    }
+
     [Fact]
     public async Task AFailureSettingTheSpreadIsReportedWithItsReason()
     {
@@ -136,6 +163,18 @@ public class AutoQuoteCommandTests
         await SayAsync(handler, "اتومات خاموش");
 
         Assert.False(Assert.Single(_orderApi.EnabledToggles).IsEnabled);
+    }
+
+    [Fact]
+    public async Task AnAdminCanTurnAutoQuoteOnForBitcoin()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اتومات روشن بیت");
+
+        var toggle = Assert.Single(_orderApi.EnabledToggles);
+        Assert.Equal(CurrenciesConstant.BTC_IRT, toggle.Symbol);
+        Assert.True(toggle.IsEnabled);
     }
 
     [Fact]

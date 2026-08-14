@@ -20,10 +20,37 @@ namespace TallaEgg.TelegramBot.Infrastructure.Messages;
 public static class QuoteMessage
 {
     /// <param name="symbol">Trading pair, e.g. <c>MAUA/IRT</c>.</param>
-    /// <param name="buyPricePerMesghal">The price the admin buys at — what the customer sells at.</param>
-    /// <param name="sellPricePerMesghal">The price the admin sells at — what the customer buys at.</param>
-    public static QuotePublication Prepare(
-        string symbol, decimal buyPricePerMesghal, decimal sellPricePerMesghal)
+    /// <param name="buyPrice">
+    /// The price the admin buys at — what the customer sells at. Per mesghal for MAUA/IRT (the
+    /// unit an admin already prices gold in by hand); per traded unit for every other symbol
+    /// (per coin, per Bitcoin — there is no second, smaller display unit for those).
+    /// </param>
+    /// <param name="sellPrice">The price the admin sells at — what the customer buys at. Same unit as <paramref name="buyPrice"/>.</param>
+    public static QuotePublication Prepare(string symbol, decimal buyPrice, decimal sellPrice)
+    {
+        if (symbol == CurrenciesConstant.MAUA_IRT)
+            return PrepareGold(symbol, buyPrice, sellPrice);
+
+        // Every other symbol: what the admin typed already is the per-unit price. No
+        // mesghal-to-gram conversion applies — MAUA/IRT is the only symbol with that duality.
+        var roundedBuy = CurrenciesConstant.RoundOrderPrice(buyPrice);
+        var roundedSell = CurrenciesConstant.RoundOrderPrice(sellPrice);
+        var margin = roundedSell - roundedBuy;
+
+        var baseAsset = symbol.Split('/')[0];
+        var unit = CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset;
+
+        var text = string.Format(BotMsgs.MsgAdminQuotePublishedSimple,
+            PersianFormat.Symbol(symbol),
+            PersianFormat.Number(roundedBuy),
+            PersianFormat.Number(roundedSell),
+            PersianFormat.Number(margin),
+            unit);
+
+        return new QuotePublication(roundedBuy, roundedSell, text);
+    }
+
+    private static QuotePublication PrepareGold(string symbol, decimal buyPricePerMesghal, decimal sellPricePerMesghal)
     {
         // The admin types prices per mesghal; orders and quotes are stored per gram.
         // Rounded to the precision of the price column, so the value published is exactly
