@@ -139,10 +139,12 @@ Start each by opening its section in `SPRINT_PLAN.md`.
 
 ### Manual Deployment Process (target)
 1. PR merged to `staging` branch
-2. Run: `./publish-all.ps1` (from `publishes/` folder)
-3. Execute `start-all-services.ps1` on staging server
-4. Smoke test endpoints per `docs/operations/SMOKE_TEST.md` (planned)
-5. Run integration tests: `dotnet test --filter Category=Integration`
+2. Run: `scripts\windows-services\publish-all.ps1` and `install-services.ps1` (see
+   [`docs/operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md) — this is the
+   real, verified production tooling from #70; a `publish-all.ps1` at the repo root and a
+   `publishes/` folder predated it and have been removed)
+3. Smoke test endpoints per `docs/operations/SMOKE_TEST.md` (planned)
+4. Run integration tests: `dotnet test --filter Category=Integration`
 
 ### Automated CI/CD (Future)
 - Implement GitHub Actions to auto-deploy on merge to `staging`
