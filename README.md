@@ -281,8 +281,8 @@ Long polling means the bot needs **no inbound ports**. KR1's deployment work
 steps. `Production` has been run and verified locally against SQL Server Express, not just
 Development — the note that used to be here about it never having executed is no longer true.
 
-> **The root `publish-all.ps1` and `publishes/` folder predate that work and are stale**: they
-> publish five services (including the two #69 decided not to deploy), still reference the HTTPS
-> bind addresses #69 removed, and assume manual `dotnet *.dll` startup rather than a supervised
-> service. Use `scripts/windows-services/` instead; the old ones haven't been deleted only
-> because nobody has confirmed they're safe to remove yet.
+Use `scripts/windows-services/` for publishing and installing the services — it's the only
+publish tooling in the repo now. An older `publish-all.ps1` at the repo root and a `publishes/`
+folder predated #69/#70 and were removed: they published five services instead of four
+(including the two #69 decided not to deploy), still referenced the HTTPS bind addresses #69
+removed, and assumed manual `dotnet *.dll` startup instead of a supervised service.

@@ -713,5 +713,3 @@ chocolatey/
 bin/
 obj/
 /clean_build.bat
-/publishes/APIs
-/publishes/TelegramBot
