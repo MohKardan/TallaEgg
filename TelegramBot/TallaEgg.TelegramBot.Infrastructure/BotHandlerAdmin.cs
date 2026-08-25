@@ -625,9 +625,11 @@ namespace TallaEgg.TelegramBot
             var (success, message) = await _orderApi.UpdateAutoQuoteSpreadAsync(
                 symbol, spreadPercent, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, PersianFormat.Number(spreadPercent, decimals: 2))
-                : string.Format(BotMsgs.MsgAutoQuoteSpreadFailed, message));
+                ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, symbolName, PersianFormat.Number(spreadPercent, decimals: 2))
+                : string.Format(BotMsgs.MsgAutoQuoteSpreadFailed, symbolName, message));
         }
 
         /// <summary>
@@ -657,9 +659,11 @@ namespace TallaEgg.TelegramBot
 
             var (success, message) = await _orderApi.SetAutoQuoteEnabledAsync(symbol, enable, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? (enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
-                : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, message));
+                ? string.Format(enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled, symbolName)
+                : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, symbolName, message));
         }
 
         /// <summary>
@@ -690,9 +694,11 @@ namespace TallaEgg.TelegramBot
 
             var (success, message) = await _orderApi.SetSymbolActiveAsync(symbol, makeActive, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? (makeActive ? BotMsgs.MsgSymbolActivated : BotMsgs.MsgSymbolDeactivated)
-                : string.Format(BotMsgs.MsgSymbolActiveFailed, message));
+                ? string.Format(makeActive ? BotMsgs.MsgSymbolActivated : BotMsgs.MsgSymbolDeactivated, symbolName)
+                : string.Format(BotMsgs.MsgSymbolActiveFailed, symbolName, message));
         }
 
         /// <summary>

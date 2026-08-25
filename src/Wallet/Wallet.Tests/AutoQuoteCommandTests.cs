@@ -177,6 +177,41 @@ public class AutoQuoteCommandTests
         Assert.True(toggle.IsEnabled);
     }
 
+    /// <summary>
+    /// Each symbol's auto-quote setting is independent — "اتومات روشن" with no keyword only
+    /// ever affects MAUA/IRT, never every symbol at once. The confirmation must say so, since
+    /// nothing else about the exchange makes that obvious to an admin reading it later.
+    /// </summary>
+    [Fact]
+    public async Task TheConfirmationNamesWhichSymbolWasToggled()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اتومات روشن بیت");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("بیت‌کوین"));
+    }
+
+    [Fact]
+    public async Task WithNoKeyword_TheConfirmationNamesGoldNotEverySymbol()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اتومات روشن");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("آبشده"));
+    }
+
+    [Fact]
+    public async Task TheSpreadConfirmationAlsoNamesTheSymbol()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "اسپرد 0.5 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("سکه تمام بهار آزادی"));
+    }
+
     [Fact]
     public async Task AMalformedToggleCommandIsAnsweredWithTheFormat()
     {
@@ -213,6 +248,16 @@ public class AutoQuoteCommandTests
         var toggle = Assert.Single(_orderApi.ActiveToggles);
         Assert.Equal(CurrenciesConstant.BTC_IRT, toggle.Symbol);
         Assert.False(toggle.IsActive);
+    }
+
+    [Fact]
+    public async Task TheActivationConfirmationNamesWhichSymbolWasToggled()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "نماد فعال بیت");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("بیت‌کوین"));
     }
 
     /// <summary>No symbol keyword means MAUA/IRT — the same convention as اسپرد/اتومات.</summary>

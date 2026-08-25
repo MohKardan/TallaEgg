@@ -606,24 +606,27 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                              "نمونه: اسپرد 0.5\n" +
                                                              "نمونه: اسپرد 0.5 سکه";
 
-        /// <summary>{0} = درصد اسپرد جدید</summary>
-        public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات روی {0}٪ تنظیم شد.";
+        /// <summary>{0} = نام فارسی نماد، {1} = درصد اسپرد جدید</summary>
+        public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات {0} روی {1}٪ تنظیم شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         public const string MsgAutoQuoteToggleFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                              "قالب صحیح:\n" +
                                                              "اتومات روشن\n" +
                                                              "اتومات خاموش\n\n" +
+                                                             "توجه: هر نماد تنظیم اتومات جدا دارد — بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                              "با نماد دیگر: اتومات روشن سکه";
 
-        public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات روشن شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات {0} روشن شد.";
 
-        public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات خاموش شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات {0} خاموش شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgAutoQuoteToggleFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgAutoQuoteToggleFailed = "❌ روشن/خاموش‌کردن مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
         /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، «نماد»، یا قیمت‌جفتی شناخته‌شده
@@ -638,14 +641,17 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                           "قالب صحیح:\n" +
                                                           "نماد فعال\n" +
                                                           "نماد غیرفعال\n\n" +
+                                                          "توجه: بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                           "با نماد دیگر: نماد فعال سکه";
 
-        public const string MsgSymbolActivated = "✅ نماد فعال شد و برای مشتریان قابل‌معامله است.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgSymbolActivated = "✅ نماد {0} فعال شد و برای مشتریان قابل‌معامله است.";
 
-        public const string MsgSymbolDeactivated = "⏸️ نماد غیرفعال شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgSymbolDeactivated = "⏸️ نماد {0} غیرفعال شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgSymbolActiveFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgSymbolActiveFailed = "❌ فعال/غیرفعال‌کردن نماد {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
         /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).
