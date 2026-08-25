@@ -225,6 +225,7 @@ public class OrderMatchingRepository
             // Logged as a warning, not an error: losing the race is the guard working, and
             // the winner's trade is valid. An error would page someone for correct behaviour.
             await transaction.RollbackAsync();
+            await DiscardUnpersistedChangesAsync(buyOrder, sellOrder);
             _logger.LogWarning(ex,
                 "Refused to match Buy={BuyOrderId} with Sell={SellOrderId}: the orders changed " +
                 "concurrently. Another matcher has already filled them.",
@@ -235,8 +236,34 @@ public class OrderMatchingRepository
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
+            await DiscardUnpersistedChangesAsync(buyOrder, sellOrder);
             _logger.LogError(ex, "Error in atomic order matching");
             return (false, null, $"خطا در تطبیق سفارشات: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Undoes the in-memory Status/RemainingAmount mutations step 6 above applies before
+    /// <c>SaveChangesAsync</c> — a rolled-back transaction only undoes the database side; EF
+    /// does not revert tracked property values on a failed save. Left alone, the caller's
+    /// order objects keep showing e.g. <c>Status = Completed</c> even though nothing was
+    /// persisted.
+    ///
+    /// Hit live: a BTC/IRT match failed here on a decimal overflow (the price didn't fit the
+    /// old Trade.Price column), and the caller's cleanup — cancelling both orders to release
+    /// their locked collateral — then threw "سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند"
+    /// against this same poisoned in-memory state, turning a should-have-been-graceful "trade
+    /// failed" into an unhandled 500 with the customer's funds locked and no cleanup run at
+    /// all. Reloading from the database (identity resolution means these are the exact
+    /// entities the caller holds too) makes the caller's next read see reality.
+    /// </summary>
+    private async Task DiscardUnpersistedChangesAsync(Order buyOrder, Order sellOrder)
+    {
+        foreach (var order in new[] { buyOrder, sellOrder })
+        {
+            var entry = _context.Entry(order);
+            if (entry.State != EntityState.Detached)
+                await entry.ReloadAsync();
         }
     }
 

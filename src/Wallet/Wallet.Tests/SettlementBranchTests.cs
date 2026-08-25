@@ -84,12 +84,15 @@ public class SettlementBranchTests : IDisposable
     /// تسویه چهار کیف پول لازم دارد. کیف پول «برای دریافت» ممکن است هرگز ساخته نشده باشد —
     /// مشتری‌ای که تا امروز فقط تومان داشته، کیف پول طلا ندارد.
     ///
-    /// ادعای اصلی این نیست که پیام خطا درست است، بلکه این است که <b>هیچ چیزی جابه‌جا
-    /// نشده</b>: اگر تسویه سه پرداخت را انجام بدهد و روی چهارمی به دیوار بخورد، پول ساخته
-    /// یا نابود شده است.
+    /// این دقیقاً همان چیزی بود که در محیط واقعی خرید اول یک نماد جدید (مثل BTC/IRT) را رد
+    /// می‌کرد — وثیقهٔ فروشنده قبلاً قفل شده بود، ولی چون کیف پول طلای خریدار وجود نداشت
+    /// کل تسویه با «wallets were not found» رول‌بک می‌شد و وثیقه بدون معاملهٔ کامل قفل
+    /// می‌ماند. رفتار درست این است: کیف پولِ ناموجود (برای دارایی معتبر) در همان لحظه ساخته
+    /// شود و تسویه کامل انجام شود، همان‌طور که کیف پول تومان/طلا در ثبت‌نام لِیزی ساخته
+    /// می‌شود.
     /// </summary>
     [Fact]
-    public async Task WhenAParticipantWalletIsMissing_NothingMoves()
+    public async Task WhenAParticipantWalletIsMissing_ItIsCreatedAndSettlementSucceeds()
     {
         // کیف پول طلای خریدار ساخته نشده — همان کیفی که باید طلا را دریافت کند.
         SeedWallet(_buyerId, Quote, balance: 0m, locked: QuoteQuantity);
@@ -100,21 +103,44 @@ public class SettlementBranchTests : IDisposable
         var tradeId = Guid.NewGuid();
         var (success, message) = await SettleAsync(tradeId);
 
+        Assert.True(success, message);
+
+        var buyerBase = await ReloadAsync(_buyerId, Base);
+        Assert.Equal(Quantity, buyerBase.Balance);
+        var buyerQuote = await ReloadAsync(_buyerId, Quote);
+        Assert.Equal(0m, buyerQuote.LockedBalance);
+        var sellerBase = await ReloadAsync(_sellerId, Base);
+        Assert.Equal(0m, sellerBase.LockedBalance);
+        Assert.Equal(0m, sellerBase.Balance);
+
+        Assert.Equal(4, await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
+        Assert.Equal(1, await _context.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
+    }
+
+    /// <summary>
+    /// یک نماد بدشکل که هیچ‌کدام از دو طرفش دارایی واقعی نیست (پس نه فقط ناموجود بلکه
+    /// ناشناخته) نباید کیف پول جعلی بسازد — همان گاردِ <c>IsValidCurrency</c> که در سطح
+    /// شارژ ادمین هم اعمال می‌شود.
+    /// </summary>
+    [Fact]
+    public async Task WhenAParticipantWalletIsMissingForAnUnknownAsset_NothingMoves()
+    {
+        SeedWallet(_buyerId, "NOT_A_REAL_ASSET", balance: 0m, locked: QuoteQuantity);
+        SeedWallet(_sellerId, Base, balance: 0m, locked: Quantity);
+        SeedWallet(_sellerId, "NOT_A_REAL_ASSET", balance: 0m, locked: 0m);
+        _context.SaveChanges();
+
+        var tradeId = Guid.NewGuid();
+        var (success, message) = await SettleAsync(tradeId, $"{Base}/NOT_A_REAL_ASSET");
+
         Assert.False(success);
         Assert.Contains("wallets were not found", message);
 
-        // وثیقهٔ هر دو طرف باید دست‌نخورده بماند تا بعد از ساختن کیف پول، تحویل مجدد
-        // outbox بتواند همین معامله را تسویه کند.
-        var buyerQuote = await ReloadAsync(_buyerId, Quote);
-        Assert.Equal(QuoteQuantity, buyerQuote.LockedBalance);
         var sellerBase = await ReloadAsync(_sellerId, Base);
         Assert.Equal(Quantity, sellerBase.LockedBalance);
         Assert.Equal(0m, sellerBase.Balance);
 
         Assert.Equal(0, await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
-
-        // نکتهٔ مهم برای #39: چون سطر TradeSettlement درج نشده، معامله «تسویه‌شده» به حساب
-        // نمی‌آید و دوباره‌فرستادن پیام مسدود نمی‌شود.
         Assert.Equal(0, await _context.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
     }
 

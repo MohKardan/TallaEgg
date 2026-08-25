@@ -508,16 +508,24 @@ namespace TallaEgg.TelegramBot
                         TallaEgg.Core.DTOs.ApiResponse<BestPricesDto> apiResponse = await _orderApi.GetBestPricesAsync(asset);
                         if (apiResponse != null && apiResponse.Success)
                         {
-                            apiResponse.Data.BestBidPrice *= 4.3318m;
-                            apiResponse.Data.BestAskPrice *= 4.3318m;
-
                             await _messenger.DeleteAsync(chatId, message.Id);
 
                             await _messenger.SendAsync(chatId, BestPricesMessage.Build(
-                                apiResponse.Data.BestBidPrice, apiResponse.Data.BestAskPrice));
+                                apiResponse.Data.BestBidPrice, apiResponse.Data.BestAskPrice, asset));
 
-                            assetConversation.BestBidPrice = apiResponse.Data.BestBidPrice;
-                            assetConversation.BestAskPrice = apiResponse.Data.BestAskPrice;
+                            // Stored for the market-order path (HandleOrderTypeSelectionAsync),
+                            // which feeds this straight into HandleOrderPriceInputAsync — the same
+                            // place a manually-typed limit price lands. That method only divides a
+                            // gold price back down from per-mesghal to per-gram, so gold's stored
+                            // value must already be per-mesghal here; every other symbol has no
+                            // such internal/display split and is stored as-is.
+                            var isGold = asset == CurrenciesConstant.MAUA_IRT;
+                            assetConversation.BestBidPrice = isGold
+                                ? apiResponse.Data.BestBidPrice * CurrenciesConstant.GramsPerMesghal
+                                : apiResponse.Data.BestBidPrice;
+                            assetConversation.BestAskPrice = isGold
+                                ? apiResponse.Data.BestAskPrice * CurrenciesConstant.GramsPerMesghal
+                                : apiResponse.Data.BestAskPrice;
                         }
 
                         await _messenger.SendSpotSideMenuKeyboard(chatId);
