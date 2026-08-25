@@ -28,11 +28,7 @@ namespace TallaEgg.Core
         public const decimal GramsPerMesghal = 4.3318m;
 
         // 🔹 ثابت‌های جفت‌های معاملاتی
-        public const string BTC_USDT = "BTC/USDT";
-        public const string ETH_USDT = "ETH/USDT";
-        public const string ADA_USD = "ADA/USD";
         public const string BTC_IRT = "BTC/IRT";
-        public const string ETH_IRT = "ETH/IRT";
         public const string MAUA_IRT = "MAUA/IRT";
         public const string SEKE_BAHAR_IRT = "SEKE_BAHAR/IRT";
 
@@ -54,18 +50,6 @@ namespace TallaEgg.Core
         private static readonly Dictionary<string, TradingPairInfo> DefaultTradingPairs =
             new(StringComparer.OrdinalIgnoreCase)
             {
-                [BTC_USDT] = new TradingPairInfo
-                {
-                    Symbol = BTC_USDT, BaseAsset = "BTC", QuoteAsset = "USDT", PersianName = "بیت‌کوین/تتر",
-                    MinQuantity = 0.001m, MaxQuantity = 1000m, PriceDecimalPlaces = 2, QuantityDecimalPlaces = 6,
-                    MinNotional = 10m, BaseAssetPersianName = "بیت‌کوین", BaseUnit = "بیت‌کوین", BaseDecimalPlaces = 8
-                },
-                [ETH_USDT] = new TradingPairInfo
-                {
-                    Symbol = ETH_USDT, BaseAsset = "ETH", QuoteAsset = "USDT", PersianName = "اتریوم/تتر",
-                    MinQuantity = 0.01m, MaxQuantity = 10000m, PriceDecimalPlaces = 2, QuantityDecimalPlaces = 4,
-                    MinNotional = 10m, BaseAssetPersianName = "اتریوم", BaseUnit = "اتریوم", BaseDecimalPlaces = 8
-                },
                 [BTC_IRT] = new TradingPairInfo
                 {
                     Symbol = BTC_IRT, BaseAsset = Btc, QuoteAsset = Toman, PersianName = "بیت‌کوین/تومان",

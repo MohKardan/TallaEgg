@@ -205,4 +205,19 @@ public class CurrenciesConstantSymbolsTests
     {
         Assert.DoesNotContain("اعتبار", CurrenciesConstant.GetPersianNamesList());
     }
+
+    /// <summary>
+    /// BTC/USDT and ETH/USDT were dead compiled defaults — no market, no quote, no price
+    /// provider, referenced nowhere else in the repo — yet their base assets still showed up as
+    /// an "allowed type" in the شارژ/کسر error text, since BuildCurrencies derives a currency
+    /// entry from every compiled pair regardless of whether it does anything. "اتریوم" in
+    /// particular had no real counterpart (unlike "BTC", already covered by the real BTC/IRT
+    /// pair), so admins reading the help text could charge an asset with no purpose in this
+    /// system. Removed rather than hidden, since nothing used them.
+    /// </summary>
+    [Fact]
+    public void GetPersianNamesList_DoesNotOfferTheDeadLegacyUsdtPairs()
+    {
+        Assert.DoesNotContain("اتریوم", CurrenciesConstant.GetPersianNamesList());
+    }
 }
