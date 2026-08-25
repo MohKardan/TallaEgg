@@ -143,4 +143,66 @@ public class CurrenciesConstantSymbolsTests
     {
         Assert.Null(CurrenciesConstant.ResolveSymbolByAlias("نقره"));
     }
+
+    // ── ResolveCurrencyCode — the شارژ/deduct commands' resolver, not the quote commands' ──
+
+    /// <summary>
+    /// Hit live: "ش 09158527483 100 سکه" failed with "نوع شناسایی نشد" because this resolver
+    /// only matched an exact code or the full Persian name ("سکه تمام بهار آزادی"), never the
+    /// short alias the quote commands already accept. It now falls back to the same alias list.
+    /// </summary>
+    [Fact]
+    public void ResolveCurrencyCode_AcceptsTheShortAliasNotJustTheFullPersianName()
+    {
+        Assert.Equal(CurrenciesConstant.SekeBahar, CurrenciesConstant.ResolveCurrencyCode("سکه"));
+        Assert.Equal(CurrenciesConstant.Btc, CurrenciesConstant.ResolveCurrencyCode("بیت"));
+    }
+
+    [Fact]
+    public void ResolveCurrencyCode_StillAcceptsTheFullPersianNameAndTheCode()
+    {
+        Assert.Equal(CurrenciesConstant.SekeBahar, CurrenciesConstant.ResolveCurrencyCode("سکه تمام بهار آزادی"));
+        Assert.Equal(CurrenciesConstant.Btc, CurrenciesConstant.ResolveCurrencyCode("BTC"));
+    }
+
+    [Fact]
+    public void ResolveCurrencyCode_ReturnsNullForSomethingThatMatchesNothing()
+    {
+        Assert.Null(CurrenciesConstant.ResolveCurrencyCode("نقره"));
+    }
+
+    // ── CreditAssetFor / GetPersianNamesList — every tradable asset gets a CREDIT_ ledger now ──
+
+    [Fact]
+    public void CreditAssetFor_PrefixesTheBaseAssetCode()
+    {
+        Assert.Equal("CREDIT_BTC", CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Btc));
+        Assert.Equal("CREDIT_MAUA", CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua));
+    }
+
+    /// <summary>
+    /// Every tradable asset's CREDIT_ variant is a recognised currency, with its own Persian
+    /// name — not just CREDIT_MAUA as a hardcoded special case.
+    /// </summary>
+    [Fact]
+    public void GetCurrencyInfo_RecognisesTheCreditVariantOfEveryTradableAsset()
+    {
+        var creditBtc = CurrenciesConstant.GetCurrencyInfo("CREDIT_BTC");
+
+        Assert.NotNull(creditBtc);
+        Assert.Equal("اعتبار بیت‌کوین", creditBtc.PersianName);
+        Assert.False(creditBtc.IsTradable);
+    }
+
+    /// <summary>
+    /// The شارژ/deduct commands always prepend CREDIT_ themselves (<see cref="CreditAssetFor"/>).
+    /// If an admin typed a CREDIT_ name directly as the currency argument, resolving it and
+    /// prepending CREDIT_ again would produce a meaningless double-prefixed code
+    /// ("CREDIT_CREDIT_MAUA") — so the help text this method feeds must not suggest typing one.
+    /// </summary>
+    [Fact]
+    public void GetPersianNamesList_OmitsCreditVariants()
+    {
+        Assert.DoesNotContain("اعتبار", CurrenciesConstant.GetPersianNamesList());
+    }
 }

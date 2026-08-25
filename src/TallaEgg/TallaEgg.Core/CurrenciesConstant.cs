@@ -92,17 +92,21 @@ namespace TallaEgg.Core
         private static Dictionary<string, TradingPairInfo> _pairs =
             new(DefaultTradingPairs, StringComparer.OrdinalIgnoreCase);
 
-        // Toman and the gold credit ceiling are structural to the whole system — the one unit of
-        // account, and a credit facility tied specifically to gold — rather than "a symbol", so
-        // they are fixed entries instead of being derived from a trading pair like every base
-        // asset below is.
+        // Toman is structural to the whole system — the one unit of account — rather than "a
+        // symbol", so it is a fixed entry instead of being derived from a trading pair like
+        // every base asset (and its CREDIT_ ledger) below is.
         private static readonly CurrencyInfo TomanInfo = new()
         { Code = Toman, PersianName = "تومان", Unit = "تومان", DecimalPlaces = 0, IsTradable = false };
 
-        private static readonly CurrencyInfo CreditMauaInfo = new()
-        { Code = Credit_MAUA, PersianName = "اعتبار آبشده", Unit = "گرم", DecimalPlaces = 2, IsTradable = false };
-
         private static Dictionary<string, CurrencyInfo> _currencies = BuildCurrencies(_pairs);
+
+        /// <summary>
+        /// The credit-ledger asset code for a tradable base asset, e.g. <c>MAUA</c> →
+        /// <c>CREDIT_MAUA</c>. Every tradable asset gets one (see <see cref="BuildCurrencies"/>) —
+        /// credit was gold-only back when gold was the only tradable asset; it is a per-asset
+        /// ceiling now that there is more than one.
+        /// </summary>
+        public static string CreditAssetFor(string baseAsset) => "CREDIT_" + baseAsset;
 
         /// <summary>
         /// Merges the "Symbols" section of the shared config file on top of the compiled
@@ -171,21 +175,35 @@ namespace TallaEgg.Core
         {
             var map = new Dictionary<string, CurrencyInfo>(StringComparer.OrdinalIgnoreCase)
             {
-                [Toman] = TomanInfo,
-                [Credit_MAUA] = CreditMauaInfo
+                [Toman] = TomanInfo
             };
 
             foreach (var pair in pairs.Values)
             {
                 if (string.IsNullOrWhiteSpace(pair.BaseAsset)) continue;
 
+                var baseName = string.IsNullOrWhiteSpace(pair.BaseAssetPersianName) ? pair.BaseAsset : pair.BaseAssetPersianName;
+
                 map[pair.BaseAsset] = new CurrencyInfo
                 {
                     Code = pair.BaseAsset,
-                    PersianName = string.IsNullOrWhiteSpace(pair.BaseAssetPersianName) ? pair.BaseAsset : pair.BaseAssetPersianName,
+                    PersianName = baseName,
                     Unit = pair.BaseUnit,
                     DecimalPlaces = pair.BaseDecimalPlaces,
                     IsTradable = true
+                };
+
+                // One credit ledger per tradable asset (issue: multi-symbol شارژ, see the
+                // conversation that added this) — same ceiling concept CREDIT_MAUA already was,
+                // generalized instead of staying a MAUA-only special case.
+                var creditCode = CreditAssetFor(pair.BaseAsset);
+                map[creditCode] = new CurrencyInfo
+                {
+                    Code = creditCode,
+                    PersianName = "اعتبار " + baseName,
+                    Unit = pair.BaseUnit,
+                    DecimalPlaces = pair.BaseDecimalPlaces,
+                    IsTradable = false
                 };
             }
 
@@ -333,18 +351,35 @@ namespace TallaEgg.Core
             if (_currencies.TryGetValue(trimmed, out var byCode))
                 return byCode.Code;
 
-            // سپس تطبیق با نام فارسی
+            // سپس تطبیق با نام فارسی کامل
             var byName = _currencies.Values.FirstOrDefault(c =>
                 string.Equals(c.PersianName, trimmed, StringComparison.OrdinalIgnoreCase));
 
-            return byName?.Code;
+            if (byName is not null)
+                return byName.Code;
+
+            // در نهایت کلیدواژهٔ کوتاه («سکه»، «بیت») — همان فهرستی که دستورهای مظنه از آن
+            // استفاده می‌کنند (TradingPairInfo.Aliases)، تا مدیر مجبور نباشد برای هر دستور
+            // اسم متفاوتی به خاطر بسپارد.
+            var bySymbolAlias = ResolveSymbolByAlias(trimmed);
+            if (bySymbolAlias is not null)
+                return GetTradingPairInfo(bySymbolAlias)?.BaseAsset;
+
+            return null;
         }
 
         /// <summary>
-        /// فهرست نام‌های فارسی ارزها برای نمایش در پیام خطا (به‌جای کدهای لاتین).
+        /// فهرست نام‌های فارسی ارزهای قابل‌تایپ برای نمایش در پیام خطا (به‌جای کدهای لاتین).
+        ///
+        /// نسخهٔ CREDIT_ هر دارایی عمداً حذف شده: دستورهای «ش»/«د» خودشان همیشه پیشوند
+        /// CREDIT_ را اضافه می‌کنند، پس اگر ادمین «اعتبار آبشده» را مستقیم تایپ کند نتیجه یک
+        /// کد دوبار-پیشونددار بی‌معنا («CREDIT_CREDIT_MAUA») می‌شود — این فهرست برای جلوگیری
+        /// از همان تایپ است، نه تشویق آن.
         /// </summary>
         public static string GetPersianNamesList() =>
-            string.Join("، ", _currencies.Values.Select(c => c.PersianName));
+            string.Join("، ", _currencies.Values
+                .Where(c => !c.Code.StartsWith("CREDIT_", StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.PersianName));
 
         /// <summary>
         /// نام فارسی جفت معاملاتی برای نمایش به کاربر (مثل «آبشده/تومان»).

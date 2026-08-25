@@ -38,7 +38,8 @@ namespace TallaEgg.TelegramBot
             {
                 // ش 09121234567 50000 دلاری
                 // ش 09121234567 50000
-                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                // ش 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
@@ -71,7 +72,7 @@ namespace TallaEgg.TelegramBot
                 {
                     var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = "CREDIT_" + currency, //فعلا ادمین شارژ کنه اعتباری شارژ میشه
+                        Asset = CurrenciesConstant.CreditAssetFor(currency), // شارژ ادمین همیشه اعتباری‌ست
                         Amount = amount,
                         UserId = userDto.Id
                     });
@@ -117,9 +118,10 @@ namespace TallaEgg.TelegramBot
 
             if (msgText.StartsWith("د"))
             {
-                // ش 09121234567 50000 دلاری
-                // ش 09121234567 50000
-                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                // د 09121234567 50000 دلاری
+                // د 09121234567 50000
+                // د 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
