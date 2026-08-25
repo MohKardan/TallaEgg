@@ -913,9 +913,10 @@ static bool IsValidSymbolFormat(string symbol)
     if (string.IsNullOrWhiteSpace(symbol))
         return false;
 
-    // Basic validation for trading pairs (e.g., BTC/USDT, ETH/BTC)
-    // Adjust regex pattern based on your symbol format requirements
-    return System.Text.RegularExpressions.Regex.IsMatch(symbol, @"^[A-Z]{2,10}(/[A-Z]{2,10})?$");
+    // Basic validation for trading pairs (e.g., BTC/IRT, SEKE_BAHAR/IRT). Underscores are
+    // allowed within a segment — SEKE_BAHAR is a real platform symbol, not a typo — so this
+    // must not be tightened back to letters-only without checking CurrenciesConstant first.
+    return System.Text.RegularExpressions.Regex.IsMatch(symbol, @"^[A-Z][A-Z0-9_]{1,14}(/[A-Z][A-Z0-9_]{1,14})?$");
 }
 
 // Remove all other endpoints - keeping only the essential unified ones

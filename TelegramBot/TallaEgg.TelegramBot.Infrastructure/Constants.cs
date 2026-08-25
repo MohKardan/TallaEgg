@@ -270,13 +270,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                            "پس از تایید، موجودی شما در همین ربات به‌روز می‌شود.";
 
         /// <summary>
-        /// بهترین قیمت‌های خرید و فروش بازار. {0}=بهترین خرید، {1}=بهترین فروش
-        /// (هر دو قالب‌بندی‌شده و بر حسب «هر مثقال»).
-        /// ذکر واحد «مثقال» ضروری است، چون قیمت‌ها در جای دیگر بر حسب «گرم» نمایش داده می‌شوند.
+        /// بهترین قیمت‌های خرید و فروش بازار. {0}=واحد نمایش (مثقال برای طلا، وگرنه
+        /// واحد پایهٔ همان نماد — سکه، بیت‌کوین و ...)، {1}=بهترین خرید، {2}=بهترین فروش.
+        /// ذکر واحد ضروری است، چون قیمت طلا در جای دیگر بر حسب «گرم» نمایش داده می‌شود و
+        /// واحد نمادهای دیگر (سکه، بیت‌کوین) با هم یکی نیست.
         /// </summary>
-        public const string MsgBestPrices = "📊 بهترین قیمت‌های بازار (هر مثقال)\n\n" +
-                                           "💰 خرید: {0}\n" +
-                                           "💸 فروش: {1}";
+        public const string MsgBestPrices = "📊 بهترین قیمت‌های بازار (هر {0})\n\n" +
+                                           "💰 خرید: {1}\n" +
+                                           "💸 فروش: {2}";
 
         /// <summary>
         /// وقتی در آن سمت بازار هیچ سفارشی ثبت نشده باشد. نمایش «۰ تومان» گمراه‌کننده
@@ -324,18 +325,24 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAdminChargeFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "ش [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
-                                                        "نوع‌های مجاز: {0}";
+                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "نوع‌های مجاز: {0}\n" +
+                                                        "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         /// <summary>{0} = فهرست نام‌های فارسی ارزهای مجاز</summary>
         public const string MsgAdminDeductFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "د [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
-                                                        "نوع‌های مجاز: {0}";
+                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "نوع‌های مجاز: {0}\n" +
+                                                        "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         /// <summary>{0} = ورودی نامعتبر کاربر، {1} = فهرست نام‌های فارسی مجاز</summary>
-        public const string MsgAdminInvalidCurrency = "❌ نوع «{0}» شناسایی نشد.\n\nنوع‌های مجاز: {1}";
+        public const string MsgAdminInvalidCurrency = "❌ نوع «{0}» شناسایی نشد.\n\n" +
+                                                       "نوع‌های مجاز: {1}\n" +
+                                                       "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         public const string MsgAdminUserNotFound = "❌ کاربری با این شمارهٔ تلفن پیدا نشد.";
 
@@ -600,24 +607,27 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                              "نمونه: اسپرد 0.5\n" +
                                                              "نمونه: اسپرد 0.5 سکه";
 
-        /// <summary>{0} = درصد اسپرد جدید</summary>
-        public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات روی {0}٪ تنظیم شد.";
+        /// <summary>{0} = نام فارسی نماد، {1} = درصد اسپرد جدید</summary>
+        public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات {0} روی {1}٪ تنظیم شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         public const string MsgAutoQuoteToggleFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                              "قالب صحیح:\n" +
                                                              "اتومات روشن\n" +
                                                              "اتومات خاموش\n\n" +
+                                                             "توجه: هر نماد تنظیم اتومات جدا دارد — بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                              "با نماد دیگر: اتومات روشن سکه";
 
-        public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات روشن شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات {0} روشن شد.";
 
-        public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات خاموش شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات {0} خاموش شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgAutoQuoteToggleFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgAutoQuoteToggleFailed = "❌ روشن/خاموش‌کردن مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
         /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، «نماد»، یا قیمت‌جفتی شناخته‌شده
@@ -632,14 +642,17 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                           "قالب صحیح:\n" +
                                                           "نماد فعال\n" +
                                                           "نماد غیرفعال\n\n" +
+                                                          "توجه: بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                           "با نماد دیگر: نماد فعال سکه";
 
-        public const string MsgSymbolActivated = "✅ نماد فعال شد و برای مشتریان قابل‌معامله است.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgSymbolActivated = "✅ نماد {0} فعال شد و برای مشتریان قابل‌معامله است.";
 
-        public const string MsgSymbolDeactivated = "⏸️ نماد غیرفعال شد.";
+        /// <summary>{0} = نام فارسی نماد</summary>
+        public const string MsgSymbolDeactivated = "⏸️ نماد {0} غیرفعال شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
-        public const string MsgSymbolActiveFailed = "❌ انجام نشد.\n\nدلیل: {0}";
+        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        public const string MsgSymbolActiveFailed = "❌ فعال/غیرفعال‌کردن نماد {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
         /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).

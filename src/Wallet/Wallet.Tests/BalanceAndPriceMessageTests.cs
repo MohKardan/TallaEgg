@@ -110,7 +110,7 @@ public class BalanceAndPriceMessageTests
     [Fact]
     public void AMissingPrice_SaysSoInsteadOfShowingZero()
     {
-        var text = BestPricesMessage.Build(bestBidPrice: null, bestAskPrice: 80_000_000m);
+        var text = BestPricesMessage.Build(bestBidPrice: null, bestAskPrice: 80_000_000m, CurrenciesConstant.BTC_IRT);
 
         // Only the missing side is affected; the present one still shows its number.
         var buyLine = text.Split('\n').Single(l => l.Contains("خرید"));
@@ -124,7 +124,7 @@ public class BalanceAndPriceMessageTests
     [Fact]
     public void BothSidesMissing_ProducesNoNumbersAtAll()
     {
-        var text = BestPricesMessage.Build(null, null);
+        var text = BestPricesMessage.Build(null, null, CurrenciesConstant.BTC_IRT);
 
         Assert.Equal(2, text.Split(BotMsgs.MsgPriceNotAvailable).Length - 1);
     }
@@ -132,7 +132,7 @@ public class BalanceAndPriceMessageTests
     [Fact]
     public void PresentPricesAreShownWithTheirUnit()
     {
-        var text = BestPricesMessage.Build(79_000_000m, 80_000_000m);
+        var text = BestPricesMessage.Build(79_000_000m, 80_000_000m, CurrenciesConstant.BTC_IRT);
 
         Assert.Contains(PersianFormat.Number(79_000_000m), text);
         Assert.Contains(PersianFormat.Number(80_000_000m), text);
@@ -146,12 +146,54 @@ public class BalanceAndPriceMessageTests
     [Fact]
     public void TheBidIsShownOnTheBuyLineAndTheAskOnTheSellLine()
     {
-        var text = BestPricesMessage.Build(bestBidPrice: 79_000_000m, bestAskPrice: 80_000_000m);
+        var text = BestPricesMessage.Build(bestBidPrice: 79_000_000m, bestAskPrice: 80_000_000m, CurrenciesConstant.BTC_IRT);
 
         var buyLine = text.Split('\n').Single(l => l.Contains("خرید"));
         var sellLine = text.Split('\n').Single(l => l.Contains("فروش"));
 
         Assert.Contains(PersianFormat.Number(79_000_000m), buyLine);
         Assert.Contains(PersianFormat.Number(80_000_000m), sellLine);
+    }
+
+    /// <summary>
+    /// Gold is quoted internally per gram but shown per mesghal everywhere else in the bot
+    /// (order confirmations, trade history, quote history) — this message must not be the
+    /// one place a customer sees the raw per-gram figure under a «مثقال» label.
+    /// </summary>
+    [Fact]
+    public void ForGold_ThePriceIsConvertedToPerMesghalAndLabelledAsSuch()
+    {
+        var text = BestPricesMessage.Build(79_000_000m, 80_000_000m, CurrenciesConstant.MAUA_IRT);
+
+        Assert.Contains("هر مثقال", text);
+        Assert.Contains(PersianFormat.Number(79_000_000m * CurrenciesConstant.GramsPerMesghal), text);
+        Assert.Contains(PersianFormat.Number(80_000_000m * CurrenciesConstant.GramsPerMesghal), text);
+    }
+
+    /// <summary>
+    /// Hit live: every non-gold symbol showed «هر مثقال» and a price multiplied by 4.3318
+    /// regardless of what it actually traded in, because the conversion used to be applied
+    /// unconditionally in the bot handler rather than gated on the symbol. Bitcoin isn't
+    /// bought or sold by the gram at all, so both the label and the number were wrong.
+    /// </summary>
+    [Fact]
+    public void ForBitcoin_ThePriceIsShownAsIsUnderItsOwnUnit()
+    {
+        var text = BestPricesMessage.Build(79_000_000m, 80_000_000m, CurrenciesConstant.BTC_IRT);
+
+        Assert.Contains("هر بیت‌کوین", text);
+        Assert.DoesNotContain("هر مثقال", text);
+        Assert.Contains(PersianFormat.Number(79_000_000m), text);
+        Assert.Contains(PersianFormat.Number(80_000_000m), text);
+    }
+
+    [Fact]
+    public void ForTheCoin_ThePriceIsShownAsIsUnderItsOwnUnit()
+    {
+        var text = BestPricesMessage.Build(79_000_000m, 80_000_000m, CurrenciesConstant.SEKE_BAHAR_IRT);
+
+        Assert.Contains("هر سکه", text);
+        Assert.Contains(PersianFormat.Number(79_000_000m), text);
+        Assert.Contains(PersianFormat.Number(80_000_000m), text);
     }
 }

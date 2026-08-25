@@ -179,6 +179,36 @@ public class SettleTradeAsyncTests : IDisposable
         Assert.Equal(0, count);
     }
 
+    /// <summary>
+    /// Hit live: a customer's first-ever trade of a newer symbol (BTC/IRT, SEKE_BAHAR/IRT) failed
+    /// settlement entirely — "One or more participant wallets were not found" — because
+    /// CreateDefaultWalletsAsync only ever seeds Toman/MAUA/CREDIT_MAUA at registration, so the
+    /// buyer's base-asset wallet (the side receiving something they've never held before) simply
+    /// didn't exist yet. The seller's collateral was already locked by that point, so a refused
+    /// settlement here meant locked funds with no completed trade, not merely a rejected request.
+    /// </summary>
+    [Fact]
+    public async Task SettleTradeAsync_WhenBuyerHasNeverHeldTheBaseAssetBefore_CreatesTheirWalletAndSettles()
+    {
+        // Everything seeded except the buyer's base-asset wallet — the realistic case, since
+        // Toman (quote) is always seeded at registration and the seller's base-asset wallet must
+        // already exist to have locked collateral in the first place.
+        SeedWallet(_buyerId, Quote, balance: 0m, locked: QuoteQuantity);
+        SeedWallet(_sellerId, Base, balance: 0m, locked: Quantity);
+        SeedWallet(_sellerId, Quote, balance: 0m, locked: 0m);
+        _context.SaveChanges();
+        var tradeId = Guid.NewGuid();
+
+        var (success, message) = await _repository.SettleTradeAsync(
+            tradeId, _buyerId, _sellerId, $"{Base}/{Quote}",
+            Quantity, QuoteQuantity, feeBuyer: 0m, feeSeller: 0m);
+
+        Assert.True(success, message);
+
+        var buyerBase = await ReloadAsync(_buyerId, Base);
+        Assert.Equal(Quantity, buyerBase.Balance);
+    }
+
     [Fact]
     public async Task SettleTradeAsync_WhenCollateralNotLocked_FailsAndChangesNothing()
     {

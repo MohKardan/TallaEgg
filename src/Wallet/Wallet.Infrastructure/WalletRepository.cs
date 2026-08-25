@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using TallaEgg.Core;
 using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
 
@@ -118,7 +119,22 @@ public class WalletRepository : IWalletRepository
     public async Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await GetWalletAsync(userId, asset);
-        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+        if (wallet == null)
+        {
+            // Hit live: selling BTC/SEKE_BAHAR failed for every customer and the market maker
+            // alike with "کیف پول پیدا نشد", because CreateDefaultWalletsAsync only ever seeds
+            // Toman/MAUA/CREDIT_MAUA at registration — a newer trading symbol's wallet never
+            // existed for anyone until now. Same fix as WalletService.IncreaseBalanceAsync
+            // (issue: charge-command bugs earlier in this conversation), applied here since
+            // trading locks collateral through this repository directly, not through that
+            // service. A genuinely unknown asset still fails instead of creating a phantom
+            // wallet.
+            if (!CurrenciesConstant.IsValidCurrency(asset))
+                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+        }
 
         var transaction = Transaction.Create(
           wallet.Id,
@@ -142,7 +158,17 @@ public class WalletRepository : IWalletRepository
     public async Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await GetWalletAsync(userId, asset);
-        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+        if (wallet == null)
+        {
+            // Same reasoning as LockBalanceAsync — kept symmetric even though, in the normal
+            // order-cancellation flow, a Lock always precedes the matching Unlock and so the
+            // wallet already exists by then.
+            if (!CurrenciesConstant.IsValidCurrency(asset))
+                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+        }
 
         if (amount < 0)
             throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
@@ -183,7 +209,20 @@ public class WalletRepository : IWalletRepository
     public async Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await GetWalletAsync(userId, asset);
-        if (wallet == null) throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+        if (wallet == null)
+        {
+            // The most serious of the three (Lock/Unlock/this): this is trade settlement
+            // crediting the buyer's side. Without this fix, a buyer's first-ever purchase of a
+            // newer symbol would have the seller's collateral already consumed while the buyer
+            // receives nothing — the outbox settlement failing here, not merely a customer-facing
+            // "wallet not found" message (issue #39 territory: a stuck settlement, not just a
+            // refused request).
+            if (!CurrenciesConstant.IsValidCurrency(asset))
+                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+
+            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+        }
 
         var transaction = Transaction.Create(
           wallet.Id,
@@ -282,10 +321,26 @@ public class WalletRepository : IWalletRepository
             var sellerBase = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == sellerUserId && w.Asset == baseAsset);
             var sellerQuote = await _context.Wallets.FirstOrDefaultAsync(w => w.UserId == sellerUserId && w.Asset == quoteAsset);
 
+            // buyerBase and sellerQuote are the *receiving* sides — for a newer symbol nobody
+            // has ever bought before, the buyer's base-asset wallet (and, symmetrically, a
+            // first-time seller's quote-asset wallet) may never have been created. Without this,
+            // the entire settlement rolled back — collateral already locked at order time, buyer
+            // credited nothing — the most serious of the wallet-creation gaps found in this
+            // conversation, since it fails settlement itself rather than a customer-facing
+            // request. buyerQuote/sellerBase are the *locked* sides and should already exist from
+            // LockBalanceAsync's own fix, but are created here too for symmetry and safety.
             if (buyerQuote is null || buyerBase is null || sellerBase is null || sellerQuote is null)
             {
-                await tx.RollbackAsync();
-                return (false, "One or more participant wallets were not found.");
+                if (!CurrenciesConstant.IsValidCurrency(baseAsset) || !CurrenciesConstant.IsValidCurrency(quoteAsset))
+                {
+                    await tx.RollbackAsync();
+                    return (false, "One or more participant wallets were not found.");
+                }
+
+                buyerQuote ??= await CreateWalletAsync(WalletEntity.Create(buyerUserId, quoteAsset));
+                buyerBase ??= await CreateWalletAsync(WalletEntity.Create(buyerUserId, baseAsset));
+                sellerBase ??= await CreateWalletAsync(WalletEntity.Create(sellerUserId, baseAsset));
+                sellerQuote ??= await CreateWalletAsync(WalletEntity.Create(sellerUserId, quoteAsset));
             }
 
             // The collateral must actually be locked. Guards against the lock-after-match ordering bug (audit C-5):

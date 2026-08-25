@@ -45,7 +45,18 @@ public class WalletService : IWalletService
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
 
         if (wallet == null)
-            throw new ArgumentException("کیف پول وجود ندارد");
+        {
+            // Only CreateDefaultWalletsAsync's three wallets (Toman, MAUA, CREDIT_MAUA) exist at
+            // registration. Every other asset — a newer trading symbol, or its own CREDIT_
+            // ledger — has no wallet for anyone, existing user or new, until they first receive
+            // one; creating it here on first deposit is that "first receive". A genuinely
+            // unknown asset code (a typo, not a real symbol) still fails loudly instead of
+            // silently creating a phantom wallet.
+            if (!CurrenciesConstant.IsValidCurrency(asset))
+                throw new ArgumentException("کیف پول وجود ندارد");
+
+            wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
+        }
 
         // Update existing wallet
         // Create transaction record
@@ -78,8 +89,16 @@ public class WalletService : IWalletService
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
 
         if (wallet == null)
-            throw new ArgumentException("کیف پول وجود ندارد");
-       
+        {
+            // Same reasoning as IncreaseBalanceAsync: a valid asset with no wallet yet gets one
+            // lazily rather than failing "کیف پول وجود ندارد" for something that was never
+            // credited. Decreasing an empty, just-created wallet then behaves exactly like
+            // decreasing any other zero-balance wallet — unrelated to this fix.
+            if (!CurrenciesConstant.IsValidCurrency(asset))
+                throw new ArgumentException("کیف پول وجود ندارد");
+
+            wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
+        }
 
         // Update existing wallet
         // Create transaction record

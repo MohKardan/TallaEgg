@@ -38,7 +38,8 @@ namespace TallaEgg.TelegramBot
             {
                 // ش 09121234567 50000 دلاری
                 // ش 09121234567 50000
-                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                // ش 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
@@ -71,7 +72,7 @@ namespace TallaEgg.TelegramBot
                 {
                     var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = "CREDIT_" + currency, //فعلا ادمین شارژ کنه اعتباری شارژ میشه
+                        Asset = CurrenciesConstant.CreditAssetFor(currency), // شارژ ادمین همیشه اعتباری‌ست
                         Amount = amount,
                         UserId = userDto.Id
                     });
@@ -117,9 +118,10 @@ namespace TallaEgg.TelegramBot
 
             if (msgText.StartsWith("د"))
             {
-                // ش 09121234567 50000 دلاری
-                // ش 09121234567 50000
-                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>\S+))?$",
+                // د 09121234567 50000 دلاری
+                // د 09121234567 50000
+                // د 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
@@ -623,9 +625,11 @@ namespace TallaEgg.TelegramBot
             var (success, message) = await _orderApi.UpdateAutoQuoteSpreadAsync(
                 symbol, spreadPercent, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, PersianFormat.Number(spreadPercent, decimals: 2))
-                : string.Format(BotMsgs.MsgAutoQuoteSpreadFailed, message));
+                ? string.Format(BotMsgs.MsgAutoQuoteSpreadUpdated, symbolName, PersianFormat.Number(spreadPercent, decimals: 2))
+                : string.Format(BotMsgs.MsgAutoQuoteSpreadFailed, symbolName, message));
         }
 
         /// <summary>
@@ -655,9 +659,11 @@ namespace TallaEgg.TelegramBot
 
             var (success, message) = await _orderApi.SetAutoQuoteEnabledAsync(symbol, enable, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? (enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled)
-                : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, message));
+                ? string.Format(enable ? BotMsgs.MsgAutoQuoteEnabled : BotMsgs.MsgAutoQuoteDisabled, symbolName)
+                : string.Format(BotMsgs.MsgAutoQuoteToggleFailed, symbolName, message));
         }
 
         /// <summary>
@@ -688,9 +694,11 @@ namespace TallaEgg.TelegramBot
 
             var (success, message) = await _orderApi.SetSymbolActiveAsync(symbol, makeActive, actor.Id);
 
+            var symbolName = PersianFormat.Symbol(symbol);
+
             await _messenger.SendAsync(chatId, success
-                ? (makeActive ? BotMsgs.MsgSymbolActivated : BotMsgs.MsgSymbolDeactivated)
-                : string.Format(BotMsgs.MsgSymbolActiveFailed, message));
+                ? string.Format(makeActive ? BotMsgs.MsgSymbolActivated : BotMsgs.MsgSymbolDeactivated, symbolName)
+                : string.Format(BotMsgs.MsgSymbolActiveFailed, symbolName, message));
         }
 
         /// <summary>
