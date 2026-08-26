@@ -1,7 +1,7 @@
 # Re-Audit — August 2026
 
 **Audit Date**: August 26, 2026
-**Overall Score**: 6.4/10 (was 4.6/10 on July 8)
+**Overall Score**: 6.6/10 (was 4.6/10 on July 8)
 **Production Readiness**: ~55% (was 30%)
 **Scope**: every service and project in the repository **except Affiliate**, which was
 excluded from this pass at the product owner's request.
@@ -161,19 +161,36 @@ enforced where the balance changes, with the market maker as an explicit excepti
 rather than re-implemented at each call site. This is the same conclusion #36 reaches
 from the other direction, and is an argument for doing #36 sooner.
 
-### N-2 (HIGH): Two tracked test suites are never compiled or run
+### N-2 (LOW): Two abandoned test directories are tracked but never compiled
 
-- `TelegramBot/TallaEgg.TelegramBot.Tests/` — a real project, 9 files, 22 tests. **Not
-  referenced in `TallaEgg.sln`**, so `dotnet build TallaEgg.sln` skips it entirely.
-- `src/Order/Orders.Tests/` — `OrderApiTests.cs` and `OrderMatchingLogicTests.cs` are
-  tracked in git, but the directory **has no `.csproj` at all**. Nothing compiles them.
+> **Corrected 27 Shahrivar.** This finding was first filed at HIGH severity on the claim
+> that the bot had no tests running against it. **That claim was wrong.** The bot is
+> well covered — 17 test files in `Wallet.Tests` exercise the handlers, conversation
+> flow, registration, admin commands and message builders, and all of them run. There
+> is also a simulator project (#101) in the solution. The original finding was reached
+> by looking at directory names rather than at content, and the corrected severity and
+> remedy are below. See #117.
 
-CI (`build-and-test.yml:59`) runs `dotnet test` against `Wallet.Tests.csproj` and
-nothing else, so neither suite runs there either. The 483 green tests are all from one
-project, and the bot — the only component a customer touches — has none running.
+- `TelegramBot/TallaEgg.TelegramBot.Tests/` — a project with 9 files and 22 tests, not
+  referenced in `TallaEgg.sln`. **Last modified August–September 2025**, roughly a year
+  ago.
+- `src/Order/Orders.Tests/` — two tracked `.cs` files with no `.csproj` in the
+  directory. **Last modified August 2025.**
 
-This is a recurrence of #46 ("Wallet.Api Tests folder excluded from build"). Tests that
-exist but never execute are worse than no tests: they read as coverage in review.
+Both predate the current test suite and have been superseded by it. Nothing they cover
+is uncovered today, so no coverage is being lost — these are leftovers, not orphaned
+work. The correct remedy is to **delete them**, not to wire them into the build.
+
+The durable part of this finding is narrower: `build-and-test.yml:59` runs `dotnet test`
+against `Wallet.Tests.csproj` by name rather than against the solution. That is what
+allowed a stale project to sit outside the build unnoticed, and it is what would let a
+genuinely new test project be silently excluded in future. Pointing CI at
+`TallaEgg.sln` costs nothing and removes the failure mode.
+
+Related: `Wallet.Tests` is now the solution's only test project and its name no longer
+describes it. It references seven projects across Wallet, Orders and the bot, and its
+56 files break down roughly as 23 Orders, 14 shared, 11 bot, 8 Wallet. The misleading
+name is what produced the incorrect version of this finding in the first place.
 
 ### N-3 (MEDIUM): Non-atomic legacy money paths remain in `WalletService`
 
@@ -222,7 +239,9 @@ Those hold. Added since:
 
 1. **A real test suite** — 483 passing tests, up from effectively none, including
    regression tests that pin the specific defects behind C-5, C-6, #72, #77 and the
-   dealer-mode wiring.
+   dealer-mode wiring. Coverage spans all three services in scope, the bot included:
+   17 files exercise the bot's handlers, conversation flow, registration and admin
+   commands, alongside a simulator that seeds 100 users and 1000+ trades (#101).
 2. **CI on every pull request** (#71) — build plus tests, so regressions surface before
    merge rather than in review.
 3. **Transactional outbox with a uniqueness constraint** — settlement is atomic and
@@ -240,11 +259,15 @@ Those hold. Added since:
 | Secrets & transport security | 1/10 | 9/10 | C-1, C-2, C-7, C-9 all closed with tests |
 | Financial correctness (core path) | 3/10 | 8/10 | Atomic, idempotent, correctly ordered |
 | Financial correctness (edges) | 3/10 | 5/10 | N-1, N-3, C-4 wallet half |
-| Test coverage & CI | 1/10 | 7/10 | Strong in Wallet; N-2 leaves the bot bare |
+| Test coverage & CI | 1/10 | 8/10 | 483 tests across Wallet, Orders and the bot, on every PR |
 | Operational readiness | 2/10 | 4/10 | Groundwork done, never booted, #105 open |
 | Code hygiene | 3/10 | 4/10 | Dead code and 169 scattered handlers remain |
 
-**Overall: 6.4/10.** This clears the ≥ 6.0 target the OKR set for KR3.
+**Overall: 6.6/10.** This clears the ≥ 6.0 target the OKR set for KR3.
+
+> Revised from 6.4 when N-2 was corrected: testing was scored 7/10 on the incorrect
+> belief that the bot was untested. The overall figure is a judgement weighted toward
+> the critical-path rows, not an average of the column.
 
 The improvement is real and concentrated where it mattered most: nothing on the
 critical list is still an open hole, the money path is correct by construction rather
