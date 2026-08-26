@@ -119,7 +119,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                 new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnWalletsBalance)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                })
             {

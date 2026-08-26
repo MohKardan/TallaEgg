@@ -100,6 +100,79 @@ public class BalanceAndPriceMessageTests
         Assert.DoesNotContain("{", text);
     }
 
+    // ── per-symbol grouping (issue #93 part A) ──────────────────────────────────
+
+    /// <summary>
+    /// Toman is spending cash, not a traded position — it belongs after the symbols a
+    /// customer actually holds, not interleaved with them by wallet-record order.
+    /// </summary>
+    [Fact]
+    public void TomanIsShownLast_AfterEveryTradedSymbol()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Toman, 1_000_000m),
+            Wallet(CurrenciesConstant.Btc, 0.01m),
+            Wallet(CurrenciesConstant.Maua, 10m)
+        ]);
+
+        var tomanIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Toman), StringComparison.Ordinal);
+        var btcIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Btc), StringComparison.Ordinal);
+        var mauaIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Maua), StringComparison.Ordinal);
+
+        Assert.True(tomanIndex > btcIndex && tomanIndex > mauaIndex,
+            "Toman must come after every traded symbol, not among them");
+    }
+
+    /// <summary>
+    /// A symbol's credit ceiling is shown as a line under that symbol's own section, not as
+    /// an unrelated-looking row for "اعتبار آبشده" — a customer reading the wallet screen
+    /// should see gold's credit next to gold, not somewhere else in the list.
+    /// </summary>
+    [Fact]
+    public void ASymbolsCredit_IsShownUnderThatSymbolNotAsItsOwnRow()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Maua, 10m),
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua), 240m)
+        ]);
+
+        var mauaSection = text[text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Maua), StringComparison.Ordinal)..];
+        Assert.Contains(PersianFormat.Amount(240m, CurrenciesConstant.Maua), mauaSection);
+
+        // "اعتبار آبشده" (the credit currency's own Persian name) must never appear as its
+        // own bullet — only merged into gold's section via the "اعتبار:" sub-line.
+        Assert.DoesNotContain(PersianFormat.Asset(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua)), text);
+    }
+
+    /// <summary>
+    /// A customer can have credit against an asset they have never actually held or traded
+    /// (an admin extended it in advance). Dropping the credit line because there is no base
+    /// wallet yet would hide real spending power from the one person it matters most to.
+    /// </summary>
+    [Fact]
+    public void CreditWithNoUnderlyingWallet_IsStillShown()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Btc), 0.5m)
+        ]);
+
+        Assert.Contains(PersianFormat.Asset(CurrenciesConstant.Btc), text);
+        Assert.Contains(PersianFormat.Amount(0.5m, CurrenciesConstant.Btc), text);
+        Assert.Contains(PersianFormat.Amount(0m, CurrenciesConstant.Btc), text); // the synthesised zero balance
+    }
+
+    /// <summary>Zero credit is not worth a line — every wallet has a CREDIT_ record once touched once.</summary>
+    [Fact]
+    public void ZeroCredit_ShowsNoCreditLine()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Maua, 10m),
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua), 0m)
+        ]);
+
+        Assert.DoesNotContain("اعتبار:", text);
+    }
+
     // ── best market prices ──────────────────────────────────────────────────────
 
     /// <summary>

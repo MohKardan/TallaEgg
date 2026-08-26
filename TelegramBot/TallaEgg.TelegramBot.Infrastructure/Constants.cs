@@ -213,6 +213,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </summary>
         public const string MsgBalanceDebtNote = "   ⚠️ بدهی شما: {0}\n";
 
+        /// <summary>
+        /// اعتبار همان نماد، اگر ادمین برایش شارژ کرده باشد — حتی وقتی خودِ کیف‌پول آن
+        /// دارایی هنوز ساخته نشده (کاربری که اعتبار گرفته ولی هنوز آن نماد را معامله
+        /// نکرده). {0} = مبلغ اعتبار با واحد
+        /// </summary>
+        public const string MsgBalanceCreditLine = "   💳 اعتبار: {0}\n";
+
         public const string MsgBalanceFooter = "\nبرای افزایش اعتبار با طلافروشی خود تماس بگیرید.";
 
         /// <summary>{0} = دلیل خطا</summary>
