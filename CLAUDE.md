@@ -25,7 +25,8 @@ The rules that get skipped most often:
 - **Keep the change small.** Do what was asked and stop. No refactoring that nobody requested —
   see [`docs/process/STANDARDS.md`](docs/process/STANDARDS.md) on scope discipline.
 - **Never commit `config/appsettings.global.json`.** It holds live credentials and this repo is
-  public. (It is tracked today, which is a known defect — see issue #33. Do not make it worse.)
+  public. It is untracked as of #33 — only `config/appsettings.global.example.json` belongs in
+  git. Do not add it back.
 
 ## Things that are easy to get wrong
 
@@ -38,5 +39,8 @@ The rules that get skipped most often:
   `TallaEgg.TelegramBot` — that one is not in the solution and will not start.
 - **Dates shown to users are Jalali at a fixed +03:30 offset**, formatted through
   `PersianFormat`. Storage stays Gregorian UTC; the two are unrelated.
-- **Credit is gold-only.** `CREDIT_MAUA` is a ceiling the spot balance may go negative against, so
-  a balance check must constrain `balance + credit`, never `balance` alone.
+- **Credit is per-asset.** Every tradable asset gets a `CREDIT_<ASSET>` ledger — see
+  `CurrenciesConstant.CreditAssetFor`. It is a ceiling the spot balance may go negative against,
+  so a balance check must constrain `balance + credit`, never `balance` alone. Note that
+  `Wallet.LockBalance` itself enforces nothing; the guard lives in the caller
+  (`ValidateCreditAndBalanceAsync`), so a new call path inherits no protection by default.
