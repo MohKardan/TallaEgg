@@ -63,4 +63,9 @@ public interface IOrderApiClient
 
     /// <summary>فعال/غیرفعال کردن یک نماد.</summary>
     Task<(bool success, string message)> SetSymbolActiveAsync(string symbol, bool isActive, Guid updatedByUserId);
+
+    // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
+
+    /// <summary>موقعیت و سود/زیان کاربر در همهٔ نمادهایی که تا امروز معامله کرده.</summary>
+    Task<ApiResponse<PositionsResponseDto>> GetPositionsAsync(Guid userId);
 }

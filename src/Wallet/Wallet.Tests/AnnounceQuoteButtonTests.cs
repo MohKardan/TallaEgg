@@ -80,14 +80,20 @@ public class AnnounceQuoteButtonTests
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains(BotMsgs.MsgSelectAsset));
     }
 
+    /// <summary>
+    /// One "no quote yet" message per symbol without one, each naming which symbol it is
+    /// about — several bare, identical rows in a row previously left an operator with no way
+    /// to tell which symbols were missing a quote and which one (if any) actually had one.
+    /// </summary>
     [Fact]
-    public async Task AnOperatorWithNoPublishedQuoteIsToldSo()
+    public async Task AnOperatorWithNoPublishedQuoteIsToldSoPerSymbol()
     {
         var handler = Build(UserRole.Admin);
 
         await PressAsync(handler);
 
-        Assert.Contains(_messenger.Texts, t => t.Contains("هنوز مظنه‌ای منتشر نشده است"));
+        Assert.Contains(_messenger.Texts, t => t.Contains("هنوز مظنه‌ای") && t.Contains("آبشده"));
+        Assert.Contains(_messenger.Texts, t => t.Contains("هنوز مظنه‌ای") && t.Contains("بیت‌کوین"));
     }
 
     /// <summary>

@@ -55,7 +55,7 @@ public class QuoteHistoryMessageTests
     [Fact]
     public void ForAnAdmin_TheBuyPriceIsLabelledAsTheirOwnPurchase()
     {
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: true);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: true, Gold);
 
         Assert.Contains("شما می‌خرید", text);
         Assert.Contains("شما می‌فروشید", text);
@@ -68,7 +68,7 @@ public class QuoteHistoryMessageTests
     [Fact]
     public void ForACustomer_TheAdminsBuyPriceIsTheirSellPrice()
     {
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false, Gold);
 
         Assert.Contains("قیمت فروش شما", text);
         Assert.Contains("قیمت خرید شما", text);
@@ -84,8 +84,8 @@ public class QuoteHistoryMessageTests
     {
         var page = OnePage(Quote());
 
-        var adminText = QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: true);
-        var customerText = QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: false);
+        var adminText = QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: true, Gold);
+        var customerText = QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: false, Gold);
 
         Assert.NotEqual(adminText, customerText);
     }
@@ -96,8 +96,8 @@ public class QuoteHistoryMessageTests
     {
         var page = OnePage(Quote());
 
-        Assert.Contains("حاشیه", QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: true));
-        Assert.DoesNotContain("حاشیه", QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: false));
+        Assert.Contains("حاشیه", QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: true, Gold));
+        Assert.DoesNotContain("حاشیه", QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin: false, Gold));
     }
 
     // ── units ───────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ public class QuoteHistoryMessageTests
     [InlineData(false)]
     public void PricesAreConvertedToPerMesghal(bool isAdmin)
     {
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin, Gold);
 
         Assert.Contains("هر مثقال", text);
         Assert.Contains(Fa(BuyPerGram * CurrenciesConstant.GramsPerMesghal), text);
@@ -124,7 +124,7 @@ public class QuoteHistoryMessageTests
     [Fact]
     public void TheMarginIsQuotedPerMesghal_MatchingThePricesAboveIt()
     {
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: true);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: true, Gold);
 
         var expected = (SellPerGram - BuyPerGram) * CurrenciesConstant.GramsPerMesghal;
 
@@ -144,8 +144,8 @@ public class QuoteHistoryMessageTests
     {
         var replaced = Quote(isActive: false, deactivatedAt: new DateTime(2026, 7, 30, 11, 34, 0, DateTimeKind.Utc));
 
-        var activeText = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false);
-        var replacedText = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(replaced), 1, isAdmin: false);
+        var activeText = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false, Gold);
+        var replacedText = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(replaced), 1, isAdmin: false, Gold);
 
         Assert.Contains("مظنهٔ فعال", activeText);
         Assert.DoesNotContain("مظنهٔ فعال", replacedText);
@@ -157,8 +157,8 @@ public class QuoteHistoryMessageTests
     {
         var replaced = Quote(isActive: false, deactivatedAt: new DateTime(2026, 7, 30, 11, 34, 0, DateTimeKind.Utc));
 
-        Assert.Contains("پایان", QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(replaced), 1, isAdmin: false));
-        Assert.DoesNotContain("پایان", QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false));
+        Assert.Contains("پایان", QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(replaced), 1, isAdmin: false, Gold));
+        Assert.DoesNotContain("پایان", QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote()), 1, isAdmin: false, Gold));
     }
 
     // ── edges ───────────────────────────────────────────────────────────────────
@@ -168,15 +168,34 @@ public class QuoteHistoryMessageTests
     {
         var empty = new PagedResult<QuoteDto> { Items = new List<QuoteDto>(), TotalCount = 0, PageNumber = 1, PageSize = 5 };
 
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(empty, 1, isAdmin: false);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(empty, 1, isAdmin: false, Gold);
 
-        Assert.Contains("هنوز مظنه‌ای منتشر نشده", text);
+        Assert.Contains("هنوز مظنه‌ای", text);
+    }
+
+    /// <summary>
+    /// ShowLatestQuoteAsync/ShowQuoteHistory send one "no quote yet" message per symbol in a
+    /// loop (issue: an admin tapping «اعلام مظنه» saw several bare "هنوز مظنه‌ای منتشر نشده
+    /// است." rows with no way to tell which symbols they were about). The message must name
+    /// the symbol so each row is self-contained.
+    /// </summary>
+    [Fact]
+    public void AnEmptyHistory_NamesWhichSymbolHasNoQuote()
+    {
+        var empty = new PagedResult<QuoteDto> { Items = new List<QuoteDto>(), TotalCount = 0, PageNumber = 1, PageSize = 5 };
+
+        var goldText = QuoteHistoryHandler.BuildQuoteHistoryAsync(empty, 1, isAdmin: true, Gold);
+        var btcText = QuoteHistoryHandler.BuildQuoteHistoryAsync(empty, 1, isAdmin: true, CurrenciesConstant.BTC_IRT);
+
+        Assert.Contains(TallaEgg.Core.Utilties.PersianFormat.Symbol(Gold), goldText);
+        Assert.Contains(TallaEgg.Core.Utilties.PersianFormat.Symbol(CurrenciesConstant.BTC_IRT), btcText);
+        Assert.NotEqual(goldText, btcText);
     }
 
     [Fact]
     public void NoUnfilledPlaceholderSurvives()
     {
-        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote(), Quote(isActive: false)), 1, isAdmin: true);
+        var text = QuoteHistoryHandler.BuildQuoteHistoryAsync(OnePage(Quote(), Quote(isActive: false)), 1, isAdmin: true, Gold);
 
         Assert.DoesNotContain("{", text);
     }

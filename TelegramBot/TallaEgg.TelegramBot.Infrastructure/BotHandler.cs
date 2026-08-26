@@ -359,6 +359,13 @@ namespace TallaEgg.TelegramBot
             switch (msgText)
             {
                 case BotBtns.BtnMainMenu:
+                case BotBtns.BtnBack:
+                    // Checked ahead of the default branch's order-flow routing on purpose: a
+                    // customer stuck in "waiting_for_amount"/"waiting_for_price" (no quote, a
+                    // typo, changed their mind) previously had this typed as an invalid amount
+                    // or price instead of as a way out, because default's state check ran
+                    // before this text was ever compared against a button label.
+                    _conversations.Clear(telegramId);
                     await ShowMainMenuAsync(chatId);
                     break;
 
@@ -463,9 +470,19 @@ namespace TallaEgg.TelegramBot
 
                     await _messenger.DeleteAsync(chatId, message.Id);
 
+                    // A bare ReplyKeyboardRemove left the customer typing into a text-only
+                    // prompt with no way out except knowing to type "🔙 بازگشت" from memory —
+                    // the BtnBack case in HandleMainMenuAsync's switch handles the tap/text
+                    // itself, but only if there is a button to tap.
                     await _messenger.SendAsync(chatId,
                                                  $"لطفاً مقدار را وارد کنید.",
-                                                 replyMarkup: new ReplyKeyboardRemove());
+                                                 replyMarkup: new ReplyKeyboardMarkup(new[]
+                                                 {
+                                                     new KeyboardButton[] { new KeyboardButton(BotBtns.BtnBack) }
+                                                 })
+                                                 {
+                                                     ResizeKeyboard = true
+                                                 });
 
                     break;
 
@@ -506,6 +523,14 @@ namespace TallaEgg.TelegramBot
                         assetConversation.State = "waiting_for_select_side";
 
                         TallaEgg.Core.DTOs.ApiResponse<BestPricesDto> apiResponse = await _orderApi.GetBestPricesAsync(asset);
+
+                        // Both prices come from the same published Quote (issue #48) — always
+                        // both present or both absent — so either one missing means there is no
+                        // quote for this symbol at all, not merely a one-sided book.
+                        var hasQuote = apiResponse is { Success: true, Data: not null }
+                            && apiResponse.Data.BestBidPrice.HasValue
+                            && apiResponse.Data.BestAskPrice.HasValue;
+
                         if (apiResponse != null && apiResponse.Success)
                         {
                             await _messenger.DeleteAsync(chatId, message.Id);
@@ -513,23 +538,38 @@ namespace TallaEgg.TelegramBot
                             await _messenger.SendAsync(chatId, BestPricesMessage.Build(
                                 apiResponse.Data.BestBidPrice, apiResponse.Data.BestAskPrice, asset));
 
-                            // Stored for the market-order path (HandleOrderTypeSelectionAsync),
-                            // which feeds this straight into HandleOrderPriceInputAsync — the same
-                            // place a manually-typed limit price lands. That method only divides a
-                            // gold price back down from per-mesghal to per-gram, so gold's stored
-                            // value must already be per-mesghal here; every other symbol has no
-                            // such internal/display split and is stored as-is.
-                            var isGold = asset == CurrenciesConstant.MAUA_IRT;
-                            assetConversation.BestBidPrice = isGold
-                                ? apiResponse.Data.BestBidPrice * CurrenciesConstant.GramsPerMesghal
-                                : apiResponse.Data.BestBidPrice;
-                            assetConversation.BestAskPrice = isGold
-                                ? apiResponse.Data.BestAskPrice * CurrenciesConstant.GramsPerMesghal
-                                : apiResponse.Data.BestAskPrice;
+                            if (hasQuote)
+                            {
+                                // Stored for the market-order path (HandleOrderTypeSelectionAsync),
+                                // which feeds this straight into HandleOrderPriceInputAsync — the same
+                                // place a manually-typed limit price lands. That method only divides a
+                                // gold price back down from per-mesghal to per-gram, so gold's stored
+                                // value must already be per-mesghal here; every other symbol has no
+                                // such internal/display split and is stored as-is.
+                                var isGold = asset == CurrenciesConstant.MAUA_IRT;
+                                assetConversation.BestBidPrice = isGold
+                                    ? apiResponse.Data.BestBidPrice * CurrenciesConstant.GramsPerMesghal
+                                    : apiResponse.Data.BestBidPrice;
+                                assetConversation.BestAskPrice = isGold
+                                    ? apiResponse.Data.BestAskPrice * CurrenciesConstant.GramsPerMesghal
+                                    : apiResponse.Data.BestAskPrice;
+                            }
                         }
 
-                        await _messenger.SendSpotSideMenuKeyboard(chatId);
-
+                        // Only the dealer/market path is a dead end without a quote — it never
+                        // asks for a price, so with no quote it has nothing to trade on. The
+                        // order-book (limit) path is unaffected: it asks the customer for a
+                        // price itself and never depended on GetBestPricesAsync succeeding.
+                        if (hasQuote || assetConversation.OrderType != OrderType.Market)
+                        {
+                            await _messenger.SendSpotSideMenuKeyboard(chatId);
+                        }
+                        else
+                        {
+                            _conversations.Clear(telegramId);
+                            await _messenger.SendAsync(chatId, BotMsgs.MsgNoQuoteForSymbol);
+                            await ShowMainMenuAsync(chatId);
+                        }
                     }
                     // Both branches activate or bar an account, and neither checked who was
                     // asking. Callback data is not a secret — it is client-side text that any
@@ -629,7 +669,7 @@ namespace TallaEgg.TelegramBot
                             await _messenger.EditTextAsync(
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
-                                text: QuoteHistoryHandler.BuildQuoteHistoryAsync(quotePageResult, quotePage, isAdmin),
+                                text: QuoteHistoryHandler.BuildQuoteHistoryAsync(quotePageResult, quotePage, isAdmin, symbol),
                                 replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(quotePageResult, quotePage, symbol));
 
                             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
@@ -810,7 +850,7 @@ namespace TallaEgg.TelegramBot
             {
                 var page = await _orderApi.GetQuoteHistoryAsync(symbol, pageNumber: 1, pageSize: 1);
 
-                await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true));
+                await _messenger.SendAsync(chatId, QuoteHistoryHandler.BuildQuoteHistoryAsync(page, currentPage: 1, isAdmin: true, symbol));
             }
         }
 
@@ -836,7 +876,7 @@ namespace TallaEgg.TelegramBot
 
                 await _messenger.SendAsync(
                     chatId,
-                    QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin),
+                    QuoteHistoryHandler.BuildQuoteHistoryAsync(page, 1, isAdmin, symbol),
                     replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(page, 1, symbol));
             }
         }
@@ -933,7 +973,13 @@ namespace TallaEgg.TelegramBot
             {
                 if (res.Data.Any())
                 {
-                    await _messenger.SendAsync(chatId, WalletBalanceMessage.Build(res.Data));
+                    // A failed positions fetch must not block the balance screen the customer
+                    // actually asked for -- WalletBalanceMessage treats a null positions
+                    // argument as "no P&L data available" and still renders the balances.
+                    var positionsRes = await _orderApi.GetPositionsAsync(userId);
+                    var positions = positionsRes.Success ? positionsRes.Data : null;
+
+                    await _messenger.SendAsync(chatId, WalletBalanceMessage.Build(res.Data, positions));
 
                 }
                 else
@@ -1232,7 +1278,13 @@ namespace TallaEgg.TelegramBot
                     : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset));
 
                 await _messenger.SendAsync(chatId, pricePrompt,
-                 replyMarkup: new ReplyKeyboardRemove());
+                 replyMarkup: new ReplyKeyboardMarkup(new[]
+                 {
+                     new KeyboardButton[] { new KeyboardButton(BotBtns.BtnBack) }
+                 })
+                 {
+                     ResizeKeyboard = true
+                 });
             }
             else if (orderState.OrderType == OrderType.Market)
             {

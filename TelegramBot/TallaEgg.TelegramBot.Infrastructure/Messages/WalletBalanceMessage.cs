@@ -1,5 +1,6 @@
 using System.Text;
 using TallaEgg.Core;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Utilties;
 
@@ -19,14 +20,19 @@ namespace TallaEgg.TelegramBot.Infrastructure.Messages;
 /// they owe -5,000,000, or that they owe nothing at all.
 ///
 /// This is also the only place a customer can see their debt, which is the gap issue #61 is
-/// about on the shop's side.
+/// about on the shop's side. It is also, with <paramref name="positions"/> below, where they
+/// see whether that debt is buying them a winning position (issue #93 part B) — the same
+/// screen answers "what do I have" and "what did it make or lose me", since a balance number
+/// alone answers neither on its own.
 /// </summary>
 public static class WalletBalanceMessage
 {
-    public static string Build(IEnumerable<WalletDTO> wallets)
+    public static string Build(IEnumerable<WalletDTO> wallets, PositionsResponseDto? positions = null)
     {
         var walletList = wallets as IReadOnlyCollection<WalletDTO> ?? wallets.ToList();
         var byAsset = walletList.ToDictionary(w => w.Asset, w => w, StringComparer.OrdinalIgnoreCase);
+        var positionsBySymbol = positions?.Positions.ToDictionary(p => p.Symbol, p => p, StringComparer.OrdinalIgnoreCase)
+            ?? new Dictionary<string, PositionDto>(StringComparer.OrdinalIgnoreCase);
 
         var sb = new StringBuilder();
         sb.Append(BotMsgs.MsgBalanceHeader);
@@ -46,17 +52,24 @@ public static class WalletBalanceMessage
         {
             var wallet = byAsset.GetValueOrDefault(asset) ?? new WalletDTO { Asset = asset };
             var creditWallet = byAsset.GetValueOrDefault(CurrenciesConstant.CreditAssetFor(asset));
-            AppendSection(sb, wallet, creditWallet);
+            var symbol = CurrenciesConstant.AllTradingPairs
+                .FirstOrDefault(p => string.Equals(p.BaseAsset, asset, StringComparison.OrdinalIgnoreCase))?.Symbol;
+            var position = symbol is not null ? positionsBySymbol.GetValueOrDefault(symbol) : null;
+
+            AppendSection(sb, wallet, creditWallet, position);
         }
 
         if (byAsset.TryGetValue(CurrenciesConstant.Toman, out var toman))
-            AppendSection(sb, toman, creditWallet: null);
+            AppendSection(sb, toman, creditWallet: null, position: null);
+
+        if (positions is not null)
+            sb.Append(FormatTotalPnl(positions.TotalPnl));
 
         sb.Append(BotMsgs.MsgBalanceFooter);
         return sb.ToString();
     }
 
-    private static void AppendSection(StringBuilder sb, WalletDTO wallet, WalletDTO? creditWallet)
+    private static void AppendSection(StringBuilder sb, WalletDTO wallet, WalletDTO? creditWallet, PositionDto? position)
     {
         var code = wallet.Asset;
         var unit = PersianFormat.Unit(code);
@@ -79,8 +92,69 @@ public static class WalletBalanceMessage
                 $"{PersianFormat.Amount(-wallet.Balance, code)} {unit}"));
         }
 
+        AppendPositionLines(sb, position, code);
+
         sb.AppendLine();
     }
+
+    /// <summary>
+    /// Nothing here if the customer has never traded this symbol at all (no <see cref="PositionDto"/>)
+    /// and has no closed history in it either — a symbol they only hold via a direct credit
+    /// grant, say, has nothing to report yet.
+    /// </summary>
+    private static void AppendPositionLines(StringBuilder sb, PositionDto? position, string baseAssetCode)
+    {
+        if (position is null)
+            return;
+
+        var isGold = string.Equals(baseAssetCode, CurrenciesConstant.Maua, StringComparison.OrdinalIgnoreCase);
+
+        if (position.Quantity != 0)
+        {
+            if (position.AverageCost.HasValue)
+                sb.Append(string.Format(BotMsgs.MsgBalanceAverageCost, FormatTomanPerUnit(position.AverageCost.Value, isGold)));
+
+            if (position.MarkPrice.HasValue)
+            {
+                var currentValue = position.Quantity * position.MarkPrice.Value;
+                sb.Append(string.Format(BotMsgs.MsgBalanceCurrentValue, FormatToman(currentValue)));
+            }
+
+            if (position.UnrealizedPnl.HasValue)
+                sb.Append(FormatPnlLine(position.UnrealizedPnl.Value, BotMsgs.MsgBalanceUnrealizedGain, BotMsgs.MsgBalanceUnrealizedLoss));
+            else
+                sb.Append(BotMsgs.MsgBalanceNoQuoteForUnrealized);
+        }
+
+        if (position.RealizedPnl != 0)
+            sb.Append(FormatPnlLine(position.RealizedPnl, BotMsgs.MsgBalanceRealizedGain, BotMsgs.MsgBalanceRealizedLoss));
+    }
+
+    /// <summary>A gain and a loss never share a label — a bare signed number reads as an error the same way a raw negative balance does.</summary>
+    private static string FormatPnlLine(decimal pnl, string gainTemplate, string lossTemplate) =>
+        pnl >= 0
+            ? string.Format(gainTemplate, FormatToman(pnl))
+            : string.Format(lossTemplate, FormatToman(-pnl));
+
+    private static string FormatTotalPnl(decimal totalPnl) =>
+        totalPnl switch
+        {
+            0m => BotMsgs.MsgBalanceTotalPnlNone,
+            > 0m => string.Format(BotMsgs.MsgBalanceTotalPnlGain, FormatToman(totalPnl)),
+            _ => string.Format(BotMsgs.MsgBalanceTotalPnlLoss, FormatToman(-totalPnl))
+        };
+
+    private static string FormatToman(decimal amount) =>
+        $"{PersianFormat.Amount(amount, CurrenciesConstant.Toman)} {PersianFormat.Unit(CurrenciesConstant.Toman)}";
+
+    /// <summary>
+    /// Gold is quoted internally per gram but shown per mesghal everywhere else a price
+    /// appears in the bot (see <c>BestPricesMessage</c>, order confirmations, trade/quote
+    /// history) — a per-unit price here must follow the same convention or it reads as a
+    /// different, much lower price than the one the customer actually agreed to.
+    /// </summary>
+    private static string FormatTomanPerUnit(decimal pricePerUnit, bool isGold) =>
+        FormatToman(isGold ? pricePerUnit * CurrenciesConstant.GramsPerMesghal : pricePerUnit);
 
     private static bool IsToman(string asset) =>
         string.Equals(asset, CurrenciesConstant.Toman, StringComparison.OrdinalIgnoreCase);

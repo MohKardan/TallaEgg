@@ -748,6 +748,54 @@ public class OrderApiClient : IOrderApiClient
             return ApiResponse<bool>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
         }
     }
+
+    public async Task<ApiResponse<PositionsResponseDto>> GetPositionsAsync(Guid userId)
+    {
+        var uri = $"{_baseUrl}/positions/user/{userId}";
+
+        try
+        {
+            using var response = await _httpClient.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead);
+            var payload = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Order API returned {StatusCode} for user {UserId} positions. Payload: {Payload}",
+                    (int)response.StatusCode, userId, payload);
+
+                return ApiResponse<PositionsResponseDto>.Fail("دریافت سود و زیان ناموفق بود");
+            }
+
+            var result = JsonConvert.DeserializeObject<ApiResponse<PositionsResponseDto>>(payload);
+            if (result is null)
+            {
+                _logger.LogError("Order API returned an invalid positions payload for user {UserId}. Payload: {Payload}", userId, payload);
+                return ApiResponse<PositionsResponseDto>.Fail("پاسخ نامعتبر از سرویس سفارشات دریافت شد.");
+            }
+
+            return result;
+        }
+        catch (TaskCanceledException ex)
+        {
+            _logger.LogError(ex, "Order API request timed out while fetching positions for user {UserId}", userId);
+            return ApiResponse<PositionsResponseDto>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Order API communication error while fetching positions for user {UserId}", userId);
+            return ApiResponse<PositionsResponseDto>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            _logger.LogError(ex, "Order API returned invalid JSON while fetching positions for user {UserId}", userId);
+            return ApiResponse<PositionsResponseDto>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while fetching positions for user {UserId}", userId);
+            return ApiResponse<PositionsResponseDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+        }
+    }
 }
 
 public class OrderResponse
