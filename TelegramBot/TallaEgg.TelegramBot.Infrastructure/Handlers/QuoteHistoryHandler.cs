@@ -42,10 +42,16 @@ public static class QuoteHistoryHandler
     /// buy at. One row of data, two readings — labelling it for only one audience is how the
     /// buyer/seller inversion keeps reappearing in this product.
     /// </param>
-    public static string BuildQuoteHistoryAsync(PagedResult<QuoteDto> page, int currentPage, bool isAdmin)
+    /// <param name="symbol">
+    /// Named in the empty-history message specifically — callers (<c>ShowLatestQuoteAsync</c>,
+    /// <c>ShowQuoteHistory</c>) send one message per symbol in a loop, so an admin seeing
+    /// several bare "هنوز مظنه‌ای منتشر نشده است." rows in a row had no way to tell which
+    /// symbols were missing a quote and which one (if any) actually had one.
+    /// </param>
+    public static string BuildQuoteHistoryAsync(PagedResult<QuoteDto> page, int currentPage, bool isAdmin, string symbol)
     {
         if (page is null || !page.Items.Any())
-            return "هنوز مظنه‌ای منتشر نشده است.";
+            return $"هنوز مظنه‌ای برای {PersianFormat.Symbol(symbol)} منتشر نشده است.";
 
         var sb = new StringBuilder();
         sb.AppendLine($"📋 تاریخچهٔ مظنه‌ها — صفحهٔ {PersianFormat.Number(currentPage)} از {PersianFormat.Number(page.TotalPages)}");

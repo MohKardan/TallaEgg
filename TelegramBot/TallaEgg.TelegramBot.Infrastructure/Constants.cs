@@ -195,6 +195,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// <summary>{0} = نام فارسی دارایی همراه واحد آن</summary>
         public const string MsgEnterQuantity = "مقدار {0} را وارد کنید:";
 
+        /// <summary>
+        /// وقتی هیچ مظنه‌ای برای نماد انتخاب‌شده منتشر نشده — ادامهٔ مسیر (پرسیدن مقدار)
+        /// فقط به یک شکست تضمین‌شده در مرحلهٔ بعد می‌رسید، چون قیمتی برای ثبت سفارش وجود
+        /// ندارد. باید همین‌جا متوقف شود، نه بعد از گرفتن مقدار از کاربر.
+        /// </summary>
+        public const string MsgNoQuoteForSymbol = "در حال حاضر قیمتی برای این نماد منتشر نشده. لطفاً کمی بعد دوباره تلاش کنید.";
+
         // ── نمایش موجودی ────────────────────────────────────────────────────────────
 
         public const string MsgBalanceHeader = "💰 موجودی حساب شما\n\n";
@@ -212,6 +219,40 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// {0} = مبلغ بدهی با واحد
         /// </summary>
         public const string MsgBalanceDebtNote = "   ⚠️ بدهی شما: {0}\n";
+
+        /// <summary>
+        /// اعتبار همان نماد، اگر ادمین برایش شارژ کرده باشد — حتی وقتی خودِ کیف‌پول آن
+        /// دارایی هنوز ساخته نشده (کاربری که اعتبار گرفته ولی هنوز آن نماد را معامله
+        /// نکرده). {0} = مبلغ اعتبار با واحد
+        /// </summary>
+        public const string MsgBalanceCreditLine = "   💳 اعتبار: {0}\n";
+
+        // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
+        // فقط وقتی نمایش داده می‌شود که موقعیت باز باشد (Quantity != 0) یا سود/زیان
+        // تحقق‌یافته‌ای وجود داشته باشد — نمادی که کاربر هنوز رویش معامله‌ای نکرده هیچ‌کدام
+        // از این خطوط را ندارد.
+
+        /// <summary>{0} = میانگین قیمت خرید با واحد (تومان)</summary>
+        public const string MsgBalanceAverageCost = "   میانگین قیمت خرید: {0}\n";
+
+        /// <summary>{0} = ارزش فعلی موقعیت با واحد (تومان)</summary>
+        public const string MsgBalanceCurrentValue = "   ارزش فعلی: {0}\n";
+
+        /// <summary>سود/زیان تحقق‌نیافته (موقعیت باز، بر اساس قیمت خرید ادمین). {0} = مبلغ با واحد</summary>
+        public const string MsgBalanceUnrealizedGain = "   📈 سود تحقق‌نیافته: {0}\n";
+        public const string MsgBalanceUnrealizedLoss = "   📉 زیان تحقق‌نیافته: {0}\n";
+
+        /// <summary>سود/زیان تحقق‌یافته (از معاملات بسته‌شده). {0} = مبلغ با واحد</summary>
+        public const string MsgBalanceRealizedGain = "   ✅ سود تحقق‌یافته: {0}\n";
+        public const string MsgBalanceRealizedLoss = "   ❌ زیان تحقق‌یافته: {0}\n";
+
+        /// <summary>وقتی مظنه‌ای برای محاسبهٔ سود/زیان تحقق‌نیافته منتشر نشده. موقعیت باز است ولی قابل ارزش‌گذاری نیست.</summary>
+        public const string MsgBalanceNoQuoteForUnrealized = "   سود/زیان تحقق‌نیافته: قیمتی برای این نماد منتشر نشده\n";
+
+        /// <summary>{0} = مجموع سود/زیان (تحقق‌یافته + تحقق‌نیافته) روی همهٔ نمادها، با واحد</summary>
+        public const string MsgBalanceTotalPnlGain = "\n📊 مجموع سود و زیان شما: 📈 {0} سود\n";
+        public const string MsgBalanceTotalPnlLoss = "\n📊 مجموع سود و زیان شما: 📉 {0} زیان\n";
+        public const string MsgBalanceTotalPnlNone = "\n📊 مجموع سود و زیان شما: بدون تغییر\n";
 
         public const string MsgBalanceFooter = "\nبرای افزایش اعتبار با طلافروشی خود تماس بگیرید.";
 

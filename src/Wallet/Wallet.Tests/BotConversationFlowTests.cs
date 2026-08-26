@@ -9,6 +9,7 @@ using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Conversations;
 using Wallet.Tests.Fakes;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Wallet.Tests;
 
@@ -357,5 +358,119 @@ public class BotConversationFlowTests
     {
         Assert.True(_conversations.TryGet(TelegramId, out var conversation), "no conversation in flight");
         return conversation;
+    }
+
+    // ── no quote published (market path) ────────────────────────────────────────
+
+    /// <summary>
+    /// The dealer/market path never asks for a price, so with no quote published there is
+    /// nothing to trade on. Continuing to ask for an amount used to lead the customer into a
+    /// guaranteed failure one step later ("خطا در دریافت بهترین قیمت بازار") instead of
+    /// telling them up front. Hit live: "دریافت مظنه" on a symbol nobody had published a
+    /// price for yet.
+    /// </summary>
+    [Fact]
+    public async Task WithNoQuotePublished_TheMarketPathStopsBeforeAskingForAnAmount()
+    {
+        _orderApi.ActiveQuote = null;
+
+        await SayAsync(BotBtns.BtnSpotMarket);
+        await TapAsync($"asset_{Gold}");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains(BotMsgs.MsgNoQuoteForSymbol));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("لطفاً مقدار را وارد کنید"));
+    }
+
+    [Fact]
+    public async Task WithNoQuotePublished_TheMarketPathLeavesNoConversationInFlight()
+    {
+        _orderApi.ActiveQuote = null;
+
+        await SayAsync(BotBtns.BtnSpotMarket);
+        await TapAsync($"asset_{Gold}");
+
+        Assert.False(_conversations.TryGet(TelegramId, out _), "a stale conversation should not survive a stop");
+    }
+
+    /// <summary>
+    /// The limit (order-book) path is unaffected by a missing quote — it never depended on
+    /// one, since it asks the customer for a price itself. Only the market path is a dead
+    /// end without a quote.
+    /// </summary>
+    [Fact]
+    public async Task WithNoQuotePublished_TheLimitPathStillAsksForAnAmount()
+    {
+        _orderApi.ActiveQuote = null;
+
+        await SayAsync(BotBtns.BtnSpotCreateOrder);
+        await TapAsync($"asset_{Gold}");
+
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains(BotMsgs.MsgNoQuoteForSymbol));
+    }
+
+    // ── the back button always escapes ──────────────────────────────────────────
+
+    /// <summary>
+    /// A customer stuck typing into "waiting_for_amount" (no quote, a typo, changed their
+    /// mind) previously had no way out except knowing the exact literal text to send, and
+    /// even that text was parsed as an invalid amount rather than recognised as a command —
+    /// there was no button at all on this prompt.
+    /// </summary>
+    [Fact]
+    public async Task TappingBackWhileEnteringAnAmount_ClearsTheConversationInsteadOfBeingParsedAsAnAmount()
+    {
+        PublishQuote();
+        await SayAsync(BotBtns.BtnSpotMarket);
+        await TapAsync($"asset_{Gold}");
+        await TapAsync(InlineCallBackData.buy_spot);
+
+        await SayAsync(BotBtns.BtnBack);
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("منوی اصلی"));
+        Assert.False(_conversations.TryGet(TelegramId, out _), "back must clear the in-flight conversation");
+    }
+
+    [Fact]
+    public async Task TappingBackWhileEnteringAPrice_ClearsTheConversationInsteadOfBeingParsedAsAPrice()
+    {
+        _orderApi.ActiveQuote = null;
+        await SayAsync(BotBtns.BtnSpotCreateOrder);
+        await TapAsync($"asset_{Gold}");
+        await TapAsync(InlineCallBackData.buy_spot);
+        await SayAsync("2.5"); // a valid amount, which advances the state to waiting_for_price
+
+        await SayAsync(BotBtns.BtnBack);
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("منوی اصلی"));
+        Assert.False(_conversations.TryGet(TelegramId, out _), "back must clear the in-flight conversation");
+    }
+
+    [Fact]
+    public async Task TheAmountPromptOffersABackButton()
+    {
+        PublishQuote();
+        await SayAsync(BotBtns.BtnSpotMarket);
+        await TapAsync($"asset_{Gold}");
+
+        await TapAsync(InlineCallBackData.buy_spot);
+
+        var prompt = _messenger.Sent.Last();
+        var keyboard = Assert.IsType<ReplyKeyboardMarkup>(prompt.ReplyMarkup);
+        Assert.Contains(keyboard.Keyboard.SelectMany(row => row), b => b.Text == BotBtns.BtnBack);
+    }
+
+    [Fact]
+    public async Task ThePricePromptOffersABackButton()
+    {
+        _orderApi.ActiveQuote = null;
+        await SayAsync(BotBtns.BtnSpotCreateOrder);
+        await TapAsync($"asset_{Gold}");
+        await TapAsync(InlineCallBackData.buy_spot);
+
+        await SayAsync("2.5");
+
+        var prompt = _messenger.Sent.Last();
+        var keyboard = Assert.IsType<ReplyKeyboardMarkup>(prompt.ReplyMarkup);
+        Assert.Contains(keyboard.Keyboard.SelectMany(row => row), b => b.Text == BotBtns.BtnBack);
     }
 }

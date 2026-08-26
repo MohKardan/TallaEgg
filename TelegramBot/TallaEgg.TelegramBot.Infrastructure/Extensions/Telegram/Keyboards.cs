@@ -119,7 +119,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             var keyboard = new ReplyKeyboardMarkup(
                 new[]
                {
-                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory)},
+                    new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnWalletsBalance)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                })
             {
@@ -141,6 +141,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                new[]
                {
                     new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnQuoteHistory)},
+                    // ادمین طرف مقابل هر معاملهٔ مظنه‌ای است، پس همین صفحهٔ موجودی سود و
+                    // زیان خودِ فروشگاه را هم نشان می‌دهد (issue #93) -- بدون هیچ منطق
+                    // جداگانه‌ای، چون از دید سرویس ادمین هم فقط یک شناسهٔ کاربری دیگر است.
+                    new[] { new KeyboardButton(BotBtns.BtnWalletsBalance)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                }
                             )

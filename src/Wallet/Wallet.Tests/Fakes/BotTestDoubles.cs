@@ -57,8 +57,25 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         return Task.FromResult((true, "ok"));
     }
 
-    public Task<ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol) =>
-        Task.FromResult(ApiResponse<BestPricesDto>.Ok(new BestPricesDto(), "ok"));
+    /// <summary>
+    /// Mirrors the real dealer-mode best-prices endpoint, which derives bid/ask from the
+    /// active quote when there is no resting order book: present and matching the requested
+    /// symbol gives real prices, anything else (no quote, or a different symbol) gives the
+    /// "nothing published" shape a customer sees when dealer mode has no price for them.
+    /// </summary>
+    public Task<ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol)
+    {
+        var quote = ActiveQuote is not null && string.Equals(ActiveQuote.Symbol, symbol, StringComparison.OrdinalIgnoreCase)
+            ? ActiveQuote
+            : null;
+
+        return Task.FromResult(ApiResponse<BestPricesDto>.Ok(new BestPricesDto
+        {
+            Symbol = symbol,
+            BestBidPrice = quote?.BuyPrice,
+            BestAskPrice = quote?.SellPrice
+        }, "ok"));
+    }
 
     public Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(Guid userId, int pageNumber = 1, int pageSize = 10) =>
         throw new NotSupportedException(nameof(GetUserOrdersAsync));
@@ -127,6 +144,13 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         ActiveToggles.Add((symbol, isActive, updatedByUserId));
         return Task.FromResult(ActiveToggleResult);
     }
+
+    // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
+
+    public ApiResponse<PositionsResponseDto> PositionsResult { get; set; } =
+        ApiResponse<PositionsResponseDto>.Ok(new PositionsResponseDto(), "ok");
+
+    public Task<ApiResponse<PositionsResponseDto>> GetPositionsAsync(Guid userId) => Task.FromResult(PositionsResult);
 }
 
 /// <summary>Answers with one known, approved customer.</summary>

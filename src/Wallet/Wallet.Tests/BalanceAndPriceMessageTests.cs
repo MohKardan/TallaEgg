@@ -1,4 +1,5 @@
 ﻿using TallaEgg.Core;
+using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Infrastructure;
@@ -98,6 +99,234 @@ public class BalanceAndPriceMessageTests
         Assert.Contains(PersianFormat.Asset(CurrenciesConstant.Maua), text);
         Assert.Contains(PersianFormat.Asset(CurrenciesConstant.Toman), text);
         Assert.DoesNotContain("{", text);
+    }
+
+    // ── per-symbol grouping (issue #93 part A) ──────────────────────────────────
+
+    /// <summary>
+    /// Toman is spending cash, not a traded position — it belongs after the symbols a
+    /// customer actually holds, not interleaved with them by wallet-record order.
+    /// </summary>
+    [Fact]
+    public void TomanIsShownLast_AfterEveryTradedSymbol()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Toman, 1_000_000m),
+            Wallet(CurrenciesConstant.Btc, 0.01m),
+            Wallet(CurrenciesConstant.Maua, 10m)
+        ]);
+
+        var tomanIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Toman), StringComparison.Ordinal);
+        var btcIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Btc), StringComparison.Ordinal);
+        var mauaIndex = text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Maua), StringComparison.Ordinal);
+
+        Assert.True(tomanIndex > btcIndex && tomanIndex > mauaIndex,
+            "Toman must come after every traded symbol, not among them");
+    }
+
+    /// <summary>
+    /// A symbol's credit ceiling is shown as a line under that symbol's own section, not as
+    /// an unrelated-looking row for "اعتبار آبشده" — a customer reading the wallet screen
+    /// should see gold's credit next to gold, not somewhere else in the list.
+    /// </summary>
+    [Fact]
+    public void ASymbolsCredit_IsShownUnderThatSymbolNotAsItsOwnRow()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Maua, 10m),
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua), 240m)
+        ]);
+
+        var mauaSection = text[text.IndexOf(PersianFormat.Asset(CurrenciesConstant.Maua), StringComparison.Ordinal)..];
+        Assert.Contains(PersianFormat.Amount(240m, CurrenciesConstant.Maua), mauaSection);
+
+        // "اعتبار آبشده" (the credit currency's own Persian name) must never appear as its
+        // own bullet — only merged into gold's section via the "اعتبار:" sub-line.
+        Assert.DoesNotContain(PersianFormat.Asset(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua)), text);
+    }
+
+    /// <summary>
+    /// A customer can have credit against an asset they have never actually held or traded
+    /// (an admin extended it in advance). Dropping the credit line because there is no base
+    /// wallet yet would hide real spending power from the one person it matters most to.
+    /// </summary>
+    [Fact]
+    public void CreditWithNoUnderlyingWallet_IsStillShown()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Btc), 0.5m)
+        ]);
+
+        Assert.Contains(PersianFormat.Asset(CurrenciesConstant.Btc), text);
+        Assert.Contains(PersianFormat.Amount(0.5m, CurrenciesConstant.Btc), text);
+        Assert.Contains(PersianFormat.Amount(0m, CurrenciesConstant.Btc), text); // the synthesised zero balance
+    }
+
+    /// <summary>Zero credit is not worth a line — every wallet has a CREDIT_ record once touched once.</summary>
+    [Fact]
+    public void ZeroCredit_ShowsNoCreditLine()
+    {
+        var text = WalletBalanceMessage.Build([
+            Wallet(CurrenciesConstant.Maua, 10m),
+            Wallet(CurrenciesConstant.CreditAssetFor(CurrenciesConstant.Maua), 0m)
+        ]);
+
+        Assert.DoesNotContain("اعتبار:", text);
+    }
+
+    // ── profit and loss (issue #93 part B) ──────────────────────────────────────
+
+    private static PositionDto Position(
+        string symbol, decimal quantity, decimal? averageCost, decimal? markPrice,
+        decimal realizedPnl, decimal? unrealizedPnl) => new()
+    {
+        Symbol = symbol,
+        Quantity = quantity,
+        AverageCost = averageCost,
+        MarkPrice = markPrice,
+        RealizedPnl = realizedPnl,
+        UnrealizedPnl = unrealizedPnl
+    };
+
+    private static PositionsResponseDto Positions(params PositionDto[] positions) => new()
+    {
+        Positions = positions.ToList(),
+        TotalRealizedPnl = positions.Sum(p => p.RealizedPnl),
+        TotalUnrealizedPnl = positions.Sum(p => p.UnrealizedPnl ?? 0m)
+    };
+
+    /// <summary>No positions argument at all -- the positions API call failed or was skipped. The balance screen from part A must still render exactly as before.</summary>
+    [Fact]
+    public void WithNoPositionsArgument_TheScreenIsUnchangedFromPartA()
+    {
+        var text = WalletBalanceMessage.Build([Wallet(CurrenciesConstant.Maua, 10m)]);
+
+        Assert.DoesNotContain("سود", text);
+        Assert.DoesNotContain("زیان", text);
+    }
+
+    /// <summary>A symbol the customer holds a wallet for but has no position data on (e.g. only ever received it via a direct credit) gets no P&amp;L lines.</summary>
+    [Fact]
+    public void ASymbolWithNoPositionData_ShowsNoPnlLines()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Maua, 10m)],
+            Positions()); // no entries at all
+
+        Assert.DoesNotContain("میانگین قیمت خرید", text);
+        Assert.DoesNotContain("ارزش فعلی", text);
+    }
+
+    [Fact]
+    public void AnOpenLongPositionInProfit_ShowsAverageCostCurrentValueAndAGain()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 2m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, quantity: 2m, averageCost: 1_000_000m,
+                markPrice: 1_200_000m, realizedPnl: 0m, unrealizedPnl: 400_000m)));
+
+        Assert.Contains(PersianFormat.Amount(1_000_000m, CurrenciesConstant.Toman), text); // average cost
+        Assert.Contains(PersianFormat.Amount(2_400_000m, CurrenciesConstant.Toman), text); // current value = qty * mark
+        Assert.Contains("📈 سود تحقق‌نیافته", text);
+        Assert.Contains(PersianFormat.Amount(400_000m, CurrenciesConstant.Toman), text);
+        Assert.DoesNotContain("📉", text);
+    }
+
+    [Fact]
+    public void AnOpenPositionAtALoss_IsLabelledAsALossNotANegativeGain()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 2m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, quantity: 2m, averageCost: 1_000_000m,
+                markPrice: 800_000m, realizedPnl: 0m, unrealizedPnl: -400_000m)));
+
+        var lossLine = text.Split('\n').Single(l => l.Contains("زیان تحقق‌نیافته"));
+        Assert.Contains(PersianFormat.Amount(400_000m, CurrenciesConstant.Toman), lossLine); // shown positive, under the loss label
+        Assert.DoesNotContain("-", lossLine);
+        Assert.DoesNotContain("📈 سود تحقق‌نیافته", text);
+    }
+
+    /// <summary>Gold's average cost is stored per gram internally but must display per mesghal, matching every other price the bot shows (BestPricesMessage, order confirmations, ...).</summary>
+    [Fact]
+    public void ForGold_AverageCostIsConvertedToPerMesghal()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Maua, 5m)],
+            Positions(Position(CurrenciesConstant.MAUA_IRT, quantity: 5m, averageCost: 1_000_000m,
+                markPrice: null, realizedPnl: 0m, unrealizedPnl: null)));
+
+        Assert.Contains(PersianFormat.Amount(1_000_000m * CurrenciesConstant.GramsPerMesghal, CurrenciesConstant.Toman), text);
+    }
+
+    /// <summary>An open position with no published quote can't be valued -- must say so, not silently omit the line or show a stale/zero number.</summary>
+    [Fact]
+    public void AnOpenPositionWithNoQuote_SaysSoInsteadOfShowingNothing()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 2m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, quantity: 2m, averageCost: 1_000_000m,
+                markPrice: null, realizedPnl: 0m, unrealizedPnl: null)));
+
+        Assert.Contains("قیمتی برای این نماد منتشر نشده", text);
+        Assert.DoesNotContain("ارزش فعلی", text);
+    }
+
+    /// <summary>A flat position (fully closed) shows realized P&amp;L but no average-cost/current-value lines -- there is nothing open to value.</summary>
+    [Fact]
+    public void AFlatPositionWithRealizedGain_ShowsOnlyTheRealizedLine()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 0m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, quantity: 0m, averageCost: null,
+                markPrice: 1_200_000m, realizedPnl: 300_000m, unrealizedPnl: 0m)));
+
+        Assert.Contains("✅ سود تحقق‌یافته", text);
+        Assert.Contains(PersianFormat.Amount(300_000m, CurrenciesConstant.Toman), text);
+        Assert.DoesNotContain("میانگین قیمت خرید", text);
+        Assert.DoesNotContain("ارزش فعلی", text);
+    }
+
+    [Fact]
+    public void ARealizedLossIsLabelledAsALoss()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 0m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, quantity: 0m, averageCost: null,
+                markPrice: null, realizedPnl: -150_000m, unrealizedPnl: 0m)));
+
+        Assert.Contains("❌ زیان تحقق‌یافته", text);
+        Assert.Contains(PersianFormat.Amount(150_000m, CurrenciesConstant.Toman), text);
+    }
+
+    [Fact]
+    public void TheTotalAcrossAllSymbols_IsShownAtTheBottom()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 0m), Wallet(CurrenciesConstant.Maua, 5m)],
+            new PositionsResponseDto
+            {
+                Positions =
+                [
+                    Position(CurrenciesConstant.BTC_IRT, 0m, null, null, 300_000m, 0m),
+                    Position(CurrenciesConstant.MAUA_IRT, 5m, 100m, 120m, 0m, 100m)
+                ],
+                TotalRealizedPnl = 300_000m,
+                TotalUnrealizedPnl = 100m
+            });
+
+        Assert.Contains("مجموع سود و زیان", text);
+        Assert.Contains(PersianFormat.Amount(300_100m, CurrenciesConstant.Toman), text);
+        Assert.Contains("📈", text);
+    }
+
+    [Fact]
+    public void ZeroTotalPnl_IsReportedAsNoChangeRatherThanAsAGainOrLoss()
+    {
+        var text = WalletBalanceMessage.Build(
+            [Wallet(CurrenciesConstant.Btc, 0m)],
+            Positions(Position(CurrenciesConstant.BTC_IRT, 0m, null, null, 0m, 0m)));
+
+        Assert.Contains("بدون تغییر", text);
     }
 
     // ── best market prices ──────────────────────────────────────────────────────

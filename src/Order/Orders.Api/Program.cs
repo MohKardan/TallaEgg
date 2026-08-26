@@ -130,6 +130,7 @@ builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeProvider>();
 builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeStartupValidator>();
+builder.Services.AddScoped<Orders.Application.Services.PositionService>();
 
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
@@ -697,6 +698,32 @@ app.MapGet("/api/trades/user/{userId}", async (
 .WithTags("Trades")
 .Produces<ApiResponse<PagedResult<TradeHistoryDto>>>(200)
 .Produces(400);
+
+/// <summary>
+/// موقعیت و سود/زیان یک کاربر در تمام نمادهایی که تا امروز معامله کرده (issue #93). همان
+/// endpoint برای ادمین/SuperAdmin هم استفاده می‌شود — او هم طرف مقابل هر معاملهٔ مظنه‌ای
+/// است، پس سود/زیان فروشگاه چیزی جز همین محاسبه با شناسهٔ کاربریِ خودِ ادمین نیست.
+/// </summary>
+app.MapGet("/api/positions/user/{userId}", async (
+    Guid userId,
+    Orders.Application.Services.PositionService positionService) =>
+{
+    try
+    {
+        var positions = await positionService.GetPositionsAsync(userId);
+        return Results.Ok(ApiResponse<PositionsResponseDto>.Ok(positions, "سود و زیان دریافت شد"));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error computing positions for user {UserId}", userId);
+        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
+    }
+})
+.WithName("GetUserPositions")
+.WithSummary("دریافت موقعیت و سود/زیان کاربر در همهٔ نمادها")
+.WithTags("Positions")
+.Produces<ApiResponse<PositionsResponseDto>>(200)
+.Produces(500);
 
 /// <summary>
 /// دریافت سفارشات فعال کاربر
