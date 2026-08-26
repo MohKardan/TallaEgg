@@ -91,4 +91,57 @@ public class OutboxMessageTests
 
         Assert.Throws<InvalidOperationException>(() => message.ResetForRetry());
     }
+
+    // ── abandon (issue #39 follow-up) ───────────────────────────────────────────
+
+    [Fact]
+    public void MarkAbandoned_RecordsTheReasonAndTimestamp()
+    {
+        var message = FailedMessage();
+
+        message.MarkAbandoned("collateral consumed by later activity");
+
+        Assert.Equal(OutboxMessageStatus.Abandoned, message.Status);
+        Assert.Equal("collateral consumed by later activity", message.AbandonReason);
+        Assert.NotNull(message.AbandonedAt);
+        Assert.Null(message.NextAttemptAt); // never picked up by the processor again
+    }
+
+    [Fact]
+    public void MarkAbandoned_RequiresANonEmptyReason()
+    {
+        var message = FailedMessage();
+
+        Assert.Throws<ArgumentException>(() => message.MarkAbandoned(""));
+        Assert.Throws<ArgumentException>(() => message.MarkAbandoned("   "));
+    }
+
+    /// <summary>
+    /// Only a Failed message can be abandoned — a Pending one hasn't exhausted its retries,
+    /// and a Completed one already settled and has nothing to abandon.
+    /// </summary>
+    [Fact]
+    public void MarkAbandoned_RefusesAMessageThatIsNotFailed()
+    {
+        var pending = NewMessage();
+        Assert.Throws<InvalidOperationException>(() => pending.MarkAbandoned("no reason"));
+
+        var completed = NewMessage();
+        completed.MarkCompleted();
+        Assert.Throws<InvalidOperationException>(() => completed.MarkAbandoned("no reason"));
+    }
+
+    /// <summary>
+    /// Abandoning is terminal: it must be refused exactly like re-driving a Completed
+    /// message is refused, so an abandoned trade can never be silently retried.
+    /// </summary>
+    [Fact]
+    public void ResetForRetry_RefusesAnAbandonedMessage()
+    {
+        var message = FailedMessage();
+        message.MarkAbandoned("will never settle");
+
+        var ex = Assert.Throws<InvalidOperationException>(() => message.ResetForRetry());
+        Assert.Contains("Abandoned", ex.Message);
+    }
 }

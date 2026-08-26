@@ -958,14 +958,18 @@ static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironm
 // delivery is a no-op rather than a double settlement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Lists trades whose settlement never completed, newest first.
-app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db) =>
+/// Lists trades whose settlement never completed, newest first. Abandoned messages are
+/// excluded by default — an operator already reviewed and closed those — but stay
+/// queryable via includeAbandoned=true for reconciliation and audit.
+app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAbandoned = false) =>
 {
     try
     {
-        var stuck = await db.OutboxMessages
-            .AsNoTracking()
-            .Where(m => m.Status != OutboxMessageStatus.Completed)
+        var query = db.OutboxMessages.AsNoTracking().Where(m => m.Status != OutboxMessageStatus.Completed);
+        if (!includeAbandoned)
+            query = query.Where(m => m.Status != OutboxMessageStatus.Abandoned);
+
+        var stuck = await query
             .OrderByDescending(m => m.CreatedAt)
             .Select(m => new
             {
@@ -976,7 +980,9 @@ app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db) =>
                 m.RetryCount,
                 m.CreatedAt,
                 m.NextAttemptAt,
-                m.LastError
+                m.LastError,
+                m.AbandonReason,
+                m.AbandonedAt
             })
             .ToListAsync();
 
@@ -984,6 +990,7 @@ app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db) =>
         {
             Count = stuck.Count,
             FailedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Failed)),
+            AbandonedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Abandoned)),
             Items = stuck
         }, "فهرست تسویه‌های ناتمام"));
     }
@@ -1046,6 +1053,45 @@ app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
     catch (Exception ex)
     {
         Log.Error(ex, "Error re-driving all failed outbox messages");
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+});
+
+/// Closes a permanently-failed settlement an operator has reviewed and decided will never
+/// settle (e.g. its collateral was consumed by later activity). The record is kept, not
+/// deleted, so the trade stays reconcilable — it just stops showing up as actionable and can
+/// never be re-driven again. No compensating wallet action is taken: for this shop, settling
+/// such a trade is a manual, offline decision, and the reason recorded here is that note.
+app.MapPost("/api/outbox/{messageId}/abandon", async (Guid messageId, AbandonOutboxMessageRequest request, OrdersDbContext db) =>
+{
+    try
+    {
+        var message = await db.OutboxMessages.FirstOrDefaultAsync(m => m.Id == messageId);
+        if (message is null)
+            return Results.NotFound(ApiResponse<string>.Fail("پیام یافت نشد."));
+
+        message.MarkAbandoned(request.Reason);
+        await db.SaveChangesAsync();
+
+        Log.Information(
+            "Outbox message {MessageId} (trade {TradeId}) was abandoned by an operator: {Reason}",
+            message.Id, message.AggregateId, request.Reason);
+
+        return Results.Ok(ApiResponse<string>.Ok(message.AggregateId.ToString(),
+            "معامله رها شد و دیگر برای تسویه پردازش نمی‌شود."));
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+    catch (InvalidOperationException ex)
+    {
+        // Raised when the message is not in an abandonable state (only Failed qualifies).
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error abandoning outbox message {MessageId}", messageId);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
 });
@@ -1150,6 +1196,12 @@ public record CancelOrderRequest(
     /// Optional reason for cancellation
     /// </summary>
     string? Reason = null);
+
+/// <summary>
+/// Request model for abandoning a permanently-failed outbox message (issue #39). The reason
+/// is mandatory — abandoning is an audited operator decision, not a silent drop.
+/// </summary>
+public record AbandonOutboxMessageRequest(string Reason);
 
 /// <summary>
 /// Request model for notifying the matching engine about a new order

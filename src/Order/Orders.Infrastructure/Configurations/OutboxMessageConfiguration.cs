@@ -21,6 +21,8 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
         builder.Property(m => m.RetryCount).IsRequired();
         builder.Property(m => m.NextAttemptAt);
         builder.Property(m => m.LastError).HasMaxLength(2000);
+        builder.Property(m => m.AbandonReason).HasMaxLength(2000);
+        builder.Property(m => m.AbandonedAt);
 
         // Hot-path query for the background processor: pending messages that are due.
         builder.HasIndex(m => new { m.Status, m.NextAttemptAt });
