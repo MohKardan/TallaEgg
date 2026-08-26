@@ -161,6 +161,27 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
+    /// پیام رهاشده (issue #39) هم باید کنار گذاشته شود — دقیقاً به همان دلیل پیام
+    /// <c>Failed</c>: برداشتنش یعنی تصمیم آگاهانهٔ اپراتور («این هرگز تسویه نمی‌شود») را
+    /// دور می‌زند.
+    /// </summary>
+    [Fact]
+    public async Task AnAbandonedMessage_IsSkipped()
+    {
+        var (messageId, _) = Seed(arrange: m =>
+        {
+            for (var i = 0; i < MaxRetries; i++)
+                m.MarkAttemptFailed("boom", MaxRetries, BaseDelay);
+            m.MarkAbandoned("collateral consumed by later activity");
+        });
+
+        await RunProcessorAsync();
+
+        Assert.Empty(_wallet.SettledTradeIds);
+        Assert.Equal(OutboxMessageStatus.Abandoned, (await ReloadAsync(messageId)).Status);
+    }
+
+    /// <summary>
     /// پیام تکمیل‌شده دوباره فرستاده نمی‌شود. تسویه تکرارپذیر است، پس این ایمنی است نه
     /// درستی — ولی هر تحویل مجدد یک فراخوانی HTTP بیهوده به سرویس کیف پول است.
     /// </summary>

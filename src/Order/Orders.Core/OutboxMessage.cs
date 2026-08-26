@@ -7,7 +7,15 @@ public enum OutboxMessageStatus
 {
     Pending = 0,
     Completed = 1,
-    Failed = 2
+    Failed = 2,
+
+    /// <summary>
+    /// A Failed message an operator has reviewed and decided will never settle (issue #39) —
+    /// e.g. its collateral was consumed by later activity, or it predates a rule that now
+    /// correctly refuses it. Terminal: never picked up by the processor and never re-driven,
+    /// but kept (not deleted) so the record survives for reconciliation and audit.
+    /// </summary>
+    Abandoned = 3
 }
 
 /// <summary>
@@ -48,6 +56,12 @@ public class OutboxMessage
 
     /// <summary>Last error message from a failed attempt, for diagnostics.</summary>
     public string? LastError { get; private set; }
+
+    /// <summary>The operator's reason for abandoning this message. Null unless <see cref="Status"/> is <see cref="OutboxMessageStatus.Abandoned"/>.</summary>
+    public string? AbandonReason { get; private set; }
+
+    /// <summary>When the message was abandoned. Null unless <see cref="Status"/> is <see cref="OutboxMessageStatus.Abandoned"/>.</summary>
+    public DateTime? AbandonedAt { get; private set; }
 
     // EF Core
     private OutboxMessage() { }
@@ -127,5 +141,31 @@ public class OutboxMessage
         RetryCount = 0;
         NextAttemptAt = DateTime.UtcNow;
         ProcessedAt = null;
+    }
+
+    /// <summary>
+    /// Records that an operator has reviewed a permanently-failed message and decided it will
+    /// never settle — e.g. its collateral no longer covers the trade, or it predates a rule
+    /// that now correctly refuses it (issue #39). A reason is mandatory: this is an audited
+    /// decision, not a silent drop, and the record is kept rather than deleted so the trade
+    /// stays reconcilable.
+    ///
+    /// Only a Failed message can be abandoned, for the same reason only a Failed message can
+    /// be re-driven: a Pending one hasn't exhausted its retries yet, and a Completed one
+    /// already settled. Once Abandoned, <see cref="ResetForRetry"/> refuses it exactly like it
+    /// already refuses a Completed message — abandoning is terminal.
+    /// </summary>
+    public void MarkAbandoned(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("An abandon reason is required.", nameof(reason));
+        if (Status != OutboxMessageStatus.Failed)
+            throw new InvalidOperationException(
+                $"Only a failed message can be abandoned; this message is {Status}.");
+
+        Status = OutboxMessageStatus.Abandoned;
+        AbandonReason = reason;
+        AbandonedAt = DateTime.UtcNow;
+        NextAttemptAt = null;
     }
 }
