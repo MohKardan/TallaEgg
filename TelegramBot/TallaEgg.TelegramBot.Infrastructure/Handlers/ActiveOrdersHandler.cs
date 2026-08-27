@@ -21,11 +21,11 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         /// Prices are shown per mesghal, because that is the unit users and admins enter them in.
         /// Storage is per gram.
         /// </summary>
-        public static async Task<string> BuildActiveOrdersListAsync(List<OrderHistoryDto> orders, bool isAdmin = false)
+        public static Task<string> BuildActiveOrdersListAsync(List<OrderHistoryDto> orders, bool isAdmin = false)
         {
             if (orders == null || !orders.Any())
             {
-                return "هیچ سفارش فعالی وجود ندارد.";
+                return Task.FromResult("هیچ سفارش فعالی وجود ندارد.");
             }
 
             var sb = new StringBuilder();
@@ -59,7 +59,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 sb.AppendLine();
             }
 
-            return sb.ToString();
+            return Task.FromResult(sb.ToString());
         }
 
         public static InlineKeyboardMarkup? BuildCancelOrderKeyboard(List<OrderHistoryDto> orders, bool isAdmin = false)

@@ -183,40 +183,34 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
-    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
-       .AllowAnonymous();
 }
 app.UseAuthorization();
-
-// Add Swagger middleware
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
-    c.RoutePrefix = "api-docs";
-});
 
 // Apply the CORS policy.
 app.UseTallaEggCors();
 
-// Add Swagger middleware
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// API documentation, Development only. Swagger has no consumer in Production: the APIs are
+// called by the Telegram bot through hand-written typed clients, and nothing generates a client
+// from the OpenAPI document. Publishing the endpoint map and schemas there is attack surface
+// bought for nothing.
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
-    c.RoutePrefix = "api-docs";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
+        c.RoutePrefix = "api-docs";
+    });
+}
 
 
 
-/// <summary>
-/// Registers a new user in the system
-/// </summary>
-/// <param name="request">User registration request containing Telegram ID, invitation code, and user details</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Registered user details with success status</returns>
-/// <response code="200">User registered successfully</response>
-/// <response code="400">Invalid request data or validation error</response>
+// Registers a new user in the system
+// request: User registration request containing Telegram ID, invitation code, and user details
+// userService: User service for business logic
+// Returns: Registered user details with success status
+// 200: User registered successfully
+// 400: Invalid request data or validation error
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
 {
     // RegisterUserAsync throws a plain Exception with a user-facing message when the invitation
@@ -238,15 +232,13 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
     }
 });
 
-/// <summary>
-/// Updates the phone number for an existing user
-/// </summary>
-/// <param name="request">Phone update request containing Telegram ID and new phone number</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Updated user details with success status</returns>
-/// <response code="200">Phone number updated successfully</response>
-/// <response code="400">Invalid request data or validation error</response>
-/// <response code="404">User not found</response>
+// Updates the phone number for an existing user
+// request: Phone update request containing Telegram ID and new phone number
+// userService: User service for business logic
+// Returns: Updated user details with success status
+// 200: Phone number updated successfully
+// 400: Invalid request data or validation error
+// 404: User not found
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
     // UpdateUserPhoneAsync throws InvalidOperationException with a user-facing "not found" message — a
@@ -262,14 +254,12 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
     }
 });
 
-/// <summary>
-/// Retrieves user information by Telegram ID
-/// </summary>
-/// <param name="telegramId">Telegram ID of the user</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>User details if found</returns>
-/// <response code="200">User found and returned successfully</response>
-/// <response code="404">User not found</response>
+// Retrieves user information by Telegram ID
+// telegramId: Telegram ID of the user
+// userService: User service for business logic
+// Returns: User details if found
+// 200: User found and returned successfully
+// 404: User not found
 app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userService) =>
 {
     var user = await userService.GetUserByTelegramIdAsync(telegramId);
@@ -279,14 +269,12 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
 });
 
-/// <summary>
-/// Returns a user by id.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="userService">User service.</param>
-/// <returns>The user, if found.</returns>
-/// <response code="200">User found.</response>
-/// <response code="404">User not found.</response>
+// Returns a user by id.
+// userId: User id.
+// userService: User service.
+// Returns: The user, if found.
+// 200: User found.
+// 404: User not found.
 app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userService) =>
 {
     var user = await userService.GetUserByIdAsync(userId);
@@ -304,14 +292,12 @@ app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userServ
     );
 });
 
-/// <summary>
-/// Retrieves user information by phone number
-/// </summary>
-/// <param name="phone">phone of the user</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>User details if found</returns>
-/// <response code="200">User found and returned successfully</response>
-/// <response code="404">User not found</response>
+// Retrieves user information by phone number
+// phone: phone of the user
+// userService: User service for business logic
+// Returns: User details if found
+// 200: User found and returned successfully
+// 404: User not found
 app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userService) =>
 {
     var user = await userService.GetUserByPhoneNumberAsync(phone);
@@ -335,15 +321,13 @@ app.MapGet("/api/users/list", async (
     return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
 });
 
-/// <summary>
-/// Updates the status of an existing user
-/// </summary>
-/// <param name="request">Status update request containing Telegram ID and new status</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Success status with confirmation message</returns>
-/// <response code="200">User status updated successfully</response>
-/// <response code="400">Invalid request data or validation error</response>
-/// <response code="404">User not found</response>
+// Updates the status of an existing user
+// request: Status update request containing Telegram ID and new status
+// userService: User service for business logic
+// Returns: Success status with confirmation message
+// 200: User status updated successfully
+// 400: Invalid request data or validation error
+// 404: User not found
 app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
     // UpdateUserStatusAsync throws InvalidOperationException with a user-facing "not found" message — a
@@ -359,15 +343,13 @@ app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserServi
     }
 });
 
-/// <summary>
-/// Gets user ID by invitation code
-/// </summary>
-/// <param name="invitationCode">Invitation code to lookup</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>User ID associated with the invitation code</returns>
-/// <response code="200">User ID found and returned</response>
-/// <response code="400">Invalid invitation code or error occurred</response>
-/// <response code="404">Invitation code not found</response>
+// Gets user ID by invitation code
+// invitationCode: Invitation code to lookup
+// userService: User service for business logic
+// Returns: User ID associated with the invitation code
+// 200: User ID found and returned
+// 400: Invalid invitation code or error occurred
+// 404: Invitation code not found
 app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
 {
     var userId = await userService.GetUserIdByInvitationCode(invitationCode);
@@ -380,43 +362,37 @@ app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phone
     return Results.Ok(userId);
 });
 
-/// <summary>
-/// Validates an invitation code
-/// </summary>
-/// <param name="request">Invitation validation request containing the code to validate</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Validation result with success status and message</returns>
-/// <response code="200">Invitation code validated successfully</response>
-/// <response code="400">Invalid invitation code or error occurred</response>
+// Validates an invitation code
+// request: Invitation validation request containing the code to validate
+// userService: User service for business logic
+// Returns: Validation result with success status and message
+// 200: Invitation code validated successfully
+// 400: Invalid invitation code or error occurred
 app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
 {
     var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
     return Results.Ok(new { isValid = result.isValid, message = result.message });
 });
 
-/// <summary>
-/// Registers a new user with invitation code
-/// </summary>
-/// <param name="request">User registration request with invitation code</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Registered user details with success status</returns>
-/// <response code="200">User registered successfully with invitation</response>
-/// <response code="400">Invalid request data or validation error</response>
+// Registers a new user with invitation code
+// request: User registration request with invitation code
+// userService: User service for business logic
+// Returns: Registered user details with success status
+// 200: User registered successfully with invitation
+// 400: Invalid request data or validation error
 app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitationRequest request, UserService userService) =>
 {
     var user = await userService.RegisterUserAsync(request.User);
     return Results.Ok(new { success = true, userId = user.Id });
 });
 
-/// <summary>
-/// Updates the role of an existing user
-/// </summary>
-/// <param name="request">Role update request containing user ID and new role</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Success status with confirmation message</returns>
-/// <response code="200">User role updated successfully</response>
-/// <response code="400">Invalid request data or validation error</response>
-/// <response code="404">User not found</response>
+// Updates the role of an existing user
+// request: Role update request containing user ID and new role
+// userService: User service for business logic
+// Returns: Success status with confirmation message
+// 200: User role updated successfully
+// 400: Invalid request data or validation error
+// 404: User not found
 app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
 {
     var user = await userService.UpdateUserRoleAsync(request.UserId, request.NewRole);
@@ -426,14 +402,12 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserS
     return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
 });
 
-/// <summary>
-/// Gets all users by role
-/// </summary>
-/// <param name="role">Role to filter users by</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>List of users with the specified role</returns>
-/// <response code="200">Users found and returned successfully</response>
-/// <response code="400">Invalid role or error occurred</response>
+// Gets all users by role
+// role: Role to filter users by
+// userService: User service for business logic
+// Returns: List of users with the specified role
+// 200: Users found and returned successfully
+// 400: Invalid role or error occurred
 app.MapGet("/api/users/by-role/{role}", async (string role, UserService userService) =>
 {
     if (!Enum.TryParse<UserRole>(role, true, out var userRole))
@@ -443,29 +417,25 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
     return Results.Ok(users);
 });
 
-/// <summary>
-/// Checks if a user exists by Telegram ID
-/// </summary>
-/// <param name="telegramId">Telegram ID to check</param>
-/// <param name="userService">User service for business logic</param>
-/// <returns>Boolean indicating if user exists</returns>
-/// <response code="200">User existence check completed</response>
-/// <response code="400">Error occurred during check</response>
+// Checks if a user exists by Telegram ID
+// telegramId: Telegram ID to check
+// userService: User service for business logic
+// Returns: Boolean indicating if user exists
+// 200: User existence check completed
+// 400: Error occurred during check
 app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>
 {
     var exists = await userService.UserExistsAsync(telegramId);
     return Results.Ok(new { exists = exists });
 });
 
-/// <summary>
-/// Creates the default wallets for an existing user.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="userService">User service.</param>
-/// <returns>Whether it succeeded.</returns>
-/// <response code="200">Default wallets created.</response>
-/// <response code="400">Wallet creation failed.</response>
-/// <response code="404">User not found.</response>
+// Creates the default wallets for an existing user.
+// userId: User id.
+// userService: User service.
+// Returns: Whether it succeeded.
+// 200: Default wallets created.
+// 400: Wallet creation failed.
+// 404: User not found.
 app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, UserService userService) =>
 {
     var user = await userService.GetUserByIdAsync(userId);

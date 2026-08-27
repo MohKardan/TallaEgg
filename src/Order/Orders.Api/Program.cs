@@ -226,32 +226,33 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
-    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
-       .AllowAnonymous();
 }
 app.UseAuthorization();
 
 // Apply the CORS policy.
 app.UseTallaEggCors();
 
-
-
-app.UseSwagger();
+// API documentation, Development only. Swagger has no consumer in Production: the APIs are
+// called by the Telegram bot through hand-written typed clients, and nothing generates a client
+// from the OpenAPI document. Publishing the endpoint map and schemas there is attack surface
+// bought for nothing.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Orders API V1");
         c.RoutePrefix = "api-docs";
     });
+}
 
 
 // Order management endpoints
 
 // ──────────────────────────── Dealer model (issue #48) ────────────────────────────
 
-/// <summary>
-/// Publishes the admin's quote for a symbol. Places no order in the book and locks no collateral.
-/// The symbol's previous quote is deactivated atomically.
-/// </summary>
+// Publishes the admin's quote for a symbol. Places no order in the book and locks no collateral.
+// The symbol's previous quote is deactivated atomically.
 app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository quotes) =>
 {
     try
@@ -274,7 +275,7 @@ app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository 
     }
 });
 
-/// <summary>The active quote for a symbol.</summary>
+// The active quote for a symbol.
 app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuoteRepository quotes) =>
 {
     var symbol = $"{Base}/{Quote}";
@@ -287,7 +288,7 @@ app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuot
 
 // ─────────────────────── Automatic quotes (issue #90) ───────────────────────
 
-/// <summary>A symbol's current automatic-quote settings.</summary>
+// A symbol's current automatic-quote settings.
 app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string Quote, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
     var symbol = $"{Base}/{Quote}";
@@ -296,7 +297,7 @@ app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string 
     return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings)));
 });
 
-/// <summary>Changes a symbol's automatic-quote spread.</summary>
+// Changes a symbol's automatic-quote spread.
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
     string Base, string Quote, UpdateAutoQuoteSpreadRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
@@ -316,7 +317,7 @@ app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
     }
 });
 
-/// <summary>Turns a symbol's automatic quoting on or off.</summary>
+// Turns a symbol's automatic quoting on or off.
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/enabled", async (
     string Base, string Quote, SetAutoQuoteEnabledRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
@@ -340,14 +341,14 @@ static AutoQuoteSettingsDto ToAutoQuoteSettingsDto(Orders.Core.AutoQuoteSettings
 
 // ─────────────────────── Symbol enable/disable ─────────────────────────
 
-/// <summary>The symbols currently tradable — the bot uses this for its symbol menu.</summary>
+// The symbols currently tradable — the bot uses this for its symbol menu.
 app.MapGet("/api/symbols/active", async (Orders.Core.ISymbolSettingsRepository settingsRepo) =>
 {
     var symbols = await settingsRepo.GetActiveSymbolsAsync();
     return Results.Ok(ApiResponse<List<string>>.Ok(symbols.ToList()));
 });
 
-/// <summary>Enables or disables a symbol.</summary>
+// Enables or disables a symbol.
 app.MapPost("/api/symbols/{Base}/{Quote}/active", async (
     string Base, string Quote, SetSymbolActiveRequest request, Orders.Core.ISymbolSettingsRepository settingsRepo) =>
 {
@@ -381,14 +382,12 @@ static QuoteDto ToQuoteDto(Quote q) => new()
     DeactivatedAt = q.DeactivatedAt
 };
 
-/// <summary>
-/// Published quotes for a symbol, newest first, including ones already replaced.
-///
-/// This is what the bot's quote history reads. It replaced order history in the customer
-/// menu: in the dealer model an order lives only for the instant of a fill, so a customer's
-/// order list was always either empty or entirely completed rows — nothing to act on. The
-/// prices the shop published are the history that means something.
-/// </summary>
+// Published quotes for a symbol, newest first, including ones already replaced.
+//
+// This is what the bot's quote history reads. It replaced order history in the customer
+// menu: in the dealer model an order lives only for the instant of a fill, so a customer's
+// order list was always either empty or entirely completed rows — nothing to act on. The
+// prices the shop published are the history that means something.
 app.MapGet("/api/quotes/{Base}/{Quote}/history", async (
     string Base, string Quote, IQuoteRepository quotes, int page = 1, int size = 5) =>
 {
@@ -406,10 +405,8 @@ app.MapGet("/api/quotes/{Base}/{Quote}/history", async (
     return Results.Ok(ApiResponse<PagedResult<QuoteDto>>.Ok(result));
 });
 
-/// <summary>
-/// A customer fills a quote: two orders for exactly the requested quantity are created, locked and
-/// matched immediately. The customer does not enter a price.
-/// </summary>
+// A customer fills a quote: two orders for exactly the requested quantity are created, locked and
+// matched immediately. The customer does not enter a price.
 app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillService fillService) =>
 {
     var (success, message, trade) = await fillService.AcceptQuoteAsync(
@@ -422,15 +419,13 @@ app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillSe
 
 // ─────────────────────────────────────────────────────────────────────────────────
 
-/// <summary>
-/// Creates a single order of any type (limit or market), determining maker/taker automatically.
-/// </summary>
-/// <param name="request">Order creation request.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The order, its role, and any trades executed.</returns>
-/// <response code="200">Order created.</response>
-/// <response code="400">Invalid data, or a business rule was violated.</response>
-/// <response code="401">Unauthorized.</response>
+// Creates a single order of any type (limit or market), determining maker/taker automatically.
+// request: Order creation request.
+// orderService: Order service.
+// Returns: The order, its role, and any trades executed.
+// 200: Order created.
+// 400: Invalid data, or a business rule was violated.
+// 401: Unauthorized.
 app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, OrderService orderService) =>
 {
     try
@@ -463,6 +458,7 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error creating an order.");
         return Results.Json(ApiResponse<CreateOrderResponse>.Fail("خطای داخلی سرور"), statusCode: 500);
     }
 })
@@ -473,14 +469,12 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
 .Produces<ApiResponse<CreateOrderResponse>>(200)
 .ProducesValidationProblem(400);
 
-/// <summary>
-/// Returns an order by id.
-/// </summary>
-/// <param name="orderId">Order id.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The order, if found.</returns>
-/// <response code="200">Order found.</response>
-/// <response code="404">Order not found.</response>
+// Returns an order by id.
+// orderId: Order id.
+// orderService: Order service.
+// Returns: The order, if found.
+// 200: Order found.
+// 404: Order not found.
 app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -493,6 +487,7 @@ app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderServi
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error fetching order {OrderId}.", orderId);
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -502,16 +497,14 @@ app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderServi
 .Produces(200)
 .Produces(404);
 
-/// <summary>
-/// Cancels an order.
-/// </summary>
-/// <param name="orderId">Order id.</param>
-/// <param name="reason">Optional cancellation reason.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The result of the cancellation.</returns>
-/// <response code="200">Order cancelled.</response>
-/// <response code="400">Cancellation failed or was not valid.</response>
-/// <response code="404">Order not found.</response>
+// Cancels an order.
+// orderId: Order id.
+// reason: Optional cancellation reason.
+// orderService: Order service.
+// Returns: The result of the cancellation.
+// 200: Order cancelled.
+// 400: Cancellation failed or was not valid.
+// 404: Order not found.
 app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason, OrderService orderService) =>
 {
     try
@@ -528,6 +521,7 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error cancelling order {OrderId}.", orderId);
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -538,19 +532,15 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 .Produces(400)
 .Produces(404);
 
-/// <summary>
-/// Cancels all of a user's active orders.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="reason">Optional cancellation reason.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>How many orders were cancelled.</returns>
-/// <response code="200">Orders cancelled.</response>
-/// <response code="400">Cancelling the orders failed.</response>
-/// <remarks>
-/// Finds the user's active orders, cancels them with the supplied reason, and returns how many were
-/// cancelled, wrapped in the standard ApiResponse shape.
-/// </remarks>
+// Cancels all of a user's active orders.
+// userId: User id.
+// reason: Optional cancellation reason.
+// orderService: Order service.
+// Returns: How many orders were cancelled.
+// 200: Orders cancelled.
+// 400: Cancelling the orders failed.
+// Finds the user's active orders, cancels them with the supplied reason, and returns how many were
+// cancelled, wrapped in the standard ApiResponse shape.
 app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, string? reason, OrderService orderService) =>
 {
     try
@@ -563,6 +553,7 @@ app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, strin
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error cancelling the active orders of user {UserId}.", userId);
         return Results.Json(ApiResponse<CancelActiveOrdersResponseDto>.Fail("خطای داخلی سرور"), statusCode: 500);
     }
 })
@@ -572,15 +563,13 @@ app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, strin
 .Produces(200)
 .Produces(400);
 
-/// <summary>
-/// Confirms an order, moving it from Pending to Confirmed.
-/// </summary>
-/// <param name="orderId">Order id.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The result of the confirmation.</returns>
-/// <response code="200">Order confirmed.</response>
-/// <response code="400">Order cannot be confirmed.</response>
-/// <response code="404">Order not found.</response>
+// Confirms an order, moving it from Pending to Confirmed.
+// orderId: Order id.
+// orderService: Order service.
+// Returns: The result of the confirmation.
+// 200: Order confirmed.
+// 400: Order cannot be confirmed.
+// 404: Order not found.
 app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -604,6 +593,7 @@ app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService o
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error confirming order {OrderId}.", orderId);
         return Results.Json(new { 
             success = false, 
             message = "خطای داخلی سرور در تایید سفارش" 
@@ -618,16 +608,14 @@ app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService o
 .Produces(400)
 .Produces(404);
 
-/// <summary>
-/// Returns a user's orders, paginated.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="pageNumber">Page number, default 1.</param>
-/// <param name="pageSize">Items per page, default 10, maximum 100.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>A page of the user's orders.</returns>
-/// <response code="200">Orders returned.</response>
-/// <response code="400">Invalid request parameters.</response>
+// Returns a user's orders, paginated.
+// userId: User id.
+// pageNumber: Page number, default 1.
+// pageSize: Items per page, default 10, maximum 100.
+// orderService: Order service.
+// Returns: A page of the user's orders.
+// 200: Orders returned.
+// 400: Invalid request parameters.
 app.MapGet("/api/orders/user/{userId}", async (
     Guid userId,
     int? pageNumber,
@@ -648,6 +636,7 @@ app.MapGet("/api/orders/user/{userId}", async (
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error fetching the orders of user {UserId}.", userId);
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -657,16 +646,14 @@ app.MapGet("/api/orders/user/{userId}", async (
 .Produces<ApiResponse<PagedResult<OrderHistoryDto>>>(200)
 .Produces(400);
 
-/// <summary>
-/// Returns a user's trades, paginated.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="pageNumber">Page number, default 1.</param>
-/// <param name="pageSize">Items per page, default 10, maximum 100.</param>
-/// <param name="tradeService">Trade service.</param>
-/// <returns>A page of the user's trades.</returns>
-/// <response code="200">Trades returned.</response>
-/// <response code="400">Invalid request parameters.</response>
+// Returns a user's trades, paginated.
+// userId: User id.
+// pageNumber: Page number, default 1.
+// pageSize: Items per page, default 10, maximum 100.
+// tradeService: Trade service.
+// Returns: A page of the user's trades.
+// 200: Trades returned.
+// 400: Invalid request parameters.
 app.MapGet("/api/trades/user/{userId}", async (
     Guid userId,
     int? pageNumber,
@@ -687,6 +674,7 @@ app.MapGet("/api/trades/user/{userId}", async (
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error fetching the trades of user {UserId}.", userId);
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -696,11 +684,9 @@ app.MapGet("/api/trades/user/{userId}", async (
 .Produces<ApiResponse<PagedResult<TradeHistoryDto>>>(200)
 .Produces(400);
 
-/// <summary>
-/// A user's position and profit/loss across every symbol they have traded (issue #93). The same
-/// endpoint serves the admin/SuperAdmin — they are the counterparty to every quote fill, so the
-/// shop's profit and loss is this same calculation run against the admin's own user id.
-/// </summary>
+// A user's position and profit/loss across every symbol they have traded (issue #93). The same
+// endpoint serves the admin/SuperAdmin — they are the counterparty to every quote fill, so the
+// shop's profit and loss is this same calculation run against the admin's own user id.
 app.MapGet("/api/positions/user/{userId}", async (
     Guid userId,
     Orders.Application.Services.PositionService positionService) =>
@@ -722,14 +708,12 @@ app.MapGet("/api/positions/user/{userId}", async (
 .Produces<ApiResponse<PositionsResponseDto>>(200)
 .Produces(500);
 
-/// <summary>
-/// Returns a user's active orders.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The user's active orders.</returns>
-/// <response code="200">Active orders returned.</response>
-/// <response code="400">Invalid request.</response>
+// Returns a user's active orders.
+// userId: User id.
+// orderService: Order service.
+// Returns: The user's active orders.
+// 200: Active orders returned.
+// 400: Invalid request.
 app.MapGet("/api/orders/active/user/{userId}", async (
     Guid userId,
     OrderService orderService) =>
@@ -758,6 +742,7 @@ app.MapGet("/api/orders/active/user/{userId}", async (
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error fetching the active orders of user {UserId}.", userId);
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -767,13 +752,11 @@ app.MapGet("/api/orders/active/user/{userId}", async (
 .Produces<ApiResponse<List<OrderHistoryDto>>>(200)
 .Produces(400);
 
-/// <summary>
-/// Returns every active order in the system, for admins.
-/// </summary>
-/// <param name="orderService">Order service.</param>
-/// <returns>All active orders.</returns>
-/// <response code="200">All active orders returned.</response>
-/// <response code="500">Internal server error.</response>
+// Returns every active order in the system, for admins.
+// orderService: Order service.
+// Returns: All active orders.
+// 200: All active orders returned.
+// 500: Internal server error.
 app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
 {
     try
@@ -800,6 +783,7 @@ app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
     }
     catch (Exception ex)
     {
+        Log.Error(ex, "Unhandled error fetching all active orders.");
         return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
     }
 })
@@ -809,17 +793,15 @@ app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
 .Produces<ApiResponse<List<OrderHistoryDto>>>(200)
 .Produces(500);
 
-/// <summary>
-/// Returns the best bid and ask prices.
-/// </summary>
-/// <param name="symbol">Trading symbol, for example MAUA/IRT.</param>
-/// <param name="tradingType">Trading type, default standard.</param>
-/// <param name="orderService">Order service.</param>
-/// <returns>The best bid and ask prices.</returns>
-/// <response code="200">Best prices returned.</response>
-/// <response code="400">Invalid request.</response>
-/// <response code="404">Trading symbol not found.</response>
-/// <response code="500">Internal server error.</response>
+// Returns the best bid and ask prices.
+// symbol: Trading symbol, for example MAUA/IRT.
+// tradingType: Trading type, default standard.
+// orderService: Order service.
+// Returns: The best bid and ask prices.
+// 200: Best prices returned.
+// 400: Invalid request.
+// 404: Trading symbol not found.
+// 500: Internal server error.
 app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
     string Base,
     string Quote,
@@ -917,8 +899,6 @@ app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
         Log.Information(">--------------------- finally best-prices ---------------------<");
     }
 
-    Log.Information(">--------------------- end best-prices ---------------------<");
-
 })
 .WithName("GetBestPrices")
 .WithSummary("دریافت بهترین قیمت‌های خرید و فروش")
@@ -982,9 +962,9 @@ static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironm
 // delivery is a no-op rather than a double settlement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Lists trades whose settlement never completed, newest first. Abandoned messages are
-/// excluded by default — an operator already reviewed and closed those — but stay
-/// queryable via includeAbandoned=true for reconciliation and audit.
+// Lists trades whose settlement never completed, newest first. Abandoned messages are
+// excluded by default — an operator already reviewed and closed those — but stay
+// queryable via includeAbandoned=true for reconciliation and audit.
 app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAbandoned = false) =>
 {
     try
@@ -1025,7 +1005,7 @@ app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAband
     }
 });
 
-/// Puts a permanently-failed settlement back in the queue after the cause has been fixed.
+// Puts a permanently-failed settlement back in the queue after the cause has been fixed.
 app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbContext db) =>
 {
     try
@@ -1055,7 +1035,7 @@ app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbCo
     }
 });
 
-/// Re-drives every failed settlement at once, for use after a fix that affects them all.
+// Re-drives every failed settlement at once, for use after a fix that affects them all.
 app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
 {
     try
@@ -1081,11 +1061,11 @@ app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
     }
 });
 
-/// Closes a permanently-failed settlement an operator has reviewed and decided will never
-/// settle (e.g. its collateral was consumed by later activity). The record is kept, not
-/// deleted, so the trade stays reconcilable — it just stops showing up as actionable and can
-/// never be re-driven again. No compensating wallet action is taken: for this shop, settling
-/// such a trade is a manual, offline decision, and the reason recorded here is that note.
+// Closes a permanently-failed settlement an operator has reviewed and decided will never
+// settle (e.g. its collateral was consumed by later activity). The record is kept, not
+// deleted, so the trade stays reconcilable — it just stops showing up as actionable and can
+// never be re-driven again. No compensating wallet action is taken: for this shop, settling
+// such a trade is a manual, offline decision, and the reason recorded here is that note.
 app.MapPost("/api/outbox/{messageId}/abandon", async (Guid messageId, AbandonOutboxMessageRequest request, OrdersDbContext db) =>
 {
     try
@@ -1128,97 +1108,43 @@ app.Run();
 /// Request model for creating a new maker order
 /// </summary>
 public record CreateOrderRequest(
-    /// <summary>
-    /// Trading asset symbol (e.g., BTC, ETH, USDT)
-    /// </summary>
     string Asset, 
-    /// <summary>
-    /// Order quantity/amount
-    /// </summary>
     decimal Amount, 
-    /// <summary>
-    /// Order price per unit
-    /// </summary>
     decimal Price, 
-    /// <summary>
-    /// Unique identifier of the user placing the order
-    /// </summary>
     Guid UserId, 
-    /// <summary>
-    /// Type of order (Buy or Sell)
-    /// </summary>
     OrderSide Type,
-    /// <summary>
-    /// Trading type (Spot or Futures)
-    /// </summary>
     TradingType TradingType,
-    /// <summary>
-    /// Optional notes for the order
-    /// </summary>
     string? Notes = null);
 
 /// <summary>
 /// Request model for creating a new limit order
 /// </summary>
 public record CreateLimitOrderRequest(
-    /// <summary>
-    /// Trading symbol (e.g., BTC, ETH)
-    /// </summary>
     string Symbol,
-    /// <summary>
-    /// Order quantity
-    /// </summary>
     decimal Quantity,
-    /// <summary>
-    /// Limit price for the order
-    /// </summary>
     decimal Price,
-    /// <summary>
-    /// Unique identifier of the user placing the order
-    /// </summary>
     Guid UserId);
 
 /// <summary>
 /// Request model for creating a new taker order
 /// </summary>
 public record CreateTakerOrderRequest(
-    /// <summary>
-    /// Unique identifier of the parent maker order
-    /// </summary>
     Guid ParentOrderId,
-    /// <summary>
-    /// Order amount
-    /// </summary>
     decimal Amount,
-    /// <summary>
-    /// Unique identifier of the user placing the order
-    /// </summary>
     Guid UserId,
-    /// <summary>
-    /// Optional notes for the order
-    /// </summary>
     string? Notes = null);
 
 /// <summary>
 /// Request model for updating order status
 /// </summary>
 public record UpdateOrderStatusRequest(
-    /// <summary>
-    /// New status for the order
-    /// </summary>
     OrderStatus Status, 
-    /// <summary>
-    /// Optional notes for the status change
-    /// </summary>
     string? Notes = null);
 
 /// <summary>
 /// Request model for cancelling an order
 /// </summary>
 public record CancelOrderRequest(
-    /// <summary>
-    /// Optional reason for cancellation
-    /// </summary>
     string? Reason = null);
 
 /// <summary>
@@ -1231,17 +1157,8 @@ public record AbandonOutboxMessageRequest(string Reason);
 /// Request model for notifying the matching engine about a new order
 /// </summary>
 public record NotifyMatchingEngineRequest(
-    /// <summary>
-    /// Unique identifier of the order to process
-    /// </summary>
     Guid OrderId,
-    /// <summary>
-    /// Trading asset symbol
-    /// </summary>
     string Asset,
-/// <summary>
-/// Type of order (Buy or Sell)
-/// </summary>
 OrderSide Type);
 
 

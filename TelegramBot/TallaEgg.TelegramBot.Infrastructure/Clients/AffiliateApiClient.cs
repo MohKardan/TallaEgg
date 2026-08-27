@@ -166,7 +166,7 @@ public class AffiliateApiClient : IAffiliateApiClient
         }
         catch (Exception ex)
         {
-            // Log exception here if needed
+            _logger.LogError(ex, "Error creating an invitation for user {CreatedByUserId}.", createdByUserId);
             return (false, null);
         }
     }

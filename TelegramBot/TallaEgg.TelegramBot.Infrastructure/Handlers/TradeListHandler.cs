@@ -43,13 +43,13 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         /// Passed in rather than looked up here so this stays a pure builder that a test can
         /// call without a users service (issue #65).
         /// </param>
-        public static async Task<string> BuildTradesListAsync(
+        public static Task<string> BuildTradesListAsync(
             PagedResult<TradeHistoryDto> page, int currentPage, Guid viewerUserId,
             IReadOnlyDictionary<Guid, string>? counterpartyPhones = null)
         {
             if (page == null || !page.Items.Any())
             {
-                return "هیچ معامله‌ای انجام نشده است.";
+                return Task.FromResult("هیچ معامله‌ای انجام نشده است.");
             }
 
             // Plain text: the previous version mixed HTML tags with Markdown markers and neither
@@ -100,7 +100,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 sb.AppendLine();
             }
 
-            return sb.ToString();
+            return Task.FromResult(sb.ToString());
         }
     }
 }

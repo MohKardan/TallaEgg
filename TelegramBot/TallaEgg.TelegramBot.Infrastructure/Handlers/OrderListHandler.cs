@@ -25,11 +25,11 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             return navButtons.Any() ? new InlineKeyboardMarkup(navButtons) : null;
         }
 
-        public static async Task<string> BuildOrdersListAsync(PagedResult<OrderHistoryDto> page, int currentPage)
+        public static Task<string> BuildOrdersListAsync(PagedResult<OrderHistoryDto> page, int currentPage)
         {
             if (page == null || !page.Items.Any())
             {
-                return "هیچ سفارشی یافت نشد.";
+                return Task.FromResult("هیچ سفارشی یافت نشد.");
             }
 
             // Plain text, no Markdown — the same reason as ActiveOrdersHandler: EscapeMarkdownV2
@@ -63,7 +63,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 sb.AppendLine();
             }
 
-            return sb.ToString();
+            return Task.FromResult(sb.ToString());
         }
 
         private static string GetTypeIcon(OrderSide type) => type switch

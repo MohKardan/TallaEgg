@@ -457,13 +457,6 @@ namespace TallaEgg.TelegramBot
         {
             var ids = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
             return ids.Contains(user.TelegramId);
-            //  Check if user has admin status or is a known admin Telegram ID
-            // var adminTelegramIds = new[] { 123456789L }; // Add actual admin Telegram IDs here
-            //return user.Status?.ToLower().Contains("admin") == true ||
-            //       user.Status?.ToLower().Contains("root") == true ||
-            //       adminTelegramIds.Contains(user.TelegramId);
-
-            return false;
         }
 
         /// <summary>
@@ -710,7 +703,6 @@ namespace TallaEgg.TelegramBot
             // unexpected, sent the admin ex.Message verbatim, and logged nowhere. Letting it
             // bubble reaches TelegramBotHostedService.HandleUpdateAsync's catch, which does
             // both.
-            const decimal defaultAmount = 1000m;    // Default amount
 
             // First, cancel all existing active orders for this user
             await _messenger.SendAsync(chatId, BotMsgs.MsgAdminProcessing);

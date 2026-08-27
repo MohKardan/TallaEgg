@@ -135,9 +135,11 @@ namespace TallaEgg.Core.Services
                 var data = new StringContent(_text, Encoding.UTF8, "application/json");
                 await Send(data);
             }
-            catch (Exception eex)
+            catch (Exception)
             {
-
+                // Deliberately silent: this is the logger itself. Throwing would turn a failed
+                // log into a failed operation, and logging the failure would recurse. Losing an
+                // informational message is the cheaper outcome; the error path below does persist.
             }
 
         }
@@ -186,7 +188,11 @@ namespace TallaEgg.Core.Services
             }
             catch (Exception eex)
             {
-                await File.AppendAllTextAsync("SendExceptions.txt", Newtonsoft.Json.JsonConvert.SerializeObject(ex, Newtonsoft.Json.Formatting.Indented));
+                // Last resort: Telegram is unreachable, so persist both the exception being
+                // reported and the one that stopped it from being reported. Writing only the
+                // former, as this used to, leaves no way to tell why the send failed.
+                await File.AppendAllTextAsync("SendExceptions.txt", Newtonsoft.Json.JsonConvert.SerializeObject(
+                    new { Reported = ex, SendFailure = eex }, Newtonsoft.Json.Formatting.Indented));
                 await File.AppendAllTextAsync("SendExceptions.txt", "====================================================");
             }
 

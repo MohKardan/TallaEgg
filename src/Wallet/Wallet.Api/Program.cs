@@ -128,30 +128,32 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<WalletDbContext>();
-    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+    await context.Database.MigrateAsync();
 }
 
 // Authentication and authorization, Production only.
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
-    app.MapGet("/api-docs/{**path}", (string path) => Results.Redirect($"/api-docs/{path}"))
-       .AllowAnonymous();
 }
 app.UseAuthorization();
 
 // Apply the CORS policy.
 app.UseTallaEggCors();
 
-
-
-// Add Swagger middleware
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+// API documentation, Development only. Swagger has no consumer in Production: the APIs are
+// called by the Telegram bot through hand-written typed clients, and nothing generates a client
+// from the OpenAPI document. Publishing the endpoint map and schemas there is attack surface
+// bought for nothing.
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Wallet API v1");
-    c.RoutePrefix = "api-docs";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Wallet API v1");
+        c.RoutePrefix = "api-docs";
+    });
+}
 
 // Wallet management endpoints
 app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string asset, IWalletService walletService) =>

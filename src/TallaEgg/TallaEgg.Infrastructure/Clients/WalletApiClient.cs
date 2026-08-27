@@ -317,6 +317,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Error fetching the wallet balances of user {UserId}.", userId);
             return TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در ارتباط با سرور");
 
         }
@@ -364,6 +365,7 @@ public class WalletApiClient : IWalletApiClient
                 }
                 catch (JsonException jsonEx)
                 {
+                    _logger?.LogError(jsonEx, "Unreadable balance payload for user {UserId}, asset {Asset}.", userId, asset);
                     return (false, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
                 }
             }
@@ -430,6 +432,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (JsonException jsonEx)
         {
+            _logger?.LogError(jsonEx, "Unreadable error payload for user {UserId}, asset {Asset}.", userId, asset);
             // JSON parsing errors
             return (false, "خطا در پردازش اطلاعات دریافتی از سرور.", null);
         }
@@ -484,6 +487,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Error depositing to the wallet of user {UserId}.", request.UserId);
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
 
         }
@@ -518,6 +522,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Error withdrawing from the wallet of user {UserId}.", request.UserId);
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
 
         }
