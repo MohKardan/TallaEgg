@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Wallet.Application;
@@ -9,26 +9,25 @@ using Wallet.Infrastructure;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// چیزی که پشت قرنطینهٔ <c>POST /api/wallet/transaction/trade</c> است (یافتهٔ ممیزی C-8،
+/// What sits behind the <c>POST /api/wallet/transaction/trade</c> quarantine (audit finding C-8,
 /// issue #46).
 ///
-/// این تست‌ها جایگزین <c>Wallet.Api/Tests/QuarantinedEndpointsTests.cs</c> هستند که حذف شد.
-/// آن فایل دو مشکل داشت: اصلاً کامپایل نمی‌شد (پروژهٔ Wallet.Api نه NUnit دارد نه Moq، و
-/// <c>Results.StatusCode</c> اورلودی با دو آرگومان ندارد)، و مهم‌تر اینکه در
-/// <c>Setup</c> خودش یک <c>WebApplication</c> تازه می‌ساخت و <b>همان endpoint را دوباره
-/// می‌نوشت</b> — یعنی نسخه‌ای را می‌سنجید که در خود فایل تست تعریف شده بود، نه چیزی که در
-/// <c>Program.cs</c> اجرا می‌شود. حتی اگر endpoint واقعی حذف می‌شد، آن تست‌ها سبز
-/// می‌ماندند.
+/// These replace <c>Wallet.Api/Tests/QuarantinedEndpointsTests.cs</c>, which was deleted. That file
+/// had two problems: it did not compile at all — Wallet.Api has neither NUnit nor Moq, and
+/// <c>Results.StatusCode</c> has no two-argument overload — and, more importantly, its <c>Setup</c>
+/// built a fresh <c>WebApplication</c> and <b>redefined the endpoint</b>, so it asserted against a
+/// copy declared inside the test file rather than what <c>Program.cs</c> actually runs. Deleting the
+/// real endpoint would have left those tests green.
 ///
-/// چرا خطر واقعی است: اگر پرچم <c>FeatureFlags:QuarantineStubEndpoints</c> خاموش شود،
-/// endpoint به <see cref="WalletService.MakeTradeAsync"/> می‌رسد — و آن متد
-/// <c>new WalletBallanceDTO()</c> برمی‌گرداند، یعنی <b>HTTP 200 با اعداد صفر</b>، بدون
-/// اینکه ریالی جابه‌جا شود. برای فراخوان، این از ۵۰۱ بدتر است: شکستِ خاموش به‌جای رد
-/// صریح.
+/// Why the risk is real: turn <c>FeatureFlags:QuarantineStubEndpoints</c> off and the endpoint
+/// reaches <see cref="WalletService.MakeTradeAsync"/> — which returns
+/// <c>new WalletBallanceDTO()</c>, meaning <b>HTTP 200 with zeroes</b> and not a single unit of
+/// currency moved. To the caller that is worse than a 501: a silent failure instead of an explicit
+/// refusal.
 ///
-/// این تست‌ها همان را پین می‌کنند. اگر روزی <c>MakeTradeAsync</c> واقعاً پیاده‌سازی شود،
-/// این فایل می‌شکند — و درست است که بشکند: همان تغییر باید قرنطینه را هم بردارد و این
-/// تست‌ها را با تست‌های واقعیِ انتقال جایگزین کند.
+/// These tests pin that. If <c>MakeTradeAsync</c> is ever genuinely implemented this file breaks —
+/// and it should: the same change must lift the quarantine and replace these tests with real
+/// transfer tests.
 /// </summary>
 public class QuarantinedStubTests : IDisposable
 {
@@ -76,8 +75,8 @@ public class QuarantinedStubTests : IDisposable
     }
 
     /// <summary>
-    /// ادعای اصلی: متد «موفق» برمی‌گردد ولی هیچ پولی جابه‌جا نمی‌کند. دقیقاً همین است که
-    /// قرنطینه را لازم می‌کند — یک متدی که خطا بدهد بی‌خطرتر بود.
+    /// The central claim: the method returns successfully while moving no money. That is precisely
+    /// what makes the quarantine necessary — a method that threw would be safer.
     /// </summary>
     [Fact]
     public async Task MakeTradeAsync_ReportsSuccessButMovesNoMoney()
@@ -92,9 +91,9 @@ public class QuarantinedStubTests : IDisposable
     }
 
     /// <summary>
-    /// خروجی نه‌تنها اشتباه است، بلکه <b>خالی</b> است: هر فراخوانی که موجودی قبل/بعد را
-    /// بخواند صفر می‌بیند و کد پیگیری هم ندارد. یعنی هیچ راهی نیست که فراخوان بفهمد چیزی
-    /// انجام نشده.
+    /// The result is not merely wrong but <b>empty</b>: any caller reading the before and after
+    /// balances sees zeroes, and there is no tracking code either. Nothing tells the caller that
+    /// nothing happened.
     /// </summary>
     [Fact]
     public async Task MakeTradeAsync_ReturnsAnEmptyResultWithNoTrackingCode()
@@ -107,8 +106,8 @@ public class QuarantinedStubTests : IDisposable
     }
 
     /// <summary>
-    /// دو گاردی که واقعاً کار می‌کنند باید بمانند — تنها اعتبارسنجی‌های این متد هستند و
-    /// تنها چیزی که پیاده‌سازی آینده می‌تواند بی‌سروصدا از دست بدهد.
+    /// The two guards that do work must stay — they are this method's only validation, and the only
+    /// thing a future implementation could quietly lose.
     /// </summary>
     [Fact]
     public async Task MakeTradeAsync_StillRefusesATransferToSelf()

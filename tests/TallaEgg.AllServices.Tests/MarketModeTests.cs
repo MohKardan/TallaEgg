@@ -6,19 +6,19 @@ using TallaEgg.Core.Enums.Order;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// حالت بازار هر نماد (issue #48).
+/// Each symbol's market mode (issue #48).
 ///
 /// <para>
-/// نکتهٔ اصلی این تست‌ها سازگاری با گذشته است: تنظیم
-/// <c>Matching:RequireMarketMakerCounterparty</c> از قبل وجود داشت و دقیقاً همین قاعده را
-/// بیان می‌کرد. اگر <c>MarketMode</c> آن را نادیده می‌گرفت، دو تعریف موازی برای یک قاعده
-/// داشتیم — همان الگویی که در این کدبیس بارها به باگ ختم شده.
+/// The point of these tests is backward compatibility: <c>Matching:RequireMarketMakerCounterparty</c>
+/// already existed and expressed exactly this rule. Had <c>MarketMode</c> ignored it, there would
+/// be two parallel definitions of one rule — the pattern that has repeatedly produced bugs in this
+/// codebase.
 /// </para>
 ///
 /// <para>
-/// <b>«بازارگردان کیست» دیگر اینجا نیست.</b> این کلاس فقط می‌گوید یک نماد در کدام حالت کار
-/// می‌کند. طرف مقابلِ معامله حالا خودِ مظنه است — منتشرکننده‌اش — که در
-/// <see cref="QuoteFillCounterpartyTests"/> پوشش داده می‌شود.
+/// <b>Who the market maker is no longer lives here.</b> This class only reports which mode a symbol
+/// runs in. The counterparty is now the quote itself — whoever published it — which is covered in
+/// <see cref="QuoteFillCounterpartyTests"/>.
 /// </para>
 /// </summary>
 public class MarketModeTests
@@ -34,7 +34,7 @@ public class MarketModeTests
         return new MarketModeProvider(configuration, NullLogger<MarketModeProvider>.Instance);
     }
 
-    /// <summary>بدون هیچ تنظیمی، رفتار تاریخی سیستم حفظ می‌شود: دفتر سفارش.</summary>
+    /// <summary>With no configuration at all, the historical behaviour holds: the order book.</summary>
     [Fact]
     public void WithNoConfiguration_TheModeIsOrderBook()
     {
@@ -42,8 +42,8 @@ public class MarketModeTests
     }
 
     /// <summary>
-    /// تنظیم قدیمی باید همچنان کار کند. اگر کسی آن را روشن کرده بود، نباید با این تغییر
-    /// بی‌صدا خاموش شود.
+    /// The old setting must keep working. Anyone who had turned it on must not have it silently
+    /// turned off by this change.
     /// </summary>
     [Fact]
     public void TheLegacyMarketMakerSettingStillMeansDealerMode()
@@ -53,7 +53,7 @@ public class MarketModeTests
         Assert.Equal(MarketMode.Dealer, provider.GetMode(Symbol));
     }
 
-    /// <summary>تنظیم مخصوص یک نماد بر تنظیم سراسری اولویت دارد.</summary>
+    /// <summary>A symbol's own setting takes precedence over the global one.</summary>
     [Fact]
     public void APerSymbolSettingOverridesTheGlobalOne()
     {
@@ -65,8 +65,9 @@ public class MarketModeTests
     }
 
     /// <summary>
-    /// دو نماد می‌توانند همزمان در دو حالت باشند — همان چیزی که «همزیستی» در issue #48
-    /// یعنی: یک نماد مظنه‌ای بماند و نماد دیگری با نقدینگی واقعی به دفتر سفارش برود.
+    /// Two symbols can be in two different modes at once — which is what coexistence means in
+    /// issue #48: one symbol stays on quotes while another, with real liquidity, moves to the order
+    /// book.
     /// </summary>
     [Fact]
     public void TwoSymbolsCanRunInDifferentModes()
@@ -79,7 +80,7 @@ public class MarketModeTests
         Assert.Equal(MarketMode.OrderBook, provider.GetMode("BTC/IRT"));
     }
 
-    /// <summary>مقدار نامعتبر نباید باعث استثنا شود؛ به رفتار پیش‌فرض برمی‌گردیم.</summary>
+    /// <summary>An invalid value must not throw; it falls back to the default.</summary>
     [Fact]
     public void AnUnrecognisedModeFallsBackInsteadOfThrowing()
     {

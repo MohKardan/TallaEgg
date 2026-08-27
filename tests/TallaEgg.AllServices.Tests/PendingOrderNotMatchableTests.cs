@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Core;
@@ -8,16 +8,16 @@ using TallaEgg.Core.Enums.Order;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// سفارشی که هنوز تأیید نشده نباید وارد تطبیق شود.
+/// An unconfirmed order must not enter matching.
 ///
-/// این ریشهٔ یافتهٔ ممیزی C-5 است. سفارش لحظه‌ای که ذخیره می‌شود <c>Pending</c> است —
-/// پیش از آنکه وثیقه‌اش قفل شود. پیش‌تر پرس‌وجوهای دفتر سفارش <c>Pending</c> را هم
-/// برمی‌گرداندند، پس حلقهٔ پس‌زمینه (هر ثانیه) می‌توانست سفارشی را بردارد که هیچ وثیقه‌ای
-/// پشتش نبود و معامله‌ای ثبت کند که تسویه‌اش هرگز موفق نمی‌شد.
+/// This is the root of audit finding C-5. An order is <c>Pending</c> from the moment it is saved,
+/// which is before its collateral is locked. The order-book queries used to return <c>Pending</c>
+/// orders too, so the background loop — running every second — could pick up an order with nothing
+/// backing it and record a trade that could never settle.
 ///
-/// حالا ترتیب «قفل، سپس تأیید، سپس تطبیق» است و فقط <c>Confirmed</c> دیده می‌شود — پس
-/// «هیچ معامله‌ای پیش از قفل وثیقه‌اش وجود ندارد» یک تضمین ساختاری است، نه یک قرارداد
-/// رفتاری که کد باید رعایتش کند.
+/// The order is now lock, then confirm, then match, and only <c>Confirmed</c> is visible — so "no
+/// trade exists before its collateral is locked" is a structural guarantee rather than a
+/// behavioural contract the code has to remember to honour.
 /// </summary>
 public class PendingOrderNotMatchableTests : IDisposable
 {
@@ -43,7 +43,7 @@ public class PendingOrderNotMatchableTests : IDisposable
         _connection.Dispose();
     }
 
-    /// <summary>سفارش را در وضعیت دلخواه می‌سازد. بدون Confirm، سفارش Pending می‌ماند.</summary>
+    /// <summary>Creates an order in the desired state. Without a confirm it stays Pending.</summary>
     private Order AddOrder(OrderSide side, bool confirm)
     {
         var order = Order.CreateMakerOrder(Symbol, 10m, 20_000_000m, Guid.NewGuid(), side, TradingType.Spot);
@@ -53,15 +53,15 @@ public class PendingOrderNotMatchableTests : IDisposable
         return order;
     }
 
-    // نکته دربارهٔ پوشش: GetBuyOrdersWithLockAsync و GetSellOrdersWithLockAsync اینجا
-    // مستقیماً تست نمی‌شوند، چون با ‎OrderBy(o => o.Price)‎ مرتب می‌کنند و SQLite مرتب‌سازی
-    // روی decimal را پشتیبانی نمی‌کند (روی SQL Server مشکلی نیست). هر دو از همان
-    // Expression مشترکِ Matchable استفاده می‌کنند که تست GetActiveAssetsAsync پایین آن
-    // را پوشش می‌دهد. این محدودیتِ محیط تست است، نه کد — و در #46 ثبت می‌شود.
+    // A note on coverage: GetBuyOrdersWithLockAsync and GetSellOrdersWithLockAsync are not tested
+    // directly here, because they sort with OrderBy(o => o.Price) and SQLite does not support
+    // ordering on decimal, which is fine on SQL Server. Both use the same shared Matchable
+    // expression that the GetActiveAssetsAsync test below covers. This is a limitation of the test
+    // environment rather than the code, and is recorded in #46.
 
     /// <summary>
-    /// حلقهٔ پس‌زمینه از این فهرست تصمیم می‌گیرد کدام دارایی‌ها را اسکن کند. اگر سفارش
-    /// Pending اینجا بیاید، موتور بیدار می‌شود تا روی سفارشی کار کند که هنوز وثیقه ندارد.
+    /// The background loop decides which assets to scan from this list. If a Pending order appears
+    /// here, the engine wakes up to work on an order that has no collateral yet.
     /// </summary>
     [Fact]
     public async Task PendingOrders_DoNotMakeAnAssetLookActive()
@@ -71,8 +71,8 @@ public class PendingOrderNotMatchableTests : IDisposable
         Assert.Empty(await _repository.GetActiveAssetsAsync());
     }
 
-    /// <summary>و سفارش تأییدشده باید همچنان دارایی را «فعال» نشان دهد — وگرنه تست بالا
-    /// با «هیچ‌چیز هرگز فعال نیست» هم سبز می‌ماند.</summary>
+    /// <summary>A confirmed order must still mark the asset active — otherwise the test above would
+    /// stay green under "nothing is ever active".</summary>
     [Fact]
     public async Task ConfirmedOrders_DoMakeAnAssetActive()
     {
@@ -82,14 +82,15 @@ public class PendingOrderNotMatchableTests : IDisposable
     }
 
     /// <summary>
-    /// دفاع در عمق: حتی اگر سفارشی از راه دیگری به تطبیق برسد، بازبینیِ داخل تراکنش هم
-    /// باید آن را رد کند. این تضمین می‌کند فیلترِ پرس‌وجو و بازبینیِ اتمی از هم جدا نشوند.
+    /// Defence in depth: even if an order reaches matching by another route, the in-transaction
+    /// re-check must refuse it. This keeps the query filter and the atomic re-check from drifting
+    /// apart.
     ///
-    /// مقدار تطبیق عمداً <b>کمتر</b> از مقدار سفارش است تا پر شدن جزئی رخ دهد.
-    /// با پر شدن کامل، <c>Order.Complete()</c> روی سفارش Pending استثنا می‌دهد و معامله
-    /// به‌طور تصادفی برگردانده می‌شود — یعنی تست حتی بدون این رفع هم سبز می‌ماند و چیزی
-    /// را ثابت نمی‌کند. مسیر پر شدن جزئی چنین گارد تصادفی‌ای ندارد، پس تنها همین حالت
-    /// واقعاً فیلتر را می‌سنجد.
+    /// The match quantity is deliberately <b>less</b> than the order quantity, producing a partial
+    /// fill. On a complete fill, <c>Order.Complete()</c> throws against a Pending order and the trade
+    /// is rolled back incidentally — so the test would stay green even without the fix and prove
+    /// nothing. The partial-fill path has no such accidental guard, so only this case actually
+    /// exercises the filter.
     /// </summary>
     [Fact]
     public async Task APartialMatchAgainstAPendingOrder_IsRejectedInsideTheTransaction()
@@ -103,13 +104,13 @@ public class PendingOrderNotMatchableTests : IDisposable
         Assert.Null(trade);
         Assert.Empty(_context.Trades);
 
-        // پیام مشخص، تا رد شدن به دلیل دیگری با این اشتباه گرفته نشود.
+        // A specific message, so a refusal for some other reason cannot be mistaken for this one.
         Assert.Contains("وضعیت سفارشات", error);
     }
 
     /// <summary>
-    /// و مسیر عادی هنوز کار می‌کند — وگرنه تست‌های بالا با «هیچ‌چیز تطبیق نمی‌خورد» هم
-    /// سبز می‌ماندند.
+    /// And the normal path still works — otherwise the tests above would stay green under "nothing
+    /// ever matches".
     /// </summary>
     [Fact]
     public async Task TwoConfirmedOrders_StillMatch()

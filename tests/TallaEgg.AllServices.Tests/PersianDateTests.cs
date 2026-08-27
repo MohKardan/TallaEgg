@@ -1,22 +1,20 @@
-using TallaEgg.Core.Utilties;
+﻿using TallaEgg.Core.Utilties;
 
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// تبدیل تاریخ میلادی به شمسی.
+/// Gregorian to Jalali date conversion.
 ///
-/// نسخهٔ قبلی سال را ۶۲۱ واحد کم می‌کرد و ماه را جابه‌جا می‌کرد، اما روزِ میلادی را
-/// دست‌نخورده برمی‌گرداند. نتیجه‌اش این بود که کاربر تاریخ معاملهٔ خودش را تا ۲۲ روز
-/// اشتباه می‌دید — مثلاً ۲۷ ژوئیهٔ ۲۰۲۶ به‌جای «۵ مرداد» به‌صورت «۲۷ مرداد» نمایش
-/// داده می‌شد.
+/// The previous version subtracted 621 from the year and shifted the month, but returned the
+/// Gregorian day unchanged. A user could see their own trade dated up to 22 days out: 27 July 2026
+/// displayed as the 27th of the Jalali month instead of the 5th.
 ///
-/// همچنین زمان‌ها در دیتابیس UTC ذخیره می‌شوند و بدون تبدیل، ساعت اشتباه نمایش داده
-/// می‌شد.
+/// Times are also stored in UTC, and without conversion the wrong hour was displayed.
 /// </summary>
 public class PersianDateTests
 {
     /// <summary>
-    /// همان تاریخی که باگ روی آن دیده شد. ۲۷ ژوئیهٔ ۲۰۲۶ = ۵ مرداد ۱۴۰۵.
+    /// The date the bug was spotted on: 27 July 2026 is 5 Mordad 1405.
     /// </summary>
     [Fact]
     public void TheDateThatExposedTheBug_ConvertsCorrectly()
@@ -29,8 +27,8 @@ public class PersianDateTests
     }
 
     /// <summary>
-    /// چند تاریخ مرزی. مرز ماه‌ها و مرز سال جایی است که محاسبهٔ «تقریبی» قبلی بیشترین
-    /// خطا را داشت.
+    /// A few boundary dates. Month and year boundaries are where the previous approximation was
+    /// most wrong.
     /// </summary>
     [Theory]
     [InlineData(2026, 3, 21, "1405/01/01")] // نوروز ۱۴۰۵
@@ -40,8 +38,8 @@ public class PersianDateTests
     [InlineData(2026, 12, 31, "1405/10/10")]
     public void KnownDates_ConvertCorrectly(int year, int month, int day, string expected)
     {
-        // ساعت ۱۲ ظهر UTC انتخاب شده تا افست +۳:۳۰ تهران روز را جابه‌جا نکند و تست
-        // دربارهٔ خودِ تبدیل تقویم باشد، نه دربارهٔ مرز نیمه‌شب.
+        // Midday UTC is used so Tehran's +03:30 offset cannot shift the day, keeping the test about
+        // the calendar conversion rather than the midnight boundary.
         var utc = new DateTime(year, month, day, 12, 0, 0, DateTimeKind.Utc);
 
         var result = Utils.ConvertToPersianDate(utc);
@@ -50,8 +48,8 @@ public class PersianDateTests
     }
 
     /// <summary>
-    /// ساعت باید به وقت تهران باشد. معامله‌ای که ۰۹:۵۲ به وقت UTC ثبت شده، برای کاربر
-    /// ایرانی ۱۳:۲۲ اتفاق افتاده است.
+    /// The time must be Tehran's. A trade recorded at 09:52 UTC happened at 13:22 for an Iranian
+    /// user.
     /// </summary>
     [Fact]
     public void TimeIsShownInTehranTime_NotUtc()
@@ -64,9 +62,9 @@ public class PersianDateTests
     }
 
     /// <summary>
-    /// تبدیل منطقهٔ زمانی می‌تواند تاریخ را هم عوض کند: ۲۲:۰۰ به وقت UTC یعنی ۰۱:۳۰
-    /// روز بعد در تهران. اگر فقط ساعت تبدیل می‌شد و تاریخ از UTC می‌آمد، این حالت
-    /// یک روز عقب نمایش داده می‌شد.
+    /// A time-zone conversion can change the date too: 22:00 UTC is 01:30 the next day in Tehran. If
+    /// only the time were converted while the date came from UTC, this case would display a day
+    /// behind.
     /// </summary>
     [Fact]
     public void LateUtcEvening_RollsOverToTheNextPersianDay()

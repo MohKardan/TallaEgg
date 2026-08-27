@@ -1,15 +1,15 @@
-using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
 
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// فهرست معاملات باید بگوید هر معامله از دید بیننده خرید بوده یا فروش.
+/// The trade list must say whether each trade was a buy or a sell from the viewer's point of view.
 ///
-/// پیش‌تر نمی‌گفت: کاربر فقط مقدار و مبلغ را می‌دید و هیچ راهی نداشت بفهمد طلا خریده
-/// یا فروخته. این یک ویژگی خودِ معامله نیست — یک معاملهٔ واحد برای یک طرف خرید است و
-/// برای طرف مقابل فروش — پس شناسهٔ بیننده باید به تابع ساخت متن داده شود.
+/// It used not to: the user saw only a quantity and an amount, with no way to tell whether they had
+/// bought or sold. This is not a property of the trade — one trade is a buy to one party and a sell
+/// to the other — so the viewer's id has to be passed to the message builder.
 /// </summary>
 public class TradeListSideTests
 {
@@ -59,9 +59,8 @@ public class TradeListSideTests
     }
 
     /// <summary>
-    /// همان معاملهٔ واحد باید برای دو طرف برعکس هم نمایش داده شود. این تستی است که یک
-    /// برچسب هاردکدشده را می‌گیرد — دو تست بالا به‌تنهایی با یک مقدار ثابت هم سبز
-    /// می‌شدند اگر داده‌هایشان متفاوت نبود.
+    /// The same trade must render oppositely for the two parties. This is the test that catches a
+    /// hard-coded label — the two above would pass against a constant if their data did not differ.
     /// </summary>
     [Fact]
     public async Task TheSameTrade_AppearsAsBuyToOnePartyAndSellToTheOther()
@@ -76,7 +75,8 @@ public class TradeListSideTests
     }
 
     /// <summary>
-    /// جهت پول هم باید صریح باشد: «ارزش کل» نمی‌گفت این مبلغ پرداخت شده یا دریافت.
+    /// The direction of the money must be explicit too: a bare total did not say whether the amount
+    /// was paid or received.
     /// </summary>
     [Fact]
     public async Task TheMoneyDirectionIsLabelled()
@@ -90,14 +90,14 @@ public class TradeListSideTests
         Assert.Contains("دریافتی", sellerView);
     }
 
-    /// <summary>تاریخ نمایش‌داده‌شده باید شمسیِ درست باشد و نه روزِ میلادی.</summary>
+    /// <summary>The displayed date must be the correct Jalali one, not the Gregorian day.</summary>
     [Fact]
     public async Task TheDateIsCorrectPersianDate()
     {
         var text = await TradeListHandler.BuildTradesListAsync(
             PageWith(Trade(buyer: Customer, seller: MarketMaker)), 1, Customer);
 
-        // ۲۷ ژوئیهٔ ۲۰۲۶ ساعت ۰۹:۵۲ UTC  =  ۵ مرداد ۱۴۰۵ ساعت ۱۳:۲۲ به وقت تهران
+        // 27 July 2026 at 09:52 UTC = 5 Mordad 1405 at 13:22 Tehran time.
         Assert.Contains("۱۴۰۵/۰۵/۰۵", text);
         Assert.Contains("۱۳:۲۲", text);
     }

@@ -13,17 +13,17 @@ using TallaEgg.AllServices.Tests.Fakes;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// پردازشگر outbox باید دقیقاً پیام‌هایی را بردارد که «سررسید» شده‌اند، و هیچ‌کدام از
-/// بقیه را (issue #46).
+/// The outbox processor must pick up exactly the messages that are due, and none of the others
+/// (issue #46).
 ///
-/// این انتخاب تنها چیزی است که میان «تلاش مجدد» و «تلاش بی‌وقفه» فرق می‌گذارد. عقب‌نشینی
-/// نمایی در <see cref="OutboxMessageTests"/> ثابت شده — ولی آن فقط <c>NextAttemptAt</c> را
-/// جلو می‌برد. اگر کوئری آن را نادیده بگیرد، عقب‌نشینی هیچ اثری ندارد و پیامی که سرویس
-/// کیف پول را از پا انداخته، هر پنج ثانیه دوباره به آن می‌کوبد تا سهمیهٔ تلاشش تمام شود.
+/// This selection is the only thing separating a retry from an unbroken hammering. Exponential
+/// backoff is proven in <see cref="OutboxMessageTests"/> — but that only advances
+/// <c>NextAttemptAt</c>. If the query ignores it, the backoff has no effect and a message that
+/// felled the wallet service keeps hitting it every five seconds until its attempts run out.
 ///
-/// همین‌طور یک پیام <c>Failed</c> نباید دوباره برداشته شود: برداشتنش یعنی مسیر re-drive
-/// دستی (#39) بی‌معنا می‌شود، چون سیستم خودش کاری را که اپراتور باید آگاهانه انجام بدهد
-/// تکرار می‌کند.
+/// Likewise a <c>Failed</c> message must not be picked up again: doing so would make the manual
+/// re-drive path (#39) meaningless, since the system would keep repeating the very action an
+/// operator is supposed to take deliberately.
 /// </summary>
 public class OutboxDueSelectionTests : IDisposable
 {
@@ -57,7 +57,7 @@ public class OutboxDueSelectionTests : IDisposable
         _connection.Dispose();
     }
 
-    /// <summary>هر تسویه را می‌پذیرد و شناسهٔ معامله‌ای که برایش صدا زده شده را نگه می‌دارد.</summary>
+    /// <summary>Accepts every settlement and records the trade id it was called for.</summary>
     private sealed class RecordingWalletClient : StubWalletApiClient
     {
         public List<Guid> SettledTradeIds { get; } = [];
@@ -80,7 +80,7 @@ public class OutboxDueSelectionTests : IDisposable
             QuoteQuantity = 184_680_733m
         });
 
-    /// <summary>یک پیام ذخیره می‌کند و اجازه می‌دهد پیش از ذخیره حالتش دستکاری شود.</summary>
+    /// <summary>Stores one message, allowing its state to be adjusted before saving.</summary>
     private (Guid MessageId, Guid TradeId) Seed(string type = "TradeSettlement", Action<OutboxMessage>? arrange = null)
     {
         using var db = new OrdersDbContext(Options());
@@ -107,7 +107,7 @@ public class OutboxDueSelectionTests : IDisposable
         return await db.OutboxMessages.SingleAsync(m => m.Id == messageId);
     }
 
-    // ── چه چیزی برداشته می‌شود ──────────────────────────────────────────────────
+    // ── What gets picked up ─────────────────────────────────────────────────────
 
     [Fact]
     public async Task AFreshPendingMessage_IsProcessed()
@@ -121,9 +121,9 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// پیامی که یک بار شکست خورده تا لحظهٔ سررسیدش کنار گذاشته می‌شود. بدون این فیلتر،
-    /// عقب‌نشینی نمایی فقط یک عدد در دیتابیس است و هیچ فشاری از سرویسِ در حال خفگی برداشته
-    /// نمی‌شود.
+    /// A message that has failed once is skipped until it comes due. Without this filter,
+    /// exponential backoff is just a number in the database and takes no pressure off a service that
+    /// is already struggling.
     /// </summary>
     [Fact]
     public async Task APendingMessageWhoseRetryIsNotDueYet_IsSkipped()
@@ -140,8 +140,8 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// پیامِ به‌طور دائم شکست‌خورده کنار گذاشته می‌شود. اگر برداشته می‌شد، هم لاگ «تسویه
-    /// گیر کرده» بی‌پایان تکرار می‌شد و هم re-drive اپراتور بی‌معنا می‌شد.
+    /// A permanently failed message is skipped. Picking it up would repeat the "settlement stuck"
+    /// log without end and make an operator's re-drive meaningless.
     /// </summary>
     [Fact]
     public async Task AFailedMessage_IsSkipped()
@@ -161,9 +161,8 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// پیام رهاشده (issue #39) هم باید کنار گذاشته شود — دقیقاً به همان دلیل پیام
-    /// <c>Failed</c>: برداشتنش یعنی تصمیم آگاهانهٔ اپراتور («این هرگز تسویه نمی‌شود») را
-    /// دور می‌زند.
+    /// An abandoned message (issue #39) is skipped too, for the same reason as a <c>Failed</c> one:
+    /// picking it up would override an operator's deliberate decision that it will never settle.
     /// </summary>
     [Fact]
     public async Task AnAbandonedMessage_IsSkipped()
@@ -182,8 +181,8 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// پیام تکمیل‌شده دوباره فرستاده نمی‌شود. تسویه تکرارپذیر است، پس این ایمنی است نه
-    /// درستی — ولی هر تحویل مجدد یک فراخوانی HTTP بیهوده به سرویس کیف پول است.
+    /// A completed message is not redelivered. Settlement is idempotent, so this is safety rather
+    /// than correctness — but every redelivery is a pointless HTTP call to the wallet service.
     /// </summary>
     [Fact]
     public async Task ACompletedMessage_IsSkipped()
@@ -197,9 +196,9 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// پیامی که سررسیدش رسیده باید برداشته شود — وگرنه فیلتر بالا به «هرگز تلاش مجدد نکن»
-    /// تبدیل می‌شود و همان تسویهٔ گیرکرده‌ای ساخته می‌شود که outbox قرار بود جلویش را
-    /// بگیرد. سررسید با گذاشتن آن در گذشته شبیه‌سازی می‌شود تا تست منتظر نماند.
+    /// A message that has come due must be picked up — otherwise the filter above becomes "never
+    /// retry" and produces exactly the stuck settlement the outbox exists to prevent. Being due is
+    /// simulated by placing the timestamp in the past, so the test does not have to wait.
     /// </summary>
     [Fact]
     public async Task APendingMessageWhoseRetryHasComeDue_IsProcessed()
@@ -213,15 +212,15 @@ public class OutboxDueSelectionTests : IDisposable
         Assert.Equal(OutboxMessageStatus.Completed, (await ReloadAsync(messageId)).Status);
     }
 
-    // ── نوع ناشناخته ────────────────────────────────────────────────────────────
+    // ── Unknown message type ────────────────────────────────────────────────────
 
     /// <summary>
-    /// نوع پیامی که مسیری برایش تعریف نشده باید صریحاً رد شود، نه بی‌صدا تکمیل.
+    /// A message type with no dispatch path must be refused explicitly, not silently completed.
     ///
-    /// اگر <c>default</c> پیام را <c>Completed</c> علامت می‌زد، افزودن نوع جدیدی از پیام —
-    /// بدون نوشتن مسیرش — به صف پاک‌شده‌ای می‌رسید که هیچ کاری انجام نداده بود، و هیچ ردی
-    /// هم باقی نمی‌ماند. پیام خطا باید نوع را نام ببرد، چون همان تنها سرنخِ اپراتور در
-    /// <c>LastError</c> است.
+    /// If <c>default</c> marked the message <c>Completed</c>, adding a new message type without
+    /// writing its dispatch path would produce a drained queue that had done nothing, leaving no
+    /// trace. The error message has to name the type, because that is the operator's only clue in
+    /// <c>LastError</c>.
     /// </summary>
     [Fact]
     public async Task AnUnknownMessageType_FailsLoudlyAndNamesTheType()
@@ -239,8 +238,8 @@ public class OutboxDueSelectionTests : IDisposable
     }
 
     /// <summary>
-    /// محتوای خراب هم باید همین‌طور رفتار کند: یک تلاش ناموفقِ ثبت‌شده، نه استثنایی که از
-    /// حلقه بیرون بزند و بقیهٔ دسته را زمین بگذارد.
+    /// Malformed content behaves the same way: a recorded failed attempt, not an exception that
+    /// escapes the loop and drops the rest of the batch.
     /// </summary>
     [Fact]
     public async Task AnUndeserializablePayload_IsRecordedAsAFailedAttempt()
