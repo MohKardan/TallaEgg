@@ -14,9 +14,16 @@ namespace Orders.Infrastructure.Configurations
                 .IsRequired()
                 .HasMaxLength(50);
             
+            // (28, 8) to match Trades.Quantity and Wallets.Balance, which have always been that
+            // wide. At (18, 2) this column was narrower than the assets it stores: BTC's precision
+            // is 8 decimal places, so SQL Server rounded 2.111 to 2.11 on the way in. Collateral is
+            // locked from the quantity the caller supplied, and OrderCollateralReconciler recomputes
+            // the residue from the quantity that was stored — so the difference between the two was
+            // locked and never released. Gold never showed it: MAUA's precision is 2, exactly what
+            // the column held.
             builder.Property(o => o.Amount)
                 .IsRequired()
-                .HasPrecision(18, 2);
+                .HasPrecision(28, 8);
             
             // RemainingAmount is a concurrency token: every UPDATE to an order carries
             // "WHERE RemainingAmount = <the value that was read>", so a second writer whose
@@ -37,12 +44,12 @@ namespace Orders.Infrastructure.Configurations
             // TradeId made "settled exactly once" structural.
             builder.Property(o => o.RemainingAmount)
                 .IsRequired()
-                .HasPrecision(18, 2)
+                .HasPrecision(28, 8)
                 .IsConcurrencyToken();
             
             builder.Property(o => o.Price)
                 .IsRequired()
-                .HasPrecision(18, 2);
+                .HasPrecision(28, 8);
             
             builder.Property(o => o.UserId)
                 .IsRequired();
