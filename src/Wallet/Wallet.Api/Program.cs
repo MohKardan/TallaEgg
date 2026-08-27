@@ -167,13 +167,15 @@ app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string as
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Balances");
 
 app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     var wallets = await walletService.GetUserWalletsAsync(userId);
     return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "لیست کیف پول های کاربر"));
-});
+})
+.WithTags("Balances");
 
 app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService walletService) =>
 {
@@ -188,7 +190,8 @@ app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService 
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
   
-});
+})
+.WithTags("Transactions");
 
 app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletService walletService) =>
 {
@@ -203,7 +206,8 @@ app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletServi
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
   
-});
+})
+.WithTags("Transactions");
 
 app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletService walletService) =>
 {
@@ -218,7 +222,8 @@ app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletServ
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
   
-});
+})
+.WithTags("Locks");
 
 app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletService walletService) =>
 {
@@ -231,7 +236,8 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Locks");
 
 app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWalletService walletService) =>
 {
@@ -245,7 +251,8 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Transactions");
 
 // Trade settlement — called by the Orders outbox processor after a match.
 // Atomically consumes both sides' locked collateral, credits each side, and records
@@ -272,7 +279,8 @@ app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService w
         logger.LogError(ex, "Error settling trade {TradeId}", trade.Id);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Transactions");
 
 app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService, ILogger<Program> logger, IConfiguration configuration) =>
 {
@@ -305,7 +313,8 @@ app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalle
         logger.LogError(ex, "Error in MakeTradeAsync for users {FromUserId} -> {ToUserId}", request.FromUserId, request.ToUserId);
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Transactions");
 
 // The withdraw, charge, transfer, internal/credit and internal/debit endpoints were commented
 // out here rather than deleted. Their service methods still exist and are now unreachable —
@@ -317,16 +326,15 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 {
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);
     return Results.Ok(transactions);
-});
+})
+.WithTags("Transactions");
 
-/// <summary>
-/// Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
-/// </summary>
-/// <param name="userId">User id.</param>
-/// <param name="walletService">Wallet service.</param>
-/// <returns>The wallets that were created.</returns>
-/// <response code="200">Default wallets created.</response>
-/// <response code="400">Wallet creation failed.</response>
+// Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
+// userId: User id.
+// walletService: Wallet service.
+// Returns: The wallets that were created.
+// 200: Default wallets created.
+// 400: Wallet creation failed.
 app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     try
@@ -338,7 +346,8 @@ app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletSer
     {
         return Results.BadRequest(ApiResponse<IEnumerable<WalletDTO>>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Wallets");
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {

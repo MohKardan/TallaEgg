@@ -230,7 +230,8 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
     {
         return ApiResponse<UserDto>.Fail(ex.Message);
     }
-});
+})
+.WithTags("Users");
 
 // Updates the phone number for an existing user
 // request: Phone update request containing Telegram ID and new phone number
@@ -252,7 +253,8 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Users");
 
 // Retrieves user information by Telegram ID
 // telegramId: Telegram ID of the user
@@ -267,7 +269,8 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
         return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
 
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
-});
+})
+.WithTags("Users");
 
 // Returns a user by id.
 // userId: User id.
@@ -290,7 +293,8 @@ app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userServ
     return Results.Json(
         ApiResponse<UserDto>.Ok(user, "اطلاعات کاربر با موفقیت دریافت شد.")
     );
-});
+})
+.WithTags("Users");
 
 // Retrieves user information by phone number
 // phone: phone of the user
@@ -305,7 +309,8 @@ app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userServ
         return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
 
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
-});
+})
+.WithTags("Users");
 
 
 app.MapGet("/api/users/list", async (
@@ -319,7 +324,8 @@ app.MapGet("/api/users/list", async (
 
     var users = await userService.GetUsersAsync(q, page, size);
     return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
-});
+})
+.WithTags("Users");
 
 // Updates the status of an existing user
 // request: Status update request containing Telegram ID and new status
@@ -341,7 +347,8 @@ app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserServi
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Users");
 
 // Gets user ID by invitation code
 // invitationCode: Invitation code to lookup
@@ -354,13 +361,15 @@ app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string
 {
     var userId = await userService.GetUserIdByInvitationCode(invitationCode);
     return Results.Ok(userId);
-});
+})
+.WithTags("Invitations");
 
 app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phonenumber, UserService userService) =>
 {
     var userId = await userService.GetUserIdByPhoneNumber(phonenumber);
     return Results.Ok(userId);
-});
+})
+.WithTags("Users");
 
 // Validates an invitation code
 // request: Invitation validation request containing the code to validate
@@ -372,7 +381,8 @@ app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest re
 {
     var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
     return Results.Ok(new { isValid = result.isValid, message = result.message });
-});
+})
+.WithTags("Invitations");
 
 // Registers a new user with invitation code
 // request: User registration request with invitation code
@@ -384,7 +394,8 @@ app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitat
 {
     var user = await userService.RegisterUserAsync(request.User);
     return Results.Ok(new { success = true, userId = user.Id });
-});
+})
+.WithTags("Invitations");
 
 // Updates the role of an existing user
 // request: Role update request containing user ID and new role
@@ -400,7 +411,8 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserS
         return Results.NotFound(new { success = false, message = "کاربر یافت نشد." });
 
     return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
-});
+})
+.WithTags("Users");
 
 // Gets all users by role
 // role: Role to filter users by
@@ -415,7 +427,8 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
 
     var users = await userService.GetUsersByRoleAsync(userRole);
     return Results.Ok(users);
-});
+})
+.WithTags("Users");
 
 // Checks if a user exists by Telegram ID
 // telegramId: Telegram ID to check
@@ -427,7 +440,8 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 {
     var exists = await userService.UserExistsAsync(telegramId);
     return Results.Ok(new { exists = exists });
-});
+})
+.WithTags("Users");
 
 // Creates the default wallets for an existing user.
 // userId: User id.
@@ -466,7 +480,8 @@ app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, Use
             statusCode: 500
         );
     }
-});
+})
+.WithTags("Users");
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {

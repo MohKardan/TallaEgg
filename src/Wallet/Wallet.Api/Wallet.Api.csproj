@@ -4,16 +4,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-	  <!--رفع باگ افزایش عدد سوم
-	  افزودن ویژگی جدید افزایش عدد دوم
-	  تغییر دیتابیس یا تغییرات پایه ای افزایش عدد اول-->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+	  <!-- Versioning: bug fix bumps the third number, a new feature the second,
+       a database or foundational change the first. -->
 	  <AssemblyVersion>1.0.0</AssemblyVersion>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Include="Users.Api.csproj" />
-    <None Include="Users.Application.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />

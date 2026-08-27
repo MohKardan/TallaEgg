@@ -273,7 +273,8 @@ app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository 
         Log.Error(ex, "Error publishing quote for {Symbol}", request.Symbol);
         return Results.BadRequest(ApiResponse<QuoteDto>.Fail("خطا در انتشار مظنه."));
     }
-});
+})
+.WithTags("Quotes");
 
 // The active quote for a symbol.
 app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuoteRepository quotes) =>
@@ -284,7 +285,8 @@ app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuot
     return quote is null
         ? Results.NotFound(ApiResponse<QuoteDto>.Fail("مظنه‌ای منتشر نشده است."))
         : Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(quote)));
-});
+})
+.WithTags("Quotes");
 
 // ─────────────────────── Automatic quotes (issue #90) ───────────────────────
 
@@ -295,7 +297,8 @@ app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string 
     var settings = await settingsRepo.GetOrCreateAsync(symbol);
 
     return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings)));
-});
+})
+.WithTags("Auto-quote");
 
 // Changes a symbol's automatic-quote spread.
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
@@ -315,7 +318,8 @@ app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
     {
         return Results.BadRequest(ApiResponse<AutoQuoteSettingsDto>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Auto-quote");
 
 // Turns a symbol's automatic quoting on or off.
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/enabled", async (
@@ -329,7 +333,8 @@ app.MapPost("/api/autoquote-settings/{Base}/{Quote}/enabled", async (
 
     return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings),
         request.IsEnabled ? "مظنهٔ اتومات روشن شد." : "مظنهٔ اتومات خاموش شد."));
-});
+})
+.WithTags("Auto-quote");
 
 static AutoQuoteSettingsDto ToAutoQuoteSettingsDto(Orders.Core.AutoQuoteSettings s) => new()
 {
@@ -346,7 +351,8 @@ app.MapGet("/api/symbols/active", async (Orders.Core.ISymbolSettingsRepository s
 {
     var symbols = await settingsRepo.GetActiveSymbolsAsync();
     return Results.Ok(ApiResponse<List<string>>.Ok(symbols.ToList()));
-});
+})
+.WithTags("Symbols");
 
 // Enables or disables a symbol.
 app.MapPost("/api/symbols/{Base}/{Quote}/active", async (
@@ -360,7 +366,8 @@ app.MapPost("/api/symbols/{Base}/{Quote}/active", async (
 
     return Results.Ok(ApiResponse<SymbolSettingsDto>.Ok(ToSymbolSettingsDto(settings),
         request.IsActive ? "نماد فعال شد." : "نماد غیرفعال شد."));
-});
+})
+.WithTags("Symbols");
 
 static SymbolSettingsDto ToSymbolSettingsDto(Orders.Core.SymbolSettings s) => new()
 {
@@ -403,7 +410,8 @@ app.MapGet("/api/quotes/{Base}/{Quote}/history", async (
     };
 
     return Results.Ok(ApiResponse<PagedResult<QuoteDto>>.Ok(result));
-});
+})
+.WithTags("Quotes");
 
 // A customer fills a quote: two orders for exactly the requested quantity are created, locked and
 // matched immediately. The customer does not enter a price.
@@ -415,7 +423,8 @@ app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillSe
     return success
         ? Results.Ok(ApiResponse<Guid?>.Ok(trade?.Id, message))
         : Results.BadRequest(ApiResponse<Guid?>.Fail(message));
-});
+})
+.WithTags("Quotes");
 
 // ─────────────────────────────────────────────────────────────────────────────────
 
@@ -463,8 +472,8 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
     }
 })
 .WithName("CreateOrder")
-.WithSummary("ایجاد سفارش واحد")
-.WithDescription("ایجاد سفارش Limit یا Market با تشخیص خودکار نقش Maker/Taker")
+.WithSummary("Create an order")
+.WithDescription("Creates a limit or market order, determining the maker/taker role automatically.")
 .WithTags("Orders")
 .Produces<ApiResponse<CreateOrderResponse>>(200)
 .ProducesValidationProblem(400);
@@ -492,7 +501,7 @@ app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderServi
     }
 })
 .WithName("GetOrderById")
-.WithSummary("دریافت سفارش با شناسه")
+.WithSummary("Get an order by id")
 .WithTags("Orders")
 .Produces(200)
 .Produces(404);
@@ -526,7 +535,7 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
     }
 })
 .WithName("CancelOrder")
-.WithSummary("لغو سفارش")
+.WithSummary("Cancel an order")
 .WithTags("Orders")
 .Produces(200)
 .Produces(400)
@@ -558,7 +567,7 @@ app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, strin
     }
 })
 .WithName("CancelUserActiveOrders")
-.WithSummary("لغو همه سفارشات فعال کاربر")
+.WithSummary("Cancel every active order of a user")
 .WithTags("Orders")
 .Produces(200)
 .Produces(400);
@@ -601,8 +610,8 @@ app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService o
     }
 })
 .WithName("ConfirmOrder")
-.WithSummary("تایید سفارش")
-.WithDescription("تغییر وضعیت سفارش از Pending به Confirmed با حفظ ایمنی همزمانی")
+.WithSummary("Confirm an order")
+.WithDescription("Moves an order from Pending to Confirmed without losing concurrency safety.")
 .WithTags("Orders")
 .Produces(200)
 .Produces(400)
@@ -641,7 +650,7 @@ app.MapGet("/api/orders/user/{userId}", async (
     }
 })
 .WithName("GetUserOrders")
-.WithSummary("دریافت سفارشات کاربر")
+.WithSummary("Get a user's orders")
 .WithTags("Orders")
 .Produces<ApiResponse<PagedResult<OrderHistoryDto>>>(200)
 .Produces(400);
@@ -679,7 +688,7 @@ app.MapGet("/api/trades/user/{userId}", async (
     }
 })
 .WithName("GetUserTrades")
-.WithSummary("دریافت معاملات کاربر")
+.WithSummary("Get a user's trades")
 .WithTags("Trades")
 .Produces<ApiResponse<PagedResult<TradeHistoryDto>>>(200)
 .Produces(400);
@@ -703,7 +712,7 @@ app.MapGet("/api/positions/user/{userId}", async (
     }
 })
 .WithName("GetUserPositions")
-.WithSummary("دریافت موقعیت و سود/زیان کاربر در همهٔ نمادها")
+.WithSummary("Get a user's position and profit/loss across every symbol")
 .WithTags("Positions")
 .Produces<ApiResponse<PositionsResponseDto>>(200)
 .Produces(500);
@@ -747,7 +756,7 @@ app.MapGet("/api/orders/active/user/{userId}", async (
     }
 })
 .WithName("GetUserActiveOrders")
-.WithSummary("دریافت سفارشات فعال کاربر")
+.WithSummary("Get a user's active orders")
 .WithTags("Orders")
 .Produces<ApiResponse<List<OrderHistoryDto>>>(200)
 .Produces(400);
@@ -788,7 +797,7 @@ app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
     }
 })
 .WithName("GetAllActiveOrders")
-.WithSummary("دریافت تمام سفارشات فعال")
+.WithSummary("Get every active order")
 .WithTags("Orders")
 .Produces<ApiResponse<List<OrderHistoryDto>>>(200)
 .Produces(500);
@@ -901,8 +910,8 @@ app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
 
 })
 .WithName("GetBestPrices")
-.WithSummary("دریافت بهترین قیمت‌های خرید و فروش")
-.WithDescription("این endpoint بهترین قیمت‌های Bid (خرید) و Ask (فروش) را برای نماد معاملاتی مشخص شده بازمی‌گرداند.")
+.WithSummary("Get the best bid and ask prices")
+.WithDescription("Returns the best bid and ask prices for the given trading symbol.")
 .WithTags("Market Data")
 .Produces<ApiResponse<BestPricesDto>>(200, "application/json")
 .Produces<ApiResponse<BestPricesDto>>(400, "application/json")
@@ -1003,7 +1012,8 @@ app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAband
         Log.Error(ex, "Error listing unsettled outbox messages");
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Outbox");
 
 // Puts a permanently-failed settlement back in the queue after the cause has been fixed.
 app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbContext db) =>
@@ -1033,7 +1043,8 @@ app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbCo
         Log.Error(ex, "Error re-driving outbox message {MessageId}", messageId);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Outbox");
 
 // Re-drives every failed settlement at once, for use after a fix that affects them all.
 app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
@@ -1059,7 +1070,8 @@ app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
         Log.Error(ex, "Error re-driving all failed outbox messages");
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Outbox");
 
 // Closes a permanently-failed settlement an operator has reviewed and decided will never
 // settle (e.g. its collateral was consumed by later activity). The record is kept, not
@@ -1098,7 +1110,8 @@ app.MapPost("/api/outbox/{messageId}/abandon", async (Guid messageId, AbandonOut
         Log.Error(ex, "Error abandoning outbox message {MessageId}", messageId);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-});
+})
+.WithTags("Outbox");
 
 app.Run();
 
