@@ -53,7 +53,7 @@ public class UserService
         // Create the user's default wallets.
         await CreateDefaultWalletsAsync(user.Id);
         
-        return _userMapper.Map(user);
+        return _userMapper.MapRequired(user);
     }
 
     public async Task<UserDto?> GetUserByTelegramIdAsync(long telegramId)
@@ -85,7 +85,7 @@ public class UserService
         user.PhoneNumber = phoneNumber;
         user.LastActiveAt = DateTime.UtcNow;
          await _userRepository.UpdateAsync(user);
-        return _userMapper.Map(user);
+        return _userMapper.MapRequired(user);
     }
 
     public async Task<bool> UserExistsAsync(long telegramId)
@@ -104,7 +104,7 @@ public class UserService
         user.Status = status;
         user.LastActiveAt = DateTime.UtcNow;
         await _userRepository.UpdateAsync(user);
-        return _userMapper.Map(user);
+        return _userMapper.MapRequired(user);
     }
 
     public async Task<Guid?> GetUserIdByInvitationCode(string invitationCode)

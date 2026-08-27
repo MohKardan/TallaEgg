@@ -65,7 +65,6 @@ namespace TallaEgg.TelegramBot
                     return true;
                 }
 
-                var info = CurrenciesConstant.GetCurrencyInfo(currency);
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
@@ -82,13 +81,13 @@ namespace TallaEgg.TelegramBot
                         // rather than "balance"; the previous message confused the two. Markdown
                         // formatting also clashed with ParseMode.Html and rendered the asterisks and
                         // backticks literally, so the text is now plain.
-                        var amountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
-                        var newCreditText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
+                        var amountText = $"{PersianFormat.Amount(amount, currency)} {PersianFormat.Unit(currency)}";
+                        var newCreditText = $"{PersianFormat.Amount(result.Data?.BalanceAfter ?? 0m, currency)} {PersianFormat.Unit(currency)}";
 
                         await _messenger.SendAsync(
                            message.Chat.Id,
                            string.Format(BotMsgs.MsgAdminChargeDone,
-                               info.PersianName,
+                               PersianFormat.Asset(currency),
                                amountText,
                                PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                newCreditText));
@@ -96,7 +95,7 @@ namespace TallaEgg.TelegramBot
                         await _messenger.SendAsync(
                            userDto.TelegramId,
                            string.Format(BotMsgs.MsgUserCreditIncreased,
-                               info.PersianName,
+                               PersianFormat.Asset(currency),
                                amountText,
                                newCreditText));
                     }
@@ -148,7 +147,6 @@ namespace TallaEgg.TelegramBot
                     return true;
                 }
 
-                var info = CurrenciesConstant.GetCurrencyInfo(currency);
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
@@ -165,13 +163,13 @@ namespace TallaEgg.TelegramBot
                         // The message sent to the user used to say the wallet had been topped up
                         // when the amount had in fact been deducted. It also hard-coded the currency
                         // unit regardless of the asset, and displayed the asset's Latin code.
-                        var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
-                        var newBalanceText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
+                        var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {PersianFormat.Unit(currency)}";
+                        var newBalanceText = $"{PersianFormat.Amount(result.Data?.BalanceAfter ?? 0m, currency)} {PersianFormat.Unit(currency)}";
 
                         await _messenger.SendAsync(
                                message.Chat.Id,
                                string.Format(BotMsgs.MsgAdminDeductDone,
-                                   info.PersianName,
+                                   PersianFormat.Asset(currency),
                                    deductAmountText,
                                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                    newBalanceText));
@@ -179,7 +177,7 @@ namespace TallaEgg.TelegramBot
                         await _messenger.SendAsync(
                                userDto.TelegramId,
                                string.Format(BotMsgs.MsgUserBalanceDeducted,
-                                   info.PersianName,
+                                   PersianFormat.Asset(currency),
                                    deductAmountText,
                                    newBalanceText));
 
@@ -222,7 +220,7 @@ namespace TallaEgg.TelegramBot
                         replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, 1, q)
                     );
                 }
-                else await _messenger.SendAsync(chatId, page.Message);
+                else await _messenger.SendAsync(chatId, page.Message ?? BotMsgs.MsgUnexpectedError);
                 return true;
             }
             if (msgText.StartsWith("م "))

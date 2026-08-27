@@ -1,4 +1,4 @@
-using Affiliate.Application;
+﻿using Affiliate.Application;
 using Affiliate.Core;
 using Affiliate.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -28,7 +28,7 @@ if (!serviceSection.Exists())
 var prefix = $"Services:{applicationName}:";
 var flattened = serviceSection.AsEnumerable(true)
     .Where(pair => pair.Value is not null)
-    .Select(pair => new KeyValuePair<string, string>(
+    .Select(pair => new KeyValuePair<string, string?>(
         pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             ? pair.Key[prefix.Length..]
             : pair.Key,

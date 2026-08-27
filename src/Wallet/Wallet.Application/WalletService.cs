@@ -25,7 +25,7 @@ public class WalletService : IWalletService
     {
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
         if (wallet == null) throw new BusinessRuleException("کیف پول پیدا نشد");
-        return _walletMapper.Map(wallet);
+        return _walletMapper.MapRequired(wallet);
     }
 
     /// <summary>
@@ -153,14 +153,14 @@ public class WalletService : IWalletService
     public async Task<WalletDTO> LockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await _walletRepository.LockBalanceAsync(userId, asset, amount);
-        return _walletMapper.Map(wallet);
+        return _walletMapper.MapRequired(wallet);
 
     }
 
     public async Task<WalletDTO> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
         var wallet = await _walletRepository.UnlockBalanceAsync(userId, asset, amount);
-        return _walletMapper.Map(wallet);
+        return _walletMapper.MapRequired(wallet);
     }
 
     public async Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId)
@@ -338,7 +338,7 @@ public class WalletService : IWalletService
                  CurrenciesConstant.Toman
             );
             var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
-            wallets.Add(_walletMapper.Map(irrWallet));
+            wallets.Add(_walletMapper.MapRequired(irrWallet));
 
 
             var mauaWallet = WalletEntity.Create
@@ -347,7 +347,7 @@ public class WalletService : IWalletService
                  CurrenciesConstant.Maua
             );
             var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
-            wallets.Add(_walletMapper.Map(mauaWallet));
+            wallets.Add(_walletMapper.MapRequired(mauaWallet));
 
 
             var creditMauaWallet = WalletEntity.Create
@@ -356,7 +356,7 @@ public class WalletService : IWalletService
                  CurrenciesConstant.Credit_MAUA
             );
             var creditMauaResult = await _walletRepository.CreateWalletAsync(creditMauaWallet);
-            wallets.Add(_walletMapper.Map(creditMauaWallet));
+            wallets.Add(_walletMapper.MapRequired(creditMauaWallet));
 
             return wallets;
         }

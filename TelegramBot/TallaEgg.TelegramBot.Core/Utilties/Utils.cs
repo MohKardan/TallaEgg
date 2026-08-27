@@ -10,7 +10,7 @@ namespace TallaEgg.TelegramBot.Core.Utilties
     public static class Utils
     {
 
-        public static string EscapeMarkdownV2(string text)
+        public static string EscapeMarkdownV2(string? text)
         {
             if (string.IsNullOrEmpty(text))
                 return "";

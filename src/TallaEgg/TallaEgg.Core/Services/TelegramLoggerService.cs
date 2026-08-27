@@ -22,6 +22,21 @@ namespace TallaEgg.Core.Services
         }
 
         /// <summary>
+        /// The version line appended to every message, or nothing when the entry assembly has no
+        /// version — which is the case under a test host, where GetEntryAssembly is the runner.
+        /// Computed once: it cannot change while the process lives.
+        /// </summary>
+        private static readonly string VersionSuffix = BuildVersionSuffix();
+
+        private static string BuildVersionSuffix()
+        {
+            var assemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version;
+            return assemblyVersion is null
+                ? string.Empty
+                : $"\n V:{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
+        }
+
+        /// <summary>
         /// Send To Main Chanell
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -31,7 +46,6 @@ namespace TallaEgg.Core.Services
         /// 
         public async Task Notif(string message, string chatId= "-1002988196234", string parseMode = "")
         {
-            var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
             string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ message;
@@ -42,7 +56,7 @@ namespace TallaEgg.Core.Services
                 WriteIndented = true
             };
 
-            text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+            text += VersionSuffix;
 
             string _message = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId, ParseMode = parseMode }, _options);
 
@@ -61,7 +75,6 @@ namespace TallaEgg.Core.Services
         /// 
         public async Task Notif<T>(string message, T dto, string chatId = "-1002988196234", string parseMode = "")
         {
-            var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
             string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ message;
@@ -74,7 +87,7 @@ namespace TallaEgg.Core.Services
             };
 
             text += JsonSerializer.Serialize(dto, _options);
-            text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+            text += VersionSuffix;
 
             string _message = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId, ParseMode = parseMode }, _options);
 
@@ -86,7 +99,6 @@ namespace TallaEgg.Core.Services
 
         public async Task LogAsync<T>(string message, T dto, string chatId = "-822161060", string parseMode = "")
         {
-            var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
             string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ message;
@@ -99,7 +111,7 @@ namespace TallaEgg.Core.Services
             };
 
             text += JsonSerializer.Serialize(dto, _options);
-            text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+            text += VersionSuffix;
 
             string _message = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId, ParseMode = parseMode }, _options);
 
@@ -111,7 +123,6 @@ namespace TallaEgg.Core.Services
 
         public async Task LogAsync(string log, string chatId = "-822161060")
         {
-            var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
             try
@@ -124,7 +135,7 @@ namespace TallaEgg.Core.Services
                 string text = /*$"StoreName:{_appSettings.StoreName}\n" +*/ log + "\n";
              
                 
-                    text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+                    text += VersionSuffix;
                     var _text = JsonSerializer.Serialize(new { Message = text, BotId = _botToken, ChatId = chatId }, _options);
                 
 
@@ -148,7 +159,6 @@ namespace TallaEgg.Core.Services
         public async Task ErrorAsync(Exception ex, string message = "")
         {
 
-            var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
             try
@@ -164,7 +174,7 @@ namespace TallaEgg.Core.Services
                 text += "\n" + JsonSerializer.Serialize(string.IsNullOrEmpty(ex.Source) ? "no source" : ex.Source, _options);
                 //text += "\n" + ex.InnerException != null ? "Inner:" + JsonSerializer.Serialize(ex.InnerException?.Message) : "No Inner";
 
-                text += $"\n V:{version.Major}.{version.Minor}.{version.Build}";
+                text += VersionSuffix;
 
 
                 string _ex = JsonSerializer.Serialize(

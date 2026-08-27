@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -21,6 +21,15 @@ namespace TallaEgg.TelegramBot
                 if (response.IsSuccessStatusCode)
                 {
                     var result = JsonConvert.DeserializeObject<dynamic>(content);
+                    if (result is null)
+                    {
+                        // A 2xx that does not parse means we are not talking to the Telegram API —
+                        // a proxy or captive portal answering for it, most likely. Treating that as
+                        // a valid token would start the bot against something that is not Telegram.
+                        Console.WriteLine("❌ getMe returned a success status with an unreadable body");
+                        return false;
+                    }
+
                     Console.WriteLine($"✅ Bot is valid: {result.ok}");
                     Console.WriteLine($"Bot Username: {result.result.username}");
                     Console.WriteLine($"Bot Name: {result.result.first_name}");
