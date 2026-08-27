@@ -83,22 +83,22 @@ public class OrderApiClient : IOrderApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Order API request timed out for user {UserId}", userId);
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("پاسخ‌گویی سرویس سفارشات زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Order API communication error for user {UserId}", userId);
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطای ارتباط با سرویس سفارشات");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Order API returned invalid JSON for user {UserId}", userId);
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("ساختار پاسخ سرویس سفارشات نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching orders for user {UserId}", userId);
-            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<PagedResult<OrderHistoryDto>>.Fail("خطای غیرمنتظره");
         }
     }
     public async Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(
@@ -133,22 +133,22 @@ public class OrderApiClient : IOrderApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Order API request timed out while fetching trades for user {UserId}", userId);
-            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("پاسخ‌گویی سرویس سفارشات زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Order API communication error while fetching trades for user {UserId}", userId);
-            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("خطای ارتباط با سرویس سفارشات");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Order API returned invalid JSON while fetching trades for user {UserId}", userId);
-            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("ساختار پاسخ سرویس سفارشات نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching trades for user {UserId}", userId);
-            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<PagedResult<TradeHistoryDto>>.Fail("خطای غیرمنتظره");
         }
     }
     public async Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId)
@@ -180,22 +180,22 @@ public class OrderApiClient : IOrderApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Order API request timed out while fetching active orders for user {UserId}", userId);
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("پاسخ‌گویی سرویس سفارشات زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Order API communication error while fetching active orders for user {UserId}", userId);
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("خطای ارتباط با سرویس سفارشات");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Order API returned invalid JSON while fetching active orders for user {UserId}", userId);
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("ساختار پاسخ سرویس سفارشات نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching active orders for user {UserId}", userId);
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("خطای غیرمنتظره");
         }
     }
     public async Task<ApiResponse<List<OrderHistoryDto>>> GetAllActiveOrdersAsync()
@@ -225,22 +225,22 @@ public class OrderApiClient : IOrderApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Order API request timed out while fetching all active orders");
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("پاسخ‌گویی سرویس سفارشات زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Order API communication error while fetching all active orders");
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("خطای ارتباط با سرویس سفارشات");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Order API returned invalid JSON while fetching all active orders");
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("ساختار پاسخ سرویس سفارشات نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching all active orders");
-            return ApiResponse<List<OrderHistoryDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<List<OrderHistoryDto>>.Fail("خطای غیرمنتظره");
         }
     }
 
@@ -387,8 +387,9 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error while fetching the best prices.");
             // Catch-all for any other unexpected exceptions
-            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<BestPricesDto>.Fail("خطای غیرمنتظره");
         }
         finally
         {
@@ -411,7 +412,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while submitting an order.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -442,7 +444,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while publishing a quote.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -485,7 +488,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while updating the auto-quote spread.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -507,7 +511,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while switching auto-quote on or off.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -549,7 +554,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while switching a symbol on or off.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -636,7 +642,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while accepting a quote.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -673,7 +680,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while cancelling an order.");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 
@@ -716,7 +724,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}", 0);
+            _logger.LogError(ex, "Unexpected error while cancelling a user's active orders.");
+            return (false, "خطا در ارتباط با سرور", 0);
         }
     }
 
@@ -740,7 +749,8 @@ public class OrderApiClient : IOrderApiClient
         }
         catch (Exception ex)
         {
-            return ApiResponse<bool>.Fail($"خطا در ارتباط با سرور: {ex.Message}");
+            _logger.LogError(ex, "Unexpected error while notifying the matching engine.");
+            return ApiResponse<bool>.Fail("خطا در ارتباط با سرور");
         }
     }
 
@@ -773,22 +783,22 @@ public class OrderApiClient : IOrderApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Order API request timed out while fetching positions for user {UserId}", userId);
-            return ApiResponse<PositionsResponseDto>.Fail($"پاسخ‌گویی سرویس سفارشات زمان‌بر شد: {ex.Message}");
+            return ApiResponse<PositionsResponseDto>.Fail("پاسخ‌گویی سرویس سفارشات زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Order API communication error while fetching positions for user {UserId}", userId);
-            return ApiResponse<PositionsResponseDto>.Fail($"خطای ارتباط با سرویس سفارشات: {ex.Message}");
+            return ApiResponse<PositionsResponseDto>.Fail("خطای ارتباط با سرویس سفارشات");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Order API returned invalid JSON while fetching positions for user {UserId}", userId);
-            return ApiResponse<PositionsResponseDto>.Fail($"ساختار پاسخ سرویس سفارشات نامعتبر است: {ex.Message}");
+            return ApiResponse<PositionsResponseDto>.Fail("ساختار پاسخ سرویس سفارشات نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching positions for user {UserId}", userId);
-            return ApiResponse<PositionsResponseDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<PositionsResponseDto>.Fail("خطای غیرمنتظره");
         }
     }
 }

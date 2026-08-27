@@ -237,7 +237,7 @@ public class OrderMatchingRepository
             await transaction.RollbackAsync();
             await DiscardUnpersistedChangesAsync(buyOrder, sellOrder);
             _logger.LogError(ex, "Error in atomic order matching");
-            return (false, null, $"خطا در تطبیق سفارشات: {ex.Message}");
+            return (false, null, "خطا در تطبیق سفارشات");
         }
     }
 

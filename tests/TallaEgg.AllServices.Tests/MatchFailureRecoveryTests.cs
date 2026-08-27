@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Core;
@@ -90,7 +90,14 @@ public class MatchFailureRecoveryTests : IDisposable
 
             Assert.False(success, "a failed save must not be reported as a successful match");
             Assert.Null(trade);
-            Assert.Contains("simulated save failure", error);
+
+            // The message goes to the customer: QuoteFillService returns this very string from
+            // AcceptQuoteAsync, and the bot shows it. So it must be the stable Persian sentence and
+            // must not carry the exception's own text — a customer accepting a quote during a
+            // database fault used to be shown the .NET message appended to it. The detail is not
+            // lost: ExecuteAtomicMatchAsync logs the exception before returning.
+            Assert.Equal("خطا در تطبیق سفارشات", error);
+            Assert.DoesNotContain("simulated save failure", error);
 
             // The whole point: these are the exact objects a caller (QuoteFillService) still
             // holds after the failure. If they show the mutation step 6 applied in memory

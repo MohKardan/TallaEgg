@@ -57,22 +57,22 @@ public class AffiliateApiClient : IAffiliateApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Affiliate API request timed out while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"پاسخ‌گویی سرویس افیلیت زمان‌بر شد: {ex.Message}");
+            return (false, "پاسخ‌گویی سرویس افیلیت زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Affiliate API communication error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای ارتباط با سرویس افیلیت: {ex.Message}");
+            return (false, "خطای ارتباط با سرویس افیلیت");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Affiliate API returned invalid JSON while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"ساختار پاسخ سرویس افیلیت نامعتبر است: {ex.Message}");
+            return (false, "ساختار پاسخ سرویس افیلیت نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای غیرمنتظره: {ex.Message}");
+            return (false, "خطای غیرمنتظره");
         }
     }
     public async Task<(bool success, string message, Guid? invitationId)> UseInvitationAsync(string invitationCode, Guid usedByUserId)
@@ -116,22 +116,22 @@ public class AffiliateApiClient : IAffiliateApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Affiliate API request timed out while consuming invitation code {InvitationCode}", invitationCode);
-            return (false, $"پاسخ‌گویی سرویس افیلیت زمان‌بر شد: {ex.Message}", null);
+            return (false, "پاسخ‌گویی سرویس افیلیت زمان‌بر شد", null);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Affiliate API communication error while consuming invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای ارتباط با سرویس افیلیت: {ex.Message}", null);
+            return (false, "خطای ارتباط با سرویس افیلیت", null);
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Affiliate API returned invalid JSON while consuming invitation code {InvitationCode}", invitationCode);
-            return (false, $"ساختار پاسخ سرویس افیلیت نامعتبر است: {ex.Message}", null);
+            return (false, "ساختار پاسخ سرویس افیلیت نامعتبر است", null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while consuming invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای غیرمنتظره: {ex.Message}", null);
+            return (false, "خطای غیرمنتظره", null);
         }
     }
 
@@ -195,8 +195,9 @@ public class AffiliateApiClient : IAffiliateApiClient
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unexpected error while updating a user's phone number.");
             // Log exception here if needed
-            return (false, $"خطا در ارتباط با سرور: {ex.Message}");
+            return (false, "خطا در ارتباط با سرور");
         }
     }
 

@@ -111,23 +111,26 @@ public class UserRepository : IUserRepository
             .ToListAsync();
     }
 
+    // Both select a nullable Guid on purpose. Selecting `u.Id` and calling FirstOrDefaultAsync
+    // yields Guid.Empty when nothing matches, not null — and every caller tests the result with
+    // `if (id != null)`, so an unknown code came back looking like a user whose id is all zeroes.
     public async Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode)
     {
-        return await _context.Users.Where(u => u.InvitationCode == invitationCode).Select(u => u.Id)
+        return await _context.Users
+            .Where(u => u.InvitationCode == invitationCode)
+            .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync();
     }
 
+    // FirstAsync throws when there is no match, and the catch that used to wrap this turned that
+    // into null — which also turned a database failure into "no such phone number". FirstOrDefault
+    // asks the question without raising anything, so a real fault is free to surface.
     public async Task<Guid?> GetUserIdByPhonenumberAsync(string phoneNumber)
     {
-        try
-        {
-            return await _context.Users.Where(u => u.PhoneNumber == phoneNumber).Select(u => u.Id)
-            .FirstAsync();
-        }
-        catch (Exception)
-        {
-            return null;
-        }
+        return await _context.Users
+            .Where(u => u.PhoneNumber == phoneNumber)
+            .Select(u => (Guid?)u.Id)
+            .FirstOrDefaultAsync();
     }
 
     Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)

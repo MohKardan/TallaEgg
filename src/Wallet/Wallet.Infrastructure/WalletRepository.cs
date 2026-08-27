@@ -424,7 +424,7 @@ public class WalletRepository : IWalletRepository
         {
             await tx.RollbackAsync();
             _logger.LogError(ex, "Error settling trade {TradeId}", tradeId);
-            return (false, $"Settlement error: {ex.Message}");
+            return (false, "Settlement error");
         }
     }
 

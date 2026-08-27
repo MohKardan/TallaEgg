@@ -748,6 +748,7 @@ namespace TallaEgg.TelegramBot
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Unexpected error while cancelling a user's active orders.");
                 return new CancelOrdersResult
                 {
                     HasError = true,

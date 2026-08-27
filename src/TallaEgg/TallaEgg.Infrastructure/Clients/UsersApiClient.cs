@@ -97,22 +97,22 @@ public class UsersApiClient : IUsersApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while fetching users");
-            return ApiResponse<PagedResult<UserDto>>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+            return ApiResponse<PagedResult<UserDto>>.Fail("پاسخ‌گویی سرویس کاربران زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while fetching users");
-            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+            return ApiResponse<PagedResult<UserDto>>.Fail("خطای ارتباط با سرویس کاربران");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while fetching users");
-            return ApiResponse<PagedResult<UserDto>>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
+            return ApiResponse<PagedResult<UserDto>>.Fail("ساختار پاسخ سرویس کاربران نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching users");
-            return ApiResponse<PagedResult<UserDto>>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return ApiResponse<PagedResult<UserDto>>.Fail("خطای غیرمنتظره");
         }
     }
     public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)
@@ -146,22 +146,22 @@ public class UsersApiClient : IUsersApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+            return (false, "پاسخ‌گویی سرویس کاربران زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای ارتباط با سرویس کاربران: {ex.Message}");
+            return (false, "خطای ارتباط با سرویس کاربران");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
+            return (false, "ساختار پاسخ سرویس کاربران نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, $"خطای غیرمنتظره: {ex.Message}");
+            return (false, "خطای غیرمنتظره");
         }
     }
     public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
@@ -212,22 +212,22 @@ public class UsersApiClient : IUsersApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while registering user {TelegramId}", telegramId);
-            return (false, $"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}", null);
+            return (false, "پاسخ‌گویی سرویس کاربران زمان‌بر شد", null);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while registering user {TelegramId}", telegramId);
-            return (false, $"خطای ارتباط با سرویس کاربران: {ex.Message}", null);
+            return (false, "خطای ارتباط با سرویس کاربران", null);
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while registering user {TelegramId}", telegramId);
-            return (false, $"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}", null);
+            return (false, "ساختار پاسخ سرویس کاربران نامعتبر است", null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while registering user {TelegramId}", telegramId);
-            return (false, $"خطای غیرمنتظره: {ex.Message}", null);
+            return (false, "خطای غیرمنتظره", null);
         }
     }
     public async Task<UserDto?> GetUserAsync(long telegramId)
@@ -349,22 +349,22 @@ public class UsersApiClient : IUsersApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while updating phone for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("پاسخ‌گویی سرویس کاربران زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while updating phone for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطای ارتباط با سرویس کاربران");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while updating phone for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("ساختار پاسخ سرویس کاربران نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while updating phone for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطای غیرمنتظره");
         }
     }
     public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, TallaEgg.Core.Enums.User.UserStatus newStatus)
@@ -402,22 +402,22 @@ public class UsersApiClient : IUsersApiClient
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while updating user status for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"پاسخ‌گویی سرویس کاربران زمان‌بر شد: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("پاسخ‌گویی سرویس کاربران زمان‌بر شد");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while updating user status for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای ارتباط با سرویس کاربران: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطای ارتباط با سرویس کاربران");
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while updating user status for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"ساختار پاسخ سرویس کاربران نامعتبر است: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("ساختار پاسخ سرویس کاربران نامعتبر است");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while updating user status for TelegramId {TelegramId}", telegramId);
-            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail($"خطای غیرمنتظره: {ex.Message}");
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("خطای غیرمنتظره");
         }
     }
     /// <summary>
