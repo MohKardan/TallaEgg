@@ -612,10 +612,6 @@ public class UsersApiClient : IUsersApiClient
     /// </summary>
     /// <param name="userId">User id.</param>
     /// <returns>The user, or null if there is no such user.</returns>
-    /// <remarks>
-    /// Used to obtain the full user record including TelegramUserId, which is required in order to
-    /// send trade-match notifications.
-    /// </remarks>
     public async Task<UserDto?> GetUserByIdAsync(Guid userId)
     {
         try
