@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using TallaEgg.Core;
 using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Wallet.Infrastructure;
 
@@ -131,7 +132,7 @@ public class WalletRepository : IWalletRepository
             // service. A genuinely unknown asset still fails instead of creating a phantom
             // wallet.
             if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+                throw new BusinessRuleException("کیف پول پیدا نشد");
 
             wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
@@ -165,7 +166,7 @@ public class WalletRepository : IWalletRepository
             // order-cancellation flow, a Lock always precedes the matching Unlock and so the
             // wallet already exists by then.
             if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+                throw new BusinessRuleException("کیف پول پیدا نشد");
 
             wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
@@ -183,7 +184,7 @@ public class WalletRepository : IWalletRepository
                 "Refusing to unlock {Amount} {Asset} for user {UserId}: only {Locked} is locked.",
                 amount, asset, userId, wallet.LockedBalance);
 
-            throw new InvalidOperationException(
+            throw new BusinessRuleException(
                 $"مقدار آزادسازی ({amount}) از موجودی قفل‌شده ({wallet.LockedBalance}) بیشتر است.");
         }
 
@@ -219,7 +220,7 @@ public class WalletRepository : IWalletRepository
             // "wallet not found" message (issue #39 territory: a stuck settlement, not just a
             // refused request).
             if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new ArgumentNullException("کیف پول پیدا نشد", nameof(wallet));
+                throw new BusinessRuleException("کیف پول پیدا نشد");
 
             wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
         }

@@ -1,3 +1,5 @@
+﻿using TallaEgg.Core.ErrorHandling;
+
 namespace Orders.Core;
 
 /// <summary>
@@ -45,7 +47,7 @@ public class AutoQuoteSettings
     public static AutoQuoteSettings CreateDefault(string symbol)
     {
         if (string.IsNullOrWhiteSpace(symbol))
-            throw new ArgumentException("نماد نمی‌تواند خالی باشد.", nameof(symbol));
+            throw new BusinessRuleException("نماد نمی‌تواند خالی باشد.");
 
         return new AutoQuoteSettings
         {
@@ -61,7 +63,7 @@ public class AutoQuoteSettings
     public void UpdateSpread(decimal spreadPercent, Guid updatedByUserId)
     {
         if (spreadPercent < 0)
-            throw new ArgumentException("اسپرد نمی‌تواند منفی باشد.", nameof(spreadPercent));
+            throw new BusinessRuleException("اسپرد نمی‌تواند منفی باشد.");
 
         SpreadPercent = spreadPercent;
         UpdatedByUserId = updatedByUserId;

@@ -1,4 +1,5 @@
 ﻿using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Orders.Core;
 
@@ -61,23 +62,23 @@ public class Quote
     public static Quote Publish(string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId)
     {
         if (string.IsNullOrWhiteSpace(symbol))
-            throw new ArgumentException("نماد نمی‌تواند خالی باشد.", nameof(symbol));
+            throw new BusinessRuleException("نماد نمی‌تواند خالی باشد.");
 
         if (buyPrice <= 0)
-            throw new ArgumentException("قیمت خرید باید بزرگ‌تر از صفر باشد.", nameof(buyPrice));
+            throw new BusinessRuleException("قیمت خرید باید بزرگ‌تر از صفر باشد.");
 
         if (sellPrice <= 0)
-            throw new ArgumentException("قیمت فروش باید بزرگ‌تر از صفر باشد.", nameof(sellPrice));
+            throw new BusinessRuleException("قیمت فروش باید بزرگ‌تر از صفر باشد.");
 
         // A negative spread means the admin buys higher than they sell. A customer could buy and
         // sell endlessly, profiting on every round trip straight out of the shop's pocket. Catch
         // it here rather than after a few trades have already run.
         if (buyPrice > sellPrice)
-            throw new ArgumentException(
+            throw new BusinessRuleException(
                 $"قیمت خرید ({buyPrice}) نمی‌تواند از قیمت فروش ({sellPrice}) بیشتر باشد.");
 
         if (publishedByUserId == Guid.Empty)
-            throw new ArgumentException("شناسهٔ منتشرکننده الزامی است.", nameof(publishedByUserId));
+            throw new BusinessRuleException("شناسهٔ منتشرکننده الزامی است.");
 
         return new Quote
         {

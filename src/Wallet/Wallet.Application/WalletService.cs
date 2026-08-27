@@ -6,6 +6,7 @@ using TallaEgg.Core.Enums.Wallet;
 using TallaEgg.Core.Utilties;
 using Wallet.Application.Mappers;
 using Wallet.Core;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Wallet.Application;
 
@@ -23,7 +24,7 @@ public class WalletService : IWalletService
     public async Task<WalletDTO> GetBalanceAsync(Guid userId, string asset)
     {
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
-        if (wallet == null) throw new Exception("کیف پول پیدا نشد");
+        if (wallet == null) throw new BusinessRuleException("کیف پول پیدا نشد");
         return _walletMapper.Map(wallet);
     }
 
@@ -49,7 +50,7 @@ public class WalletService : IWalletService
             // unknown asset code (a typo, not a real symbol) still fails loudly instead of
             // silently creating a phantom wallet.
             if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new ArgumentException("کیف پول وجود ندارد");
+                throw new BusinessRuleException("کیف پول وجود ندارد");
 
             wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
@@ -90,7 +91,7 @@ public class WalletService : IWalletService
             // credited. Decreasing an empty, just-created wallet then behaves exactly like
             // decreasing any other zero-balance wallet — unrelated to this fix.
             if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new ArgumentException("کیف پول وجود ندارد");
+                throw new BusinessRuleException("کیف پول وجود ندارد");
 
             wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
@@ -215,10 +216,10 @@ public class WalletService : IWalletService
         var toWallet = await _walletRepository.GetWalletAsync(toUserId, asset);
 
         if (fromWallet == null || toWallet == null)
-            throw new ArgumentException("کیف پول یکی از طرفین وجود ندارد");
+            throw new BusinessRuleException("کیف پول یکی از طرفین وجود ندارد");
 
         if (fromUserId == toUserId)
-            throw new ArgumentException("انتقال به خود امکان‌پذیر نیست.");
+            throw new BusinessRuleException("انتقال به خود امکان‌پذیر نیست.");
 
         // Never implemented: this returns an empty DTO, so a caller is told the trade succeeded
         // while no balance moves. That is audit finding C-8. The endpoint in front of it,

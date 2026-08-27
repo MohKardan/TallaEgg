@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using TallaEgg.Core.Enums.Wallet;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Wallet.Core;
 
@@ -46,7 +47,7 @@ public class WalletEntity
     public void IncreaseBalance(decimal amount)
     {
         if (amount <= 0)
-            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
 
         Balance += amount;
         UpdatedAt = DateTime.UtcNow;
@@ -55,10 +56,10 @@ public class WalletEntity
     public void DecreaseBalance(decimal amount)
     {
         if (amount <= 0)
-            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
 
         if (Balance - amount < 0)
-            throw new ArgumentException("مقدار کسر از حساب بیشتر از حد مجاز است");
+            throw new BusinessRuleException("مقدار کسر از حساب بیشتر از حد مجاز است");
 
         Balance -= amount;
         UpdatedAt = DateTime.UtcNow;
@@ -101,7 +102,7 @@ public class WalletEntity
     public void ConsumeLockedBalance(decimal amount)
     {
         if (amount <= 0)
-            throw new ArgumentException("مقدار باید بزرگتر از صفر باشد", nameof(amount));
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
 
         LockedBalance -= amount;
         UpdatedAt = DateTime.UtcNow;
