@@ -11,7 +11,7 @@ namespace Orders.Infrastructure;
 
 /// <summary>
 /// Repository with Database Locking for Thread-Safe Order Matching
-/// مخزن با قفل پایگاه داده برای تطبیق ایمن سفارشات
+/// Repository that uses database locking to match orders safely.
 /// </summary>
 public class OrderMatchingRepository
 {
@@ -26,14 +26,14 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Get buy orders with pessimistic lock for atomic matching
-    /// دریافت سفارشات خرید با قفل متقابل برای تطبیق اتمی
+    /// Fetches buy orders under a mutual lock, for atomic matching.
     /// </summary>
     public async Task<List<Order>> GetBuyOrdersWithLockAsync(string asset)
     {
         try
         {
             // Use LINQ instead of raw SQL to avoid conversion issues
-            // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
+            // LINQ rather than raw SQL, to avoid translation problems.
             var orders = await _context.Orders
                 .Where(Matchable)   // فقط سفارش تأییدشده؛ Pending هنوز وثیقه ندارد
                 .Where(o => o.Asset == asset &&
@@ -55,14 +55,14 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Get sell orders with pessimistic lock for atomic matching
-    /// دریافت سفارشات فروش با قفل متقابل برای تطبیق اتمی
+    /// Fetches sell orders under a mutual lock, for atomic matching.
     /// </summary>
     public async Task<List<Order>> GetSellOrdersWithLockAsync(string asset)
     {
         try
         {
             // Use LINQ instead of raw SQL to avoid conversion issues
-            // استفاده از LINQ به‌جای SQL خام برای جلوگیری از مشکلات تبدیل
+            // LINQ rather than raw SQL, to avoid translation problems.
             var orders = await _context.Orders
                 .Where(Matchable)   // فقط سفارش تأییدشده؛ Pending هنوز وثیقه ندارد
                 .Where(o => o.Asset == asset &&
@@ -84,7 +84,7 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Execute atomic order matching with transaction
-    /// اجرای تطبیق اتمی سفارش با تراکنش
+    /// Runs the atomic order match inside a transaction.
     /// </summary>
     public async Task<(bool Success, Trade? Trade, string ErrorMessage)> ExecuteAtomicMatchAsync(
         Order buyOrder, 
@@ -155,7 +155,6 @@ public class OrderMatchingRepository
             //if (currentBuyOrder.Price < currentSellOrder.Price)
             //{
             //    await transaction.RollbackAsync();
-            //    return (false, null, "قیمت خرید کمتر از قیمت فروش است");
             //}
 
             // 4. Calculate actual tradeable quantity.
@@ -251,7 +250,7 @@ public class OrderMatchingRepository
     ///
     /// Hit live: a BTC/IRT match failed here on a decimal overflow (the price didn't fit the
     /// old Trade.Price column), and the caller's cleanup — cancelling both orders to release
-    /// their locked collateral — then threw "سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند"
+    /// their locked collateral — then threw "completed or rejected orders cannot be cancelled"
     /// against this same poisoned in-memory state, turning a should-have-been-graceful "trade
     /// failed" into an unhandled 500 with the customer's funds locked and no cleanup run at
     /// all. Reloading from the database (identity resolution means these are the exact
@@ -299,40 +298,39 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Check if order can be processed
-    /// بررسی امکان پردازش سفارش
+    /// Whether an order can be processed.
     /// </summary>
     /// <summary>
-    /// آیا این سفارش می‌تواند وارد تطبیق شود؟
+    /// Can this order enter matching?
     ///
-    /// <b>Pending عمداً بیرون است.</b> سفارش لحظه‌ای که ذخیره می‌شود Pending است، یعنی
-    /// پیش از آنکه وثیقه‌اش قفل شود. اگر Pending قابل تطبیق باشد، حلقهٔ پس‌زمینه — که هر
-    /// ثانیه اجرا می‌شود — می‌تواند سفارشی را بردارد که هنوز هیچ وثیقه‌ای پشتش نیست، و
-    /// معامله‌ای ثبت شود که تسویه‌اش هرگز موفق نمی‌شود.
+    /// <b>Pending is deliberately excluded.</b> An order is Pending from the moment it is saved,
+    /// which is before its collateral is locked. If Pending were matchable, the background loop —
+    /// which runs every second — could pick up an order with nothing backing it and record a trade
+    /// that could never settle.
     ///
-    /// این همان یافتهٔ ممیزی C-5 است، در ریشه‌اش. با کنار گذاشتن Pending، ترتیب
-    /// «قفل، سپس تطبیق» یک تضمین ساختاری می‌شود نه یک قرارداد رفتاری: سفارش فقط پس از
-    /// موفقیت قفل به Confirmed می‌رسد، و فقط Confirmed دیده می‌شود.
+    /// This is audit finding C-5 at its root. Excluding Pending makes "lock, then match" a
+    /// structural guarantee rather than a behavioural contract: an order only reaches Confirmed
+    /// after the lock succeeds, and only Confirmed is visible here.
     ///
-    /// این باید تنها تعریف «قابل تطبیق» در کل سیستم بماند — پرس‌وجوهای دفتر سفارش و
-    /// بازبینیِ داخل تراکنش هر دو از همین استفاده می‌کنند، وگرنه دیر یا زود از هم جدا
-    /// می‌شوند.
+    /// This must remain the only definition of "matchable" in the system — the order-book queries
+    /// and the in-transaction re-check both use it, or they will drift apart.
     ///
-    /// عمداً <see cref="Expression"/> است و نه یک متد معمولی: EF Core نمی‌تواند فراخوانی
-    /// متد دلخواه را به SQL ترجمه کند و پرس‌وجو موقع اجرا استثنا می‌داد — خطایی که
-    /// کامپایلر نمی‌گیرد.
+    /// Deliberately an <see cref="Expression"/> rather than an ordinary method: EF Core cannot
+    /// translate an arbitrary method call to SQL, and the query would throw at runtime — a mistake
+    /// the compiler does not catch.
     /// </summary>
     private static readonly Expression<Func<Order, bool>> Matchable =
         o => o.Status == OrderStatus.Confirmed ||
              o.Status == OrderStatus.Partially;
 
-    /// <summary>نسخهٔ کامپایل‌شدهٔ همان شرط، برای بازبینی روی موجودیتی که از قبل در حافظه است.</summary>
+    /// <summary>The compiled form of the same predicate, for re-checking an entity already in memory.</summary>
     private static readonly Func<Order, bool> IsMatchable = Matchable.Compile();
 
     private static bool IsOrderProcessable(Order order) => IsMatchable(order);
 
     /// <summary>
     /// Update order status based on remaining amount
-    /// بروزرسانی وضعیت سفارش بر اساس مقدار باقی‌مانده
+    /// Updates an order's status from its remaining amount.
     /// </summary>
     private static void UpdateOrderStatus(Order order)
     {
@@ -348,30 +346,31 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Determine trade execution price (Price-Time Priority)
-    /// تعیین قیمت اجرای معامله (اولویت قیمت-زمان)
+    /// Determines the execution price under price-time priority.
     /// </summary>
     private static decimal DetermineTradePrice(Order buyOrder, Order sellOrder)
     {
         // Earlier order gets price advantage
-        // سفارش قدیمی‌تر مزیت قیمتی دارد
+        // The older order gets the price advantage.
         return buyOrder.CreatedAt <= sellOrder.CreatedAt ? sellOrder.Price : buyOrder.Price;
     }
 
     /// <summary>
     /// Create trade record
-    /// ایجاد رکورد معامله
+    /// Creates the trade record.
     /// </summary>
     private static Trade CreateTrade(Order buyOrder, Order sellOrder, decimal quantity, decimal price)
     {
-        // ارزش معامله رو به پایین گرد می‌شود، در حالی که مبلغ قفلِ سفارش رو به بالا.
+        // The trade's value rounds down, while the order's lock amount rounds up.
         //
-        // این عدد هم از خریدار کسر و هم به فروشنده پرداخت می‌شود (پس در هر معامله
-        // تراز است)، و همین عدد است که از وثیقهٔ قفل‌شده مصرف می‌گردد. قفل یک بار برای
-        // کل سفارش حساب می‌شود ولی مصرف در هر fill جداگانه؛ اگر هر دو با AwayFromZero
-        // گرد شوند، مجموع مصرف‌ها می‌تواند از قفل بیشتر شود و گاردِ «وثیقهٔ کافی نیست»
-        // یک معاملهٔ کاملاً معتبر را رد کند.
+        // This figure is both debited from the buyer and paid to the seller, so each trade balances,
+        // and it is what gets consumed from the locked collateral. The lock is computed once for the
+        // whole order while consumption is computed per fill; if both rounded AwayFromZero, the
+        // consumptions could sum to more than the lock and the "insufficient collateral" guard would
+        // refuse a perfectly valid trade.
         //
-        // با جهت‌های مخالف، «مجموع مصرف ≤ قفل» یک تضمین ریاضی است. توضیح کامل روی
+        // With opposite directions, "total consumed <= locked" is a mathematical guarantee. Full
+        // explanation on
         // CurrenciesConstant.FloorToCurrencyPrecision (issue #52).
         var quoteAsset = buyOrder.Asset.Split('/').Last();
         var quoteQuantity = CurrenciesConstant.FloorToCurrencyPrecision(quantity * price, quoteAsset);
@@ -440,7 +439,7 @@ public class OrderMatchingRepository
 
     /// <summary>
     /// Get all distinct assets that have active orders
-    /// دریافت تمام دارایی‌های متمایز که سفارش فعال دارند
+    /// Returns every distinct asset that has active orders.
     /// </summary>
     public async Task<List<string>> GetActiveAssetsAsync()
     {

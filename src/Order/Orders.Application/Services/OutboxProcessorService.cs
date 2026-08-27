@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -96,17 +96,17 @@ public class OutboxProcessorService : BackgroundService
                 _logger.LogInformation("Outbox message {Id} ({Type}, aggregate {AggregateId}) completed.",
                     message.Id, message.Type, message.AggregateId);
 
-                // پس از تسویه، اگر سفارشی کاملاً پر شده باشد باقی‌ماندهٔ وثیقه‌اش آزاد
-                // می‌شود.
+                // After settlement, release the residual collateral of any order that is now
+                // fully filled.
                 //
-                // چرا اینجا و نه بلافاصله پس از تطبیق: قفلِ موجودی بعد از تطبیق ساخته
-                // می‌شود (یافتهٔ C-5) و همین‌جا تازه مصرف شده است. اجرای زودتر با هر دو
-                // مسابقه می‌داد — و در تست واقعی روی کیف پولی اجرا شد که هنوز چیزی در
-                // آن قفل نشده بود و شکست خورد (issue #52).
+                // Why here and not straight after matching: the balance lock is created after the
+                // match (finding C-5) and is only consumed at this point. Running earlier raced
+                // both, and in a real test ran against a wallet that had nothing locked in it yet
+                // and failed (issue #52).
                 //
-                // این فراخوانی گارد خودش را دارد و هرگز استثنا بیرون نمی‌دهد. اگر می‌داد،
-                // بلوک catch پایین یک پیامِ outbox که واقعاً موفق شده را «شکست‌خورده»
-                // علامت می‌زد و دوباره تحویلش می‌داد.
+                // This call guards itself and never lets an exception escape. If it did, the catch
+                // block below would mark an outbox message that genuinely succeeded as failed and
+                // redeliver it.
                 await ReleaseResidualCollateralAsync(message, scope);
             }
             catch (Exception ex)
@@ -170,12 +170,11 @@ public class OutboxProcessorService : BackgroundService
     }
 
     /// <summary>
-    /// پس از تسویهٔ موفقِ یک معامله، باقی‌ماندهٔ وثیقهٔ هر سفارشی که با آن کامل شده را آزاد می‌کند.
+    /// After a trade settles successfully, releases the residual collateral of any order it completed.
     ///
-    /// عمداً هیچ استثنایی بیرون نمی‌دهد: تسویه از قبل موفق بوده و نباید به‌خاطر این کارِ
-    /// جانبی «شکست‌خورده» علامت بخورد و دوباره تحویل داده شود. اگر آزادسازی انجام نشود
-    /// هیچ پولی گم نمی‌شود — باقی‌مانده قفل می‌ماند و مغایرت‌گیری (#39) می‌تواند بعداً
-    /// برش دارد.
+    /// Deliberately lets no exception escape: the settlement already succeeded and must not be
+    /// marked failed and redelivered because of this follow-up step. If the release does not happen
+    /// no money is lost — the residue stays locked and reconciliation (#39) can pick it up later.
     /// </summary>
     private async Task ReleaseResidualCollateralAsync(OutboxMessage message, IServiceScope scope)
     {

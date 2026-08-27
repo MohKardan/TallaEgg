@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Orders.Core;
 using TallaEgg.Core;
 using TallaEgg.Core.Enums.Order;
@@ -7,20 +7,20 @@ using TallaEgg.Infrastructure.Clients;
 namespace Orders.Application.Services;
 
 /// <summary>
-/// وقتی سفارشی کاملاً پر می‌شود، هر مقدار وثیقه‌ای که هنوز به نامش قفل مانده آزاد می‌کند.
+/// When an order is fully filled, releases whatever collateral is still locked against it.
 ///
-/// چرا باقی‌مانده‌ای وجود دارد (issue #52): مبلغ قفل یک بار برای کل سفارش و رو به بالا
-/// حساب می‌شود، ولی مصرفِ هر معامله جداگانه و رو به پایین. این جهت‌های مخالف تضمین
-/// می‌کنند مجموع مصرف هرگز از قفل بیشتر نشود، اما اختلاف کوچکی باقی می‌گذارند که متعلق
-/// به کاربر است و باید برگردد.
+/// Why a residue exists (issue #52): the lock is computed once for the whole order and rounds up,
+/// while each trade's consumption is computed separately and rounds down. Those opposite directions
+/// guarantee that total consumption never exceeds the lock, but they leave a small difference that
+/// belongs to the user and has to go back.
 ///
-/// <b>زمان‌بندی مهم است.</b> نسخهٔ اول این کد بلافاصله پس از تطبیق اجرا می‌شد و در عمل
-/// شکست می‌خورد: قفلِ موجودی <b>بعد از</b> تطبیق ساخته می‌شود (یافتهٔ ممیزی C-5) و
-/// <b>بعدتر</b> توسط تسویهٔ outbox مصرف می‌گردد. پس آزادسازی با هر دو مسابقه می‌داد و
-/// گاهی روی کیف پولی اجرا می‌شد که هنوز چیزی در آن قفل نشده بود.
+/// <b>Timing matters.</b> The first version of this ran immediately after matching and failed in
+/// practice: the balance lock is created <b>after</b> the match (audit finding C-5) and consumed
+/// <b>later still</b> by outbox settlement. The release therefore raced both, and sometimes ran
+/// against a wallet that had nothing locked in it yet.
 ///
-/// حالا از پردازشگر outbox و پس از تسویهٔ موفق صدا زده می‌شود. آن نقطه ذاتاً بعد از
-/// ساخته‌شدن قفل است — چون تسویه بدون قفل اصلاً موفق نمی‌شود — و بعد از مصرف آن.
+/// It is now called from the outbox processor after a successful settlement. That point is
+/// inherently after the lock exists — settlement cannot succeed without it — and after it is used.
 /// </summary>
 public class OrderCollateralReconciler
 {
@@ -42,8 +42,8 @@ public class OrderCollateralReconciler
     }
 
     /// <summary>
-    /// اگر سفارش کاملاً پر شده باشد، باقی‌ماندهٔ وثیقه‌اش را آزاد می‌کند. برای سفارشی که
-    /// هنوز باز است کاری نمی‌کند، چون وثیقهٔ باقی‌مانده هنوز پشتوانهٔ بخش پرنشده است.
+    /// Releases an order's residual collateral once it is fully filled. Does nothing for an order
+    /// still open, because the remaining collateral still backs the unfilled part.
     /// </summary>
     public async Task ReleaseResidualLockIfCompletedAsync(Guid orderId)
     {
@@ -64,8 +64,8 @@ public class OrderCollateralReconciler
                     "Released residual lock of {Residual} {Asset} for completed order {OrderId}.",
                     residual, asset, orderId);
             else
-                // بی‌خطر است: باقی‌مانده سر جایش می‌ماند و مغایرت‌گیری (#39) می‌تواند
-                // بعداً برش دارد. هیچ پولی گم نمی‌شود، فقط آزاد نمی‌شود.
+                // Harmless: the residue stays where it is and reconciliation (#39) can pick it up
+                // later. No money is lost, it simply is not released.
                 _logger.LogWarning(
                     "Could not release residual lock of {Residual} {Asset} for completed order {OrderId}: {Message}",
                     residual, asset, orderId, message);
@@ -77,15 +77,15 @@ public class OrderCollateralReconciler
     }
 
     /// <summary>
-    /// باقی‌مانده = «آنچه قفل شد» منهای «آنچه معاملات این سفارش مصرف کردند».
+    /// Residue = "what was locked" minus "what this order's trades consumed".
     ///
-    /// «آنچه قفل شد» با همان فرمول و همان جهتِ گرد کردنِ لحظهٔ ثبت سفارش بازمحاسبه
-    /// می‌شود. اگر اینجا Round و آنجا Ceiling باشد، دوباره همان اختلافی ساخته می‌شود
-    /// که این کد برای برداشتنش نوشته شده.
+    /// "What was locked" is recomputed with the same formula and the same rounding direction used
+    /// when the order was placed. Rounding here and ceiling there would recreate the very difference
+    /// this code exists to remove.
     ///
-    /// بازمحاسبه فقط به این دلیل ممکن است که قیمت هنگام ثبت سفارش به دقت ستون گرد
-    /// می‌شود؛ پیش از آن، قفل با قیمتِ گرد‌نشده حساب می‌شد و از روی ردیف ذخیره‌شده
-    /// قابل بازسازی نبود.
+    /// Recomputation is only possible because the price is rounded to the column's precision when
+    /// the order is placed. Before that, the lock was computed from an unrounded price and could not
+    /// be reconstructed from the stored row.
     /// </summary>
     public async Task<(string Asset, decimal Residual)> ComputeResidualLockAsync(Order order)
     {
@@ -100,9 +100,9 @@ public class OrderCollateralReconciler
             return (quoteAsset, locked - trades.Sum(t => t.QuoteQuantity));
         }
 
-        // سمت فروش: وثیقه دارایی پایه است و هر معامله دقیقاً Quantity مصرف می‌کند،
-        // بدون گرد کردن — پس در حالت عادی باقی‌مانده‌ای ندارد. محاسبه‌اش نگه داشته
-        // می‌شود تا اگر روزی این فرض عوض شد، خودبه‌خود پوشش داده شود.
+        // Sell side: the collateral is the base asset and each trade consumes exactly Quantity with
+        // no rounding, so normally there is no residue. The calculation is kept so that if that
+        // assumption ever changes, this is covered automatically.
         var lockedBase = CurrenciesConstant.RoundToCurrencyPrecision(order.Amount, baseAsset);
         var sellTrades = await _tradeRepository.GetTradesBySellOrderIdAsync(order.Id);
         return (baseAsset, lockedBase - sellTrades.Sum(t => t.Quantity));

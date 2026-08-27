@@ -2,15 +2,15 @@
 
 public interface IQuoteRepository
 {
-    /// <summary>مظنهٔ فعال یک نماد، یا null اگر ادمین هنوز قیمتی منتشر نکرده باشد.</summary>
+    /// <summary>The active quote for a symbol, or null if the admin has not published one yet.</summary>
     Task<Quote?> GetActiveAsync(string symbol);
 
     /// <summary>
-    /// مظنهٔ جدید را منتشر و مظنهٔ قبلیِ همان نماد را غیرفعال می‌کند — هر دو در یک تراکنش.
+    /// Publishes a new quote and deactivates the symbol's previous one, both in a single transaction.
     ///
-    /// اتمی بودن مهم است: اگر غیرفعال‌سازی و درج جدا انجام شوند، لحظه‌ای وجود دارد که یا
-    /// دو مظنهٔ فعال هست یا هیچ‌کدام. در حالت اول معلوم نیست مشتری روی کدام قیمت معامله
-    /// می‌کند؛ در حالت دوم معاملهٔ کاملاً معتبری رد می‌شود.
+    /// Atomicity matters: if the deactivate and the insert run separately there is an instant when
+    /// either two quotes are active or none is. In the first case it is undefined which price the
+    /// customer trades at; in the second a perfectly valid trade is refused.
     /// </summary>
     Task<Quote> PublishAsync(Quote quote);
 

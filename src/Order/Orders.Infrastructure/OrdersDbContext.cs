@@ -12,13 +12,13 @@ public class OrdersDbContext : DbContext
     public DbSet<Trade> Trades => Set<Trade>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
-    /// <summary>مظنه‌های منتشرشدهٔ ادمین؛ یک مظنهٔ فعال به‌ازای هر نماد (issue #48).</summary>
+    /// <summary>Quotes published by the admin; one active quote per symbol (issue #48).</summary>
     public DbSet<Quote> Quotes => Set<Quote>();
 
-    /// <summary>اسپرد و روشن/خاموش بودن مظنهٔ اتومات برای هر نماد (issue #90).</summary>
+    /// <summary>Per-symbol spread and on/off switch for automatic quote publishing (issue #90).</summary>
     public DbSet<AutoQuoteSettings> AutoQuoteSettings => Set<AutoQuoteSettings>();
 
-    /// <summary>فعال/غیرفعال بودن هر نماد برای معامله — قابل تغییر با دستور ادمین در بات.</summary>
+    /// <summary>Whether each symbol is enabled for trading — changeable by an admin bot command.</summary>
     public DbSet<SymbolSettings> SymbolSettings => Set<SymbolSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
