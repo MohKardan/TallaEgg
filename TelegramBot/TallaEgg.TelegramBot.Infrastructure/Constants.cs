@@ -461,6 +461,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgNotAuthorized = "شما اجازهٔ این کار را ندارید.";
 
         /// <summary>
+        /// Reply when a button is pressed on a message Telegram no longer sends us — an inline
+        /// message, or anything older than 48 hours. Every callback branch edits or deletes that
+        /// message, so there is nothing to act on and the customer needs to start again.
+        /// </summary>
+        public const string MsgCallbackMessageGone =
+            "این پیام قدیمی است. لطفاً از منوی اصلی دوباره شروع کنید.";
+
+        /// <summary>
         /// The generic reply when handling a user's message stops on an unexpected error with no
         /// specific response from the handler (issue #99). This is what keeps a raw exception message
         /// from ever reaching a user.
