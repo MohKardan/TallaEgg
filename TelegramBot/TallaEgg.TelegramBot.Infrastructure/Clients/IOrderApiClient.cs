@@ -15,15 +15,15 @@ public interface IOrderApiClient
     Task<(bool success, string message)> SubmitOrderAsync(OrderDto order);
     Task<(bool success, string message)> CancelOrderAsync(Guid orderId);
 
-    // ── مدل مظنه‌ای (issue #48) ──────────────────────────────────────────────────
-    // قیمت‌ها بر حسب واحد پایه (تومان بر گرم) رد و بدل می‌شوند؛ تبدیل مثقال فقط در لایهٔ
-    // نمایش ربات انجام می‌شود.
+    // ── Dealer model (issue #48) ────────────────────────────────────────────────
+    // Prices cross this boundary per base unit, toman per gram; the mesghal conversion happens only
+    // in the bot's display layer.
 
-    /// <summary>انتشار مظنهٔ ادمین. هیچ سفارشی در دفتر نمی‌گذارد و وثیقه‌ای قفل نمی‌کند.</summary>
+    /// <summary>Publishes the admin's quote. Places nothing in the book and locks no collateral.</summary>
     Task<(bool success, string message)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId);
 
-    /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
+    /// <summary>The active quote for a symbol, or null if none has been published.</summary>
     Task<QuoteDto?> GetActiveQuoteAsync(string symbol);
     /// <summary>Published quotes for a symbol, newest first, including replaced ones.</summary>
     Task<PagedResult<QuoteDto>> GetQuoteHistoryAsync(string symbol, int pageNumber = 1, int pageSize = 5);
@@ -31,41 +31,41 @@ public interface IOrderApiClient
     /// <summary>Best bid and ask, used by the market-order path.</summary>
     Task<ApiResponse<BestPricesDto>> GetBestPricesAsync(string symbol);
 
-    /// <summary>پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود؛ سرور از مظنه می‌خواند.</summary>
+    /// <summary>A customer fills a quote. No price is sent; the server reads it from the quote.</summary>
     Task<(bool success, string message)> AcceptQuoteAsync(
         Guid userId, string symbol, OrderSide side, decimal quantity);
     
     /// <summary>
-    /// کنسل کردن تمام سفارشات فعال یک کاربر
+    /// Cancels all of a user's active orders.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <param name="reason">دلیل کنسل کردن (اختیاری)</param>
-    /// <returns>نتیجه عملیات شامل موفقیت، پیام و تعداد سفارشات کنسل شده</returns>
+    /// <param name="userId">User id.</param>
+    /// <param name="reason">Optional cancellation reason.</param>
+    /// <returns>Success, a message, and how many orders were cancelled.</returns>
     Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null);
     
     Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request);
 
-    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+    // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 
-    /// <summary>تنظیمات فعلی مظنهٔ اتومات یک نماد.</summary>
+    /// <summary>A symbol's current automatic-quote settings.</summary>
     Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol);
 
-    /// <summary>تغییر اسپرد مظنهٔ اتومات یک نماد.</summary>
+    /// <summary>Changes a symbol's automatic-quote spread.</summary>
     Task<(bool success, string message)> UpdateAutoQuoteSpreadAsync(string symbol, decimal spreadPercent, Guid updatedByUserId);
 
-    /// <summary>روشن/خاموش کردن مظنهٔ اتومات یک نماد.</summary>
+    /// <summary>Turns a symbol's automatic quoting on or off.</summary>
     Task<(bool success, string message)> SetAutoQuoteEnabledAsync(string symbol, bool isEnabled, Guid updatedByUserId);
 
-    // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────────
+    // ── Symbol enable/disable ───────────────────────────────────────────────────
 
-    /// <summary>نمادهایی که الان قابل معامله‌اند.</summary>
+    /// <summary>The symbols currently tradable.</summary>
     Task<List<string>> GetActiveSymbolsAsync();
 
-    /// <summary>فعال/غیرفعال کردن یک نماد.</summary>
+    /// <summary>Enables or disables a symbol.</summary>
     Task<(bool success, string message)> SetSymbolActiveAsync(string symbol, bool isActive, Guid updatedByUserId);
 
-    // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
+    // ── Profit and loss (issue #93) ─────────────────────────────────────────────
 
-    /// <summary>موقعیت و سود/زیان کاربر در همهٔ نمادهایی که تا امروز معامله کرده.</summary>
+    /// <summary>The user's position and profit or loss across every symbol they have traded.</summary>
     Task<ApiResponse<PositionsResponseDto>> GetPositionsAsync(Guid userId);
 }

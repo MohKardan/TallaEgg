@@ -1,4 +1,4 @@
-using TallaEgg.Core.DTOs.Order;
+﻿using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using Telegram.Bot;
@@ -7,10 +7,10 @@ using Telegram.Bot.Types.Enums;
 namespace TallaEgg.TelegramBot.Infrastructure.Services;
 
 /// <summary>
-/// سرویس اطلاع‌رسانی تطبیق معاملات
+/// Sends trade-match notifications.
 /// </summary>
 /// <remarks>
-/// این سرویس مسئول ارسال اطلاعیه‌های تطبیق معاملات به کاربران تلگرام است
+/// Responsible for delivering trade-match notifications to users on Telegram.
 /// </remarks>
 public class TradeNotificationService
 {
@@ -24,16 +24,13 @@ public class TradeNotificationService
     }
 
     /// <summary>
-    /// ارسال اطلاعیه تطبیق معامله به کاربران مربوطه
+    /// Sends a trade-match notification to both parties.
     /// </summary>
-    /// <param name="notification">اطلاعات کامل معامله تطبیق یافته</param>
-    /// <returns>نتیجه عملیات ارسال اطلاعیه شامل وضعیت ارسال به هر دو طرف</returns>
+    /// <param name="notification">The matched trade in full.</param>
+    /// <returns>The outcome, including whether each side was reached.</returns>
     /// <remarks>
-    /// این متد:
-    /// 1. اطلاعات کاربران خریدار و فروشنده را از API دریافت می‌کند
-    /// 2. پیام‌های مناسب برای هر کاربر تولید می‌کند
-    /// 3. اطلاعیه‌ها را به تلگرام ارسال می‌کند
-    /// 4. نتیجه عملیات را برمی‌گرداند
+    /// Fetches the buyer and seller from the Users API, composes a message for each, sends them to
+    /// Telegram, and returns the outcome.
     /// </remarks>
     public async Task<TradeNotificationResult> SendTradeMatchNotificationAsync(TradeMatchNotificationDto notification)
     {
@@ -43,20 +40,20 @@ public class TradeNotificationService
             NotificationDateTime = DateTime.UtcNow
         };
 
-        // ارسال اطلاعیه به خریدار
+        // Notify the buyer.
         result.BuyerNotificationSent = await SendTradeNotificationToBuyerAsync(notification);
         
-        // ارسال اطلاعیه به فروشنده  
+        // Notify the seller.
         result.SellerNotificationSent = await SendTradeNotificationToSellerAsync(notification);
 
         return result;
     }
 
     /// <summary>
-    /// ارسال اطلاعیه تطبیق معامله به کاربر خریدار
+    /// Sends the trade-match notification to the buyer.
     /// </summary>
-    /// <param name="notification">اطلاعات معامله</param>
-    /// <returns>true اگر ارسال موفق باشد، در غیر این صورت false</returns>
+    /// <param name="notification">The trade.</param>
+    /// <returns>True when the message was sent.</returns>
     /// <remarks>
     /// این متد:
     /// 1. اطلاعات کاربر خریدار را از UsersApiClient دریافت می‌کند
@@ -105,8 +102,8 @@ public class TradeNotificationService
     /// <summary>
     /// ارسال اطلاعیه تطبیق معامله به کاربر فروشنده
     /// </summary>
-    /// <param name="notification">اطلاعات معامله</param>
-    /// <returns>true اگر ارسال موفق باشد، در غیر این صورت false</returns>
+    /// <param name="notification">The trade.</param>
+    /// <returns>True when the message was sent.</returns>
     /// <remarks>
     /// این متد:
     /// 1. اطلاعات کاربر فروشنده را از UsersApiClient دریافت می‌کند
@@ -155,7 +152,7 @@ public class TradeNotificationService
     /// <summary>
     /// تولید متن پیام اطلاعیه برای کاربر خریدار
     /// </summary>
-    /// <param name="notification">اطلاعات معامله</param>
+    /// <param name="notification">The trade.</param>
     /// <returns>متن فارسی پیام برای خریدار با فرمت Markdown</returns>
     /// <remarks>
     /// این متد پیام کاربرپسند و مفصل برای خریدار تولید می‌کند شامل:
@@ -188,7 +185,7 @@ public class TradeNotificationService
     /// <summary>
     /// تولید متن پیام اطلاعیه برای کاربر فروشنده
     /// </summary>
-    /// <param name="notification">اطلاعات معامله</param>
+    /// <param name="notification">The trade.</param>
     /// <returns>متن فارسی پیام برای فروشنده با فرمت Markdown</returns>
     /// <remarks>
     /// این متد پیام کاربرپسند و مفصل برای فروشنده تولید می‌کند شامل:

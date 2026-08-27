@@ -36,15 +36,14 @@ namespace TallaEgg.TelegramBot
             msgText = msgText.ToLower().Trim();
             if (msgText.StartsWith("ش"))
             {
-                // ش 09121234567 50000 دلاری
-                // ش 09121234567 50000
-                // ش 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                // Accepted forms of the top-up command, with the currency given as a code, omitted,
+                // or written as a multi-word Persian name.
                 var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
                 {
-                    // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
+                    // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetPersianNamesList()));
                     return true;
@@ -53,7 +52,7 @@ namespace TallaEgg.TelegramBot
                 var phone = match.Groups["phone"].Value;
                 var amount = decimal.Parse(match.Groups["amount"].Value);
 
-                // ورودی می‌تواند نام فارسی («تومان») یا کد («IRT») باشد.
+                // The input may be a Persian name or a currency code.
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Maua; // مقدار پیش‌فرض
@@ -79,10 +78,10 @@ namespace TallaEgg.TelegramBot
                     if (result.Success)
                     {
 
-                        // نکته: شارژ مدیر به کیف پول «اعتباری» واریز می‌شود (CREDIT_)، پس
-                        // پیام‌ها «اعتبار» می‌گویند نه «موجودی». پیام قبلی این دو را
-                        // اشتباه گرفته بود. همچنین قالب Markdown با ParseMode.Html ناسازگار
-                        // بود و ستاره و بک‌تیک عیناً نمایش داده می‌شدند؛ حالا متن ساده است.
+                        // An admin top-up goes into the CREDIT_ wallet, so the messages say "credit"
+                        // rather than "balance"; the previous message confused the two. Markdown
+                        // formatting also clashed with ParseMode.Html and rendered the asterisks and
+                        // backticks literally, so the text is now plain.
                         var amountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
                         var newCreditText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
 
@@ -118,15 +117,14 @@ namespace TallaEgg.TelegramBot
 
             if (msgText.StartsWith("د"))
             {
-                // د 09121234567 50000 دلاری
-                // د 09121234567 50000
-                // د 09121234567 50000 سکه تمام بهار آزادی  — نام فارسی چندکلمه‌ای هم پذیرفته می‌شود
+                // Accepted forms of the deduction command, with the currency given as a code,
+                // omitted, or written as a multi-word Persian name.
                 var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
                 {
-                    // بازگشت لازم است؛ بدون آن ادامهٔ کد روی match ناموفق اجرا می‌شد و خطا می‌داد.
+                    // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
                         string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetPersianNamesList()));
                     return true;
@@ -135,9 +133,9 @@ namespace TallaEgg.TelegramBot
                 var phone = match.Groups["phone"].Value;
                 var amount = decimal.Parse(match.Groups["amount"].Value);
 
-                // ورودی می‌تواند نام فارسی («تومان») یا کد («IRT») باشد.
-                // پیش‌فرض قبلی رشتهٔ فارسی «ریالی» بود که هیچ‌وقت با کد دارایی تطبیق
-                // نمی‌کرد و باعث می‌شد کسر روی کیف پول ناموجود انجام شود.
+                // The input may be a Persian name or a currency code.
+                // The old default was a Persian word that never matched any asset code, so the
+                // deduction ran against a wallet that did not exist.
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Toman; // مقدار پیش‌فرض
@@ -164,9 +162,9 @@ namespace TallaEgg.TelegramBot
                     {
 
 
-                        // پیام قبلیِ ارسالی به کاربر اشتباهاً «شارژ کیف‌پول» می‌گفت، در حالی
-                        // که مبلغ کسر شده بود. همچنین واحد به‌صورت ثابت «ریال» نوشته شده بود
-                        // بدون توجه به دارایی، و کد لاتین دارایی نمایش داده می‌شد.
+                        // The message sent to the user used to say the wallet had been topped up
+                        // when the amount had in fact been deducted. It also hard-coded the currency
+                        // unit regardless of the asset, and displayed the asset's Latin code.
                         var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {info.Unit}";
                         var newBalanceText = $"{PersianFormat.Amount(result.Data.BalanceAfter, currency)} {info.Unit}";
 
@@ -301,7 +299,7 @@ namespace TallaEgg.TelegramBot
                 return true;
             }
 
-            //دستور ثبت قیمت جفتی برای ادمین
+            // The admin's paired-price command.
             // Handle price pair format: buyPrice-sellPrice, with an optional trailing symbol
             // keyword (e.g., 8523690-8529630 یا 8523690-8529630 سکه). No keyword means MAUA/IRT
             // (issue: multi-symbol quoting, see the coin/Bitcoin work in this conversation).
@@ -332,27 +330,15 @@ namespace TallaEgg.TelegramBot
             //    case "/admin_referral_on":
             //        _requireReferralCode = true;
             //        await _messenger.SendAsync(chatId,
-            //            "✅ اجباری بودن کد دعوت فعال شد.\n" +
-            //            "کاربران جدید باید کد دعوت داشته باشند.");
             //        return true;
 
             //    case "/admin_referral_off":
             //        _requireReferralCode = false;
             //        await _messenger.SendAsync(chatId,
-            //            "❌ اجباری بودن کد دعوت غیرفعال شد.\n" +
-            //            $"کاربران جدید با کد پیش‌فرض '{_defaultReferralCode}' ثبت‌نام خواهند شد.");
             //        return true;
 
             //    case "/admin_referral_status":
-            //        var status = _requireReferralCode ? "فعال" : "غیرفعال";
             //        await _messenger.SendAsync(chatId,
-            //            $"📊 وضعیت فعلی:\n" +
-            //            $"اجباری بودن کد دعوت: {status}\n" +
-            //            $"کد پیش‌فرض: {_defaultReferralCode}\n\n" +
-            //            $"دستورات مدیریتی:\n" +
-            //            $"/admin_referral_on - فعال کردن اجباری بودن کد دعوت\n" +
-            //            $"/admin_referral_off - غیرفعال کردن اجباری بودن کد دعوت\n" +
-            //            $"/admin_referral_status - نمایش وضعیت فعلی");
             //        return true;
 
             //    default:
@@ -462,7 +448,7 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// با این فقط چک میکنیم ببینیم تو گروه تلگرام ادمین هست یا نه
+        /// Checks only whether the user is an admin of the Telegram group.
         /// 
         /// </summary>
         /// <param name="user"></param>
@@ -562,14 +548,14 @@ namespace TallaEgg.TelegramBot
         {
             await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Approved);
 
-            // ویرایش پیام ادمین
+            // Edit the admin's message.
             await _messenger.EditTextAsync(
                 chatId: originalMsg.Chat.Id,
                 messageId: originalMsg.MessageId,
                 text: originalMsg.Text + BotMsgs.MsgAdminApprovedSuffix,
                 replyMarkup: null);
 
-            // اطلاع‌رسانی به کاربر
+            // Notify the user.
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserApproved);
             await _telegramLogger.Notif<Message>($"کاربر تایید شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
         }
@@ -584,7 +570,7 @@ namespace TallaEgg.TelegramBot
                 text: originalMsg.Text + BotMsgs.MsgAdminRejectedSuffix,
                 replyMarkup: null);
 
-            // اطلاع‌رسانی به کاربر
+            // Notify the user.
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserRejected);
             await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
 
@@ -702,22 +688,19 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// پردازش سفارشات جفت قیمت برای ادمین
+        /// Handles the admin's paired-price submission.
         /// </summary>
-        /// <param name="chatId">شناسه چت تلگرام برای ارسال پیام</param>
-        /// <param name="userId">شناسه کاربر در سیستم</param>
-        /// <param name="asset">نماد جفت معاملاتی (مثل MAUA/IRT یا SEKE_BAHAR/IRT)</param>
-        /// <param name="buyPrice">قیمت خرید وارد شده توسط ادمین</param>
-        /// <param name="sellPrice">قیمت فروش وارد شده توسط ادمین</param>
-        /// <returns>Task که عملیات async را نشان می‌دهد</returns>
+        /// <param name="chatId">Telegram chat id to send the reply to.</param>
+        /// <param name="userId">User id in our system.</param>
+        /// <param name="asset">Trading pair symbol, for example MAUA/IRT.</param>
+        /// <param name="buyPrice">Buy price entered by the admin.</param>
+        /// <param name="sellPrice">Sell price entered by the admin.</param>
+        /// <returns>A task representing the operation.</returns>
         /// <remarks>
-        /// این تابع:
-        /// 1. ابتدا تمام سفارشات فعال کاربر را کنسل می‌کند
-        /// 2. قیمت‌های ورودی را برای طلا (تقسیم بر 4.3318) تنظیم می‌کند؛ برای نمادهای دیگر
-        ///    بدون تبدیل باقی می‌مانند
-        /// 3. یک سفارش خرید با قیمت پایین‌تر و 1000 واحد پیش‌فرض ایجاد می‌کند
-        /// 4. یک سفارش فروش با قیمت بالاتر و 1000 واحد پیش‌فرض ایجاد می‌کند
-        /// 5. نتیجه عملیات را به ادمین گزارش می‌دهد
+        /// Cancels the user's active orders, converts the entered prices for gold by dividing by
+        /// 4.3318 while leaving other symbols unconverted, creates a buy order at the lower price and
+        /// a sell order at the higher one, each for a default 1000 units, and reports the outcome to
+        /// the admin.
         /// </remarks>
         private async Task HandlePricePairOrdersAsync(long chatId, Guid userId, string asset, decimal buyPrice, decimal sellPrice)
         {
@@ -730,7 +713,6 @@ namespace TallaEgg.TelegramBot
             const decimal defaultAmount = 1000m;    // Default amount
 
             // First, cancel all existing active orders for this user
-            //await _messenger.SendAsync(chatId, "⏳ در حال کنسل سفارشات قبلی...");
             await _messenger.SendAsync(chatId, BotMsgs.MsgAdminProcessing);
 
             var cancelResults = await CancelUserActiveOrdersAsync(userId);
@@ -772,15 +754,13 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// کنسل کردن تمام سفارشات فعال یک کاربر
+        /// Cancels all of a user's active orders.
         /// </summary>
-        /// <param name="userId">شناسه کاربر که سفارشاتش باید کنسل شوند</param>
-        /// <returns>نتیجه عملیات کنسل شامل تعداد سفارشات کنسل شده و وضعیت خطا</returns>
+        /// <param name="userId">The user whose orders should be cancelled.</param>
+        /// <returns>The outcome, including how many orders were cancelled and any error.</returns>
         /// <remarks>
-        /// این تابع:
-        /// 1. از API endpoint مخصوص کنسل سفارشات فعال استفاده می‌کند
-        /// 2. دلیل کنسل را "کنسل شده توسط ادمین برای ثبت سفارش جدید" ثبت می‌کند
-        /// 3. تعداد سفارشات کنسل شده و وضعیت موفقیت/خطا را برمی‌گرداند
+        /// Calls the cancel-active-orders endpoint, records the cancellation reason as an admin
+        /// replacing the orders, and returns the count together with success or failure.
         /// </remarks>
         private async Task<CancelOrdersResult> CancelUserActiveOrdersAsync(Guid userId)
         {
