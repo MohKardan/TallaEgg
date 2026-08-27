@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Wallet.Core;
@@ -7,18 +7,18 @@ using Wallet.Infrastructure;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// شاخه‌های <c>SettleTradeAsync</c> که مسیر خوشبینانه به آن‌ها نمی‌رسد (issue #46).
+/// The <c>SettleTradeAsync</c> branches the happy path never reaches (issue #46).
 ///
-/// <see cref="SettleTradeAsyncTests"/> مسیر موفق، تکرارپذیری، خودمعاملگی، کارمزد غیرصفر و
-/// وثیقهٔ قفل‌نشده را پوشش می‌دهد. آنچه اینجا اضافه می‌شود سه شاخهٔ باقی‌مانده است: نبودِ
-/// کیف پول یکی از طرفین، نماد بدشکل، و تسویه‌ای که پشتوانه‌اش اعتبار است (موجودی در دسترسِ
-/// منفی).
+/// <see cref="SettleTradeAsyncTests"/> covers the successful path, idempotency, self-trading,
+/// non-zero fees and unlocked collateral. What this adds is the three remaining branches: a missing
+/// wallet on one side, a malformed symbol, and a settlement backed by credit, where the available
+/// balance is negative.
 ///
-/// شاخهٔ سوم مهم‌ترین است: تا امروز فقط با معاملهٔ دستی روی محیط توسعه دیده شده بود.
-/// <c>ConsumeLockedBalance</c> دقیقاً برای همین حالت نوشته شد — اگر کسی آن را با
-/// <c>UnLockBalance</c> + <c>DecreaseBalance</c> جایگزین کند، گاردِ «موجودی منفی نشود» در
-/// <c>DecreaseBalance</c> فعال می‌شود و تسویهٔ هر مشتری بدهکار شکست می‌خورد — بدون اینکه
-/// هیچ تست دیگری بشکند.
+/// The third branch matters most: until now it had only been seen through manual trading on a
+/// development machine. <c>ConsumeLockedBalance</c> exists precisely for it — replace that call
+/// with <c>UnLockBalance</c> followed by <c>DecreaseBalance</c> and the non-negative guard in
+/// <c>DecreaseBalance</c> fires, failing settlement for every customer in debt, while no other test
+/// breaks.
 /// </summary>
 public class SettlementBranchTests : IDisposable
 {
@@ -78,23 +78,22 @@ public class SettlementBranchTests : IDisposable
         _repository.SettleTradeAsync(
             tradeId, _buyerId, _sellerId, symbol, Quantity, QuoteQuantity, feeBuyer: 0m, feeSeller: 0m);
 
-    // ── کیف پول ناموجود ─────────────────────────────────────────────────────────
+    // ── Missing wallet ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// تسویه چهار کیف پول لازم دارد. کیف پول «برای دریافت» ممکن است هرگز ساخته نشده باشد —
-    /// مشتری‌ای که تا امروز فقط تومان داشته، کیف پول طلا ندارد.
+    /// Settlement needs four wallets. The receiving wallet may never have been created — a customer
+    /// who has only ever held toman has no gold wallet.
     ///
-    /// این دقیقاً همان چیزی بود که در محیط واقعی خرید اول یک نماد جدید (مثل BTC/IRT) را رد
-    /// می‌کرد — وثیقهٔ فروشنده قبلاً قفل شده بود، ولی چون کیف پول طلای خریدار وجود نداشت
-    /// کل تسویه با «wallets were not found» رول‌بک می‌شد و وثیقه بدون معاملهٔ کامل قفل
-    /// می‌ماند. رفتار درست این است: کیف پولِ ناموجود (برای دارایی معتبر) در همان لحظه ساخته
-    /// شود و تسویه کامل انجام شود، همان‌طور که کیف پول تومان/طلا در ثبت‌نام لِیزی ساخته
-    /// می‌شود.
+    /// This is exactly what refused the first purchase of a new symbol in the live environment: the
+    /// seller's collateral was already locked, but because the buyer had no wallet for the asset the
+    /// whole settlement rolled back with "wallets were not found", leaving collateral locked against
+    /// a trade that never completed. The correct behaviour is to create the missing wallet — for a
+    /// valid asset — on the spot and settle, the same way registration creates wallets lazily.
     /// </summary>
     [Fact]
     public async Task WhenAParticipantWalletIsMissing_ItIsCreatedAndSettlementSucceeds()
     {
-        // کیف پول طلای خریدار ساخته نشده — همان کیفی که باید طلا را دریافت کند.
+        // The buyer has no gold wallet — the very wallet that should receive the gold.
         SeedWallet(_buyerId, Quote, balance: 0m, locked: QuoteQuantity);
         SeedWallet(_sellerId, Base, balance: 0m, locked: Quantity);
         SeedWallet(_sellerId, Quote, balance: 0m, locked: 0m);
@@ -118,9 +117,9 @@ public class SettlementBranchTests : IDisposable
     }
 
     /// <summary>
-    /// یک نماد بدشکل که هیچ‌کدام از دو طرفش دارایی واقعی نیست (پس نه فقط ناموجود بلکه
-    /// ناشناخته) نباید کیف پول جعلی بسازد — همان گاردِ <c>IsValidCurrency</c> که در سطح
-    /// شارژ ادمین هم اعمال می‌شود.
+    /// A malformed symbol whose sides are not real assets — unknown rather than merely missing —
+    /// must not create phantom wallets. That is the <c>IsValidCurrency</c> guard, the same one the
+    /// admin top-up path applies.
     /// </summary>
     [Fact]
     public async Task WhenAParticipantWalletIsMissingForAnUnknownAsset_NothingMoves()
@@ -144,15 +143,16 @@ public class SettlementBranchTests : IDisposable
         Assert.Equal(0, await _context.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
     }
 
-    // ── نماد بدشکل ──────────────────────────────────────────────────────────────
+    // ── Malformed symbol ────────────────────────────────────────────────────────
 
     /// <summary>
-    /// نماد باید دقیقاً <c>BASE/QUOTE</c> باشد. کد قبلاً جاهایی <c>Split('/')[1]</c> کورکورانه
-    /// می‌نوشت؛ با نماد بدشکل آن یک <c>IndexOutOfRangeException</c> می‌شد که در پردازشگر
-    /// outbox به «تلاش ناموفق» ترجمه می‌شد و پنج بار تکرار می‌شد — در حالی که تکرار هرگز
-    /// نمی‌توانست کمکی کند، چون داده خراب بود نه شرایط.
+    /// A symbol must be exactly <c>BASE/QUOTE</c>. The code used to write <c>Split('/')[1]</c>
+    /// blindly in places; against a malformed symbol that became an
+    /// <c>IndexOutOfRangeException</c>, which the outbox processor read as a failed attempt and
+    /// retried five times — retries that could never help, because the data was bad, not the
+    /// conditions.
     ///
-    /// یک رد صریح، همان اشتباه را در همان تلاش اول قابل‌فهم می‌کند.
+    /// An explicit refusal makes the same mistake legible on the first attempt.
     /// </summary>
     [Theory]
     [InlineData("MAUA")]        // بدون جداکننده
@@ -177,8 +177,9 @@ public class SettlementBranchTests : IDisposable
     }
 
     /// <summary>
-    /// نماد درست ولی با حروف کوچک و فاصله باید پذیرفته شود. اگر نرمال‌سازی حذف شود، این
-    /// تسویه با «کیف پول پیدا نشد» رد می‌شود — خطایی که علتش هیچ ربطی به کیف پول ندارد.
+    /// A valid symbol in lower case and with surrounding spaces must be accepted. Remove the
+    /// normalisation and this settlement fails with "wallet not found" — an error whose cause has
+    /// nothing to do with wallets.
     /// </summary>
     [Fact]
     public async Task AWellFormedSymbolIsNormalised_SoCaseAndSpacingDoNotBreakSettlement()
@@ -191,22 +192,23 @@ public class SettlementBranchTests : IDisposable
         Assert.Equal(Quantity, (await ReloadAsync(_buyerId, Base)).Balance);
     }
 
-    // ── تسویهٔ پشتوانه‌شده با اعتبار ─────────────────────────────────────────────
+    // ── Credit-backed settlement ────────────────────────────────────────────────
 
     /// <summary>
-    /// خریدار تومان ندارد و با اعتبار می‌خرد: هنگام قفلِ وثیقه موجودی در دسترسش منفی شده
-    /// است. تسویه باید انجام شود و بدهی روی <c>Balance</c> بماند.
+    /// The buyer holds no toman and buys on credit: locking the collateral already drove their
+    /// available balance negative. Settlement must succeed, and the debt must remain on
+    /// <c>Balance</c>.
     ///
-    /// این همان حالتی است که <c>ConsumeLockedBalance</c> برایش نوشته شد. مسیر ساده‌تر —
-    /// <c>UnLockBalance</c> و بعد <c>DecreaseBalance</c> — همین‌جا شکست می‌خورد، چون
-    /// <c>DecreaseBalance</c> کف صفر دارد و موجودیِ منفی را رد می‌کند. یعنی هر مشتری بدهکار
-    /// تسویه‌اش گیر می‌کرد، و چون هیچ تست دیگری موجودی منفی ندارد، هیچ چیز دیگری این را
-    /// نمی‌گرفت.
+    /// This is the case <c>ConsumeLockedBalance</c> was written for. The simpler route —
+    /// <c>UnLockBalance</c> then <c>DecreaseBalance</c> — fails here, because
+    /// <c>DecreaseBalance</c> has a floor of zero and refuses a negative balance. Settlement would
+    /// stall for every customer in debt, and since no other test uses a negative balance, nothing
+    /// else would catch it.
     /// </summary>
     [Fact]
     public async Task ACreditBackedBuyer_SettlesAndKeepsTheDebtOnTheBalance()
     {
-        // مسیر واقعی: کیف پول با موجودی صفر، بعد قفل وثیقه — که موجودی را منفی می‌کند.
+        // The real sequence: a zero-balance wallet, then the collateral lock, which takes it negative.
         var buyerQuote = SeedWallet(_buyerId, Quote, balance: 0m, locked: 0m);
         buyerQuote.LockBalance(QuoteQuantity);
         SeedWallet(_buyerId, Base, balance: 0m, locked: 0m);
@@ -221,25 +223,25 @@ public class SettlementBranchTests : IDisposable
 
         Assert.True(success, message);
 
-        // قفل مصرف شد، ولی بدهی سر جایش ماند — پول از هیچ ساخته نشد.
+        // The lock was consumed but the debt remains — no money was created.
         var settledBuyerQuote = await ReloadAsync(_buyerId, Quote);
         Assert.Equal(0m, settledBuyerQuote.LockedBalance);
         Assert.Equal(-QuoteQuantity, settledBuyerQuote.Balance);
 
-        // و طلایی که خرید را واقعاً گرفت.
+        // And the buyer actually received the gold.
         Assert.Equal(Quantity, (await ReloadAsync(_buyerId, Base)).Balance);
 
-        // فروشنده تومانش را کامل گرفت: بدهکار بودنِ خریدار نباید از دریافتی او کم کند.
+        // The seller received their toman in full: the buyer being in debt must not reduce it.
         Assert.Equal(QuoteQuantity, (await ReloadAsync(_sellerId, Quote)).Balance);
 
         Assert.Equal(4, await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
     }
 
     /// <summary>
-    /// جمع ارزش خالص باید صفر بماند: آنچه خریدار بدهکار است دقیقاً همان چیزی است که
-    /// فروشنده گرفته، و طلایی که خریدار گرفته دقیقاً همان است که فروشنده داده.
+    /// Net value across both sides must stay zero: what the buyer owes is exactly what the seller
+    /// received, and the gold the buyer gained is exactly what the seller gave up.
     ///
-    /// این همان بررسی‌ای است که در جلسه‌های تست دستی با SQL دستی انجام می‌شد.
+    /// This is the same check that was previously run by hand in SQL during manual testing.
     /// </summary>
     [Fact]
     public async Task ACreditBackedSettlement_ConservesMoney()
@@ -257,7 +259,7 @@ public class SettlementBranchTests : IDisposable
         _context.ChangeTracker.Clear();
         var all = await _context.Wallets.ToListAsync();
 
-        // موجودی در دسترس + قفل‌شده، به تفکیک دارایی.
+        // Available plus locked balance, per asset.
         var gold = all.Where(w => w.Asset == Base).Sum(w => w.Balance + w.LockedBalance);
         var toman = all.Where(w => w.Asset == Quote).Sum(w => w.Balance + w.LockedBalance);
 

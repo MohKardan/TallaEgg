@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Core;
@@ -8,8 +8,8 @@ using TallaEgg.Core.Enums.Order;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// مظنهٔ ادمین: قیمتی که منتشر می‌شود، بدون اینکه سفارشی در دفتر بگذارد یا وثیقه‌ای
-/// قفل کند (issue #48).
+/// The admin's quote: a published price that places no order in the book and locks no collateral
+/// (issue #48).
 /// </summary>
 public class QuoteTests : IDisposable
 {
@@ -36,11 +36,11 @@ public class QuoteTests : IDisposable
         _connection.Dispose();
     }
 
-    // ── قیمت‌گذاری ──────────────────────────────────────────────────────────────
+    // ── Pricing ─────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// مشتری از ادمین می‌خرد، پس قیمتِ <b>فروشِ</b> ادمین را می‌پردازد. جابه‌جا کردن این
-    /// دو، همان باگ وارونگی خریدار/فروشنده است با لباس دیگر.
+    /// A customer buys from the admin, so they pay the admin's <b>sell</b> price. Swapping the two is
+    /// the buyer/seller inversion bug wearing a different hat.
     /// </summary>
     [Fact]
     public void CustomerBuyingPaysTheAdminsSellPrice()
@@ -59,8 +59,8 @@ public class QuoteTests : IDisposable
     }
 
     /// <summary>
-    /// اسپرد منفی یعنی ادمین گران‌تر می‌خرد از آنچه می‌فروشد. مشتری می‌توانست بی‌نهایت بار
-    /// بخرد و بفروشد و هر بار سود کند — مستقیماً از جیب طلافروش.
+    /// A negative spread means the admin buys higher than they sell. A customer could buy and sell
+    /// endlessly, profiting every time, straight out of the shop's pocket.
     /// </summary>
     [Fact]
     public void ANegativeSpreadIsRejected()
@@ -71,7 +71,7 @@ public class QuoteTests : IDisposable
         Assert.Contains("قیمت خرید", ex.Message);
     }
 
-    /// <summary>اسپرد صفر مجاز است — ادمین بدون حاشیه معامله می‌کند، ولی ضرر نمی‌کند.</summary>
+    /// <summary>A zero spread is allowed: the admin trades at no margin, but does not lose.</summary>
     [Fact]
     public void AZeroSpreadIsAllowed()
     {
@@ -89,7 +89,7 @@ public class QuoteTests : IDisposable
         Assert.Throws<ArgumentException>(() => Quote.Publish(Symbol, 17_000_000m, badPrice, Admin));
     }
 
-    // ── انتشار ──────────────────────────────────────────────────────────────────
+    // ── Publishing ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task PublishingMakesTheQuoteReadable()
@@ -103,8 +103,8 @@ public class QuoteTests : IDisposable
     }
 
     /// <summary>
-    /// انتشار مظنهٔ جدید باید قبلی را کنار بگذارد. اگر دو مظنه فعال بمانند، معلوم نیست
-    /// مشتری روی کدام قیمت معامله می‌کند.
+    /// Publishing a new quote must retire the previous one. With two active quotes it is undefined
+    /// Which price the customer trades at.
     /// </summary>
     [Fact]
     public async Task PublishingAgainReplacesThePreviousQuote()
@@ -119,8 +119,8 @@ public class QuoteTests : IDisposable
     }
 
     /// <summary>
-    /// مظنهٔ قدیمی حذف نمی‌شود؛ فقط غیرفعال می‌شود — تا بعداً بشود فهمید هر معامله روی چه
-    /// قیمتی انجام شده.
+    /// An old quote is deactivated rather than deleted, so it stays possible to find out what price
+    /// a past trade used.
     /// </summary>
     [Fact]
     public async Task ThePreviousQuoteIsKeptAsHistory()
@@ -132,7 +132,7 @@ public class QuoteTests : IDisposable
         Assert.Equal(1, await _context.Quotes.CountAsync(q => !q.IsActive && q.DeactivatedAt != null));
     }
 
-    /// <summary>نمادها بر هم اثر نمی‌گذارند: انتشار برای یکی، مظنهٔ دیگری را کنار نمی‌زند.</summary>
+    /// <summary>Symbols do not affect each other: publishing for one does not displace another's quote.</summary>
     [Fact]
     public async Task PublishingForOneSymbolLeavesAnotherAlone()
     {
@@ -149,7 +149,7 @@ public class QuoteTests : IDisposable
         Assert.Null(await _repository.GetActiveAsync(Symbol));
     }
 
-    /// <summary>نماد باید بدون توجه به بزرگی و کوچکی حروف پیدا شود.</summary>
+    /// <summary>A symbol must be found regardless of case.</summary>
     [Fact]
     public async Task SymbolLookupIsCaseInsensitive()
     {

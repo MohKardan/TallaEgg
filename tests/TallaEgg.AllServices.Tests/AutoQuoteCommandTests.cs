@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
@@ -60,7 +60,7 @@ public class AutoQuoteCommandTests
             From = new User { Id = AdminTelegramId }
         });
 
-    // ── اسپرد ────────────────────────────────────────────────────────────────────
+    // ── Spread command ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task AnAdminCanSetTheSpread()
@@ -140,7 +140,7 @@ public class AutoQuoteCommandTests
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("قالب دستور درست نیست"));
     }
 
-    // ── اتومات ───────────────────────────────────────────────────────────────────
+    // ── Automatic-quote command ─────────────────────────────────────────────────
 
     [Fact]
     public async Task AnAdminCanTurnAutoQuoteOn()
@@ -223,7 +223,7 @@ public class AutoQuoteCommandTests
         Assert.Contains(_messenger.Texts, t => t.Contains("قالب"));
     }
 
-    // ── نماد فعال/غیرفعال ────────────────────────────────────────────────────────
+    // ── Symbol enable/disable command ───────────────────────────────────────────
 
     [Fact]
     public async Task AnAdminCanActivateASymbol()

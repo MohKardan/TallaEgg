@@ -1,20 +1,20 @@
-using TallaEgg.Core;
+﻿using TallaEgg.Core;
 
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// وثیقهٔ قفل‌شده باید پس از پر شدن کامل سفارش، کاملاً مصرف یا آزاد شود.
+/// Locked collateral must be fully consumed or released once an order is completely filled.
 ///
-/// دو منبع مستقل باقی‌مانده وجود داشت (issue #52):
+/// There were two independent sources of residue (issue #52):
 ///
-/// ۱. یک‌باره، هنگام قفل: ربات قیمت را گرد‌نشده می‌فرستاد (قیمت مثقال ÷ ۴٫۳۳۱۸) و قفل
-///    از همان مقدار حساب می‌شد، ولی ستون Orders.Price فقط دو رقم اعشار نگه می‌دارد و
-///    تسویه قیمتِ گردشده را از دیتابیس می‌خواند.
+/// 1. Once, at lock time: the bot sent an unrounded price (mesghal price / 4.3318) and the lock was
+///    computed from it, but Orders.Price holds only two decimals and settlement reads the rounded
+///    price back from the database.
 ///
-/// ۲. در هر fill: مصرف هر معامله جداگانه گرد می‌شود، و مجموعِ مقادیرِ جداگانه‌گردشده
-///    با مقدارِ یک‌بار‌گردشده برابر نیست.
+/// 2. Per fill: each trade's consumption is rounded separately, and the sum of separately-rounded
+///    amounts does not equal the once-rounded whole.
 ///
-/// این تست‌ها روی خودِ حسابِ عددی کار می‌کنند، چون همین حساب است که اشتباه بود.
+/// These tests work on the arithmetic itself, because the arithmetic is what was wrong.
 /// </summary>
 public class LockResidueTests
 {
@@ -24,18 +24,18 @@ public class LockResidueTests
     private static decimal PricePerGram(decimal perMesghal) =>
         perMesghal / CurrenciesConstant.GramsPerMesghal;
 
-    /// <summary>قفل: رو به بالا — همان چیزی که OrderService استفاده می‌کند.</summary>
+    /// <summary>The lock rounds up, the same as OrderService does.</summary>
     private static decimal Lock(decimal quantity, decimal price) =>
         CurrenciesConstant.CeilingToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
 
-    /// <summary>مصرف هر معامله: رو به پایین — همان چیزی که CreateTrade استفاده می‌کند.</summary>
+    /// <summary>Each trade's consumption rounds down, the same as CreateTrade does.</summary>
     private static decimal Fill(decimal quantity, decimal price) =>
         CurrenciesConstant.FloorToCurrencyPrecision(quantity * price, CurrenciesConstant.Toman);
 
     /// <summary>
-    /// منبع ۱. قیمتِ گردشده همان است که ذخیره و بعداً برای تسویه خوانده می‌شود، پس قفل
-    /// باید از همان حساب شود. نرخ خرید انتخاب شده چون ۷۹٬۰۰۰٬۰۰۰ ÷ ۴٫۳۳۱۸ به دو رقم
-    /// اعشار بسته نمی‌شود — همان حالتی که باگ را نشان داد.
+    /// Source 1. The rounded price is what gets stored and later read back for settlement, so the
+    /// lock has to be computed from it. This buy rate was chosen because 79,000,000 / 4.3318 does
+    /// not close at two decimals — the case that exposed the bug.
     /// </summary>
     [Fact]
     public void LockUsesTheSamePriceThatWillBeStored()
@@ -46,12 +46,12 @@ public class LockResidueTests
         var lockedFromRawPrice = Lock(1000m, raw);
         var lockedFromStoredPrice = Lock(1000m, stored);
 
-        // این دو عدد پیش‌تر ۲ تومان اختلاف داشتند و همان اختلاف تا ابد قفل می‌ماند.
+        // These two figures used to differ by 2 toman, and that difference stayed locked forever.
         Assert.NotEqual(lockedFromRawPrice, lockedFromStoredPrice);
         Assert.Equal(18_237_222_400m, lockedFromStoredPrice);
     }
 
-    /// <summary>قیمت باید دقیقاً به دقت ستون گرد شود، نه بیشتر و نه کمتر.</summary>
+    /// <summary>The price must round to the column's precision exactly — no more, no less.</summary>
     [Theory]
     [InlineData(80_000_000, 18_468_073.32)]
     [InlineData(79_000_000, 18_237_222.40)]
@@ -64,11 +64,11 @@ public class LockResidueTests
     }
 
     /// <summary>
-    /// منبع ۲، و دلیل اینکه گرد کردن قیمت به‌تنهایی کافی نیست: حتی با قیمت یکسان،
-    /// مجموع fillهای جداگانه‌گردشده با قفلِ یک‌بار‌گردشده برابر نیست.
+    /// Source 2, and why rounding the price alone is not enough: even at an identical price, the sum
+    /// of separately-rounded fills does not equal the once-rounded lock.
     ///
-    /// این تست وجودِ باقی‌مانده را اثبات می‌کند تا روشن باشد چرا آزادسازی در پایان
-    /// سفارش لازم است و نمی‌توان صرفاً به گرد کردن قیمت اکتفا کرد.
+    /// This proves the residue exists, so it is clear why a release at the end of the order is
+    /// required and why rounding the price is not a substitute.
     /// </summary>
     [Fact]
     public void PerFillRounding_LeavesAResidue_EvenWithTheStoredPrice()
@@ -78,16 +78,16 @@ public class LockResidueTests
         var locked = Lock(10m, price);
         var consumed = Fill(3m, price) + Fill(3m, price) + Fill(3m, price) + Fill(1m, price);
 
-        // باقی‌مانده وجود دارد و صرفاً با گرد کردن قیمت از بین نمی‌رود — برای همین
-        // آزادسازی در پایان سفارش لازم است و نمی‌توان به گرد کردن اکتفا کرد.
+        // A residue exists and rounding the price does not remove it — which is why the release at
+        // the end of the order is necessary.
         Assert.NotEqual(locked, consumed);
         Assert.True(locked > consumed);
     }
 
     /// <summary>
-    /// همان حالتی که پیش‌تر بیش‌مصرف می‌کرد: پنج fill دو گرمی، که هرکدام کسر ۰٫۸ دارد.
-    /// با AwayFromZero همه رو به بالا گرد می‌شدند و مجموعشان ۱ تومان از قفل بیشتر
-    /// می‌شد، پس گاردِ «وثیقهٔ کافی نیست» یک معاملهٔ کاملاً معتبر را رد می‌کرد.
+    /// The case that used to over-consume: five two-gram fills, each with a 0.8 fraction. Under
+    /// AwayFromZero every one rounded up and their sum exceeded the lock by 1 toman, so the
+    /// "insufficient collateral" guard refused a perfectly valid trade.
     /// </summary>
     [Fact]
     public void FillsThatUsedToOverConsume_NoLongerDo()
@@ -101,14 +101,14 @@ public class LockResidueTests
     }
 
     /// <summary>
-    /// خودِ تضمین، نه یک نمونه: برای هر ترکیبی از اندازهٔ fillها، مجموع مصرف هرگز از
-    /// مقدار قفل‌شده بیشتر نمی‌شود.
+    /// The guarantee itself rather than one example: for any combination of fill sizes, total
+    /// consumption never exceeds the locked amount.
     ///
     ///     Σ Floor(qᵢ × p) ≤ Σ qᵢ×p = Q×p ≤ Ceiling(Q×p)
     ///
-    /// این چیزی است که یک تست تک‌نمونه‌ای نمی‌تواند نشان دهد — یک ترکیب خوش‌شانس
-    /// می‌تواند سبز بماند در حالی که ترکیب دیگری می‌شکند. دقیقاً همان اتفاقی که با
-    /// ۳+۳+۴ افتاد و باعث شد چند ساعت به نظر برسد باقی‌مانده رشد نمی‌کند.
+    /// A single-example test cannot show this — one lucky combination stays green while another
+    /// breaks. That is exactly what happened with 3+3+4, and for a few hours it looked as though the
+    /// residue did not grow.
     /// </summary>
     [Theory]
     [InlineData(new double[] { 2, 2, 2, 2, 2 })]
@@ -130,8 +130,8 @@ public class LockResidueTests
     }
 
     /// <summary>
-    /// و باقی‌مانده باید ناچیز بماند — حداکثر یک واحد به‌ازای هر fill. اگر روزی جهت
-    /// گرد کردن اشتباه عوض شود، مجموع مصرف کمتر می‌شود ولی این تست هم می‌شکند.
+    /// And the residue must stay negligible — at most one unit per fill. If the rounding direction
+    /// is ever changed wrongly, total consumption drops and this test breaks with it.
     /// </summary>
     [Theory]
     [InlineData(new double[] { 2, 2, 2, 2, 2 })]
@@ -148,8 +148,8 @@ public class LockResidueTests
     }
 
     /// <summary>
-    /// باقی‌مانده = «آنچه قفل شد» منهای «آنچه مصرف شد». همان فرمولی که مسیر لغو و
-    /// مسیر تکمیل هر دو استفاده می‌کنند. با آزاد کردن این مقدار، قفل به صفر می‌رسد.
+    /// Residue = what was locked minus what was consumed — the same formula the cancellation and
+    /// completion paths both use. Releasing that amount brings the lock to zero.
     /// </summary>
     [Fact]
     public void ReleasingTheResidue_BringsTheLockToZero()
@@ -166,9 +166,9 @@ public class LockResidueTests
     }
 
     /// <summary>
-    /// سمت فروشنده باقی‌مانده ندارد: وثیقه‌اش دارایی پایه است و هر معامله دقیقاً
-    /// Quantity مصرف می‌کند، بدون گرد کردن. این تست آن فرض را تثبیت می‌کند تا اگر
-    /// روزی عوض شد، سکوت نکند.
+    /// The sell side has no residue: its collateral is the base asset and each trade consumes
+    /// exactly Quantity, with no rounding. This test pins that assumption so a change to it cannot
+    /// pass silently.
     /// </summary>
     [Fact]
     public void SellSide_HasNoResidue()

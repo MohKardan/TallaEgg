@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Wallet.Core;
@@ -7,15 +7,16 @@ using Wallet.Infrastructure;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// «هر معامله دقیقاً یک بار تسویه می‌شود» باید توسط دیتابیس تضمین شود، نه توسط ترتیب اجرای کد.
+/// "Every trade settles exactly once" must be guaranteed by the database, not by the order in which
+/// code happens to run.
 ///
-/// پیش‌تر تنها محافظ، یک SELECT بود که ۴۶ خط پیش از باز شدن تراکنش اجرا می‌شد و هیچ قید
-/// یکتایی پشتش نبود. دو تسویهٔ همزمان از یک معامله می‌توانستند هر دو از آن بررسی رد شوند
-/// و هر دو اعمال شوند — یعنی هر دو طرف دو برابر اعتبار می‌گرفتند و پول از هیچ ساخته
+/// The only protection used to be a SELECT running 46 lines before the transaction opened, with no
+/// uniqueness constraint behind it. Two concurrent settlements of one trade could both pass that
+/// check and both apply — crediting each side twice and creating money from
 /// می‌شد (issue #42).
 ///
-/// حالا TradeId کلید اصلی جدول TradeSettlements است و آن سطر داخل همان تراکنشِ جابه‌جایی
-/// پول درج می‌شود.
+/// TradeId is now the primary key of TradeSettlements, and that row is inserted inside the same
+/// transaction that moves the money.
 /// </summary>
 public class SettlementUniquenessTests : IDisposable
 {
@@ -32,14 +33,14 @@ public class SettlementUniquenessTests : IDisposable
     private const decimal QuoteQuantity = 1000m;
 
     /// <summary>
-    /// یک قلاب درست پیش از SaveChanges، برای بازسازی قطعی و بدون رقابتِ حالتی که رقیب
-    /// دقیقاً در بازهٔ بین «بررسی سریع» و «درج» ما commit کرده است.
+    /// A hook just before SaveChanges, to reproduce deterministically and without a real race the
+    /// case where a competitor commits in the window between our fast check and our insert.
     ///
-    /// چرا این روش و نه اجرای واقعی دو Task موازی: SQLite در حافظه روی یک اتصال، دو
-    /// تراکنش نوشتنِ همزمان را پشتیبانی نمی‌کند، پس تست موازی یا قفل می‌شد یا وابسته به
-    /// زمان‌بندی و ناپایدار می‌شد. آنچه باید اثبات شود این نیست که «رقابت رخ می‌دهد»،
-    /// بلکه این است که «وقتی رخ داد، دیتابیس جلویش را می‌گیرد و کد آن را درست ترجمه
-    /// می‌کند» — و این تست دقیقاً همان را با قید واقعی دیتابیس می‌سنجد.
+    /// Why this rather than genuinely running two parallel tasks: in-memory SQLite on a single
+    /// connection does not support two concurrent write transactions, so a parallel test would
+    /// either deadlock or become timing-dependent and flaky. What needs proving is not that a race
+    /// can happen, but that when it does the database stops it and the code translates that
+    /// correctly — which is exactly what this exercises, against the real constraint.
     /// </summary>
     private sealed class HookedWalletDbContext : WalletDbContext
     {
@@ -101,7 +102,7 @@ public class SettlementUniquenessTests : IDisposable
         return await _context.Wallets.SingleAsync(w => w.UserId == userId && w.Asset == asset);
     }
 
-    /// <summary>یک تسویهٔ عادی باید سطر تسویه را ثبت کند — پایهٔ همهٔ تضمین‌های بعدی.</summary>
+    /// <summary>An ordinary settlement must record its settlement row — the basis of every guarantee below.</summary>
     [Fact]
     public async Task Settlement_RecordsExactlyOneTradeSettlementRow()
     {
@@ -114,16 +115,16 @@ public class SettlementUniquenessTests : IDisposable
     }
 
     /// <summary>
-    /// مورد اصلی #42: رقیب پس از رد شدن ما از بررسی سریع، commit می‌کند. درج ما باید با
-    /// نقض کلید اصلی شکست بخورد و کل تراکنش برگردد.
+    /// The core case from #42: a competitor commits after we have passed the fast check. Our insert
+    /// must fail on the primary key and the whole transaction must roll back.
     /// </summary>
     [Fact]
     public async Task ConcurrentSettlement_IsRefusedByTheDatabase_AndReportedAsAlreadySettled()
     {
         var tradeId = Guid.NewGuid();
 
-        // رقیب: سطر تسویه را مستقیماً درج می‌کند، درست پیش از SaveChanges ما — یعنی همان
-        // لحظه‌ای که بررسی سریع ما از قبل رد شده و دیگر کاری از آن برنمی‌آید.
+        // The competitor inserts the settlement row directly, just before our SaveChanges — the
+        // moment at which our fast check has already passed and can no longer help.
         _context.BeforeSave = () =>
             _context.Database.ExecuteSqlRaw(
                 @"INSERT INTO TradeSettlements
@@ -133,16 +134,16 @@ public class SettlementUniquenessTests : IDisposable
 
         var (success, message) = await SettleAsync(tradeId);
 
-        // از دید فراخوان موفق است: معامله تسویه شده — فقط نه توسط ما.
-        // اگر خطا برمی‌گشت، پردازشگر outbox پنج بار retry می‌کرد و معاملهٔ سالم را
-        // به‌عنوان «گیرکرده» به اپراتور هشدار می‌داد.
+        // From the caller's point of view this succeeded: the trade is settled, just not by us.
+        // Returning an error would make the outbox processor retry five times and raise a healthy
+        // trade to an operator as stuck.
         Assert.True(success, message);
         Assert.Contains("already settled", message, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
-    /// مهم‌ترین ادعا: بازندهٔ رقابت نباید هیچ پولی جابه‌جا کرده باشد. این همان چیزی است
-    /// که #42 دربارهٔ آن بود — نه پیام خطا، بلکه دو برابر شدن موجودی.
+    /// The claim that matters most: the loser of the race must have moved no money at all. That is
+    /// what #42 was about — not an error message, but a doubled balance.
     /// </summary>
     [Fact]
     public async Task ConcurrentSettlement_LeavesBalancesAndTransactionsUntouched()
@@ -158,10 +159,10 @@ public class SettlementUniquenessTests : IDisposable
 
         await SettleAsync(tradeId);
 
-        // هیچ سطر تراکنشی نوشته نشده — نه اینکه نوشته و بعد جبران شده باشد.
+        // No transaction row was written at all — not written and then compensated.
         Assert.Equal(0, await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
 
-        // و موجودی‌ها دقیقاً همان حالت پیش از تسویه‌اند: وثیقه هنوز قفل، هیچ دارایی‌ای منتقل نشده.
+        // And the balances are exactly as they were before: collateral still locked, nothing moved.
         var buyerQuote = await ReloadAsync(_buyerId, Quote);
         var buyerBase = await ReloadAsync(_buyerId, Base);
         var sellerBase = await ReloadAsync(_sellerId, Base);
@@ -176,8 +177,8 @@ public class SettlementUniquenessTests : IDisposable
     }
 
     /// <summary>
-    /// تحویل مجدد عادی outbox (رقابتی در کار نیست) باید از مسیر سریع رد شود: بدون استثنا،
-    /// بدون تراکنش، و بدون نوشتن سطر دوم.
+    /// An ordinary outbox redelivery, with no race involved, must take the fast path: no exception,
+    /// no transaction, and no second row.
     /// </summary>
     [Fact]
     public async Task RedeliveryAfterSuccess_IsIdempotent_AndDoesNotDoubleApply()
@@ -193,14 +194,14 @@ public class SettlementUniquenessTests : IDisposable
         Assert.Equal(1, await _context.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
         Assert.Equal(4, await _context.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
 
-        // موجودی‌ها فقط یک بار جابه‌جا شده‌اند.
+        // The balances moved exactly once.
         Assert.Equal(Quantity, (await ReloadAsync(_buyerId, Base)).Balance);
         Assert.Equal(QuoteQuantity, (await ReloadAsync(_sellerId, Quote)).Balance);
     }
 
     /// <summary>
-    /// دو معاملهٔ متفاوت نباید همدیگر را مسدود کنند — قید یکتایی باید روی شناسهٔ معامله
-    /// باشد و نه چیزی که به‌طور اتفاقی بین معاملات مشترک است (مثل طرفین یا نماد).
+    /// Two different trades must not block each other — the uniqueness constraint has to be on the
+    /// trade id and not on something trades happen to share, such as the parties or the symbol.
     /// </summary>
     [Fact]
     public async Task DifferentTrades_BetweenTheSameParties_BothSettle()
@@ -208,10 +209,10 @@ public class SettlementUniquenessTests : IDisposable
         var firstTrade = Guid.NewGuid();
         var secondTrade = Guid.NewGuid();
 
-        // وثیقهٔ لازم برای معاملهٔ دوم را هم قفل می‌کنیم.
+        // Lock the collateral the second trade needs as well.
         //
-        // هر دو کیف پول در یک واحد کاری بارگذاری می‌شوند و بین آن‌ها ChangeTracker پاک
-        // نمی‌شود؛ در غیر این صورت موجودیت اول detach می‌شد و تغییرش هرگز ذخیره نمی‌شد.
+        // Both wallets are loaded in one unit of work and the ChangeTracker is not cleared between
+        // them; otherwise the first entity would detach and its change would never be saved.
         _context.ChangeTracker.Clear();
         var buyerQuote = await _context.Wallets.SingleAsync(w => w.UserId == _buyerId && w.Asset == Quote);
         var sellerBase = await _context.Wallets.SingleAsync(w => w.UserId == _sellerId && w.Asset == Base);

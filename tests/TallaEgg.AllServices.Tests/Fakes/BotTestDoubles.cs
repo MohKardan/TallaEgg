@@ -95,7 +95,7 @@ public sealed class FakeOrderApiClient : IOrderApiClient
     public Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request) =>
         throw new NotSupportedException(nameof(NotifyMatchingEngineAsync));
 
-    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+    // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 
     public AutoQuoteSettingsDto? AutoQuoteSettings { get; set; }
 
@@ -121,7 +121,7 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         return Task.FromResult(EnabledToggleResult);
     }
 
-    // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────────
+    // ── Symbol enable/disable ───────────────────────────────────────────────────
 
     /// <summary>
     /// Defaults to the three symbols the platform actually seeds as active (see the
@@ -145,7 +145,7 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         return Task.FromResult(ActiveToggleResult);
     }
 
-    // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
+    // ── Profit and loss (issue #93) ─────────────────────────────────────────────
 
     public ApiResponse<PositionsResponseDto> PositionsResult { get; set; } =
         ApiResponse<PositionsResponseDto>.Ok(new PositionsResponseDto(), "ok");
