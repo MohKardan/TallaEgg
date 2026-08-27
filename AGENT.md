@@ -60,6 +60,30 @@ SQL Server and keeps it alive for a chosen number of minutes.
   which each service applies at startup. `create_table.sql` at the repo root is an early artifact
   describing a single table that no longer matches the model — it is not the schema.
 
+## Business rules that look like bugs
+
+Each of these has been mistaken for a defect at least once, including by an audit. None of them
+is one. Confirmed with the product owner on 6 Shahrivar 1405.
+
+- **The market maker may go arbitrarily negative, on any asset, with no ceiling.** Its account
+  currently sits far below zero in IRT and holds no `CREDIT_IRT` ledger. That negative balance
+  *is* the shop's book — what customers are owed — and the market maker manages the exposure
+  themselves. A balance check that treats it as an overdraft is wrong. There is no alerting on
+  it yet; that gap is tracked in #124.
+- **Commission is deliberately zero.** `FeeBuyer`, `FeeSeller`, `MakerFee` and `TakerFee` are
+  `0.00` on every trade by design. The market maker's revenue is the spread between the published
+  buy and sell prices, not commission. Fee code is therefore dormant, not dead — do not delete it
+  as unused.
+- **Credit is cross-asset, not per-asset.** `ValidateCreditAndBalanceAsync` lets credit
+  denominated in the quote currency back a base-asset position (`creditQuote / price`) and vice
+  versa. A customer holding only `CREDIT_MAUA` can legitimately drive their IRT balance negative.
+  Any per-asset invariant would reject trades the business intends to allow — see the retracted
+  N-1 finding in `docs/operations/RE_AUDIT_2026-08.md`.
+- **`Wallet.LockBalance` enforces no balance rule, and must not.** The credit ceiling for asset
+  `A` lives in a separate wallet row keyed `CREDIT_A`, so a single-asset entity cannot evaluate
+  the invariant. The check belongs where both rows are visible. The commented-out guard in that
+  method is wrong code, correctly disabled.
+
 ## Configuration
 
 All services and the bot read one shared file, `config/appsettings.global.json`, found by walking
@@ -67,8 +91,8 @@ up from the content root. Each reads its own section under `Services:{Applicatio
 flattened into the root of its configuration. Per-project `appsettings.json` files are not the
 source of truth.
 
-**This file must never be committed** — it holds live credentials and the repo is public. It is
-tracked today, which is a known defect (issue #33).
+**This file must never be committed** — it holds live credentials and the repo is public. It has
+been untracked since #33; only `config/appsettings.global.example.json` belongs in git.
 
 Missing configuration fails at startup rather than falling back to a default, so a service that
 will not start is usually telling you exactly which key is missing.
