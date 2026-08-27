@@ -99,12 +99,6 @@ public class OrderService
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);
 
-            //var (balanceCheckSuccess, balanceMessage, hasSufficientBalance) =
-            //    await _walletApiClient.ValidateBalanceAsync(
-            //    userId,
-            //    assetToCheck,
-            //    amountToCheck);
-
             
             var validateCreditAndBalance =
                 await _walletApiClient.ValidateCreditAndBalanceAsync(request.UserId, request.Symbol, request.Quantity, request.Price);
@@ -326,8 +320,6 @@ public class OrderService
     {
         try
         {
-            // TODO: If database transaction support is needed, wrap in transaction
-            // using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
             
             var order = await _orderRepository.GetByIdAsync(orderId);
             
@@ -339,9 +331,6 @@ public class OrderService
                 return false;
             }
 
-            // TODO: Add business validation if needed
-            // var validationResult = await ValidateOrderForConfirmationAsync(order);
-            // if (!validationResult.IsValid) { return false; }
             
             // Change status from Pending to Confirmed
             var updateSuccess = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Confirmed, "تایید شده");
@@ -350,8 +339,6 @@ public class OrderService
             {
                 _logger.LogInformation("Order {OrderId} status changed: Pending → Confirmed", orderId);
                 
-                // TODO: If transaction was used, commit here
-                // await transaction.CommitAsync(cancellationToken);
             }
             
             return updateSuccess;
@@ -360,8 +347,6 @@ public class OrderService
         {
             _logger.LogError(ex, "Error confirming order {OrderId}", orderId);
             
-            // TODO: If transaction was used, rollback here
-            // await transaction.RollbackAsync(cancellationToken);
             
             return false;
         }
@@ -408,8 +393,6 @@ public class OrderService
         }
 
         var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
-
-        //Log.Information("orders:\n" + JsonConvert.SerializeObject(orders, Formatting.Indented));
 
         // The o.IsMaker() condition was removed.
         //

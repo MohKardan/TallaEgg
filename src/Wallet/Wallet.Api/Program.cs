@@ -243,7 +243,6 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
 {
     try
     {
-        // TODO: WalletEntity and WalletDTO carry nearly the same shape; consider collapsing them.
         var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
         return Results.Ok(ApiResponse<(WalletEntity,Transaction)>.Ok(result, "عملیات با موفقیت انجام شد"));
     }

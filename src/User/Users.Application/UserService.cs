@@ -118,14 +118,6 @@ public class UserService
             return id;
         }
 
-        // If not there, look in the Invitations table.
-        
-        //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
-        //if (invitation != null)
-        //{
-        //    return invitation.CreatedByUserId;
-        //}
-
         return null;
     }
 
@@ -140,14 +132,6 @@ public class UserService
         {
             return id;
         }
-
-        // If not there, look in the Invitations table.
-        
-        //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
-        //if (invitation != null)
-        //{
-        //    return invitation.CreatedByUserId;
-        //}
 
         return null;
     }

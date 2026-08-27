@@ -312,9 +312,7 @@ public class WalletApiClient : IWalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                //var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>>(respText);
 
-                // Parse the response which should be in the format: { success, message, hasSufficientBalance }
                 var result = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WalletDTO>>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
@@ -367,9 +365,7 @@ public class WalletApiClient : IWalletApiClient
                 // Handle successful response
                 try
                 {
-                    //var walletDto = JsonConvert.DeserializeObject<ApiResponse<WalletDTO>>(responseContent);
                     
-                    // Parse the response which should be in the format: { success, message, hasSufficientBalance }
                     var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
@@ -415,9 +411,7 @@ public class WalletApiClient : IWalletApiClient
                 {
                     try
                     {
-                        //var errorResponse = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<object>>(responseContent);
 
-                        // Parse the response which should be in the format: { success, message, hasSufficientBalance }
                         var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(responseContent,
                             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
@@ -487,8 +481,6 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            //var json = JsonConvert.SerializeObject(request);
-            //var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -498,9 +490,7 @@ public class WalletApiClient : IWalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                //var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>>(respText);
 
-                // Parse the response which should be in the format: { success, message, hasSufficientBalance }
                 var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
@@ -524,8 +514,6 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            //var json = JsonConvert.SerializeObject(request);
-            //var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var json = JsonSerializer.Serialize(request);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -535,9 +523,7 @@ public class WalletApiClient : IWalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                //var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>>(respText);
 
-                // Parse the response which should be in the format: { success, message, hasSufficientBalance }
                 var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 

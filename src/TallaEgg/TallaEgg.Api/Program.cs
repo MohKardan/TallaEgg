@@ -56,15 +56,8 @@ builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
-// Connection to the main TallaEgg database.
-// builder.Services.AddDbContext<TallaEggDbContext>(options =>
-//     options.UseSqlServer(builder.Configuration.GetConnectionString("TallaEggDb") ??
-//         "Server=localhost;Database=TallaEgg;Trusted_Connection=True;TrustServerCertificate=True;",
-//         b => b.MigrationsAssembly("TallaEgg.Api")));
-
 // Only the Orders and Price services are registered.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-//builder.Services.AddScoped<IOrderService, OrderService>();
 // CreateOrderCommandHandler and CreateTakerOrderCommandHandler were removed: both classes were
 // entirely empty, with their whole bodies commented out, yet they were still registered in DI.
 

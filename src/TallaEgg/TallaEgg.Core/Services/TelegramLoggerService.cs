@@ -31,7 +31,6 @@ namespace TallaEgg.Core.Services
         /// 
         public async Task Notif(string message, string chatId= "-1002988196234", string parseMode = "")
         {
-            // Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
@@ -62,7 +61,6 @@ namespace TallaEgg.Core.Services
         /// 
         public async Task Notif<T>(string message, T dto, string chatId = "-1002988196234", string parseMode = "")
         {
-            //Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
@@ -88,7 +86,6 @@ namespace TallaEgg.Core.Services
 
         public async Task LogAsync<T>(string message, T dto, string chatId = "-822161060", string parseMode = "")
         {
-            //Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
@@ -114,7 +111,6 @@ namespace TallaEgg.Core.Services
 
         public async Task LogAsync(string log, string chatId = "-822161060")
         {
-            //Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
@@ -151,9 +147,7 @@ namespace TallaEgg.Core.Services
         /// <returns></returns>
         public async Task ErrorAsync(Exception ex, string message = "")
         {
-            //  await File.AppendAllTextAsync($"SendExceptions{DateTime.Now.Ticks}.txt",message +"\n \n"+ Newtonsoft.Json.JsonConvert.SerializeObject(ex, Newtonsoft.Json.Formatting.Indented));
 
-         //   Version version = Assembly.GetExecutingAssembly().GetName().Version;
             var version = Assembly.GetEntryAssembly()?.GetName().Version;
 
 
@@ -198,70 +192,15 @@ namespace TallaEgg.Core.Services
 
         }
 
-        //public async Task SendFile(string filePath, string fileName)
-        //{
-        //    try
-        //    {
-
-        //        //  var APIURL = "https://tg-notif.chbk.app//file";
-        //        var APIURL = "https://tgnotif-production.up.railway.app/file";
-
-        //        using (var httpClient = _httpClientFactory.CreateClient())
-        //        using (var form = new MultipartFormDataContent())
-        //        using (var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read))
-        //        {
-        //            form.Add(new StreamContent(fileStream), "file", fileName);
-        //            form.Add(new StringContent("ChatId"), _appSettings.SuccessChannelChatId);
-        //            HttpResponseMessage response = await httpClient.PostAsync(APIURL, form);
-        //            response.EnsureSuccessStatusCode();
-        //            httpClient.Dispose();
-        //            string sd = response.Content.ReadAsStringAsync().Result;
-        //        }
-
-
-        //        //            using (var fileStream = File.OpenRead(filePath))
-        //        //{
-        //        //	var fileName = File.ReadAllText(filePath);
-        //        //	var fileContent = new StreamContent(fileStream);
-
-        //        //	using (var formData = new MultipartFormDataContent())
-        //        //	{
-        //        //		formData.Add(fileContent, "file", fileName);
-        //        //		var httpClient = _httpClientFactory.CreateClient();
-        //        //		string APIURL = $"https://bewildered-moth-umbrella.cyclic.cloud/file";
-
-        //        //		var response = await httpClient.PostAsync(APIURL, formData);
-        //        //		var x = await response.Content.ReadAsStringAsync();
-        //        //	}
-        //        //}
-        //    }
-        //    catch (Exception ex)
-
-        //    {
-        //        await ErrorAsync(ex);
-        //        // throw;
-        //    }
-        //}
-
         private async Task Send(StringContent data)
         {
             try
             {
                 var httpClient = _httpClientFactory.CreateClient();
-                // httpClient.Timeout = TimeSpan.FromSeconds(15);
 
                 string APIURL = $"https://telegram-notifier.mldsalehi.workers.dev";
-                //string APIURL = $"https://tgnotif-production.up.railway.app/tgdigi";
-                // string APIURL = $"https://tg-notif.chbk.app/tgdigi";
-                // string APIURL = $"https://telenotif.onrender.com/tgdigi";
-                // string APIURL = $"https://bewildered-moth-umbrella.cyclic.cloud/tgdigi";
-                //string APIURL = $"https://tgnotif-7snesbpv.b4a.run/tgdigi";
 
-                /*var response =*/
                 await httpClient.PostAsync(APIURL, data);
-                //if (!response.IsSuccessStatusCode) throw new Exception();
-                //	var x = await response.Content.ReadAsStringAsync();
-
             }
             catch (Exception ex)
 
@@ -270,19 +209,6 @@ namespace TallaEgg.Core.Services
                 await File.AppendAllTextAsync("SendExceptions.txt", "====================================================");
 
                 Console.WriteLine(ex.Message);
-                //try
-                //{
-                //                var httpClient = _httpClientFactory.CreateClient();
-
-                //                var response = await httpClient.PostAsync(APIURL, data);
-                //                var x = await response.Content.ReadAsStringAsync();
-                //	Console.WriteLine(x);
-                //            }
-                //catch (Exception)
-                //{
-                //	//throw;
-                //}
-                //// throw;
             }
         }
 

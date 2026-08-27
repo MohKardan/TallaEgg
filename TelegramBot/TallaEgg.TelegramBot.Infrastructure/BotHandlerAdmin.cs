@@ -324,26 +324,6 @@ namespace TallaEgg.TelegramBot
             }
 
             return false;
-
-            //switch (msgText.ToLower())
-            //{
-            //    case "/admin_referral_on":
-            //        _requireReferralCode = true;
-            //        await _messenger.SendAsync(chatId,
-            //        return true;
-
-            //    case "/admin_referral_off":
-            //        _requireReferralCode = false;
-            //        await _messenger.SendAsync(chatId,
-            //        return true;
-
-            //    case "/admin_referral_status":
-            //        await _messenger.SendAsync(chatId,
-            //        return true;
-
-            //    default:
-            //        return false; // Not an admin command, continue with normal processing
-            //}
         }
 
         /// <summary>

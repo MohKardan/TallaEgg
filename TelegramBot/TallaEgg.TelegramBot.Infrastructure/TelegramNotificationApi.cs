@@ -127,9 +127,10 @@ public class TelegramNotificationApi
             /// Called by the matching service. It validates the input, notifies both the buyer and
             /// the seller, and returns the outcome as an ApiResponse.
             /// 
-            /// TODO: add authentication and authorization.
-            /// TODO: add rate limiting.
-            /// TODO: add detailed logging.
+            /// This endpoint has no authentication, no rate limiting and no audit logging, and
+            /// it is live: Program.cs starts this application on a background task alongside the
+            /// bot. Anything that can reach the port can make the bot send trade notifications to
+            /// arbitrary users. Closing that is a change in its own right, not a comment.
             /// </remarks>
             async (TradeMatchNotificationDto notification, TradeNotificationService notificationService) =>
         {

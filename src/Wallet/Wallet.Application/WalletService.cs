@@ -1,4 +1,4 @@
-
+﻿
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
@@ -145,7 +145,6 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-       // await _walletRepository.CreateTransactionAsync(transaction);
 
         return true;
     }
@@ -290,7 +289,6 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-      //  await _walletRepository.CreateTransactionAsync(fromTransaction);
 
         var toTransaction = new WalletTransaction
         {
@@ -304,7 +302,6 @@ public class WalletService : IWalletService
             CreatedAt = DateTime.UtcNow,
             CompletedAt = DateTime.UtcNow
         };
-       // await _walletRepository.CreateTransactionAsync(toTransaction);
 
         return (true, "انتقال با موفقیت انجام شد.");
     }

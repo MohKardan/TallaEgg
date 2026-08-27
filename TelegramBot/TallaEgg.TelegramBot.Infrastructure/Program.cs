@@ -137,9 +137,12 @@ public class Program
                 services.AddSingleton<TelegramLoggerService>(provider =>
                 {
                     var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
-                   // var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
 
-                    return new TelegramLoggerService(httpClientFactory, /*options.TelegramBotToken*/"7331560325:AAHgmgugtatg0XmoIMgTd7_Nj6G09jvo9g4");
+                    // A second bot, used only to deliver error reports — not the one customers talk
+                    // to, whose token is TelegramBotOptions.TelegramBotToken. There is no settings
+                    // key for this one, which is why it is a literal. Giving it a key of its own is
+                    // the fix; the value itself is dead and rotated, see CLAUDE.md.
+                    return new TelegramLoggerService(httpClientFactory, "7331560325:AAHgmgugtatg0XmoIMgTd7_Nj6G09jvo9g4");
                 });
 
                 services.AddSingleton<IVersionService, VersionService>();
