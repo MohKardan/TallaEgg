@@ -1,35 +1,33 @@
 namespace Wallet.Core;
 
 /// <summary>
-/// یک سطر به‌ازای هر معاملهٔ تسویه‌شده. کلید اصلی خودِ <see cref="TradeId"/> است.
+/// One row per settled trade, keyed on <see cref="TradeId"/> itself.
 ///
-/// چرا این جدول وجود دارد:
-/// تضمین «هر معامله دقیقاً یک بار تسویه می‌شود» پیش‌تر فقط با یک SELECT در کد برقرار
-/// می‌شد که بیرون از تراکنش اجرا می‌شد و هیچ پشتوانه‌ای در دیتابیس نداشت. دو تسویهٔ
-/// همزمان از یک معامله می‌توانستند هر دو آن بررسی را رد کنند و هر دو اعمال شوند،
-/// یعنی پول از هیچ ساخته می‌شد (issue #42).
+/// Why this table exists:
+/// "every trade settles exactly once" used to be guaranteed by a single SELECT in code that ran
+/// outside the transaction and had no backing in the database. Two concurrent settlements of the
+/// same trade could both pass that check and both apply, creating money from nothing (issue #42).
 ///
-/// با کلید اصلی بودن TradeId، این تضمین از یک «قاعدهٔ کد» به یک «حقیقت سطح schema»
-/// تبدیل می‌شود: حتی اگر روزی مسیر جدیدی بررسی کد را دور بزند، دیتابیس درج دوم را
-/// رد می‌کند. این همان درسی است که از #53 گرفتیم — محافظت ساختاری از محافظت رفتاری
-/// قابل اتکاتر است.
+/// Making TradeId the primary key turns the guarantee from a rule in code into a fact in the
+/// schema: even if some future path bypasses the check, the database refuses the second insert.
+/// That is the lesson from #53 — a structural guard outlasts a behavioural one.
 ///
-/// چرا جدول جدا و نه ایندکس یکتا روی Transactions:
-/// هر تسویه به‌درستی چهار سطر تراکنش با یک ReferenceId می‌نویسد (یک سطر برای هر پایه)،
-/// پس ایندکس یکتا باید روی (WalletId, ReferenceId) می‌بود — که کار می‌کند اما نیت را
-/// بیان نمی‌کند. اینجا «یک سطر = یک تسویه» مستقیماً خوانده می‌شود.
+/// Why a separate table rather than a unique index on Transactions:
+/// each settlement correctly writes four transaction rows sharing one ReferenceId, one per leg, so
+/// the unique index would have to be on (WalletId, ReferenceId). That works but does not state the
+/// intent. Here "one row = one settlement" reads directly.
 /// </summary>
 public class TradeSettlement
 {
-    /// <summary>شناسهٔ معامله در سرویس سفارش‌ها. کلید اصلی — همین است که تسویهٔ تکراری را غیرممکن می‌کند.</summary>
+    /// <summary>Trade id from the Orders service. Primary key — this is what makes a duplicate settlement impossible.</summary>
     public Guid TradeId { get; private set; }
 
-    /// <summary>زمان تسویه. برای مغایرت‌گیری و پاسخ به «این معامله کِی تسویه شد؟».</summary>
+    /// <summary>When the settlement was applied. Used for reconciliation and to answer "when did this trade settle?".</summary>
     public DateTime SettledAt { get; private set; }
 
     /// <summary>
-    /// نماد و مقادیر برای حسابرسی نگهداری می‌شوند. بدون این‌ها، فهمیدن اینکه یک سطر
-    /// تسویه به چه چیزی مربوط بوده نیازمند join با سرویس سفارش‌ها (دیتابیس دیگر) است.
+    /// Symbol and amounts are kept for audit. Without them, working out what a settlement row refers
+    /// to requires joining against the Orders service, which is a different database.
     /// </summary>
     public string Symbol { get; private set; } = string.Empty;
 
@@ -41,7 +39,7 @@ public class TradeSettlement
 
     public Guid SellerUserId { get; private set; }
 
-    /// <summary>EF Core به سازندهٔ بدون پارامتر نیاز دارد.</summary>
+    /// <summary>EF Core requires a parameterless constructor.</summary>
     private TradeSettlement() { }
 
     public static TradeSettlement Create(

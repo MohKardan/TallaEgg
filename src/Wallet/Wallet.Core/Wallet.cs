@@ -10,9 +10,10 @@ public class WalletEntity
     public string Asset { get; set; } = "";
     public decimal Balance { get; set; }
     /// <summary>
-    /// FrozenBalance برای مبالغ بلوکه شده
+    /// Funds reserved against open orders. Held out of <see cref="Balance"/> until the order
+    /// settles or is cancelled.
     /// </summary>
-    public decimal LockedBalance { get; set; } = 0; // For pending orders
+    public decimal LockedBalance { get; set; } = 0;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -63,22 +64,28 @@ public class WalletEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Reserves funds against an open order. Deliberately enforces no sufficiency rule: customers
+    /// trade on credit and are expected to go negative down to their ceiling, and the market maker
+    /// may go negative without one. The ceiling for asset <c>A</c> lives in a separate wallet row
+    /// keyed <c>CREDIT_A</c>, which this single-asset entity cannot see, so the check belongs in
+    /// the caller that can read both — <c>WalletApiClient.ValidateCreditAndBalanceAsync</c>.
+    /// </summary>
     public void LockBalance(decimal amount)
     {
-        //if (Balance < amount) throw new ArgumentNullException("موجودی کافی نیست", nameof(amount));
-        // چون اعتبار هم داریم میتونیم حسابو منفی کنیم
-
         LockedBalance += amount;
         Balance -= amount;
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Releases previously-reserved funds back into <see cref="Balance"/>. Like
+    /// <see cref="LockBalance"/> this enforces nothing here; releasing more than is locked would
+    /// create money, and that guard lives in <c>WalletRepository.UnlockBalanceAsync</c> where the
+    /// stored <see cref="LockedBalance"/> is known (issue #52).
+    /// </summary>
     public void UnLockBalance(decimal amount)
     {
-        //if(LockedBalance < amount) throw new ArgumentNullException("موجودی قفل شده کافی نیست", nameof(amount));
-        // چون اعتبار هم داریم میتونیم حسابو منفی کنیم
-        // نیاز به بررسی بیشتر
-
         LockedBalance -= amount;
         Balance += amount;
         UpdatedAt = DateTime.UtcNow;

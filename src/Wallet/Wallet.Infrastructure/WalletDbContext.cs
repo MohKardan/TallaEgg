@@ -11,7 +11,7 @@ public class WalletDbContext : DbContext
     public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
 
-    /// <summary>یک سطر به‌ازای هر معاملهٔ تسویه‌شده. کلید اصلی آن، تسویهٔ تکراری را غیرممکن می‌کند (issue #42).</summary>
+    /// <summary>One row per settled trade. Its primary key is what makes a duplicate settlement impossible (issue #42).</summary>
     public DbSet<TradeSettlement> TradeSettlements => Set<TradeSettlement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -75,17 +75,17 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Currency, t.CreatedAt });
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Type, t.Status });
 
-        // TradeSettlement configuration — سد یکتایی تسویه (issue #42)
+        // TradeSettlement configuration — the settlement uniqueness barrier (issue #42).
         //
-        // TradeId عمداً کلید اصلی است و نه یک ستون معمولی با ایندکس یکتا: کلید اصلی
-        // نیت را مستقیم بیان می‌کند («یک سطر = یک معاملهٔ تسویه‌شده») و امکان درج
-        // سطر دوم برای همان معامله را در سطح موتور دیتابیس از بین می‌برد، مستقل از
-        // اینکه کدام مسیر کد فراخوانی کرده باشد.
+        // TradeId is deliberately the primary key rather than an ordinary column with a unique
+        // index: a primary key states the intent directly ("one row = one settled trade") and
+        // makes a second row for the same trade impossible at the database engine, whichever code
+        // path does the insert.
         modelBuilder.Entity<TradeSettlement>().HasKey(s => s.TradeId);
 
-        // ValueGeneratedNever لازم است چون TradeId از سرویس سفارش‌ها می‌آید. بدون آن،
-        // EF کلید Guid را به‌صورت خودکار تولیدشده فرض می‌کند و مقدار ارسالی را نادیده
-        // می‌گیرد — که یعنی هر تسویه یک شناسهٔ تازه می‌گرفت و قید یکتایی هیچ‌وقت فعال نمی‌شد.
+        // ValueGeneratedNever is required because TradeId comes from the Orders service. Without
+        // it EF treats a Guid key as store-generated and ignores the supplied value, so every
+        // settlement would get a fresh id and the uniqueness constraint would never fire.
         modelBuilder.Entity<TradeSettlement>().Property(s => s.TradeId).ValueGeneratedNever();
 
         modelBuilder.Entity<TradeSettlement>().Property(s => s.SettledAt).IsRequired();
@@ -95,7 +95,7 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<TradeSettlement>().Property(s => s.BuyerUserId).IsRequired();
         modelBuilder.Entity<TradeSettlement>().Property(s => s.SellerUserId).IsRequired();
 
-        // برای پرس‌وجوی «تسویه‌های اخیر» در مغایرت‌گیری (#39).
+        // Supports the "recent settlements" query used by reconciliation (#39).
         modelBuilder.Entity<TradeSettlement>().HasIndex(s => s.SettledAt);
     }
 }

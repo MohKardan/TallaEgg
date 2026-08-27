@@ -27,18 +27,14 @@ public class WalletService : IWalletService
         return _walletMapper.Map(wallet);
     }
 
-    // اسم قبلی: CreditAsync
-    // اسم جدید: IncreaseBalanceAsync
-
     /// <summary>
-    /// افزایش موجودی کیف پول کاربر
-    /// Increase user wallet balance
+    /// Increases a user's wallet balance. Formerly named CreditAsync.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <param name="asset">نوع دارایی</param>
-    /// <param name="amount">مقدار افزایش</param>
-    /// <param name="refId">شناسه مرجع (اختیاری)</param>
-    /// <returns>کیف پول و تراکنش ایجاد شده</returns>
+    /// <param name="userId">User id.</param>
+    /// <param name="asset">Asset code.</param>
+    /// <param name="amount">Amount to add.</param>
+    /// <param name="refId">Optional reference id.</param>
+    /// <returns>The updated wallet and the transaction recorded for it.</returns>
     public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
    
@@ -78,9 +74,8 @@ public class WalletService : IWalletService
         return (wallet, transaction);
              
     }
-    // اسم قبلی: DeCreditAsync
     /// <summary>
-    /// کاهش موجودی کیف پول کاربر
+    /// Decreases a user's wallet balance. Formerly named DeCreditAsync.
     /// </summary>
     public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
@@ -91,7 +86,7 @@ public class WalletService : IWalletService
         if (wallet == null)
         {
             // Same reasoning as IncreaseBalanceAsync: a valid asset with no wallet yet gets one
-            // lazily rather than failing "کیف پول وجود ندارد" for something that was never
+            // lazily rather than failing "wallet does not exist" for something that was never
             // credited. Decreasing an empty, just-created wallet then behaves exactly like
             // decreasing any other zero-balance wallet — unrelated to this fix.
             if (!CurrenciesConstant.IsValidCurrency(asset))
@@ -226,53 +221,12 @@ public class WalletService : IWalletService
         if (fromUserId == toUserId)
             throw new ArgumentException("انتقال به خود امکان‌پذیر نیست.");
 
-        // var fromDebitTransaction = Transaction.Create(
-        //    fromWallet.Id,
-        //    amount,
-        //    asset,
-        //    TransactionType.Withdraw,
-        //    fromWallet.Balance,
-        //    fromWallet.Balance - amount,
-        //    null,
-        //    TransactionStatus.Completed,
-        //    "maker",
-        //    referenceId,
-        //    null
-        //);
-        // fromWallet.DecreaseBalance(amount);
-
-
-
-        // Update existing wallet
-        // Create transaction record
-        //var transaction = Transaction.Create(
-        //    wallet.Id,
-        //    amount,
-        //    asset,
-        //    TransactionType.Withdraw,
-        //    wallet.Balance,
-        //    wallet.Balance - amount,
-        //    Utils.GenerateSecureRandomString(9),
-        //    TransactionStatus.Completed,
-        //    "Credit transaction",
-        //    referenceId,
-        //    null
-        //);
-        // todo: بالانس باید چکار بشه؟؟
-
-        // wallet.DecreaseBalance(amount);
-        //await _walletRepository.UpdateWalletAsync(wallet, transaction);
-
-        //return new WalletBallanceDTO
-        //{
-        //    Asset = wallet.Asset,
-        //    BalanceBefore = transaction.BallanceBefore,
-        //    BalanceAfter = transaction.BallanceAfter,
-        //    LockedBalance = wallet.LockedBalance,
-        //    UpdatedAt = wallet.UpdatedAt,
-        //    TrackingCode = transaction.TrackingCode,
-        //};
-
+        // Never implemented: this returns an empty DTO, so a caller is told the trade succeeded
+        // while no balance moves. That is audit finding C-8. The endpoint in front of it,
+        // POST /api/wallet/transaction/trade, returns 501 whenever
+        // FeatureFlags:QuarantineStubEndpoints is on, and it defaults to on. Do not turn that flag
+        // off expecting a working implementation behind it — there is none. Either implement this
+        // method or delete it together with the endpoint.
         return new WalletBallanceDTO();
     }
 
@@ -313,14 +267,15 @@ public class WalletService : IWalletService
         if (!debitSuccess)
             return (false, "موجودی ناکافی برای انتقال.");
 
-        // Credit to destination user
+        // Credit to destination user.
+        //
+        // Not atomic, and the compensating rollback that used to sit here was commented out: if
+        // this throws, the source has already been debited and the money is gone. The two audit
+        // records below are also never written, so a "successful" transfer leaves no trail. Safe
+        // only because nothing reaches this method — every endpoint that called it is commented
+        // out in Wallet.Api/Program.cs. Implement it against the transactional pattern in
+        // WalletRepository.SettleTradeAsync before exposing it again, or delete it.
         var creditSuccess = await IncreaseBalanceAsync(toUserId, asset, amount);
-        //if (!creditSuccess)
-        //{
-        //    // Rollback - credit back to source user
-        //    await CreditAsync(fromUserId, asset, amount);
-        //    return (false, "خطا در انتقال.");
-        //}
 
         // Create transfer transaction records
         var fromTransaction = new WalletTransaction
@@ -359,44 +314,26 @@ public class WalletService : IWalletService
         if (amount <= 0)
             return (false, "مقدار شارژ باید بزرگتر از صفر باشد.");
 
-        if (amount > 1000000) // محدودیت شارژ: حداکثر 1 میلیون
+        if (amount > 1000000) // Top-up cap: one million.
             return (false, "مقدار شارژ از حد مجاز بیشتر است.");
 
-        // شارژ کیف پول
         var success = await IncreaseBalanceAsync(userId, asset, amount);
-        //if (success)
-        //{
-        //    // ایجاد تراکنش شارژ
-        //    var transaction = new WalletTransaction
-        //    {
-        //        Id = Guid.NewGuid(),
-        //        UserId = userId,
-        //        Asset = asset,
-        //        Amount = amount,
-        //        Type = TransactionType.Deposit,
-        //        Status = TransactionStatus.Completed,
-        //        Description = $"شارژ کیف پول - روش پرداخت: {paymentMethod ?? "نامشخص"}",
-        //        CreatedAt = DateTime.UtcNow,
-        //        CompletedAt = DateTime.UtcNow
-        //    };
-        //    await _walletRepository.CreateTransactionAsync(transaction);
-        //}
 
         return true ? (true, "شارژ کیف پول با موفقیت انجام شد.") : (false, "خطا در شارژ کیف پول.");
     }
 
     /// <summary>
-    /// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید (ریال، طلا، اعتبار طلا)
+    /// Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
+    /// Every other asset's wallet is created lazily on first deposit — see IncreaseBalanceAsync.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <returns>لیست کیف پول‌های ایجاد شده</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The wallets that were created.</returns>
     public async Task<IEnumerable<WalletDTO>> CreateDefaultWalletsAsync(Guid userId)
     {
         var wallets = new List<WalletDTO>();
 
         try
         {
-            // ایجاد کیف پول تومان (IRT)
             var irrWallet = WalletEntity.Create
             (
                  userId,
@@ -405,7 +342,7 @@ public class WalletService : IWalletService
             var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
             wallets.Add(_walletMapper.Map(irrWallet));
 
-            // ایجاد کیف پول طلا (MAUA)
+
             var mauaWallet = WalletEntity.Create
             (
                  userId,
@@ -414,7 +351,7 @@ public class WalletService : IWalletService
             var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
             wallets.Add(_walletMapper.Map(mauaWallet));
 
-            // ایجاد کیف پول اعتبار طلا (CREDIT_MAUA)
+
             var creditMauaWallet = WalletEntity.Create
             (
                  userId,

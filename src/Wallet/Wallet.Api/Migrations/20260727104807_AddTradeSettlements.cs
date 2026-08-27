@@ -40,27 +40,29 @@ namespace Wallet.Api.Migrations
 
             // ── Backfill ──────────────────────────────────────────────────────────────
             //
-            // چرا این بخش الزامی است و نمی‌تواند یک قدم جداگانه باشد:
-            // معاملاتی که پیش از این migration تسویه شده‌اند سطری در جدول جدید ندارند.
-            // چون مسیر جدید تسویه، «قبلاً تسویه شده؟» را از همین جدول می‌پرسد، بدون
-            // backfill یک re-drive روی آن معاملات دوباره تسویه‌شان می‌کرد — یعنی این
-            // migration دقیقاً همان تسویهٔ دوگانه‌ای را می‌ساخت که برای رفعش نوشته شده.
+            // Why this is mandatory and cannot be a separate step:
+            // trades settled before this migration have no row in the new table. Because the new
+            // settlement path asks that table "already settled?", without a backfill a re-drive
+            // over those trades would settle them a second time — the migration would create
+            // exactly the double settlement it exists to prevent.
             //
-            // منبع حقیقت برای «چه چیزی تسویه شده» جدول Transactions است: هر تسویه چهار
-            // سطر با Type = Trade (مقدار ۲) و ReferenceId برابر با شناسهٔ معامله می‌نویسد.
+            // The source of truth for "what has settled" is the Transactions table: each
+            // settlement writes four rows with Type = Trade (value 2) and ReferenceId equal to the
+            // trade id.
             //
-            // نکات پیاده‌سازی:
-            // • TRY_CAST و نه CAST — اگر ReferenceId قدیمی‌ای وجود داشته باشد که Guid
-            //   معتبر نیست، CAST کل migration را می‌شکند؛ TRY_CAST آن را NULL می‌کند و
-            //   شرط WHERE کنارش می‌گذارد.
-            // • MIN(CreatedAt) به‌عنوان SettledAt — زمان واقعی تسویه، نه زمان اجرای migration.
-            // • MAX(...) برای Symbol/مقادیر: هر چهار سطر یک معامله متعلق به یک تسویه‌اند،
-            //   ولی چون GROUP BY لازم است از تجمیع استفاده می‌شود.
-            // • مقادیر و طرفین معامله در Transactions ذخیره نشده‌اند (فقط مبلغ هر پایه و
-            //   کیف پول). بازسازی دقیقشان نیازمند join با دیتابیس سرویس سفارش‌هاست که از
-            //   داخل این migration ممکن نیست. چون این ستون‌ها فقط برای حسابرسی‌اند و نه
-            //   برای تضمین یکتایی، برای سطرهای قدیمی صفر/خالی می‌مانند و با یک نشانهٔ
-            //   صریح در Symbol علامت‌گذاری می‌شوند تا با سطرهای واقعی اشتباه نشوند.
+            // Implementation notes:
+            // - TRY_CAST rather than CAST: if some legacy ReferenceId is not a valid Guid, CAST
+            //   fails the whole migration, whereas TRY_CAST yields NULL and the WHERE clause drops
+            //   the row.
+            // - MIN(CreatedAt) as SettledAt — the real settlement time, not the migration's.
+            // - MAX(...) for Symbol and the amounts: all four rows of a trade belong to one
+            //   settlement, but a GROUP BY requires an aggregate.
+            // - Amounts and counterparties are not stored in Transactions (only the per-leg amount
+            //   and its wallet). Reconstructing them exactly would need a join against the Orders
+            //   database, which is not possible from inside this migration. Since these columns are
+            //   for audit only and play no part in the uniqueness guarantee, backfilled rows leave
+            //   them zero/empty and are tagged explicitly in Symbol so they cannot be mistaken for
+            //   real ones.
             migrationBuilder.Sql(@"
 INSERT INTO TradeSettlements (TradeId, SettledAt, Symbol, Quantity, QuoteQuantity, BuyerUserId, SellerUserId)
 SELECT
