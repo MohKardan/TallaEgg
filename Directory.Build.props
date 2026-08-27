@@ -1,4 +1,13 @@
 ﻿<Project>
+
+  <PropertyGroup>
+    <!-- Warning classes that were driven to zero in #132. As errors they cannot creep back one
+         file at a time, which is how the count reached 168 in the first place. Deliberately not
+         the nullable family (CS86xx): 74 of those remain, each needs a judgment about whether it
+         is a real bug, and failing the build on them would only invite silencing with `!`. -->
+    <WarningsAsErrors>$(WarningsAsErrors);CS1587;CS0168;CS1998;CS0162;CS0219</WarningsAsErrors>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- config/appsettings.global.json is git-ignored (issue #33), so a fresh clone or CI
          checkout won't have it yet — only include it when a local copy actually exists. -->

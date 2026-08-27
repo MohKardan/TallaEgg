@@ -465,11 +465,6 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
     {
         return Results.BadRequest(ApiResponse<CreateOrderResponse>.Fail(ex.Message));
     }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error creating an order.");
-        return Results.Json(ApiResponse<CreateOrderResponse>.Fail("خطای داخلی سرور"), statusCode: 500);
-    }
 })
 .WithName("CreateOrder")
 .WithSummary("Create an order")
@@ -486,19 +481,11 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
 // 404: Order not found.
 app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderService) =>
 {
-    try
-    {
-        var order = await orderService.GetOrderByIdAsync(orderId);
-        if (order == null)
-            return Results.NotFound(new { success = false, message = $"سفارش با شناسه {orderId} یافت نشد" });
+    var order = await orderService.GetOrderByIdAsync(orderId);
+    if (order == null)
+        return Results.NotFound(new { success = false, message = $"سفارش با شناسه {orderId} یافت نشد" });
 
-        return Results.Ok(new { success = true, data = order });
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error fetching order {OrderId}.", orderId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    return Results.Ok(new { success = true, data = order });
 })
 .WithName("GetOrderById")
 .WithSummary("Get an order by id")
@@ -528,11 +515,6 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error cancelling order {OrderId}.", orderId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
 })
 .WithName("CancelOrder")
 .WithSummary("Cancel an order")
@@ -552,19 +534,11 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 // cancelled, wrapped in the standard ApiResponse shape.
 app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, string? reason, OrderService orderService) =>
 {
-    try
-    {
-        var cancelledCount = await orderService.CancelAllActiveOrdersByUserIdAsync(userId, reason ?? "لغو همه سفارشات فعال");
-        
-        var response = new CancelActiveOrdersResponseDto { CancelledCount = cancelledCount };
-        
-        return Results.Ok(ApiResponse<CancelActiveOrdersResponseDto>.Ok(response, $"{cancelledCount} سفارش فعال لغو شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error cancelling the active orders of user {UserId}.", userId);
-        return Results.Json(ApiResponse<CancelActiveOrdersResponseDto>.Fail("خطای داخلی سرور"), statusCode: 500);
-    }
+    var cancelledCount = await orderService.CancelAllActiveOrdersByUserIdAsync(userId, reason ?? "لغو همه سفارشات فعال");
+    
+    var response = new CancelActiveOrdersResponseDto { CancelledCount = cancelledCount };
+    
+    return Results.Ok(ApiResponse<CancelActiveOrdersResponseDto>.Ok(response, $"{cancelledCount} سفارش فعال لغو شد"));
 })
 .WithName("CancelUserActiveOrders")
 .WithSummary("Cancel every active order of a user")
@@ -638,16 +612,8 @@ app.MapGet("/api/orders/user/{userId}", async (
     if (page < 1)
         return Results.BadRequest(new { success = false, message = "شماره صفحه باید بیشتر از صفر باشد" });
 
-    try
-    {
-        var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
-        return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error fetching the orders of user {UserId}.", userId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    var orders = await orderService.GetOrdersByUserIdAsync(userId, page, size);
+    return Results.Ok(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(orders, "سفارشات دریافت شد"));
 })
 .WithName("GetUserOrders")
 .WithSummary("Get a user's orders")
@@ -676,16 +642,8 @@ app.MapGet("/api/trades/user/{userId}", async (
     if (page < 1)
         return Results.BadRequest(new { success = false, message = "شماره صفحه باید بیشتر از صفر باشد" });
 
-    try
-    {
-        var trades = await tradeService.GetTradesByUserIdAsync(userId, page, size);
-        return Results.Ok(ApiResponse<PagedResult<TradeHistoryDto>>.Ok(trades, "معاملات دریافت شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error fetching the trades of user {UserId}.", userId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    var trades = await tradeService.GetTradesByUserIdAsync(userId, page, size);
+    return Results.Ok(ApiResponse<PagedResult<TradeHistoryDto>>.Ok(trades, "معاملات دریافت شد"));
 })
 .WithName("GetUserTrades")
 .WithSummary("Get a user's trades")
@@ -700,16 +658,8 @@ app.MapGet("/api/positions/user/{userId}", async (
     Guid userId,
     Orders.Application.Services.PositionService positionService) =>
 {
-    try
-    {
-        var positions = await positionService.GetPositionsAsync(userId);
-        return Results.Ok(ApiResponse<PositionsResponseDto>.Ok(positions, "سود و زیان دریافت شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error computing positions for user {UserId}", userId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    var positions = await positionService.GetPositionsAsync(userId);
+    return Results.Ok(ApiResponse<PositionsResponseDto>.Ok(positions, "سود و زیان دریافت شد"));
 })
 .WithName("GetUserPositions")
 .WithSummary("Get a user's position and profit/loss across every symbol")
@@ -727,33 +677,25 @@ app.MapGet("/api/orders/active/user/{userId}", async (
     Guid userId,
     OrderService orderService) =>
 {
-    try
+    var orders = await orderService.GetActiveOrdersByUserIdAsync(userId);
+    var orderDtos = orders.Select(o => new OrderHistoryDto
     {
-        var orders = await orderService.GetActiveOrdersByUserIdAsync(userId);
-        var orderDtos = orders.Select(o => new OrderHistoryDto
-        {
-            Id = o.Id,
-            Asset = o.Asset,
-            Amount = o.Amount,
-            RemainingAmount = o.RemainingAmount,
-            Price = o.Price,
-            Type = o.Side,
-            Status = o.Status,
-            TradingType = o.TradingType,
-            Role = o.Role,
-            CreatedAt = o.CreatedAt,
-            UpdatedAt = o.UpdatedAt,
-            Notes = o.Notes,
-            ParentOrderId = o.ParentOrderId
-        }).ToList();
+        Id = o.Id,
+        Asset = o.Asset,
+        Amount = o.Amount,
+        RemainingAmount = o.RemainingAmount,
+        Price = o.Price,
+        Type = o.Side,
+        Status = o.Status,
+        TradingType = o.TradingType,
+        Role = o.Role,
+        CreatedAt = o.CreatedAt,
+        UpdatedAt = o.UpdatedAt,
+        Notes = o.Notes,
+        ParentOrderId = o.ParentOrderId
+    }).ToList();
 
-        return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "سفارشات فعال دریافت شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error fetching the active orders of user {UserId}.", userId);
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "سفارشات فعال دریافت شد"));
 })
 .WithName("GetUserActiveOrders")
 .WithSummary("Get a user's active orders")
@@ -768,33 +710,25 @@ app.MapGet("/api/orders/active/user/{userId}", async (
 // 500: Internal server error.
 app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
 {
-    try
+    var orders = await orderService.GetAllActiveOrdersAsync();
+    var orderDtos = orders.Select(o => new OrderHistoryDto
     {
-        var orders = await orderService.GetAllActiveOrdersAsync();
-        var orderDtos = orders.Select(o => new OrderHistoryDto
-        {
-            Id = o.Id,
-            Asset = o.Asset,
-            Amount = o.Amount,
-            RemainingAmount = o.RemainingAmount,
-            Price = o.Price,
-            Type = o.Side,
-            Status = o.Status,
-            TradingType = o.TradingType,
-            Role = o.Role,
-            CreatedAt = o.CreatedAt,
-            UpdatedAt = o.UpdatedAt,
-            Notes = o.Notes,
-            ParentOrderId = o.ParentOrderId
-        }).ToList();
+        Id = o.Id,
+        Asset = o.Asset,
+        Amount = o.Amount,
+        RemainingAmount = o.RemainingAmount,
+        Price = o.Price,
+        Type = o.Side,
+        Status = o.Status,
+        TradingType = o.TradingType,
+        Role = o.Role,
+        CreatedAt = o.CreatedAt,
+        UpdatedAt = o.UpdatedAt,
+        Notes = o.Notes,
+        ParentOrderId = o.ParentOrderId
+    }).ToList();
 
-        return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "تمام سفارشات فعال دریافت شد"));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Unhandled error fetching all active orders.");
-        return Results.Json(new { success = false, message = "خطای داخلی سرور" }, statusCode: 500);
-    }
+    return Results.Ok(ApiResponse<List<OrderHistoryDto>>.Ok(orderDtos, "تمام سفارشات فعال دریافت شد"));
 })
 .WithName("GetAllActiveOrders")
 .WithSummary("Get every active order")
