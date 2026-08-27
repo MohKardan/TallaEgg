@@ -39,8 +39,15 @@ The rules that get skipped most often:
   `TallaEgg.TelegramBot` — that one is not in the solution and will not start.
 - **Dates shown to users are Jalali at a fixed +03:30 offset**, formatted through
   `PersianFormat`. Storage stays Gregorian UTC; the two are unrelated.
-- **Credit is per-asset.** Every tradable asset gets a `CREDIT_<ASSET>` ledger — see
-  `CurrenciesConstant.CreditAssetFor`. It is a ceiling the spot balance may go negative against,
-  so a balance check must constrain `balance + credit`, never `balance` alone. Note that
-  `Wallet.LockBalance` itself enforces nothing; the guard lives in the caller
-  (`ValidateCreditAndBalanceAsync`), so a new call path inherits no protection by default.
+- **Credit is per-asset in storage, but cross-asset in effect.** Every tradable asset gets a
+  `CREDIT_<ASSET>` ledger — see `CurrenciesConstant.CreditAssetFor`. `ValidateCreditAndBalanceAsync`
+  then lets credit in one currency back a position in the other, so a customer holding only
+  `CREDIT_MAUA` can legitimately drive their IRT balance negative. A balance check must constrain
+  `balance + credit` across both sides, never `balance` alone, and never per-asset in isolation.
+- **`Wallet.LockBalance` enforces no balance rule, and must not.** The ceiling lives in a separate
+  wallet row, so a single-asset entity cannot see it; the check belongs in the caller. The
+  commented-out guard there is wrong code, correctly disabled.
+- **Two things that look like bugs and are not:** the market maker may go arbitrarily negative
+  with no ceiling (that balance is the shop's book — alerting is #124), and commission is
+  deliberately `0.00` on every trade because the revenue model is the spread. Fee code is dormant,
+  not dead. Fuller list in [`AGENT.md`](AGENT.md) under "Business rules that look like bugs".
