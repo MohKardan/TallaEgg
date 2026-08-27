@@ -54,9 +54,15 @@ jobs:
       # memory and builds any configuration it needs in memory too. Verified, not assumed —
       # the runner has no `config/appsettings.global.json`, so a test that read one would
       # fail here rather than on someone's machine.
+      #
+      # The solution, not a named project. Naming one .csproj by path is what let a stale
+      # test project sit outside the build unnoticed for a year (#117): it still compiled
+      # locally for anyone who opened it, and CI never looked at it. Testing the solution
+      # means a new test project is picked up by adding it to the solution, and nothing
+      # else has to be remembered.
       - name: Test (Release)
         run: >
-          dotnet test src/Wallet/Wallet.Tests/Wallet.Tests.csproj
+          dotnet test TallaEgg.sln
           --configuration Release
           --no-build
           --logger "trx;LogFileName=test-results.trx"

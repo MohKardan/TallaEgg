@@ -148,10 +148,16 @@ curl -X POST http://localhost:5000/api/telegram/notifications/trade-match \
 ```
 
 ### 5. تست یونیت
+
+تست‌های ربات در `tests/TallaEgg.AllServices.Tests` هستند — تنها پروژهٔ تست solution، که
+همهٔ سرویس‌ها را پوشش می‌دهد:
+
 ```bash
-cd "TelegramBot\TallaEgg.TelegramBot.Tests"
-dotnet test --filter "TradeNotificationServiceTests"
+dotnet test TallaEgg.sln
 ```
+
+`TradeNotificationServiceTests` که این راهنما قبلاً به آن اشاره می‌کرد، در پروژهٔ
+`TelegramBot/TallaEgg.TelegramBot.Tests` بود که هرگز در solution نبود و در #117 حذف شد.
 
 ## 📊 سناریوهای تست
 
