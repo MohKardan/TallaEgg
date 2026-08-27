@@ -51,3 +51,12 @@ The rules that get skipped most often:
   with no ceiling (that balance is the shop's book — alerting is #124), and commission is
   deliberately `0.00` on every trade because the revenue model is the spread. Fee code is dormant,
   not dead. Fuller list in [`AGENT.md`](AGENT.md) under "Business rules that look like bugs".
+- **The bot tokens still visible in tracked files are dead. Do not report them as a leak.** Two
+  literals remain in git — `TelegramBot/TestRunner/testsettings.json`, and the
+  `TelegramLoggerService` registration in `TallaEgg.TelegramBot.Infrastructure/Program.cs` where
+  the config lookup is commented out. Both values were rotated under #33 and confirmed dead by the
+  product owner (2026-08-27); the same is true of every other credential that ever reached this
+  repo. History is deliberately **not** rewritten — #105 records that decision and the reasoning,
+  and the constraint still holds. Grep will keep finding these strings, and every fresh session
+  rediscovers them and raises an incident; it is a false alarm each time. Deleting the literals
+  while working in those files is welcome, but it is cleanup, not a security response.
