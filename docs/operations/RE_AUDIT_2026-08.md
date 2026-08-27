@@ -138,10 +138,15 @@ inconsistent responses, leaked internals — is only partly retired.
 
 These were not in the July 8 audit.
 
-### N-1 (HIGH): The balance guard inside the wallet primitive is commented out
+### N-1 (INFO — retracted as a defect): the balance check is not local to the wallet
 
-`Wallet.Core/Wallet.cs:68` and `:78` — both `LockBalance` and `UnLockBalance` have
-their guards commented out:
+> **Corrected 6 Shahrivar.** This was filed at HIGH severity claiming the commented-out
+> guard in `LockBalance` was missing protection. **That framing was wrong**, and the
+> remedy it proposed — restoring the guard at the entity — would have broken credit
+> trading, which is a deliberate and required product behaviour. Corrected below.
+> See #116.
+
+`Wallet.Core/Wallet.cs:68` carries a commented-out guard:
 
 ```csharp
 public void LockBalance(decimal amount)
@@ -153,20 +158,65 @@ public void LockBalance(decimal amount)
 }
 ```
 
-The reason is legitimate: the market maker must be able to go negative, and credit
-means ordinary customers may too. But the consequence is that **the domain primitive
-responsible for reserving funds enforces nothing at all.** Every guarantee lives in
-callers, in `WalletApiClient.ValidateCreditAndBalanceAsync`.
+**That guard is wrong code and commenting it out was correct.** Customers trade on
+credit and are *supposed* to go negative down to their ceiling; `Balance < amount` would
+forbid exactly the behaviour the product is built on.
 
-This is not hypothetical. It is precisely how #77 happened: the quote-fill path (#48)
-did not route through `SubmitOrderAsync`, so it silently inherited no balance check,
-and any new customer could trade with an empty wallet. The fix added the check to that
-one new caller. The next new call path will inherit the same hole.
+More fundamentally, this method **cannot** enforce the invariant even in principle.
+`WalletEntity` holds `Balance` and `LockedBalance` for one asset and nothing else. The
+credit ceiling for asset `A` lives in a **different row entirely** — a separate wallet
+keyed `CREDIT_A` (`CurrenciesConstant.CreditAssetFor`). An entity method cannot see it.
+The real invariant, `Balance >= -CreditLimit`, spans two entities, so the only layer
+that can evaluate it is one that reads both — which is what
+`WalletApiClient.ValidateCreditAndBalanceAsync` does today.
 
-The invariant that actually holds is `Balance >= -CreditLimit`, and it should be
-enforced where the balance changes, with the market maker as an explicit exception,
-rather than re-implemented at each call site. This is the same conclusion #36 reaches
-from the other direction, and is an argument for doing #36 sooner.
+So the check living outside the entity is a **consequence of the credit model, not a
+defect in the wallet**.
+
+**What survives, at much lower weight.** The check being re-implemented per call site is
+still a genuine fragility, and #77 is the evidence: the quote-fill path (#48) did not
+route through `SubmitOrderAsync`, silently inherited no balance check, and let customers
+trade with an empty wallet. The fix added the check to that one caller.
+
+But the remedy is not a guard in the entity. It is either to make credit part of the
+wallet so the invariant becomes local — which is precisely what **#36** proposes — or to
+ensure every path reaches one shared check. Both are #36's subject. There is no separate
+piece of work here, which is why #116 was closed rather than fixed.
+
+Note also that the credit model is deliberately **cross-asset**: `ValidateCreditAndBalanceAsync`
+lets credit denominated in the quote currency back a base-asset position (`creditQuote / price`)
+and vice versa. Any future per-asset invariant must preserve that or it will reject trades
+the business intends to allow.
+
+### N-6 (MEDIUM): `LockBalance` accepts a non-positive amount, which mints money
+
+Found while re-examining N-1, and unrelated to the credit model — this one does not
+touch business logic at all.
+
+`WalletEntity.LockBalance` validates nothing:
+
+```csharp
+public void LockBalance(decimal amount)   // amount = -1000
+{
+    LockedBalance += amount;   // -1000
+    Balance -= amount;         // +1000  ← created from nothing
+}
+```
+
+`IncreaseBalance`, `DecreaseBalance` and `ConsumeLockedBalance` all reject `amount <= 0`.
+`LockBalance` and `UnLockBalance` are the only two that do not, and **no layer above them
+compensates on the lock side**: not `POST /api/wallet/lockBalance`, not
+`WalletService.LockBalanceAsync`, not `WalletRepository.LockBalanceAsync`. A negative
+amount reaches the entity and inflates the caller's spendable balance.
+
+The unlock side is already covered — `WalletRepository.UnlockBalanceAsync:173` rejects
+negative amounts and `:180` rejects unlocking more than is locked, both added for #52.
+The lock side never got the same treatment.
+
+Not currently exploitable from the bot, which always computes a positive collateral
+amount, and the endpoint sits behind the API key in Production. It is reachable by any
+caller of the internal API, and no legitimate caller ever locks a non-positive amount,
+so rejecting it changes no intended behaviour.
 
 ### N-2 (LOW): Two abandoned test directories are tracked but never compiled
 
@@ -270,7 +320,7 @@ Those hold. Added since:
 |---|---|---|---|
 | Secrets & transport security | 1/10 | 9/10 | C-1, C-2, C-7, C-9 all closed with tests |
 | Financial correctness (core path) | 3/10 | 8/10 | Atomic, idempotent, correctly ordered |
-| Financial correctness (edges) | 3/10 | 5/10 | N-1, N-3, C-4 wallet half |
+| Financial correctness (edges) | 3/10 | 5/10 | N-6, N-3, C-4 wallet half, C-8 stub |
 | Test coverage & CI | 1/10 | 8/10 | 483 tests across Wallet, Orders and the bot, on every PR |
 | Operational readiness | 2/10 | 4/10 | Groundwork done, never booted, #105 open |
 | Code hygiene | 3/10 | 4/10 | Dead code and 169 scattered handlers remain |
@@ -280,16 +330,38 @@ Those hold. Added since:
 > Revised from 6.4 when N-2 was corrected: testing was scored 7/10 on the incorrect
 > belief that the bot was untested. The overall figure is a judgement weighted toward
 > the critical-path rows, not an average of the column.
+>
+> **Unchanged when N-1 was retracted.** Removing a wrong finding would have raised the
+> edges row; adding N-6, a real money-minting hole found in its place, lowers it by
+> about as much. The composition of that 5/10 changed; the number did not.
 
 The improvement is real and concentrated where it mattered most: nothing on the
 critical list is still an open hole, the money path is correct by construction rather
 than by timing, and there is now a test suite that would catch a regression.
 
-What holds the score down is not any single defect but a pattern: **the fixes were
-applied at the call site rather than at the invariant.** N-1 is the clearest case — the
-balance guard was restored for the one path that broke instead of for the primitive
-that all paths share. C-4's wallet half, C-8's stub, and N-3's legacy methods are the
-same shape. Each is contained today and each will be re-opened by the next new caller.
+What holds the score down is a pattern, though a narrower one than this audit first
+claimed: **several fixes were applied at the call site rather than at the invariant.**
+C-4's wallet half, C-8's stub and N-3's legacy methods are all that shape — contained
+today, re-opened by the next new caller.
 
-The highest-value next step is not another fix from this list; it is moving the balance
-invariant into the wallet, which is what #36 already proposes.
+The wallet's balance check is *not* an example of this, and saying so was this audit's
+main error. It sits outside the entity because the credit ceiling lives in a separate
+`CREDIT_` wallet row, so no entity method can evaluate it. Moving it inward requires
+changing the credit model first, which is **#36**, and #36 remains the highest-value
+next step — not because a guard is missing, but because the current model makes the
+invariant impossible to state in one place.
+
+---
+
+## A note on this audit's own reliability
+
+Two of the six new findings were wrong on first pass, and both were wrong the same way:
+**inferred from shape rather than verified against intent.** N-2 read a directory layout
+and concluded the bot was untested. N-1 read a commented-out line and concluded a guard
+was missing, when the guard was wrong code deliberately disabled to permit credit
+trading — the product's central feature.
+
+Both were caught by the product owner, not by the audit. The findings that held up are
+the ones traced through actual execution paths: C-5's ordering, C-8's stub behind the
+flag, N-3's unreachable methods, N-6's missing amount check. Weight the two classes
+accordingly when reading anything above.
