@@ -17,7 +17,7 @@ namespace TallaEgg.Core.DTOs.Order
         public Guid SellOrderId { get; set; }
         public Guid MakerOrderId { get; set; }
         public Guid TakerOrderId { get; set; }
-        public string Symbol { get; set; }
+        public string Symbol { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public decimal Quantity { get; set; }
         public decimal QuoteQuantity { get; set; }

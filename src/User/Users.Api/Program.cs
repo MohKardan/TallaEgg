@@ -470,7 +470,7 @@ app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, Use
     {
         var content = await response.Content.ReadAsStringAsync();
         return Results.Json(
-            ApiResponse<object>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
+            ApiResponse<object?>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
         );
     }
     else

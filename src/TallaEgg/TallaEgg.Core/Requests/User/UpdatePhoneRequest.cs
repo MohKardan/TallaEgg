@@ -8,7 +8,7 @@
         /// <summary>
         /// New phone number to set for the user (required)
         /// </summary>
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
         
         /// <summary>
         /// Telegram ID of the user to update (required)

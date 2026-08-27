@@ -13,7 +13,7 @@ namespace TallaEgg.Api.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
     [Migration("20250804085118_seed-users")]
-    partial class seedusers
+    partial class SeedUsers
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

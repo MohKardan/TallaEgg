@@ -6,7 +6,7 @@ namespace Orders.Core;
 public class Order
 {
     public Guid Id { get; private set; }
-    public string Asset { get; private set; }
+    public string Asset { get; private set; } = string.Empty;
     public decimal Amount { get; private set; } // مقدار اولیه سفارش - تغییر نمی‌کند
     public decimal RemainingAmount { get; private set; } // مقدار باقی‌مانده سفارش
     public decimal Price { get; private set; }

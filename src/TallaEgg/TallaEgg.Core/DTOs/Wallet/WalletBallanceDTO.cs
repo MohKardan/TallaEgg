@@ -13,7 +13,7 @@ namespace TallaEgg.Core.DTOs.Wallet
         public decimal LockedBalance { get; set; } = 0; // For pending orders
         public DateTime UpdatedAt { get; set; }
         public decimal BalanceAfter { get; set; }
-        public string TrackingCode { get; set; }
+        public string TrackingCode { get; set; } = string.Empty;
     }
 
   

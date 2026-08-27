@@ -444,7 +444,7 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
         if (request.Quantity <= 0)
             return Results.BadRequest(new { success = false, message = "مقدار سفارش باید بیشتر از صفر باشد" });
         
-        if ((request.Price == null || request.Price <= 0))
+        if (request.Price <= 0)
             return Results.BadRequest(new { success = false, message = "قیمت برای سفارش محدود الزامی است" });
 
         var response = await orderService.CreateOrderAsync(request);

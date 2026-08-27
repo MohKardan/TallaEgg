@@ -1,4 +1,4 @@
-namespace Wallet.Core;
+﻿namespace Wallet.Core;
 
 public interface IWalletRepository
 {
@@ -6,7 +6,7 @@ public interface IWalletRepository
     Task<WalletEntity?> GetWalletAsync(Guid userId, string asset);
     Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId);
     Task<WalletEntity> CreateWalletAsync(WalletEntity wallet);
-    Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet,Transaction transaction= null);
+    Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet, Transaction? transaction = null);
     Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     

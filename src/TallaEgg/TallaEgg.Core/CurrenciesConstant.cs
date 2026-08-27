@@ -407,9 +407,9 @@ namespace TallaEgg.Core
 
     public class CurrencyInfo
     {
-        public string Code { get; set; }          // مثل "MAUA" یا "IRT"
-        public string PersianName { get; set; }   // نام فارسی ارز
-        public string Unit { get; set; }          // واحد نمایش
+        public string Code { get; set; } = string.Empty;          // مثل "MAUA" یا "IRT"
+        public string PersianName { get; set; } = string.Empty;   // نام فارسی ارز
+        public string Unit { get; set; } = string.Empty;          // واحد نمایش
         public int DecimalPlaces { get; set; }    // تعداد اعشار
         public bool IsTradable { get; set; }      // قابل معامله بودن
     }

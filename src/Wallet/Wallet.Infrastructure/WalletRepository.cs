@@ -78,7 +78,7 @@ public class WalletRepository : IWalletRepository
             throw;
         }
     }
-    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet, Transaction transaction = null)
+    public async Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet, Transaction? transaction = null)
     {
         if (wallet == null)
         {

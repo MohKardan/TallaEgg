@@ -134,11 +134,6 @@ public class OrderService
             List<TradeDto> executedTrades = new();
 
 
-            if (request.Price == null)
-            {
-                throw new BusinessRuleException("قیمت برای سفارش محدود الزامی است");
-            }
-
             // Limit orders start as Makers
             var limitCommand = new CreateOrderCommand(
                 request.Symbol,

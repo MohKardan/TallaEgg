@@ -34,6 +34,6 @@ namespace TallaEgg.Core.Requests.User
         /// <summary>
         /// Invitation code for registration (required)
         /// </summary>
-        public string InvitationCode { get; set; }
+        public string InvitationCode { get; set; } = string.Empty;
     }
 }

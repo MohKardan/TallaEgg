@@ -209,7 +209,7 @@ public class WalletService : IWalletService
         };
     }
 
-    public async Task<WalletBallanceDTO> MakeTradeAsync(Guid fromUserId, Guid toUserId,string asset, decimal amount, string referenceId)
+    public async Task<WalletBallanceDTO> MakeTradeAsync(Guid fromUserId, Guid toUserId, string asset, decimal amount, string? referenceId)
     {
         
         var fromWallet = await _walletRepository.GetWalletAsync(fromUserId, asset);
