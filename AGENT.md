@@ -53,9 +53,10 @@ SQL Server and keeps it alive for a chosen number of minutes.
   All except Users also listen on an HTTPS port, which nothing in the system uses. The authority
   is `config/appsettings.global.json`, not this list.
 - **There is no Matching service.** Matching is a library inside the Orders service.
-- **TelegramBot:** Core/Application/Infrastructure layers. The runnable project is
-  `TallaEgg.TelegramBot.Infrastructure`; `TallaEgg.TelegramBot` is not in the solution and will not
-  start.
+- **TelegramBot:** `Core` holds the shared models; `Infrastructure` is the runnable project and
+  holds the handlers; `Simulator` drives the real handlers without Telegram. The empty
+  `TallaEgg.TelegramBot` and `TallaEgg.TelegramBot.Application` shells were deleted — neither
+  contained a single source file.
 - **Database:** SQL Server, one database per service. The schema comes from EF Core migrations,
   which each service applies at startup. `create_table.sql` at the repo root is an early artifact
   describing a single table that no longer matches the model — it is not the schema.

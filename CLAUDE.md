@@ -35,8 +35,9 @@ The rules that get skipped most often:
 - **All configuration is in `config/appsettings.global.json`**, one shared file for every service,
   under `Services:{ApplicationName}`. Per-project `appsettings.json` files are not the source of
   truth.
-- **The runnable bot project is `TallaEgg.TelegramBot.Infrastructure`**, not
-  `TallaEgg.TelegramBot` — that one is not in the solution and will not start.
+- **The runnable bot project is `TallaEgg.TelegramBot.Infrastructure`.** Several projects under
+  `TelegramBot/` look like candidates; that is the one with the host. `TallaEgg.TelegramBot`, the
+  empty shell that used to sit beside it and start nothing, was deleted.
 - **Dates shown to users are Jalali at a fixed +03:30 offset**, formatted through
   `PersianFormat`. Storage stays Gregorian UTC; the two are unrelated.
 - **Credit is per-asset in storage, but cross-asset in effect.** Every tradable asset gets a
