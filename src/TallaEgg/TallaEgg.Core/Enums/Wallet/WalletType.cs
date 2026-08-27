@@ -1,74 +1,63 @@
-namespace TallaEgg.Core.Enums.Wallet
+﻿namespace TallaEgg.Core.Enums.Wallet
 {
     /// <summary>
-    /// انواع کیف پول در سیستم
+    /// The wallet types the system recognises.
     /// </summary>
     public enum WalletType
     {
         /// <summary>
-        /// کیف پول نقدی - برای معاملات فوری
-        /// موجودی قابل برداشت فوری
+        /// Spot wallet, for immediate trading. Its balance can be withdrawn straight away.
         /// </summary>
         Spot = 1,
 
         /// <summary>
-        /// کیف پول اعتباری - اعتبار اعطایی از طرف صرافی
-        /// موجودی قابل استفاده برای معامله اما غیرقابل برداشت
-        /// بازپرداخت از طریق معاملات یا واریز نقدی
+        /// Credit wallet: credit extended by the exchange. Usable for trading but not withdrawable,
+        /// and repaid through trades or a cash deposit.
         /// </summary>
         Credit = 2,
 
         /// <summary>
-        /// کیف پول مارجین - برای معاملات اهرمی
-        /// امکان معامله با وثیقه و استفاده از اعتبار
+        /// Margin wallet, for leveraged trading against collateral and credit.
         /// </summary>
         Margin = 3,
 
         /// <summary>
-        /// کیف پول آتی - برای قراردادهای آتی
-        /// معاملات با تاریخ سررسید
+        /// Futures wallet, for dated contracts.
         /// </summary>
         Futures = 4,
 
         /// <summary>
-        /// کیف پول سپرده‌گذاری - برای کسب درآمد
-        /// موجودی قفل شده با بازده ثابت
+        /// Savings wallet: balance locked at a fixed return.
         /// </summary>
         Savings = 5,
 
         /// <summary>
-        /// کیف پول استیکینگ - برای شبکه‌های proof-of-stake
-        /// قفل موجودی برای دریافت پاداش شبکه
+        /// Staking wallet for proof-of-stake networks: balance locked to earn network rewards.
         /// </summary>
         Staking = 6,
 
         /// <summary>
-        /// کیف پول P2P - برای معاملات مستقیم کاربر به کاربر
-        /// اسکرو موقت برای معاملات امن
+        /// P2P wallet for direct user-to-user trading, acting as temporary escrow.
         /// </summary>
         P2P = 7,
 
         /// <summary>
-        /// کیف پول DeFi - برای پروتکل‌های غیرمتمرکز
-        /// اتصال به پروتکل‌های خارجی
+        /// DeFi wallet, connecting to external decentralised protocols.
         /// </summary>
         DeFi = 8,
 
         /// <summary>
-        /// کیف پول مسدود شده - برای موجودی‌های در حال بررسی
-        /// دسترسی محدود یا موقتاً غیرفعال
+        /// Blocked wallet, for balances under review: restricted or temporarily disabled.
         /// </summary>
         Locked = 9,
 
         /// <summary>
-        /// کیف پول پاداش - برای امتیازات و جوایز
-        /// موجودی حاصل از برنامه‌های وفاداری و ارجاع
+        /// Rewards wallet, holding balance earned from loyalty and referral programmes.
         /// </summary>
         Reward = 10,
 
         /// <summary>
-        /// کیف پول ضمانت - برای نگهداری وثیقه
-        /// موجودی قفل شده به عنوان تضمین معاملات
+        /// Guarantee wallet, holding balance locked as security for trades.
         /// </summary>
         Collateral = 11
     }

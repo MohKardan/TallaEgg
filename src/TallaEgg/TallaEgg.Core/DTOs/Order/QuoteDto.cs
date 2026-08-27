@@ -1,28 +1,28 @@
-using TallaEgg.Core.Enums.Order;
+﻿using TallaEgg.Core.Enums.Order;
 
 namespace TallaEgg.Core.DTOs.Order
 {
-    // نگاشت از موجودیت Quote عمداً اینجا نیست: این DTO بین سرویس‌ها مشترک است و
-    // TallaEgg.Core نباید به مدل دامنهٔ سرویس سفارش‌ها وابسته شود. نگاشت در همان لایه‌ای
-    // انجام می‌شود که هر دو را می‌شناسد.
+    // Mapping from the Quote entity is deliberately not here: this DTO is shared between services
+    // and TallaEgg.Core must not depend on the Orders service's domain model. The mapping lives in
+    // the layer that knows both.
 
     /// <summary>
-    /// مظنهٔ منتشرشدهٔ ادمین، برای انتقال بین سرویس‌ها و ربات.
+    /// The admin's published quote, for transport between the services and the bot.
     ///
-    /// قیمت‌ها بر حسب واحد پایه‌اند (تومان بر گرم). تبدیل به مثقال فقط در لایهٔ ربات و
-    /// هنگام نمایش انجام می‌شود — همان‌جا که کاربر عدد را وارد و مشاهده می‌کند. اگر تبدیل
-    /// در چند لایه پخش شود، همان ابهامی ساخته می‌شود که پیش‌تر باعث شد معلوم نباشد یک عدد
-    /// «بر گرم» است یا «بر مثقال».
+    /// Prices are per base unit, toman per gram. Conversion to mesghal happens only in the bot layer
+    /// at display time, where the user enters and reads the number. Spreading the conversion across
+    /// layers recreates the ambiguity that previously made it unclear whether a figure was per gram
+    /// or per mesghal.
     /// </summary>
     public class QuoteDto
     {
         public Guid Id { get; set; }
         public string Symbol { get; set; } = string.Empty;
 
-        /// <summary>قیمتی که ادمین می‌خرد — مشتری با این قیمت می‌فروشد.</summary>
+        /// <summary>The price the admin buys at — the price at which the customer sells.</summary>
         public decimal BuyPrice { get; set; }
 
-        /// <summary>قیمتی که ادمین می‌فروشد — مشتری با این قیمت می‌خرد.</summary>
+        /// <summary>The price the admin sells at — the price at which the customer buys.</summary>
         public decimal SellPrice { get; set; }
 
         public DateTime PublishedAt { get; set; }
@@ -37,7 +37,7 @@ namespace TallaEgg.Core.DTOs.Order
         public DateTime? DeactivatedAt { get; set; }
     }
 
-    /// <summary>درخواست انتشار مظنه توسط ادمین. قیمت‌ها بر حسب واحد پایه (تومان بر گرم).</summary>
+    /// <summary>An admin's request to publish a quote. Prices are per base unit, toman per gram.</summary>
     public record PublishQuoteRequest(
         string Symbol,
         decimal BuyPrice,
@@ -45,10 +45,11 @@ namespace TallaEgg.Core.DTOs.Order
         Guid PublishedByUserId);
 
     /// <summary>
-    /// درخواست پذیرش مظنه توسط مشتری.
+    /// A customer's request to fill a quote.
     ///
-    /// عمداً قیمت ندارد: قیمت از مظنهٔ منتشرشده خوانده می‌شود. اگر مشتری قیمت می‌فرستاد،
-    /// باید بررسی می‌شد که با مظنه بخواند — یک قاعدهٔ اضافی که راهی برای اشتباه باز می‌کرد.
+    /// Deliberately carries no price: the price is read from the published quote. If the customer
+    /// sent one, it would have to be validated against the quote — an extra rule that opens a way to
+    /// get it wrong.
     /// </summary>
     public record AcceptQuoteRequest(
         Guid UserId,

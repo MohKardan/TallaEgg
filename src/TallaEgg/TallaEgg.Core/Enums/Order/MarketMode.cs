@@ -1,27 +1,27 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace TallaEgg.Core.Enums.Order
 {
     /// <summary>
-    /// نحوهٔ کارکرد بازار برای یک نماد.
+    /// How the market operates for a symbol.
     ///
-    /// هر دو حالت به یک <c>Trade</c> ختم می‌شوند و از یک مسیر تسویه عبور می‌کنند، پس
-    /// می‌توانند کنار هم وجود داشته باشند: یک نماد در حالت Dealer و نماد دیگر در حالت
-    /// OrderBook. تاریخچه و گزارش‌ها برای هر دو یکسان‌اند چون داده‌شان یکی است.
+    /// Both modes end in the same <c>Trade</c> and go through the same settlement path, so they can
+    /// coexist: one symbol in Dealer mode and another in OrderBook mode. History and reporting are
+    /// identical for both, because the underlying data is the same.
     /// </summary>
     public enum MarketMode
     {
         /// <summary>
-        /// فقط ادمین مظنه می‌دهد و مشتری‌ها روی همان مظنه معامله می‌کنند؛ مشتری با مشتری
-        /// معامله نمی‌کند. مدل فعلی کسب‌وکار: طلافروش قیمت می‌دهد و مشتریانش با او معامله
-        /// می‌کنند.
+        /// Only the admin quotes, and customers trade against that quote; customers never trade with
+        /// each other. This is the current business model: the gold shop names a price and its
+        /// customers deal with the shop.
         /// </summary>
         [Description("مظنه‌ای")]
         Dealer = 0,
 
         /// <summary>
-        /// دفتر سفارش نظیربه‌نظیر: مشتری‌ها سفارش می‌گذارند و با یکدیگر تطبیق می‌خورند.
-        /// وقتی نقدینگی واقعی وجود داشته باشد این حالت فعال می‌شود.
+        /// A peer-to-peer order book: customers place orders and match against each other. This mode
+        /// becomes useful once there is real liquidity.
         /// </summary>
         [Description("دفتر سفارش")]
         OrderBook = 1

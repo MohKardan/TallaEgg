@@ -27,12 +27,12 @@ namespace TallaEgg.Core.DTOs.Order
     }
     /// <summary>
     /// Unified order creation request for all order types
-    /// درخواست واحد ایجاد سفارش برای تمام انواع سفارشات
+    /// A single order-creation request covering every order type.
     /// </summary>
     public class OrderDto
     {
         /// <summary>
-        /// شناسه کاربر
+        /// User id.
         /// </summary>
         [Required(ErrorMessage = "شناسه کاربر الزامی است")]
         public Guid Id { get; set; }
@@ -40,7 +40,7 @@ namespace TallaEgg.Core.DTOs.Order
         [JsonPropertyName("symbol")]
         public string Asset { get; set; } = "";
         /// <summary>
-        /// نماد دارایی (مثل BTC، ETH)
+        /// Asset symbol.
         /// alias
         /// </summary>
         [Required(ErrorMessage = "نماد دارایی الزامی است")]
@@ -53,7 +53,7 @@ namespace TallaEgg.Core.DTOs.Order
         }
 
         /// <summary>
-        /// مقدار سفارش
+        /// Order quantity.
         /// alias
         /// </summary>
         [Required(ErrorMessage = "مقدار سفارش الزامی است")]
@@ -67,7 +67,7 @@ namespace TallaEgg.Core.DTOs.Order
         [JsonPropertyName("quantity")]
         public decimal Amount { get; set; }
         /// <summary>
-        /// قیمت (برای سفارشات محدود - اختیاری برای سفارشات بازار)
+        /// Price. Required for limit orders, optional for market orders.
         /// </summary>
         public decimal Price { get; set; }
         public Guid UserId { get; set; }
@@ -89,11 +89,11 @@ namespace TallaEgg.Core.DTOs.Order
         public OrderType OrderType { get; set; }
         public string Symbol { get; set; } = string.Empty;
         /// <summary>
-        /// بهترین قیمت خرید (بالاترین قیمت پیشنهادی خریداران)
+        /// Best bid: the highest price buyers are offering.
         /// </summary>
         public decimal? BestBidPrice { get; set; }    // بهترین قیمت خرید (بالاترین قیمت پیشنهادی خریداران)
         /// <summary>
-        /// بهترین قیمت فروش (پایین‌ترین قیمت پیشنهادی فروشندگان)
+        /// Best ask: the lowest price sellers are offering.
         /// </summary>
         public decimal? BestAskPrice { get; set; }    // بهترین قیمت فروش (پایین‌ترین قیمت پیشنهادی فروشندگان)
         public decimal? BidVolume { get; set; }       // حجم موجود در بهترین قیمت خرید
@@ -104,19 +104,19 @@ namespace TallaEgg.Core.DTOs.Order
 
     /// <summary>
     /// Response DTO for canceling active orders
-    /// DTO پاسخ برای کنسل کردن سفارشات فعال
+    /// Response DTO for cancelling active orders.
     /// </summary>
     public class CancelActiveOrdersResponseDto
     {
         /// <summary>
         /// Number of orders that were cancelled
-        /// تعداد سفارشاتی که کنسل شدند
+        /// How many orders were cancelled.
         /// </summary>
         public int CancelledCount { get; set; }
     }
 
     /// <summary>
-    /// DTO برای نمایش تاریخچه معاملات کاربر
+    /// DTO for displaying a user's trade history.
     /// </summary>
     public class TradeHistoryDto
     {
@@ -138,95 +138,95 @@ namespace TallaEgg.Core.DTOs.Order
     }
 
     /// <summary>
-    /// DTO برای اطلاعات تطبیق معامله
+    /// DTO carrying the details of a matched trade.
     /// </summary>
     /// <remarks>
-    /// این DTO شامل تمام اطلاعات لازم برای اطلاع‌رسانی موفقیت‌آمیز تطبیق سفارشات است
+    /// Holds everything needed to notify both sides that their orders matched.
     /// </remarks>
     public class TradeMatchNotificationDto
     {
         /// <summary>
-        /// شناسه یکتای معامله
+        /// Trade id.
         /// </summary>
         public Guid TradeId { get; set; }
 
         /// <summary>
-        /// شناسه سفارش خریدار
+        /// Buy order id.
         /// </summary>
         public Guid BuyOrderId { get; set; }
 
         /// <summary>
-        /// شناسه کاربر خریدار
+        /// User id. خریدار
         /// </summary>
         public Guid BuyerUserId { get; set; }
 
         /// <summary>
-        /// شناسه سفارش فروشنده
+        /// Sell order id.
         /// </summary>
         public Guid SellOrderId { get; set; }
 
         /// <summary>
-        /// شناسه کاربر فروشنده
+        /// User id. فروشنده
         /// </summary>
         public Guid SellerUserId { get; set; }
 
         /// <summary>
-        /// نماد دارایی (مثل BTC/USDT، MAUA/IRT)
+        /// Trading symbol, for example MAUA/IRT.
         /// </summary>
         public string Asset { get; set; } = string.Empty;
 
         /// <summary>
-        /// قیمت تطبیق معامله
+        /// The price the trade matched at.
         /// </summary>
         public decimal Price { get; set; }
 
         /// <summary>
-        /// حجم تطبیق یافته در این معامله
+        /// The quantity matched in this trade.
         /// </summary>
         public decimal MatchedVolume { get; set; }
 
         /// <summary>
-        /// تاریخ و زمان انجام معامله
+        /// When the trade executed.
         /// </summary>
         public DateTime TradeDateTime { get; set; }
 
         /// <summary>
-        /// درصد تکمیل شده سفارش خریدار
+        /// Percentage of the buy order filled.
         /// </summary>
         public decimal BuyOrderCompletionPercentage { get; set; }
 
         /// <summary>
-        /// درصد باقی‌مانده سفارش خریدار
+        /// Percentage of the buy order remaining.
         /// </summary>
         public decimal BuyOrderRemainingPercentage { get; set; }
 
         /// <summary>
-        /// درصد تکمیل شده سفارش فروشنده
+        /// Percentage of the sell order filled.
         /// </summary>
         public decimal SellOrderCompletionPercentage { get; set; }
 
         /// <summary>
-        /// درصد باقی‌مانده سفارش فروشنده
+        /// Percentage of the sell order remaining.
         /// </summary>
         public decimal SellOrderRemainingPercentage { get; set; }
 
         /// <summary>
-        /// حجم کل سفارش خریدار
+        /// Total quantity of the buy order.
         /// </summary>
         public decimal BuyOrderTotalVolume { get; set; }
 
         /// <summary>
-        /// حجم باقی‌مانده سفارش خریدار
+        /// Remaining quantity of the buy order.
         /// </summary>
         public decimal BuyOrderRemainingVolume { get; set; }
 
         /// <summary>
-        /// حجم کل سفارش فروشنده
+        /// Total quantity of the sell order.
         /// </summary>
         public decimal SellOrderTotalVolume { get; set; }
 
         /// <summary>
-        /// حجم باقی‌مانده سفارش فروشنده
+        /// Remaining quantity of the sell order.
         /// </summary>
         public decimal SellOrderRemainingVolume { get; set; }
     }

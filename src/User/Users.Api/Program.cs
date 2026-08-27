@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -53,7 +53,7 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
-// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+// Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
@@ -62,12 +62,12 @@ if (urls is { Length: > 0 })
     builder.WebHost.UseUrls(urls);
 }
 
-// تنظیم اتصال به دیتابیس SQL Server
+// SQL Server connection.
 builder.Services.AddDbContext<UsersDbContext>(options =>
     options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "UsersDb"),
         b => b.MigrationsAssembly("Users.Api")));
 
-// فقط در production محافظت فعال شود
+// Protection is only wired up in Production.
 if (builder.Environment.IsProduction())
 {
     builder.Services.AddAuthentication("ApiKey")
@@ -76,7 +76,7 @@ if (builder.Environment.IsProduction())
             options.ApiKey = APIKeyConstant.RequireTallaEggApiKey();
         });
 
-    // Authorization Policy سراسری فقط برای production
+    // Global authorization policy, Production only.
     builder.Services.AddAuthorization(options =>
     {
         options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -86,7 +86,7 @@ if (builder.Environment.IsProduction())
 }
 else
 {
-    // برای development فقط authorization اضافه کنید (بدون authentication)
+    // Development adds authorization only, with no authentication in front of it.
     builder.Services.AddAuthorization();
 }
 
@@ -95,14 +95,14 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserMapper>();
 builder.Services.AddTallaEggErrorHandling();
 
-// HttpClient برای فراخوانی Wallet API
+// HttpClient for calling the Wallet API.
 builder.Services.AddHttpClient("WalletAPI", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("WalletApiUrl") ?? "https://localhost:60932/");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+// CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
 // Add Swagger services
@@ -120,7 +120,7 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+// Serilog: log to rolling files and the console.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/users-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
@@ -132,7 +132,7 @@ var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- مایگریشن و سیید اولیه ---
+// --- Migrations and initial seed ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -179,7 +179,7 @@ using (var scope = app.Services.CreateScope())
 
 
 
-// Authentication و Authorization فقط در production
+// Authentication and authorization, Production only.
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
@@ -196,7 +196,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "api-docs";
 });
 
-// تنظیم CORS
+// Apply the CORS policy.
 app.UseTallaEggCors();
 
 // Add Swagger middleware
@@ -249,7 +249,7 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
 /// <response code="404">User not found</response>
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
-    // UpdateUserPhoneAsync throws InvalidOperationException("کاربر یافت نشد.") — a user-facing
+    // UpdateUserPhoneAsync throws InvalidOperationException with a user-facing "not found" message — a
     // message, not boilerplate, so it stays local. See #88.
     try
     {
@@ -280,13 +280,13 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 });
 
 /// <summary>
-/// دریافت اطلاعات کاربر بر اساس شناسه
+/// Returns a user by id.
 /// </summary>
-/// <param name="userId">شناسه یکتای کاربر</param>
-/// <param name="userService">سرویس کاربر برای منطق تجاری</param>
-/// <returns>جزئیات کاربر در صورت یافتن</returns>
-/// <response code="200">کاربر پیدا شد و با موفقیت برگردانده شد</response>
-/// <response code="404">کاربر پیدا نشد</response>
+/// <param name="userId">User id.</param>
+/// <param name="userService">User service.</param>
+/// <returns>The user, if found.</returns>
+/// <response code="200">User found.</response>
+/// <response code="404">User not found.</response>
 app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userService) =>
 {
     var user = await userService.GetUserByIdAsync(userId);
@@ -327,7 +327,7 @@ app.MapGet("/api/users/list", async (
         int? pageNumber,
         int? pageSize, UserService userService) =>
 {
-    // اعتبارسنجی
+    // Validation.
     var page = pageNumber ?? 1;
     var size = Math.Clamp(pageSize ?? 10, 1, 100);
 
@@ -346,7 +346,7 @@ app.MapGet("/api/users/list", async (
 /// <response code="404">User not found</response>
 app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
-    // UpdateUserStatusAsync throws InvalidOperationException("کاربر یافت نشد.") — a user-facing
+    // UpdateUserStatusAsync throws InvalidOperationException with a user-facing "not found" message — a
     // message, not boilerplate, so it stays local. See #88.
     try
     {
@@ -458,14 +458,14 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 });
 
 /// <summary>
-/// ایجاد کیف پول‌های پیش‌فرض برای کاربر موجود
+/// Creates the default wallets for an existing user.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="userService">سرویس کاربران</param>
-/// <returns>نتیجه عملیات</returns>
-/// <response code="200">کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند</response>
-/// <response code="400">خطا در ایجاد کیف پول‌ها</response>
-/// <response code="404">کاربر یافت نشد</response>
+/// <param name="userId">User id.</param>
+/// <param name="userService">User service.</param>
+/// <returns>Whether it succeeded.</returns>
+/// <response code="200">Default wallets created.</response>
+/// <response code="400">Wallet creation failed.</response>
+/// <response code="404">User not found.</response>
 app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, UserService userService) =>
 {
     var user = await userService.GetUserByIdAsync(userId);
@@ -477,7 +477,7 @@ app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, Use
         );
     }
 
-    // فراخوانی endpoint کیف پول
+    // Call the wallet endpoint.
     using var httpClient = new HttpClient();
     httpClient.BaseAddress = new Uri("https://localhost:7001/");
     var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);

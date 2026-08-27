@@ -215,7 +215,6 @@ namespace TallaEgg.Core.Services
 
         //        //            using (var fileStream = File.OpenRead(filePath))
         //        //{
-        //        //	// درست ش.د
         //        //	var fileName = File.ReadAllText(filePath);
         //        //	var fileContent = new StreamContent(fileStream);
 

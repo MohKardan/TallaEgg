@@ -1,17 +1,17 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace TallaEgg.Core
 {
     public class CurrenciesConstant
     {
-        // 🔹 ثابت‌ها برای استفاده راحت در کد
+        // Convenience constants.
         public const string Maua = "MAUA";
 
         /// <summary>
-        /// واحد پول سیستم: تومان (IRT).
-        /// عمداً IRR (ریال) نیست — تمام مبالغ ذخیره‌شده در دیتابیس به تومان هستند
-        /// (قیمت‌ها به تومان وارد می‌شوند و هیچ تبدیل ریال/تومانی در کد وجود ندارد).
-        /// استفاده از IRR در گذشته باعث ابهام شده بود که عدد ذخیره‌شده ریال است یا تومان.
+        /// The system's currency unit: Toman (IRT).
+        /// Deliberately not IRR (rial) — every amount stored in the database is in toman, prices are
+        /// entered in toman, and no rial/toman conversion exists anywhere in the code. Using IRR in
+        /// the past made it ambiguous whether a stored figure was rials or tomans.
         /// </summary>
         public const string Toman = "IRT";
 
@@ -22,12 +22,12 @@ namespace TallaEgg.Core
         public const string Btc = "BTC";
 
         /// <summary>
-        /// وزن یک مثقال به گرم. قیمت‌ها توسط کاربر و مدیر بر حسب «هر مثقال» وارد
-        /// می‌شوند و برای ذخیره‌سازی به «هر گرم» تبدیل می‌شوند.
+        /// The weight of one mesghal in grams. Users and admins enter prices per mesghal, and they
+        /// are converted to per gram for storage.
         /// </summary>
         public const decimal GramsPerMesghal = 4.3318m;
 
-        // 🔹 ثابت‌های جفت‌های معاملاتی
+        // Trading-pair constants.
         public const string BTC_IRT = "BTC/IRT";
         public const string MAUA_IRT = "MAUA/IRT";
         public const string SEKE_BAHAR_IRT = "SEKE_BAHAR/IRT";
@@ -177,7 +177,7 @@ namespace TallaEgg.Core
                     IsTradable = true
                 };
 
-                // One credit ledger per tradable asset (issue: multi-symbol شارژ, see the
+                // One credit ledger per tradable asset (issue: multi-symbol top-up, see the
                 // conversation that added this) — same ceiling concept CREDIT_MAUA already was,
                 // generalized instead of staying a MAUA-only special case.
                 var creditCode = CreditAssetFor(pair.BaseAsset);
@@ -194,40 +194,39 @@ namespace TallaEgg.Core
             return map;
         }
 
-        // 🔹 مجموعه‌ای از اطلاعات ارزها
+        // The currency catalogue.
         public static List<CurrencyInfo> AllCurrencies => _currencies.Values.ToList();
 
-        // 🔹 مجموعه‌ای از اطلاعات جفت‌های معاملاتی
+        // The trading-pair catalogue.
         public static List<TradingPairInfo> AllTradingPairs => _pairs.Values.ToList();
 
-        // 🔹 دریافت کد همه ارزها (با فرمت اصلی)
+        // All currency codes, in their canonical form.
         public static List<string> GetAllCodes() =>
             _currencies.Values.Select(c => c.Code).ToList();
 
-        // 🔹 گرفتن مشخصات ارز (case-insensitive)
+        // Look up a currency, case-insensitively.
         public static CurrencyInfo GetCurrencyInfo(string code) =>
             _currencies.TryGetValue(code, out var info) ? info : null;
 
-        // 🔹 بررسی معتبر بودن ارز (case-insensitive)
+        // Whether a currency code is valid, case-insensitively.
         public static bool IsValidCurrency(string code) =>
             _currencies.ContainsKey(code);
 
         /// <summary>
-        /// گرد کردن یک مبلغ به دقت واقعی همان دارایی (مثلاً تومان: بدون اعشار، آبشده: دو رقم).
+        /// Rounds an amount to that asset's real precision — toman has no decimals, melted gold has two.
         ///
-        /// این متد باید در هر جایی که مبلغی محاسبه می‌شود صدا زده شود — به‌ویژه
-        /// «مقدار × قیمت» — چون نتیجهٔ آن ضرب تا ۱۸ رقم اعشار پیش می‌رود در حالی که
-        /// ستون‌های دیتابیس decimal(28,8) هستند. اگر مقدارِ قفل‌شده و مقدارِ تسویه‌شده
-        /// با دقت‌های متفاوت محاسبه شوند، پس از پایان سفارش یک باقی‌ماندهٔ کوچک در
-        /// LockedBalance جا می‌ماند که در سیستم مالی یک نشتی تدریجی است.
+        /// Call this wherever an amount is computed — above all for quantity x price, whose result
+        /// runs to 18 decimal places while the database columns are decimal(28,8). If the locked
+        /// amount and the settled amount are computed at different precisions, a small residue is
+        /// left in LockedBalance once the order ends, which in a financial system is a slow leak.
         ///
-        /// از MidpointRounding.ToEven استفاده نمی‌کنیم؛ AwayFromZero رفتار مورد انتظار
-        /// در محاسبات مالی است.
+        /// MidpointRounding.ToEven is not used; AwayFromZero is the expected behaviour in financial
+        /// arithmetic.
         /// </summary>
         public static decimal RoundToCurrencyPrecision(decimal amount, string assetCode)
         {
             var info = GetCurrencyInfo(assetCode);
-            // اگر دارایی ناشناخته بود، مقدار را دست‌نخورده برمی‌گردانیم تا رفتار موجود نشکند.
+            // An unknown asset returns the amount untouched, so existing behaviour is not broken.
             if (info is null)
                 return amount;
 
@@ -235,10 +234,10 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به بالا</b>.
+        /// Rounds an amount to the asset's precision, always <b>up</b>.
         ///
-        /// برای مبلغی استفاده می‌شود که به‌عنوان وثیقه قفل می‌شود. با گرد کردن به بالا،
-        /// مقدار قفل‌شده هرگز کمتر از ارزش واقعی سفارش نیست.
+        /// Used for the amount locked as collateral. Rounding up means the locked amount is never
+        /// less than the order's real value.
         /// </summary>
         public static decimal CeilingToCurrencyPrecision(decimal amount, string assetCode)
         {
@@ -250,22 +249,23 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// گرد کردن مبلغ به دقت دارایی، همیشه <b>رو به پایین</b>.
+        /// Rounds an amount to the asset's precision, always <b>down</b>.
         ///
-        /// برای مبلغی استفاده می‌شود که در هر معامله از وثیقه مصرف می‌گردد.
+        /// Used for the amount each trade consumes from the collateral.
         ///
-        /// چرا جهت‌ها عمداً مخالف هم انتخاب شده‌اند (issue #52): مبلغ قفل یک بار برای کل
-        /// سفارش حساب می‌شود و مصرف در هر fill جداگانه. اگر هر دو با AwayFromZero گرد
-        /// شوند، مجموعِ مصرف‌ها می‌تواند از مقدار قفل‌شده بیشتر شود و گاردِ «وثیقهٔ کافی
-        /// نیست» یک معاملهٔ کاملاً معتبر را رد کند.
+        /// Why the directions are deliberately opposite (issue #52): the lock is computed once for
+        /// the whole order while consumption is computed per fill. If both rounded AwayFromZero, the
+        /// consumptions could sum to more than the locked amount and the "insufficient collateral"
+        /// guard would refuse a perfectly valid trade.
         ///
-        /// با «قفل رو به بالا، مصرف رو به پایین» این نابرابری همیشه برقرار است:
+        /// With "lock up, consume down", this inequality always holds:
         ///
-        ///     Σ Floor(qᵢ × pᵢ) ≤ Σ qᵢ×pᵢ ≤ Σ qᵢ × p_سقف ≤ Q × p_سقف ≤ Ceiling(Q × p_سقف)
+        ///     sum Floor(qi x pi) <= sum qi x pi <= sum qi x p_max <= Q x p_max <= Ceiling(Q x p_max)
         ///
-        /// یعنی «مجموع مصرف ≤ مقدار قفل‌شده» یک تضمین ریاضی است، نه یک احتمال — و به
-        /// یکسان بودن قیمت fillها هم وابسته نیست، چون خریدار هرگز بیش از قیمت سقف
-        /// سفارش خودش پرداخت نمی‌کند. اختلاف باقی‌مانده هنگام تکمیل یا لغو آزاد می‌شود.
+        /// So "total consumed <= amount locked" is a mathematical guarantee rather than a
+        /// probability, and it does not depend on the fills sharing a price, since a buyer never pays
+        /// more than their own order's limit. The leftover difference is released on completion or
+        /// cancellation.
         /// </summary>
         public static decimal FloorToCurrencyPrecision(decimal amount, string assetCode)
         {
@@ -284,45 +284,45 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// دقت ذخیره‌سازی قیمت سفارش. ستون Orders.Price از نوع decimal(18,2) است.
+        /// The storage precision of an order price. The Orders.Price column is decimal(18,2).
         /// </summary>
         public const int OrderPriceDecimalPlaces = 2;
 
         /// <summary>
-        /// گرد کردن قیمت به همان دقتی که ستون دیتابیس می‌تواند نگه دارد.
+        /// Rounds a price to the precision the database column can actually hold.
         ///
-        /// چرا لازم است: قیمت مثقال بر ۴٫۳۳۱۸ تقسیم می‌شود و نتیجه تا ۲۸ رقم اعشار ادامه
-        /// دارد (مثلاً ۷۹٬۰۰۰٬۰۰۰ ÷ ۴٫۳۳۱۸ = ۱۸۲۳۷۲۲۲٫۴۰۱۷۷۲۹…). مبلغِ قفل‌شده از همان
-        /// مقدارِ کاملِ حافظه حساب می‌شد، ولی خودِ قیمت هنگام ذخیره در ستون به دو رقم
-        /// اعشار گرد می‌شد و تسویه بعداً همان مقدار گردشده را از دیتابیس می‌خواند. دو
-        /// طرفِ یک تساوی با دو قیمتِ متفاوت حساب می‌شدند و اختلافش تا ابد در
-        /// LockedBalance می‌ماند (issue #52).
+        /// Why it is needed: a mesghal price is divided by 4.3318 and the result runs to 28 decimal
+        /// places — 79,000,000 / 4.3318 = 18237222.4017729..., for example. The locked amount was
+        /// computed from that full in-memory value, while the price itself was rounded to two
+        /// decimals on the way into the column, and settlement later read the rounded value back.
+        /// Two sides of one equation were computed from two different prices, and the difference
+        /// stayed in LockedBalance forever (issue #52).
         ///
-        /// با گرد کردن در ورودی، قفل و تسویه هر دو از یک عدد استفاده می‌کنند و
-        /// «مبلغ قفل‌شده» از روی خودِ سفارش ذخیره‌شده قابل بازمحاسبه می‌شود.
+        /// Rounding on the way in means the lock and settlement use the same number, and the locked
+        /// amount becomes recomputable from the stored order alone.
         ///
-        /// عمداً به PriceDecimalPlaces جفت معاملاتی تکیه نمی‌کنیم: برای MAUA/IRT مقدار
-        /// آن صفر است در حالی که ستون دو رقم اعشار نگه می‌دارد. گرد کردن به صفر، دقت
-        /// قیمت را از ۰٫۰۱ به ۱ تومان بر گرم تغییر می‌داد که یک تصمیم کسب‌وکاری است نه
-        /// یک رفع باگ. مرجع اینجا ستون است، چون همان چیزی است که واقعاً محدود می‌کند.
+        /// Deliberately not keyed off the pair's PriceDecimalPlaces: for MAUA/IRT that is zero while
+        /// the column holds two decimals. Rounding to zero would change price precision from 0.01 to
+        /// 1 toman per gram, which is a business decision rather than a bug fix. The column is the
+        /// authority here, because it is what actually constrains the value.
         /// </summary>
         public static decimal RoundOrderPrice(decimal price) =>
             Math.Round(price, OrderPriceDecimalPlaces, MidpointRounding.AwayFromZero);
 
-        /// <summary>گرفتن مشخصات جفت معاملاتی (case-insensitive). اگر پیدا نشود null.</summary>
+        /// <summary>Looks up a trading pair, case-insensitively. Returns null if there is no match.</summary>
         public static TradingPairInfo? GetTradingPairInfo(string symbol) =>
             symbol is not null && _pairs.TryGetValue(symbol, out var info) ? info : null;
 
         /// <summary>
-        /// نام فارسی ارز برای نمایش به کاربر. اگر ارز ناشناس باشد خود کد برگردانده می‌شود.
+        /// The currency's Persian display name. Unknown currencies fall back to the code itself.
         /// </summary>
         public static string GetPersianName(string code) =>
             GetCurrencyInfo(code)?.PersianName ?? code;
 
         /// <summary>
-        /// ورودی کاربر را به کد ارز تبدیل می‌کند. هم کد لاتین («IRT») و هم نام فارسی
-        /// («تومان») پذیرفته می‌شود، تا مدیر مجبور نباشد کد انگلیسی به خاطر بسپارد.
-        /// اگر ورودی به هیچ ارزی نخورد، null برمی‌گردد.
+        /// Converts user input into a currency code. Accepts both the Latin code ("IRT") and the
+        /// Persian name ("تومان"), so an admin need not memorise the English code. Returns null if
+        /// the input matches no currency.
         /// </summary>
         public static string? ResolveCurrencyCode(string? input)
         {
@@ -331,20 +331,20 @@ namespace TallaEgg.Core
 
             var trimmed = input.Trim();
 
-            // ابتدا تطبیق با کد ارز
+            // First, match against the currency code.
             if (_currencies.TryGetValue(trimmed, out var byCode))
                 return byCode.Code;
 
-            // سپس تطبیق با نام فارسی کامل
+            // Then against the full Persian name.
             var byName = _currencies.Values.FirstOrDefault(c =>
                 string.Equals(c.PersianName, trimmed, StringComparison.OrdinalIgnoreCase));
 
             if (byName is not null)
                 return byName.Code;
 
-            // در نهایت کلیدواژهٔ کوتاه («سکه»، «بیت») — همان فهرستی که دستورهای مظنه از آن
-            // استفاده می‌کنند (TradingPairInfo.Aliases)، تا مدیر مجبور نباشد برای هر دستور
-            // اسم متفاوتی به خاطر بسپارد.
+            // Finally the short keyword ("سکه", "بیت") — the same list the quote commands use,
+            // TradingPairInfo.Aliases, so an admin does not have to remember a different name per
+            // command.
             var bySymbolAlias = ResolveSymbolByAlias(trimmed);
             if (bySymbolAlias is not null)
                 return GetTradingPairInfo(bySymbolAlias)?.BaseAsset;
@@ -353,12 +353,12 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// فهرست نام‌های فارسی ارزهای قابل‌تایپ برای نمایش در پیام خطا (به‌جای کدهای لاتین).
+        /// The typeable Persian currency names, for use in an error message instead of Latin codes.
         ///
-        /// نسخهٔ CREDIT_ هر دارایی عمداً حذف شده: دستورهای «ش»/«د» خودشان همیشه پیشوند
-        /// CREDIT_ را اضافه می‌کنند، پس اگر ادمین «اعتبار آبشده» را مستقیم تایپ کند نتیجه یک
-        /// کد دوبار-پیشونددار بی‌معنا («CREDIT_CREDIT_MAUA») می‌شود — این فهرست برای جلوگیری
-        /// از همان تایپ است، نه تشویق آن.
+        /// Each asset's CREDIT_ variant is deliberately excluded: the top-up and withdraw commands
+        /// always add the CREDIT_ prefix themselves, so an admin typing the credit name directly
+        /// would produce a meaningless double-prefixed code ("CREDIT_CREDIT_MAUA"). This list exists
+        /// to prevent that input, not to invite it.
         /// </summary>
         public static string GetPersianNamesList() =>
             string.Join("، ", _currencies.Values
@@ -366,9 +366,8 @@ namespace TallaEgg.Core
                 .Select(c => c.PersianName));
 
         /// <summary>
-        /// نام فارسی جفت معاملاتی برای نمایش به کاربر (مثل «آبشده/تومان»).
-        /// اگر جفت ناشناس باشد، از نام فارسی دو طرف ساخته می‌شود تا هیچ‌وقت
-        /// نماد لاتین در متن فارسی نمایش داده نشود.
+        /// The trading pair's Persian display name. An unknown pair is composed from both sides'
+        /// Persian names, so a Latin symbol is never shown inside Persian text.
         /// </summary>
         public static string GetPersianSymbolName(string symbol)
         {
@@ -384,12 +383,11 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// یک نماد را از روی کلیدواژهٔ فارسی دستورهای ادمین («سکه»، «بیت») برمی‌گرداند —
-        /// از <see cref="TradingPairInfo.Aliases"/> هر نماد می‌خواند، پس اضافه‌کردن یک
-        /// نماد جدید با کلیدواژهٔ خودش نیازی به تغییر این متد ندارد. کلیدواژهٔ خالی یعنی
-        /// آبشده — عادت ادمین از قبل از وجود این نمادهای دیگر. کلیدواژه‌ای که به هیچ
-        /// نمادی نمی‌خورد null برمی‌گرداند، تا فراخوان بتواند «کلیدواژه‌ای داده نشده» را
-        /// از «کلیدواژهٔ ناشناخته» تشخیص دهد.
+        /// Resolves a symbol from the Persian keyword used in admin commands ("سکه", "بیت"), reading
+        /// each symbol's <see cref="TradingPairInfo.Aliases"/>, so adding a new symbol with its own
+        /// keyword needs no change here. An empty keyword means melted gold — the admin habit from
+        /// before these other symbols existed. A keyword matching no symbol returns null, so the
+        /// caller can tell "no keyword given" apart from "unknown keyword".
         /// </summary>
         public static string? ResolveSymbolByAlias(string? keyword)
         {
@@ -418,43 +416,43 @@ namespace TallaEgg.Core
 
     public class TradingPairInfo
     {
-        /// <summary>نماد جفت معاملاتی (مثل BTC/USDT)</summary>
+        /// <summary>Pair symbol, for example MAUA/IRT.</summary>
         public string Symbol { get; set; } = string.Empty;
 
-        /// <summary>دارایی پایه (مثل BTC)</summary>
+        /// <summary>Base asset, for example MAUA.</summary>
         public string BaseAsset { get; set; } = string.Empty;
 
-        /// <summary>دارایی نقل‌قول (مثل USDT)</summary>
+        /// <summary>Quote asset, for example IRT.</summary>
         public string QuoteAsset { get; set; } = string.Empty;
 
-        /// <summary>نام فارسی</summary>
+        /// <summary>Persian display name.</summary>
         public string PersianName { get; set; } = string.Empty;
 
-        /// <summary>حداقل مقدار قابل معامله</summary>
+        /// <summary>Minimum tradable quantity.</summary>
         public decimal MinQuantity { get; set; }
 
-        /// <summary>حداکثر مقدار قابل معامله</summary>
+        /// <summary>Maximum tradable quantity.</summary>
         public decimal MaxQuantity { get; set; }
 
-        /// <summary>تعداد اعشار قیمت</summary>
+        /// <summary>Price decimal places.</summary>
         public int PriceDecimalPlaces { get; set; }
 
-        /// <summary>تعداد اعشار مقدار</summary>
+        /// <summary>Quantity decimal places.</summary>
         public int QuantityDecimalPlaces { get; set; }
 
-        /// <summary>حداقل ارزش معامله</summary>
+        /// <summary>Minimum trade value.</summary>
         public decimal MinNotional { get; set; }
 
-        /// <summary>نام فارسی دارایی پایه به‌تنهایی (مثل «آبشده»)</summary>
+        /// <summary>Persian name of the base asset on its own, for example "آبشده".</summary>
         public string BaseAssetPersianName { get; set; } = string.Empty;
 
-        /// <summary>واحد نمایش دارایی پایه (مثل «گرم» یا «سکه»)</summary>
+        /// <summary>Display unit for the base asset, for example "گرم" or "سکه".</summary>
         public string BaseUnit { get; set; } = string.Empty;
 
-        /// <summary>تعداد اعشار دارایی پایه، برای گرد کردن مبالغ (CurrenciesConstant.RoundToCurrencyPrecision)</summary>
+        /// <summary>Base-asset decimal places, used when rounding amounts via CurrenciesConstant.RoundToCurrencyPrecision.</summary>
         public int BaseDecimalPlaces { get; set; }
 
-        /// <summary>کلیدواژه‌های فارسی که دستورهای ادمین در بات برای این نماد می‌پذیرند (مثل «سکه»)</summary>
+        /// <summary>Persian keywords the bot's admin commands accept for this symbol, for example "سکه".</summary>
         public List<string> Aliases { get; set; } = new();
     }
 }

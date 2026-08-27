@@ -8,13 +8,13 @@ namespace TallaEgg.Infrastructure.Clients;
 
 /// <summary>
 /// Client interface for communicating with Wallet service
-/// واسط کلاینت برای ارتباط با سرویس کیف پول
+/// Client interface for the Wallet service.
 /// </summary>
 public interface IWalletApiClient
 {
     /// <summary>
     /// Get user balance for specific asset
-    /// دریافت موجودی کاربر برای دارایی مشخص
+    /// Returns a user's balance for one asset.
     /// </summary>
     Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset);
 
@@ -24,37 +24,37 @@ public interface IWalletApiClient
     Task<ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletRequest request);
     
     /// <summary>
-    /// ثبت تراکنش معامله و تغییر بالانس ها
+    /// Records a trade's transaction and updates the balances.
     /// </summary>
     Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade);
     
     /// <summary>
     /// Lock balance for order placement
-    /// قفل کردن موجودی برای ثبت سفارش
+    /// Locks balance when placing an order.
     /// </summary>
     Task<(bool Success, string Message, WalletDTO? Wallet)> LockBalanceAsync(Guid userId, string asset, decimal amount);
 
     /// <summary>
     /// Unlock balance when order is cancelled
-    /// آزاد کردن موجودی هنگام لغو سفارش
+    /// Releases locked balance when an order is cancelled.
     /// </summary>
     Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     /// <summary>
     /// Increase balance for order placement
-    /// افزایش موجودی برای ثبت سفارش
+    /// Increases a balance.
     /// </summary>
     Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount);
 
     /// <summary>
     /// Validate if user has sufficient balance for order
-    /// بررسی داشتن موجودی کافی برای سفارش
+    /// Whether the user has enough balance for an order.
     /// </summary>
     Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
         Guid userId,
         string asset,
         decimal amount);
     /// <summary>
-    /// بررسی اعتبار و موجودی کاربر برای ثبت سفارش
+    /// Checks a user's credit and balance before an order is placed.
     /// </summary>
     /// <param name="userId"></param>
     /// <param name="symbol">

@@ -8,7 +8,7 @@ namespace TallaEgg.Core.DTOs.Order
 {
 
     /// <summary>
-    /// DTO معامله برای پاسخ
+    /// Trade DTO used in responses.
     /// </summary>
     public class TradeDto
     {
