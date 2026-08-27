@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Orders.Core;
 using Serilog;
@@ -23,13 +23,13 @@ public class OrderService
     private readonly UsersApiClient _usersApiClient;
 
     /// <summary>
-    /// محاسبهٔ باقی‌ماندهٔ وثیقه اینجا و در پردازشگر outbox مشترک است. اگر دو کپی از این
-    /// فرمول وجود داشته باشد، دیر یا زود از هم جدا می‌شوند — و «چند فرمول برای یک
-    /// کمیت» دقیقاً همان چیزی بود که #52 را ساخت.
+    /// The residual-collateral calculation is shared with the outbox processor. Two copies of this
+    /// formula would drift apart sooner or later, and "several formulas for one quantity" is
+    /// exactly what caused #52.
     /// </summary>
     private readonly Services.OrderCollateralReconciler _collateralReconciler;
 
-    /// <summary>در حالت مظنه‌ای، «بهترین قیمت» از مظنه خوانده می‌شود نه از دفتر سفارش (issue #48).</summary>
+    /// <summary>In dealer mode the best price comes from the quote, not the order book (issue #48).</summary>
     private readonly IQuoteRepository _quoteRepository;
     private readonly Services.MarketModeProvider _marketMode;
 
@@ -54,7 +54,7 @@ public class OrderService
     }
 
     /// <summary>
-    /// ایجاد سفارش واحد با تشخیص خودکار نقش (Maker/Taker)
+    /// Creates a single order, determining the maker/taker role automatically.
     /// </summary>
     public async Task<CreateOrderResponse> CreateOrderAsync(OrderDto request)
     {
@@ -79,16 +79,16 @@ public class OrderService
             var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
                 ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
 
-            // قیمت پیش از هر استفاده‌ای به دقت ستون گرد می‌شود.
+            // The price is rounded to the column's precision before anything else uses it.
             //
-            // ربات قیمت را از تقسیم «قیمت مثقال ÷ ۴٫۳۳۱۸» می‌سازد که تا ۲۸ رقم اعشار
-            // ادامه دارد. اگر قفل از آن مقدار کامل حساب شود ولی سفارش با دو رقم اعشار
-            // ذخیره گردد، تسویه — که قیمت را از دیتابیس می‌خواند — با عدد دیگری کار
-            // می‌کند و اختلاف تا ابد در LockedBalance می‌ماند (issue #52).
+            // The bot derives the price by dividing the mesghal price by 4.3318, which runs to 28
+            // decimal places. If the lock is computed from that full value but the order is stored
+            // with two decimals, settlement — which reads the price back from the database — works
+            // from a different number and the difference stays in LockedBalance forever (issue #52).
             //
-            // این کار یک اثر جانبی مهم هم دارد: از این پس «مبلغ قفل‌شده» دقیقاً برابر
-            // RoundToCurrencyPrecision(Amount × Price) روی همان سفارشِ ذخیره‌شده است،
-            // پس بدون افزودن ستون جدید قابل بازمحاسبه است.
+            // This has a useful side effect: the locked amount is now exactly
+            // RoundToCurrencyPrecision(Amount x Price) over the stored order, so it can be
+            // recomputed without adding a column to persist it.
             if (request.Price <= 0)
                 throw new ArgumentException("قیمت باید بزرگ‌تر از صفر باشد");
 
@@ -155,9 +155,9 @@ public class OrderService
                 request.Notes
             );
 
-            // قفل وثیقه دیگر اینجا انجام نمی‌شود؛ داخل CreateOrderAsync و پیش از تأیید
-            // سفارش است. تا وقتی سفارش تأیید نشده قابل تطبیق نیست، پس هیچ معامله‌ای
-            // نمی‌تواند پیش از قفل شدن وثیقه‌اش وجود داشته باشد (یافتهٔ ممیزی C-5).
+            // Collateral is no longer locked here; it happens inside CreateOrderAsync, before the
+            // order is confirmed. An unconfirmed order is not matchable, so no trade can exist
+            // before its collateral is locked (audit finding C-5).
             order = await CreateOrderAsync(limitCommand);
 
             // Determine role based on order status
@@ -199,16 +199,16 @@ public class OrderService
     }
 
     /// <summary>
-    /// وثیقهٔ لازم برای یک سفارش: کدام دارایی و چه مقدار.
+    /// The collateral an order requires: which asset, and how much.
     ///
-    /// تنها تعریف این محاسبه در سیستم. اعتبارسنجی و قفل هر دو از همین استفاده می‌کنند؛
-    /// اگر دو نسخه وجود داشته باشد دیر یا زود از هم جدا می‌شوند — و «چند فرمول برای یک
-    /// کمیت» همان چیزی بود که #52 را ساخت.
+    /// The only definition of this calculation in the system. Validation and locking both use it;
+    /// two versions would drift apart sooner or later, and "several formulas for one quantity" is
+    /// what caused #52.
     ///
-    /// مبلغ خرید رو به بالا گرد می‌شود، در حالی که مصرفِ هر معامله رو به پایین. این
-    /// جهت‌های مخالف تضمین می‌کنند «مجموع مصرف ≤ مقدار قفل‌شده» همیشه برقرار بماند
-    /// (توضیح کامل روی CeilingToCurrencyPrecision). سمت فروش گرد کردن لازم ندارد،
-    /// چون وثیقه‌اش خودِ مقدار سفارش است.
+    /// A buy amount rounds up while each trade's consumption rounds down. Those opposite directions
+    /// are what keep "total consumed <= amount locked" true (full explanation on
+    /// CeilingToCurrencyPrecision). The sell side needs no rounding, since its collateral is the
+    /// order quantity itself.
     /// </summary>
     private static (string Asset, decimal Amount) ComputeCollateral(
         string symbol, OrderSide side, decimal quantity, decimal price)
@@ -223,12 +223,12 @@ public class OrderService
     }
 
     /// <summary>
-    /// سفارش را می‌سازد، وثیقه‌اش را قفل می‌کند و تأییدش می‌کند — ولی تطبیق نمی‌دهد.
+    /// Creates the order, locks its collateral and confirms it — but does not match it.
     ///
-    /// این ترتیب (ذخیره در وضعیت Pending که نامرئی است ← قفل ← تأیید) همان تضمین ساختاری
-    /// یافتهٔ C-5 است. عمداً از خودِ تطبیق جدا شده تا مسیر مظنه‌ای بتواند <b>دو</b> سفارش
-    /// بسازد و بعد یک بار تطبیق بدهد، بدون اینکه این منطق در دو جا تکرار شود — تکرار
-    /// فرمول برای یک کار، همان چیزی است که #52 را ساخت.
+    /// That order — save as Pending, which is invisible to the matcher, then lock, then confirm —
+    /// is the structural guarantee behind audit finding C-5. It is deliberately separated from
+    /// matching so the quote-fill path can create <b>two</b> orders and match once, without
+    /// duplicating this logic; duplicating a formula for one job is what caused #52.
     /// </summary>
     private async Task<(Order Order, bool Confirmed)> CreateLockedAndConfirmedOrderAsync(CreateOrderCommand command)
     {
@@ -243,20 +243,20 @@ public class OrderService
             command.Notes
         );
 
-        // سفارش با وضعیت Pending ذخیره می‌شود و در این وضعیت برای موتور تطبیق نامرئی
-        // است — این همان چیزی است که ترتیب زیر را ممکن می‌کند.
+        // The order is saved as Pending, and in that state the matching engine cannot see it —
+        // which is what makes the sequence below possible.
         var createdOrder = await _orderRepository.AddAsync(order);
 
-        // ► قفل وثیقه پیش از تأیید سفارش.
+        // Lock the collateral before confirming the order.
         //
-        // پیش‌تر قفل پس از تطبیق انجام می‌شد (یافتهٔ ممیزی C-5): معامله ثبت و commit
-        // می‌شد و تازه بعد وثیقه قفل می‌گردید. چون معامله در تراکنش خودش commit شده بود،
-        // شکست قفل چیزی را برنمی‌گرداند و یک معاملهٔ ثبت‌شدهٔ بدون وثیقه باقی می‌ماند که
-        // تسویه‌اش هرگز موفق نمی‌شد.
+        // Locking used to happen after matching (audit finding C-5): the trade was recorded and
+        // committed, and only then was the collateral locked. Because the trade had committed in
+        // its own transaction, a failed lock rolled nothing back and left a recorded trade with no
+        // collateral behind it, which could never settle.
         //
-        // حالا اگر قفل شکست بخورد، سفارش هرگز تأیید نمی‌شود، پس هرگز قابل تطبیق نیست و
-        // هیچ معامله‌ای وجود ندارد که بخواهد گیر کند. ترتیب از یک قرارداد رفتاری به یک
-        // تضمین ساختاری تبدیل می‌شود.
+        // Now a failed lock means the order is never confirmed, so it is never matchable and there
+        // is no trade to get stuck. The ordering becomes a structural guarantee rather than a
+        // behavioural contract.
         var (collateralAsset, collateralAmount) =
             ComputeCollateral(command.Asset, command.Type, command.Amount, command.Price);
 
@@ -269,8 +269,8 @@ public class OrderService
                 "Failed to lock {Amount} {Asset} for order {OrderId} (user {UserId}): {Message}",
                 collateralAmount, collateralAsset, createdOrder.Id, command.UserId, lockMessage);
 
-            // سفارش به‌صراحت Failed علامت می‌خورد تا در وضعیت Pending رها نشود؛ در آن
-            // صورت endpoint تأیید دستی می‌توانست بعداً بدون وثیقه فعالش کند.
+            // The order is explicitly marked Failed rather than left Pending; otherwise the manual
+            // confirmation endpoint could later activate it with no collateral behind it.
             await _orderRepository.UpdateStatusAsync(createdOrder.Id, OrderStatus.Failed,
                 $"قفل وثیقه انجام نشد: {lockMessage}");
 
@@ -280,7 +280,7 @@ public class OrderService
         _logger.LogInformation("Locked {Amount} {Asset} for order {OrderId} (user {UserId}).",
             collateralAmount, collateralAsset, createdOrder.Id, command.UserId);
 
-        // تأیید سفارش — از این لحظه قابل تطبیق می‌شود، و وثیقه‌اش از قبل قفل است.
+        // Confirm the order. From here it is matchable, and its collateral is already locked.
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
 
         if (!confirmSuccess)
@@ -290,11 +290,11 @@ public class OrderService
     }
 
     /// <summary>
-    /// برای مسیر مظنه‌ای: سفارش را می‌سازد، قفل و تأیید می‌کند و <b>تطبیق نمی‌دهد</b>.
+    /// For the quote-fill path: creates, locks and confirms the order, and <b>does not match</b> it.
     ///
-    /// مسیر مظنه‌ای دو سفارش می‌سازد و بعد یک بار تطبیق می‌دهد؛ اگر ساختن هر کدام خودش
-    /// تطبیق را اجرا می‌کرد، سفارش اول ممکن بود با چیز دیگری در دفتر تطبیق بخورد و
-    /// جفت‌شدن دو طرف مظنه به هم بریزد.
+    /// The quote path creates two orders and then matches once. If creating each one ran matching
+    /// itself, the first order could match against something else in the book and break the pairing
+    /// of the two sides of the quote.
     /// </summary>
     public async Task<Order?> CreateLockedAndConfirmedOrderForQuoteAsync(CreateOrderCommand command)
     {
@@ -320,7 +320,7 @@ public class OrderService
 
     /// <summary>
     /// Confirm order status from Pending to Confirmed with concurrency safety
-    /// تایید وضعیت سفارش از Pending به Confirmed با ایمنی همزمانی
+    /// Moves an order from Pending to Confirmed, safely under concurrency.
     /// </summary>
     public async Task<bool> ConfirmOrderIfPendingAsync(Guid orderId, CancellationToken cancellationToken = default)
     {
@@ -381,10 +381,10 @@ public class OrderService
     {
         Log.Information(">--------------------- GetBestBidAskAsync({asset}, {tradingType}) ---------------------<", asset, tradingType);
 
-        // در حالت مظنه‌ای، قیمت‌ها از مظنهٔ منتشرشده می‌آیند و نه از دفتر سفارش (issue #48).
+        // In dealer mode prices come from the published quote, not the order book (issue #48).
         //
-        // در این حالت هیچ سفارشی از قبل در دفتر نمی‌خوابد، پس اگر از دفتر بخوانیم بین دو
-        // معامله «قیمتی وجود ندارد» برمی‌گردد — در حالی که ادمین قیمت داده و آماده است.
+        // In that mode no orders rest in the book, so reading from the book would report "no price"
+        // between trades — while the admin has in fact published one and is ready to deal.
         if (_marketMode.GetMode(asset) == MarketMode.Dealer)
         {
             var quote = await _quoteRepository.GetActiveAsync(asset);
@@ -397,8 +397,8 @@ public class OrderService
 
             Log.Information("Quote prices for {Asset}: bid {Bid}, ask {Ask}", asset, quote.BuyPrice, quote.SellPrice);
 
-            // Bid همان قیمتی است که ادمین می‌خرد و Ask قیمتی که می‌فروشد — دقیقاً همان
-            // معنایی که دفتر سفارش هم می‌داد، پس مصرف‌کننده‌ها تغییری نمی‌بینند.
+            // Bid is the price the admin buys at and Ask the price they sell at — the same meaning
+            // the order book gave, so consumers see no change.
             return new BestPricesDto
             {
                 Symbol = asset,
@@ -411,14 +411,14 @@ public class OrderService
 
         //Log.Information("orders:\n" + JsonConvert.SerializeObject(orders, Formatting.Indented));
 
-        // شرط o.IsMaker() برداشته شد.
+        // The o.IsMaker() condition was removed.
         //
-        // Order.Role همیشه Maker است (هیچ مسیری آن را چیز دیگری نمی‌کند)، پس آن شرط
-        // همیشه درست بود و چیزی را فیلتر نمی‌کرد — ولی معنادار به نظر می‌رسید. خطرش
-        // این بود که اگر روزی Role درست ست شود، این تابع بی‌صدا سفارش‌های taker را از
-        // محاسبهٔ «بهترین قیمت» کنار می‌گذاشت و قیمت اشتباه به کاربر نشان داده می‌شد.
+        // Order.Role is always Maker — no path sets it to anything else — so that condition was
+        // always true and filtered nothing, while looking as though it did. The danger was that if
+        // Role were ever set correctly, this method would silently drop taker orders from the
+        // best-price calculation and show the user a wrong price.
         //
-        // آنچه واقعاً لازم است همین دو شرط باقی‌مانده است: سفارش باز، در همان بازار.
+        // What is actually needed is the two remaining conditions: an open order, in that market.
         var activeOrders = orders.Where(o =>
             o.IsActive() &&
             o.TradingType == tradingType)
@@ -476,25 +476,18 @@ public class OrderService
             throw new InvalidOperationException("سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند");
         }
 
-        //if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
-        //{
-        //    throw new InvalidOperationException("فقط سفارشات در انتظار یا تایید شده قابل لغو هستند");
-        //}
-
-        //return await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
-
         var success = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
 
         if (success)
         {
             try
             {
-                // «آنچه قفل شد» منهای «آنچه معاملات مصرف کردند» — نه یک بازمحاسبهٔ مستقل.
+                // "What was locked" minus "what the trades consumed" — not an independent recalculation.
                 //
-                // پیش‌تر اینجا RemainingAmount × Price بدون گرد کردن حساب می‌شد، یعنی
-                // فرمول سومی جدا از فرمول قفل و فرمول تسویه. سه راه متفاوت برای محاسبهٔ
-                // یک کمیت، تضمین می‌کرد که پس از لغوِ یک سفارشِ نیمه‌پرشده باقی‌مانده‌ای
-                // جا بماند — و در جهت دیگر، می‌توانست بیش از مقدار قفل‌شده آزاد کند
+                // This used to compute RemainingAmount x Price without rounding — a third formula,
+                // separate from the lock's and from settlement's. Three different ways of computing
+                // one quantity guaranteed that cancelling a partially-filled order left a residue
+                // behind, and in the other direction could release more than was ever locked
                 // (issue #52).
                 var (assetToUnlock, amountToUnlock) = await _collateralReconciler.ComputeResidualLockAsync(order);
 
@@ -526,12 +519,12 @@ public class OrderService
     }
 
     /// <summary>
-    /// دریافت تمام سفارشات فعال یک کاربر
+    /// Returns every active order belonging to one user.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <returns>لیست سفارشات فعال کاربر</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The user's active orders.</returns>
     /// <remarks>
-    /// این متد از repository برای دریافت سفارشات فعال استفاده می‌کند
+    /// Delegates to the repository.
     /// </remarks>
     public async Task<List<Order>> GetActiveOrdersByUserIdAsync(Guid userId)
     {
@@ -544,17 +537,14 @@ public class OrderService
     }
 
     /// <summary>
-    /// کنسل کردن تمام سفارشات فعال یک کاربر
+    /// Cancels every active order belonging to one user.
     /// </summary>
-    /// <param name="userId">شناسه کاربر که سفارشاتش باید کنسل شوند</param>
-    /// <param name="reason">دلیل کنسل کردن سفارشات (اختیاری)</param>
-    /// <returns>تعداد سفارشاتی که با موفقیت کنسل شدند</returns>
+    /// <param name="userId">The user whose orders should be cancelled.</param>
+    /// <param name="reason">Optional cancellation reason.</param>
+    /// <returns>How many orders were cancelled successfully.</returns>
     /// <remarks>
-    /// این تابع:
-    /// 1. تمام سفارشات فعال کاربر را دریافت می‌کند
-    /// 2. به صورت یکی یکی آنها را کنسل می‌کند
-    /// 3. تعداد سفارشات کنسل شده را برمی‌گرداند
-    /// 4. در صورت خطا در کنسل هر سفارش، ادامه می‌دهد و آن را لاگ می‌کند
+    /// Fetches the user's active orders, cancels them one at a time, and returns how many
+    /// succeeded. A failure on one order is logged and does not stop the rest.
     /// </remarks>
     public async Task<int> CancelAllActiveOrdersByUserIdAsync(Guid userId, string? reason = null)
     {

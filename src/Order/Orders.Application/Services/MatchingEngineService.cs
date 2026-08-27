@@ -15,13 +15,13 @@ namespace Orders.Application.Services;
 
 /// <summary>
 /// Thread-Safe Matching Engine with Database Locking and Maker/Taker Support
-/// موتور تطبیق ایمن با قفل پایگاه داده و پشتیبانی از Maker/Taker
+/// Matching engine, made safe by database locking, with maker/taker support.
 /// </summary>
 public class MatchingEngineService : BackgroundService, IMatchingEngine
 {
     /// <summary>
-    /// .NET اجازه نمی‌دهد Singleton به Scoped وابسته شود، چون ممکن است Scoped قبلاً Dispose شده باشد.
-    /// بخاطر همین از ین روش استفاده کردم
+    /// .NET does not allow a singleton to depend on a scoped service, since the scoped one may
+    /// already have been disposed. Hence resolving a scope per unit of work instead.
     /// </summary>
     private readonly IServiceScopeFactory _scopeFactory;
 
@@ -32,8 +32,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private bool _isRunning = false;
 
     /// <summary>
-    /// شناسهٔ کاربر بازارگردان (ادمین). اگر تنظیم شده باشد و RequireMarketMakerCounterparty
-    /// روشن باشد، هر معامله باید یک طرفش این کاربر باشد.
+    /// The market maker's (admin's) user id. When it is set and RequireMarketMakerCounterparty is
+    /// on, every trade must have this user on one side.
     /// </summary>
     // The single-market-maker rule that used to live here is gone.
     //
@@ -73,7 +73,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 var _walletApiClient = scope.ServiceProvider.GetRequiredService<IWalletApiClient>();
 
                 // Use semaphore to ensure only one processing cycle runs at a time
-                // استفاده از semaphore برای اطمینان از اجرای یک چرخه در هر زمان
+                // The semaphore ensures only one cycle runs at a time.
                 if (await _processingSemaphore.WaitAsync(100, stoppingToken))
                 {
                     try
@@ -105,10 +105,10 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     }
 
     /// <summary>
-    /// سمافور اینجا آزاد می‌شود، نه در انتهای ExecuteAsync. این نمونه بین حلقهٔ
-    /// پس‌زمینه و مسیر درخواست‌ها مشترک است (issue #53)، پس اگر همزمان با توقف
-    /// حلقه Dispose می‌شد، درخواستی که در همان لحظه در حال پردازش بود
-    /// ObjectDisposedException می‌گرفت.
+    /// The semaphore is released here rather than at the end of ExecuteAsync. This instance is
+    /// shared between the background loop and the request path (issue #53), so disposing it when
+    /// the loop stops would give any request being processed at that moment an
+    /// ObjectDisposedException.
     /// </summary>
     public override void Dispose()
     {
@@ -118,7 +118,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Process single order with immediate Maker/Taker identification
-    /// پردازش سفارش منفرد با تشخیص فوری Maker/Taker
+    /// Processes a single order, determining maker/taker immediately.
     /// </summary>
     public async Task<bool> ProcessOrderForMatchingAsync(Guid orderId)
     {
@@ -191,7 +191,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Process single order by ID (new method)
-    /// پردازش سفارش منفرد با شناسه
+    /// Processes a single order by id.
     /// </summary>
     public async Task ProcessOrderAsync(Guid orderId, CancellationToken cancellationToken = default)
     {
@@ -200,7 +200,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Process single order (legacy method - enhanced with Maker/Taker)
-    /// پردازش سفارش منفرد (متد قدیمی - بهبود یافته با Maker/Taker)
+    /// Processes a single order. Legacy entry point, since extended with maker/taker handling.
     /// </summary>
     public async Task ProcessOrderAsync(Order order, CancellationToken cancellationToken = default)
     {
@@ -209,7 +209,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Process all pending orders with thread-safe atomic matching
-    /// پردازش تمام سفارشات در انتظار با تطبیق اتمی ایمن
+    /// Processes all pending orders using safe atomic matching.
     /// </summary>
     public async Task ProcessAllPendingOrdersAsync(CancellationToken cancellationToken = default)
     {
@@ -219,7 +219,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             var matchingRepository = scope.ServiceProvider.GetRequiredService<OrderMatchingRepository>();
 
             // Get all assets with active orders
-            // دریافت تمام دارایی‌هایی که سفارش فعال دارند
+            // Every asset that currently has active orders.
             var activeAssets = await matchingRepository.GetActiveAssetsAsync();
             
             if (!activeAssets.Any())
@@ -232,7 +232,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 activeAssets.Count, string.Join(", ", activeAssets));
 
             // Process each asset independently
-            // پردازش مستقل هر دارایی
+            // Each asset is processed independently.
             var marketMode = scope.ServiceProvider.GetRequiredService<MarketModeProvider>();
 
             var tasks = activeAssets
@@ -283,7 +283,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Process orders for a single asset with atomic matching
-    /// پردازش سفارشات یک دارایی با تطبیق اتمی
+    /// Processes one asset's orders using atomic matching.
     /// </summary>
     private async Task ProcessSingleAssetAsync(string asset, CancellationToken cancellationToken)
     {
@@ -298,7 +298,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             while (matchCount < maxMatches && !cancellationToken.IsCancellationRequested)
             {
                 // Get locked orders for this asset
-                // دریافت سفارشات قفل‌شده برای این دارایی
+                // Fetch this asset's orders under a database lock.
                 var buyOrders = await matchingRepository.GetBuyOrdersWithLockAsync(asset);
                 var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(asset);
 
@@ -309,7 +309,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 }
 
                 // Find best matching pair
-                // یافتن بهترین جفت برای تطبیق
+                // Find the best pair to match.
                 var (buyOrder, sellOrder, matchQty) = FindBestMatch(buyOrders, sellOrders);
 
                 if (buyOrder == null || sellOrder == null || matchQty <= 0)
@@ -319,7 +319,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 }
 
                 // Execute atomic match with enhanced Maker/Taker logic
-                // اجرای تطبیق اتمی با منطق بهبود یافته Maker/Taker
+                // Run the atomic match, including maker/taker handling.
                 var result = await ExecuteAtomicMatchWithMakerTakerAsync(
                     matchingRepository, buyOrder, sellOrder, matchQty);
 
@@ -350,7 +350,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Find the best matching pair using Price-Time Priority
-    /// یافتن بهترین جفت با اولویت قیمت-زمان
+    /// Finds the best pair under price-time priority.
     /// </summary>
     private static (Order? BuyOrder, Order? SellOrder, decimal MatchQuantity) FindBestMatch(
         List<Order> buyOrders, 
@@ -358,15 +358,15 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     {
         // Buy orders are sorted by Price DESC, Time ASC (highest price first)
         // Sell orders are sorted by Price ASC, Time ASC (lowest price first)
-        // سفارشات خرید بر اساس قیمت نزولی، زمان صعودی (بالاترین قیمت اول)
-        // سفارشات فروش بر اساس قیمت صعودی، زمان صعودی (پایین‌ترین قیمت اول)
+        // Buys sort by price descending then time ascending (highest price first);
+        // sells by price ascending then time ascending (lowest price first).
         
         foreach (var buyOrder in buyOrders.Where(b => b.RemainingAmount > 0))
         {
             foreach (var sellOrder in sellOrders.Where(s => s.RemainingAmount > 0))
             {
                 // Check price compatibility: Buy price >= Sell price
-                // بررسی سازگاری قیمت: قیمت خرید >= قیمت فروش
+                // Prices are compatible when the buy price is at least the sell price.
                 if (buyOrder.Price >= sellOrder.Price)
                 {
                     var matchQty = Math.Min(buyOrder.RemainingAmount, sellOrder.RemainingAmount);
@@ -375,8 +375,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                 
                 // Since sell orders are sorted by price ASC, 
                 // if current sell is too expensive, all following will be too
-                // چون سفارشات فروش بر اساس قیمت صعودی مرتب شده‌اند،
-                // اگر فروش فعلی خیلی گران باشد، بقیه هم گران خواهند بود
+                // Sells are sorted by ascending price, so if this one is already too expensive
+                // every later one is too.
                 break;
             }
         }
@@ -386,7 +386,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Get matching orders for immediate execution (Taker identification)
-    /// دریافت سفارشات قابل تطبیق برای اجرای فوری (تشخیص Taker)
+    /// Returns the orders eligible for immediate execution, identifying the taker.
     /// </summary>
     private async Task<List<Order>> GetMatchingOrdersAsync(OrderMatchingRepository matchingRepository, Order incomingOrder)
     {
@@ -419,16 +419,15 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     }
 
     /// <summary>
-    /// بررسی مجاز بودن طرف مقابل برای تطبیق.
+    /// Decides whether a counterparty is allowed to match.
     ///
-    /// دو قاعده:
-    /// ۱. هیچ کاربری با خودش معامله نمی‌کند. این قاعده همیشه فعال است — خودمعاملگی
-    ///    از نظر اقتصادی خنثی است اما رد حسابرسی نادرست تولید می‌کند و می‌تواند برای
-    ///    ساختن حجم صوری استفاده شود.
-    /// ۲. اگر الزام بازارگردان فعال باشد، یک طرف معامله باید ادمین باشد. در این مرحله
-    ///    از محصول، مشتری‌ها فقط با ادمین معامله می‌کنند و نه با یکدیگر.
+    /// Two rules:
+    /// 1. No user trades with themselves. Always enforced — self-trading is economically neutral
+    ///    but produces a false audit trail and can be used to manufacture fake volume.
+    /// 2. When the market-maker requirement is on, one side must be the admin. At this stage of
+    ///    the product customers trade only with the admin, never with each other.
     ///
-    /// سفارش رد‌شده لغو نمی‌شود؛ فقط در این دور تطبیق نادیده گرفته می‌شود و باز می‌ماند.
+    /// A rejected order is not cancelled; it is skipped for this matching round and stays open.
     /// </summary>
     private bool IsAllowedCounterparty(Order incomingOrder, Order candidate)
     {
@@ -445,7 +444,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Execute trade with proper Maker/Taker fee calculation
-    /// اجرای معامله با محاسبه صحیح کارمزد Maker/Taker
+    /// Executes the trade, computing maker and taker fees correctly.
     /// </summary>
     private async Task ExecuteTradeWithMakerTakerLogic(
         OrderMatchingRepository matchingRepository,
@@ -475,13 +474,12 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
                     "Maker/Taker trade executed: Maker:{MakerId} Taker:{TakerId} Qty:{Qty} Price:{Price}",
                     makerOrder.Id, takerOrder.Id, quantity, result.Trade?.Price);
 
-                // آزادسازی باقی‌ماندهٔ وثیقه عمداً اینجا انجام نمی‌شود.
+                // Releasing residual collateral deliberately does not happen here.
                 //
-                // اینجا قفلِ موجودی هنوز ساخته نشده (OrderService بعد از تطبیق قفل
-                // می‌کند — یافتهٔ C-5) و تسویه هم که آن را مصرف می‌کند بعدتر توسط
-                // outbox اجرا می‌شود. تلاش برای آزادسازی در این نقطه با هر دو مسابقه
-                // می‌دهد و در تست واقعی هم شکست خورد. حالا OutboxProcessorService پس
-                // از تسویهٔ موفق این کار را می‌کند (issue #52).
+                // At this point the balance lock does not exist yet — OrderService locks after
+                // matching, audit finding C-5 — and the settlement that consumes it runs later,
+                // via the outbox. Releasing here races both, and did fail in a real test.
+                // OutboxProcessorService now does it after a successful settlement (issue #52).
             }
             else
             {
@@ -496,7 +494,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
 
     /// <summary>
     /// Execute atomic match with enhanced Maker/Taker logic
-    /// اجرای تطبیق اتمی با منطق بهبود یافته Maker/Taker
+    /// Runs the atomic match, including maker/taker handling.
     /// </summary>
     private async Task<(bool Success, Trade? Trade, string? ErrorMessage)> ExecuteAtomicMatchWithMakerTakerAsync(
         OrderMatchingRepository matchingRepository,
@@ -519,17 +517,17 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         }
     }
 
-    // یک مسیر ساخت معامله، نه دو تا (issue #40).
+    // One trade-creation path, not two (issue #40).
     //
-    // اینجا CreateMakerTakerTrade بود: یک Trade کامل می‌ساخت که هرگز ذخیره نمی‌شد. موتور
-    // بلافاصله ExecuteAtomicMatchAsync را صدا می‌زد و آن، معاملهٔ خودش را با CreateTrade
-    // می‌ساخت — همان که واقعاً ذخیره و برای تسویه صف می‌شد.
+    // CreateMakerTakerTrade used to live here: it built a complete Trade that was never saved. The
+    // engine immediately called ExecuteAtomicMatchAsync, which built its own trade with CreateTrade
+    // — and that was the one actually stored and queued for settlement.
     //
-    // دو مسیر یعنی دو منبع حقیقت: نرخ کارمزد اینجا 0.000 بود و در مخزن 0.001/0.002، و چون
-    // نسخهٔ مخزن ذخیره می‌شد، کارمزدها به واحد ارز مظنه محاسبه شدند و تسویهٔ هر معامله با
-    // «کارمزد از مبلغ معامله بیشتر است» رد شد. تغییر یکی، بی‌صدا در دیگری نادیده گرفته
-    // می‌شد — دقیقاً همان‌طور که آن باگ پنهان ماند.
+    // Two paths meant two sources of truth: the fee rates here were 0.000 while the repository's
+    // were 0.001/0.002, and because the repository's version was the one saved, fees came out
+    // denominated in the quote currency and every settlement was refused with "fee exceeds trade
+    // amount". Changing one was silently ignored by the other — which is exactly how that bug hid.
     //
-    // حالا Trade.Create فقط از OrderMatchingRepository.CreateTrade فراخوانی می‌شود.
-    // SingleTradeCreationPathTests این را در سطح IL نگه می‌دارد تا مسیر دوم دوباره برنگردد.
+    // Trade.Create is now called only from OrderMatchingRepository.CreateTrade.
+    // SingleTradeCreationPathTests enforces that at the IL level so a second path cannot come back.
 }

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 using TallaEgg.Core.DTOs;
@@ -189,16 +189,13 @@ public class OrderRepository : IOrderRepository
     }
 
     /// <summary>
-    /// دریافت تمام سفارشات باز و فعال یک کاربر خاص
+    /// Returns every open, active order belonging to one user.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <returns>لیست سفارشات فعال کاربر (وضعیت Pending، Confirmed یا Partially و مقدار باقی‌مانده بیشتر از صفر)</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The user's active orders: status Pending, Confirmed or Partially, with a remaining amount above zero.</returns>
     /// <remarks>
-    /// این تابع سفارشاتی را برمی‌گرداند که:
-    /// 1. متعلق به کاربر مشخص شده باشند
-    /// 2. وضعیت آنها Pending، Confirmed یا Partially باشد
-    /// 3. مقدار باقی‌مانده آنها بیشتر از صفر باشد
-    /// 4. به ترتیب تاریخ ایجاد نزولی مرتب شده باشند
+    /// Orders are filtered to the given user, to status Pending/Confirmed/Partially, and to a
+    /// remaining amount above zero, then sorted by creation date descending.
     /// </remarks>
     public async Task<List<Order>> GetActiveOrdersByUserIdAsync(Guid userId)
     {

@@ -1,4 +1,4 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Core;
@@ -12,7 +12,7 @@ public class Order
     public decimal Price { get; private set; }
     public Guid UserId { get; private set; }
     /// <summary>
-    /// جهت سفارش (خرید یا فروش)
+    /// Order side: buy or sell.
     /// </summary>
     public OrderSide Side { get; private set; }
     public OrderType Type { get; set; }
@@ -100,18 +100,18 @@ public class Order
         };
     }
 
-    // CreateMarketOrder و CreateTakerOrder حذف شدند.
+    // CreateMarketOrder and CreateTakerOrder were removed.
     //
-    // هیچ‌کدام از کد تولیدی صدا زده نمی‌شدند — CreateMakerOrder تنها کارخانهٔ واقعی است.
-    // هر دو Role را روی Taker می‌گذاشتند، وضعیتی که هیچ سفارشی در عمل به آن نمی‌رسید و
-    // همین باعث شد هنگام بررسی #35 اول به نظر برسد مدل maker/taker کار می‌کند.
+    // Neither was called from production code — CreateMakerOrder is the only real factory. Both
+    // set Role to Taker, a state no order actually reaches, which is why the maker/taker model
+    // looked like it worked at first glance while investigating #35.
     //
-    // CreateTakerOrder علاوه بر آن ناقص هم بود: نماد، قیمت و سمت را خالی می‌گذاشت تا
-    // «از سفارش والد پر شود» — کدی که هرگز نوشته نشد. یک بررسی اشتباه هم داشت
-    // (userId == Guid.NewGuid()) که هرگز درست نمی‌شود.
+    // CreateTakerOrder was also incomplete: it left symbol, price and side blank to be "filled in
+    // from the parent order" — code that was never written. It also carried a broken check,
+    // userId == Guid.NewGuid(), which can never be true.
     //
-    // نقش maker/taker خاصیت یک fill است نه یک سفارش، و Trade آن را درست ثبت می‌کند.
-    // جزئیات در issue #35.
+    // The maker/taker role is a property of a fill, not of an order, and Trade records it
+    // correctly. Details in issue #35.
 
     public void Confirm()
     {
@@ -152,13 +152,12 @@ public class Order
         Notes = reason;
     }
 
-    // AcceptTakerOrder حذف شد: غیرقابل‌دسترس بود. شرط takerOrder.Role == Taker داشت،
-    // وضعیتی که هیچ سفارش تولیدی به آن نمی‌رسد. تطبیق واقعی در ExecuteAtomicMatchAsync
-    // انجام می‌شود.
+    // AcceptTakerOrder was removed as unreachable: it required takerOrder.Role == Taker, a state
+    // no production order reaches. Real matching happens in ExecuteAtomicMatchAsync.
     //
-    // IsMaker/IsTaker هم حذف شدند: Role همیشه Maker است، پس IsMaker() همیشه true و
-    // IsTaker() همیشه false بود. تنها استفاده‌شان یک فیلترِ همیشه‌درست در محاسبهٔ
-    // «بهترین قیمت» بود که معنادار به نظر می‌رسید ولی چیزی را فیلتر نمی‌کرد.
+    // IsMaker/IsTaker went too: Role is always Maker, so IsMaker() was always true and IsTaker()
+    // always false. Their only use was an always-true filter in the best-price calculation, which
+    // looked meaningful but filtered nothing.
 
     public decimal GetTotalValue() => RemainingAmount * Price;
 

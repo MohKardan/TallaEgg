@@ -54,7 +54,7 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
-// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+// Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
@@ -63,13 +63,13 @@ if (urls is { Length: > 0 })
     builder.WebHost.UseUrls(urls);
 }
 
-// تنظیم اتصال به دیتابیس SQL Server
+// SQL Server connection.
 builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
         b => b.MigrationsAssembly("Orders.Infrastructure"))
     .LogTo(Console.WriteLine, LogLevel.None)); // Disable all EF Core logging
 
-// فقط در production محافظت فعال شود
+// Protection is only wired up in Production.
 if (builder.Environment.IsProduction())
 {
     builder.Services.AddAuthentication("ApiKey")
@@ -78,7 +78,7 @@ if (builder.Environment.IsProduction())
             options.ApiKey = APIKeyConstant.RequireTallaEggApiKey();
         });
 
-    // Authorization Policy سراسری فقط برای production
+    // Global authorization policy, Production only.
     builder.Services.AddAuthorization(options =>
     {
         options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -88,7 +88,7 @@ if (builder.Environment.IsProduction())
 }
 else
 {
-    // برای development فقط authorization اضافه کنید (بدون authentication)
+    // Development adds authorization only, with no authentication in front of it.
     builder.Services.AddAuthorization();
 }
 
@@ -108,24 +108,24 @@ builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient,
     client.BaseAddress = new Uri(walletApiUrl);
 });
 
-// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+// CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddTallaEggErrorHandling();
 
 builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
-// Add Matching Engine — یک نمونهٔ واحد (issue #53). جزئیات و دلیلش در
-// MatchingEngineRegistration نوشته شده، که تست‌ها هم از همان استفاده می‌کنند.
+// Matching engine — a single instance (issue #53). The reasoning lives in
+// MatchingEngineRegistration, which the tests call too.
 builder.Services.AddMatchingEngine();
 
-// آزادسازی باقی‌ماندهٔ وثیقه (issue #52). هم OrderService (هنگام لغو) و هم
-// OutboxProcessorService (پس از تسویه) از همین یک نمونه استفاده می‌کنند تا فرمول
-// «چقدر قفل مانده» فقط یک جا تعریف شده باشد.
+// Residual collateral release (issue #52). Both OrderService, on cancellation, and
+// OutboxProcessorService, after settlement, share this one instance so the "how much is still
+// locked" formula is defined in exactly one place.
 builder.Services.AddScoped<Orders.Application.Services.OrderCollateralReconciler>();
 
-// مدل مظنه‌ای (issue #48): ادمین قیمت منتشر می‌کند و مشتری روی همان قیمت معامله می‌کند،
-// بدون اینکه سفارشی از قبل در دفتر بخوابد.
+// Dealer model (issue #48): the admin publishes a price and the customer trades against it,
+// with no orders resting in the book.
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeProvider>();
 builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
@@ -147,7 +147,7 @@ builder.Services.AddHttpClient("BrsApiPriceProvider");
 
 builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infrastructure.AutoQuoteSettingsRepository>();
 
-// فعال/غیرفعال بودن هر نماد، تغییرپذیر با دستور ادمین در بات — نه یک const که rebuild بخواهد.
+// Per-symbol enable/disable, changeable by an admin bot command — not a const needing a rebuild.
 builder.Services.AddScoped<Orders.Core.ISymbolSettingsRepository, Orders.Infrastructure.SymbolSettingsRepository>();
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhPriceProvider(
@@ -195,7 +195,7 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول و فیلتر EF Core
+// Serilog: rolling files, console, and an EF Core filter.
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
     .WriteTo.Console()
@@ -208,21 +208,21 @@ var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- مایگریشن و سیید اولیه ---
+// --- Migrations and initial seed ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<OrdersDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 
-    // یک نماد با مظنهٔ فعال ولی خارج از حالت Dealer یعنی تناقض بین چیزی که ادمین منتشر
-    // کرده و چیزی که پیکربندی می‌گوید — فقط لاگ می‌کند، سرویس را متوقف نمی‌کند (issue #73).
+    // A symbol with an active quote but not in dealer mode means the admin's published price and
+    // the configuration disagree. Logged only; it does not stop the service (issue #73).
     var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
     await marketModeValidator.ValidateAsync();
 }
 
 
-// Authentication و Authorization فقط در production
+// Authentication and authorization, Production only.
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
@@ -231,7 +231,7 @@ if (app.Environment.IsProduction())
 }
 app.UseAuthorization();
 
-// تنظیم CORS
+// Apply the CORS policy.
 app.UseTallaEggCors();
 
 
@@ -246,11 +246,11 @@ app.UseSwagger();
 
 // Order management endpoints
 
-// ──────────────────────────── مدل مظنه‌ای (issue #48) ────────────────────────────
+// ──────────────────────────── Dealer model (issue #48) ────────────────────────────
 
 /// <summary>
-/// انتشار مظنهٔ ادمین برای یک نماد. هیچ سفارشی در دفتر نمی‌گذارد و هیچ وثیقه‌ای قفل نمی‌کند.
-/// مظنهٔ قبلی همان نماد به‌صورت اتمی غیرفعال می‌شود.
+/// Publishes the admin's quote for a symbol. Places no order in the book and locks no collateral.
+/// The symbol's previous quote is deactivated atomically.
 /// </summary>
 app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository quotes) =>
 {
@@ -263,8 +263,8 @@ app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository 
     }
     catch (ArgumentException ex)
     {
-        // پیام‌های Quote.Publish برای کاربر نوشته شده‌اند (مثلاً اسپرد منفی)، پس عیناً
-        // برگردانده می‌شوند و با یک متن عمومی جایگزین نمی‌گردند.
+        // Quote.Publish's messages are written for the user — a negative spread, for instance — so
+        // they are returned as-is rather than replaced with generic text.
         return Results.BadRequest(ApiResponse<QuoteDto>.Fail(ex.Message));
     }
     catch (Exception ex)
@@ -274,7 +274,7 @@ app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository 
     }
 });
 
-/// <summary>مظنهٔ فعال یک نماد.</summary>
+/// <summary>The active quote for a symbol.</summary>
 app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuoteRepository quotes) =>
 {
     var symbol = $"{Base}/{Quote}";
@@ -285,9 +285,9 @@ app.MapGet("/api/quotes/{Base}/{Quote}", async (string Base, string Quote, IQuot
         : Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(quote)));
 });
 
-// ─────────────────────── مظنهٔ اتومات (issue #90) ───────────────────────
+// ─────────────────────── Automatic quotes (issue #90) ───────────────────────
 
-/// <summary>تنظیمات فعلی مظنهٔ اتومات یک نماد.</summary>
+/// <summary>A symbol's current automatic-quote settings.</summary>
 app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string Quote, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
     var symbol = $"{Base}/{Quote}";
@@ -296,7 +296,7 @@ app.MapGet("/api/autoquote-settings/{Base}/{Quote}", async (string Base, string 
     return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings)));
 });
 
-/// <summary>تغییر اسپرد مظنهٔ اتومات یک نماد.</summary>
+/// <summary>Changes a symbol's automatic-quote spread.</summary>
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
     string Base, string Quote, UpdateAutoQuoteSpreadRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
@@ -316,7 +316,7 @@ app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
     }
 });
 
-/// <summary>روشن/خاموش کردن مظنهٔ اتومات یک نماد.</summary>
+/// <summary>Turns a symbol's automatic quoting on or off.</summary>
 app.MapPost("/api/autoquote-settings/{Base}/{Quote}/enabled", async (
     string Base, string Quote, SetAutoQuoteEnabledRequest request, Orders.Core.IAutoQuoteSettingsRepository settingsRepo) =>
 {
@@ -338,16 +338,16 @@ static AutoQuoteSettingsDto ToAutoQuoteSettingsDto(Orders.Core.AutoQuoteSettings
     UpdatedAt = s.UpdatedAt
 };
 
-// ─────────────────────── فعال/غیرفعال بودن نماد ─────────────────────────
+// ─────────────────────── Symbol enable/disable ─────────────────────────
 
-/// <summary>نمادهایی که الان قابل معامله‌اند — بات از این برای منوی انتخاب نماد استفاده می‌کند.</summary>
+/// <summary>The symbols currently tradable — the bot uses this for its symbol menu.</summary>
 app.MapGet("/api/symbols/active", async (Orders.Core.ISymbolSettingsRepository settingsRepo) =>
 {
     var symbols = await settingsRepo.GetActiveSymbolsAsync();
     return Results.Ok(ApiResponse<List<string>>.Ok(symbols.ToList()));
 });
 
-/// <summary>فعال/غیرفعال کردن یک نماد.</summary>
+/// <summary>Enables or disables a symbol.</summary>
 app.MapPost("/api/symbols/{Base}/{Quote}/active", async (
     string Base, string Quote, SetSymbolActiveRequest request, Orders.Core.ISymbolSettingsRepository settingsRepo) =>
 {
@@ -368,8 +368,8 @@ static SymbolSettingsDto ToSymbolSettingsDto(Orders.Core.SymbolSettings s) => ne
     UpdatedAt = s.UpdatedAt
 };
 
-// نگاشت اینجاست و نه روی خود DTO: TallaEgg.Core به Orders.Core ارجاع ندارد و نباید
-// داشته باشد — DTO مشترک بین سرویس‌هاست و نباید به مدل دامنهٔ یکی از آن‌ها وابسته شود.
+// The mapping lives here rather than on the DTO: TallaEgg.Core does not reference Orders.Core and
+// should not — the DTO is shared between services and must not depend on one service's domain model.
 static QuoteDto ToQuoteDto(Quote q) => new()
 {
     Id = q.Id,
@@ -407,8 +407,8 @@ app.MapGet("/api/quotes/{Base}/{Quote}/history", async (
 });
 
 /// <summary>
-/// پذیرش مظنه توسط مشتری: دو سفارش دقیقاً به اندازهٔ مقدار درخواستی ساخته، قفل و بلافاصله
-/// تطبیق داده می‌شوند. مشتری قیمت وارد نمی‌کند.
+/// A customer fills a quote: two orders for exactly the requested quantity are created, locked and
+/// matched immediately. The customer does not enter a price.
 /// </summary>
 app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillService fillService) =>
 {
@@ -423,14 +423,14 @@ app.MapPost("/api/quotes/accept", async (AcceptQuoteRequest request, QuoteFillSe
 // ─────────────────────────────────────────────────────────────────────────────────
 
 /// <summary>
-/// ایجاد سفارش واحد - پشتیبانی از تمام انواع سفارشات (Limit/Market) با تشخیص خودکار Maker/Taker
+/// Creates a single order of any type (limit or market), determining maker/taker automatically.
 /// </summary>
-/// <param name="request">درخواست ایجاد سفارش</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>پاسخ جامع شامل سفارش، نقش، و معاملات اجرا شده</returns>
-/// <response code="200">سفارش با موفقیت ایجاد شد</response>
-/// <response code="400">داده‌های نامعتبر یا نقض قوانین تجاری</response>
-/// <response code="401">دسترسی غیرمجاز</response>
+/// <param name="request">Order creation request.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The order, its role, and any trades executed.</returns>
+/// <response code="200">Order created.</response>
+/// <response code="400">Invalid data, or a business rule was violated.</response>
+/// <response code="401">Unauthorized.</response>
 app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, OrderService orderService) =>
 {
     try
@@ -474,13 +474,13 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
 .ProducesValidationProblem(400);
 
 /// <summary>
-/// دریافت اطلاعات سفارش با ID
+/// Returns an order by id.
 /// </summary>
-/// <param name="orderId">شناسه سفارش</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>اطلاعات سفارش در صورت یافتن</returns>
-/// <response code="200">سفارش یافت و بازگردانده شد</response>
-/// <response code="404">سفارش یافت نشد</response>
+/// <param name="orderId">Order id.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The order, if found.</returns>
+/// <response code="200">Order found.</response>
+/// <response code="404">Order not found.</response>
 app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -503,15 +503,15 @@ app.MapGet("/api/orders/{orderId}", async (Guid orderId, OrderService orderServi
 .Produces(404);
 
 /// <summary>
-/// لغو سفارش
+/// Cancels an order.
 /// </summary>
-/// <param name="orderId">شناسه سفارش</param>
-/// <param name="reason">دلیل لغو (اختیاری)</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>نتیجه عملیات لغو</returns>
-/// <response code="200">سفارش با موفقیت لغو شد</response>
-/// <response code="400">عملیات لغو ناموفق یا نامعتبر</response>
-/// <response code="404">سفارش یافت نشد</response>
+/// <param name="orderId">Order id.</param>
+/// <param name="reason">Optional cancellation reason.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The result of the cancellation.</returns>
+/// <response code="200">Order cancelled.</response>
+/// <response code="400">Cancellation failed or was not valid.</response>
+/// <response code="404">Order not found.</response>
 app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason, OrderService orderService) =>
 {
     try
@@ -539,20 +539,17 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 .Produces(404);
 
 /// <summary>
-/// لغو همه سفارشات فعال کاربر
+/// Cancels all of a user's active orders.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="reason">دلیل لغو (اختیاری)</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>تعداد سفارشات لغو شده</returns>
-/// <response code="200">سفارشات با موفقیت لغو شدند</response>
-/// <response code="400">خطا در لغو سفارشات</response>
+/// <param name="userId">User id.</param>
+/// <param name="reason">Optional cancellation reason.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>How many orders were cancelled.</returns>
+/// <response code="200">Orders cancelled.</response>
+/// <response code="400">Cancelling the orders failed.</response>
 /// <remarks>
-/// این endpoint:
-/// 1. تمام سفارشات فعال کاربر مشخص شده را پیدا می‌کند
-/// 2. آنها را با دلیل ارائه شده کنسل می‌کند
-/// 3. تعداد سفارشات کنسل شده را در پاسخ برمی‌گرداند
-/// 4. از الگوی ApiResponse برای پاسخ استاندارد استفاده می‌کند
+/// Finds the user's active orders, cancels them with the supplied reason, and returns how many were
+/// cancelled, wrapped in the standard ApiResponse shape.
 /// </remarks>
 app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, string? reason, OrderService orderService) =>
 {
@@ -576,14 +573,14 @@ app.MapPost("/api/orders/user/{userId}/cancel-active", async (Guid userId, strin
 .Produces(400);
 
 /// <summary>
-/// تایید سفارش - تغییر وضعیت از Pending به Confirmed
+/// Confirms an order, moving it from Pending to Confirmed.
 /// </summary>
-/// <param name="orderId">شناسه سفارش</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>نتیجه عملیات تایید</returns>
-/// <response code="200">سفارش با موفقیت تایید شد</response>
-/// <response code="400">سفارش قابل تایید نیست</response>
-/// <response code="404">سفارش یافت نشد</response>
+/// <param name="orderId">Order id.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The result of the confirmation.</returns>
+/// <response code="200">Order confirmed.</response>
+/// <response code="400">Order cannot be confirmed.</response>
+/// <response code="404">Order not found.</response>
 app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService orderService) =>
 {
     try
@@ -622,15 +619,15 @@ app.MapPost("/api/orders/{orderId}/confirm", async (Guid orderId, OrderService o
 .Produces(404);
 
 /// <summary>
-/// دریافت سفارشات کاربر با صفحه‌بندی
+/// Returns a user's orders, paginated.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="pageNumber">شماره صفحه (پیش‌فرض: 1)</param>
-/// <param name="pageSize">تعداد آیتم در هر صفحه (پیش‌فرض: 10، حداکثر: 100)</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>لیست صفحه‌بندی شده سفارشات کاربر</returns>
-/// <response code="200">سفارشات کاربر با موفقیت دریافت شد</response>
-/// <response code="400">پارامترهای درخواست نامعتبر</response>
+/// <param name="userId">User id.</param>
+/// <param name="pageNumber">Page number, default 1.</param>
+/// <param name="pageSize">Items per page, default 10, maximum 100.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>A page of the user's orders.</returns>
+/// <response code="200">Orders returned.</response>
+/// <response code="400">Invalid request parameters.</response>
 app.MapGet("/api/orders/user/{userId}", async (
     Guid userId,
     int? pageNumber,
@@ -661,15 +658,15 @@ app.MapGet("/api/orders/user/{userId}", async (
 .Produces(400);
 
 /// <summary>
-/// دریافت معاملات کاربر با صفحه‌بندی
+/// Returns a user's trades, paginated.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="pageNumber">شماره صفحه (پیش‌فرض: 1)</param>
-/// <param name="pageSize">تعداد آیتم در هر صفحه (پیش‌فرض: 10، حداکثر: 100)</param>
-/// <param name="tradeService">سرویس مدیریت معاملات</param>
-/// <returns>لیست صفحه‌بندی شده معاملات کاربر</returns>
-/// <response code="200">معاملات کاربر با موفقیت دریافت شد</response>
-/// <response code="400">پارامترهای درخواست نامعتبر</response>
+/// <param name="userId">User id.</param>
+/// <param name="pageNumber">Page number, default 1.</param>
+/// <param name="pageSize">Items per page, default 10, maximum 100.</param>
+/// <param name="tradeService">Trade service.</param>
+/// <returns>A page of the user's trades.</returns>
+/// <response code="200">Trades returned.</response>
+/// <response code="400">Invalid request parameters.</response>
 app.MapGet("/api/trades/user/{userId}", async (
     Guid userId,
     int? pageNumber,
@@ -700,9 +697,9 @@ app.MapGet("/api/trades/user/{userId}", async (
 .Produces(400);
 
 /// <summary>
-/// موقعیت و سود/زیان یک کاربر در تمام نمادهایی که تا امروز معامله کرده (issue #93). همان
-/// endpoint برای ادمین/SuperAdmin هم استفاده می‌شود — او هم طرف مقابل هر معاملهٔ مظنه‌ای
-/// است، پس سود/زیان فروشگاه چیزی جز همین محاسبه با شناسهٔ کاربریِ خودِ ادمین نیست.
+/// A user's position and profit/loss across every symbol they have traded (issue #93). The same
+/// endpoint serves the admin/SuperAdmin — they are the counterparty to every quote fill, so the
+/// shop's profit and loss is this same calculation run against the admin's own user id.
 /// </summary>
 app.MapGet("/api/positions/user/{userId}", async (
     Guid userId,
@@ -726,13 +723,13 @@ app.MapGet("/api/positions/user/{userId}", async (
 .Produces(500);
 
 /// <summary>
-/// دریافت سفارشات فعال کاربر
+/// Returns a user's active orders.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>لیست سفارشات فعال کاربر</returns>
-/// <response code="200">سفارشات فعال کاربر با موفقیت دریافت شد</response>
-/// <response code="400">درخواست نامعتبر</response>
+/// <param name="userId">User id.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The user's active orders.</returns>
+/// <response code="200">Active orders returned.</response>
+/// <response code="400">Invalid request.</response>
 app.MapGet("/api/orders/active/user/{userId}", async (
     Guid userId,
     OrderService orderService) =>
@@ -771,12 +768,12 @@ app.MapGet("/api/orders/active/user/{userId}", async (
 .Produces(400);
 
 /// <summary>
-/// دریافت تمام سفارشات فعال سیستم (برای ادمین)
+/// Returns every active order in the system, for admins.
 /// </summary>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>لیست تمام سفارشات فعال</returns>
-/// <response code="200">تمام سفارشات فعال با موفقیت دریافت شد</response>
-/// <response code="500">خطای داخلی سرور</response>
+/// <param name="orderService">Order service.</param>
+/// <returns>All active orders.</returns>
+/// <response code="200">All active orders returned.</response>
+/// <response code="500">Internal server error.</response>
 app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
 {
     try
@@ -813,16 +810,16 @@ app.MapGet("/api/orders/active/all", async (OrderService orderService) =>
 .Produces(500);
 
 /// <summary>
-/// دریافت بهترین قیمت‌های خرید و فروش
+/// Returns the best bid and ask prices.
 /// </summary>
-/// <param name="symbol">نماد معاملاتی (مثل BTC/USDT، ETH/USDT)</param>
-/// <param name="tradingType">نوع معامله (پیش‌فرض: استاندارد)</param>
-/// <param name="orderService">سرویس مدیریت سفارشات</param>
-/// <returns>بهترین قیمت‌های Bid و Ask</returns>
-/// <response code="200">بهترین قیمت‌ها با موفقیت دریافت شد</response>
-/// <response code="400">درخواست نامعتبر</response>
-/// <response code="404">نماد معاملاتی یافت نشد</response>
-/// <response code="500">خطای داخلی سرور</response>
+/// <param name="symbol">Trading symbol, for example MAUA/IRT.</param>
+/// <param name="tradingType">Trading type, default standard.</param>
+/// <param name="orderService">Order service.</param>
+/// <returns>The best bid and ask prices.</returns>
+/// <response code="200">Best prices returned.</response>
+/// <response code="400">Invalid request.</response>
+/// <response code="404">Trading symbol not found.</response>
+/// <response code="500">Internal server error.</response>
 app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
     string Base,
     string Quote,

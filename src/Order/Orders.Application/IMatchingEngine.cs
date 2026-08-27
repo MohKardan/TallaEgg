@@ -1,4 +1,4 @@
-using Orders.Core;
+﻿using Orders.Core;
 
 namespace Orders.Application;
 
@@ -8,8 +8,7 @@ public interface IMatchingEngine
     Task ProcessOrderAsync(Guid orderId, CancellationToken cancellationToken = default);
     Task ProcessAllPendingOrdersAsync(CancellationToken cancellationToken = default);
 
-    // StartAsync/StopAsync عمداً اینجا نیستند. چرخهٔ حیات موتور تطبیق را میزبان
-    // (IHostedService) مدیریت می‌کند. حالا که فقط یک نمونه از موتور وجود دارد
-    // (issue #53)، در معرض گذاشتن StopAsync یعنی هر مصرف‌کننده‌ای می‌توانست تطبیق
-    // را برای کل پروسه خاموش کند.
+    // StartAsync/StopAsync are deliberately absent. The host (IHostedService) owns the matching
+    // engine's lifetime. Now that only one instance exists (issue #53), exposing StopAsync would let
+    // any consumer switch matching off for the entire process.
 }

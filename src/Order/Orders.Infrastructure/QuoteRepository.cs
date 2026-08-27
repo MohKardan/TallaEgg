@@ -19,9 +19,8 @@ public class QuoteRepository : IQuoteRepository
     {
         var normalized = symbol.Trim().ToUpperInvariant();
 
-        // اگر به هر دلیل بیش از یکی فعال بود، تازه‌ترین برنده است. SingleOrDefault اینجا
-        // اشتباه بود: کل جریان معامله را با استثنا می‌شکست، در حالی که یک جواب کاملاً
-        // معقول وجود دارد.
+        // If more than one is somehow active, the newest wins. SingleOrDefault was wrong here: it
+        // broke the whole trading flow with an exception when a perfectly sensible answer exists.
         return await _context.Quotes
             .Where(q => q.Symbol == normalized && q.IsActive)
             .OrderByDescending(q => q.PublishedAt)
@@ -69,8 +68,8 @@ public class QuoteRepository : IQuoteRepository
 
         try
         {
-            // غیرفعال‌سازی قبلی و درج جدید باید با هم commit شوند، وگرنه لحظه‌ای وجود دارد
-            // که نماد یا دو مظنهٔ فعال دارد یا هیچ.
+            // Deactivating the previous quote and inserting the new one must commit together, or
+            // there is an instant where the symbol has either two active quotes or none.
             var previous = await _context.Quotes
                 .Where(q => q.Symbol == quote.Symbol && q.IsActive)
                 .ToListAsync();

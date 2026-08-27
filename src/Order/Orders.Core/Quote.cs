@@ -1,61 +1,61 @@
-using TallaEgg.Core.Enums.Order;
+﻿using TallaEgg.Core.Enums.Order;
 
 namespace Orders.Core;
 
 /// <summary>
-/// مظنهٔ منتشرشدهٔ ادمین برای یک نماد: قیمت خرید و فروش او.
+/// The admin's published quote for a symbol: the price they buy at and the price they sell at.
 ///
 /// <para>
-/// <b>مظنه یک سفارش نیست.</b> این تمام نکتهٔ issue #48 است. پیش‌تر ادمین برای اعلام قیمت
-/// دو سفارش محدود ۱۰۰۰ گرمی ثبت می‌کرد و پنج مشکل از آن می‌آمد: مقدار ۱۰۰۰ دلبخواه بود،
-/// حدود ۱۹ میلیارد تومان و ۱۰۰۰ گرم وثیقه فقط برای «اعلام قیمت» قفل می‌شد، پس از مصرف شدن
-/// آن مقدار نقدینگی تمام می‌شد، و آنچه ادمین «مظنهٔ امروز» می‌دانست سیستم «سفارش» ذخیره
-/// می‌کرد.
+/// <b>A quote is not an order.</b> That is the whole point of issue #48. The admin used to
+/// announce prices by placing two 1000-gram limit orders, which caused five problems: the 1000
+/// was arbitrary; roughly 19 billion toman and 1000 grams of collateral were locked purely to
+/// "announce a price"; liquidity ran out once that quantity was consumed; and what the admin
+/// thought of as "today's quote" the system stored as an "order".
 /// </para>
 ///
 /// <para>
-/// انتشار مظنه هیچ وثیقه‌ای قفل نمی‌کند و هیچ سفارشی در دفتر نمی‌گذارد. سفارش‌ها فقط در
-/// لحظه‌ای ساخته می‌شوند که مشتری مظنه را می‌پذیرد — دقیقاً به اندازهٔ مقدار درخواستی، و
-/// بلافاصله مصرف می‌شوند.
+/// Publishing a quote locks no collateral and puts nothing in the order book. Orders are created
+/// only at the instant a customer accepts the quote — for exactly the requested quantity — and are
+/// consumed immediately.
 /// </para>
 ///
 /// <para>
-/// <b>سقف مقدار ندارد:</b> تصمیم کسب‌وکاری این بود که اگر ادمین موجودی کافی نداشته باشد
-/// معامله انجام شود و موجودی او منفی برود — همان رفتار امروز، چون ادمین از اعتبارسنجی معاف
-/// است. ریسکِ انباشته‌شدن این موقعیت در issue #61 پیگیری می‌شود.
+/// <b>No quantity cap:</b> the business decision is that if the admin lacks the balance the trade
+/// still goes through and their balance goes negative — today's behaviour, since the admin is
+/// exempt from the credit check. The risk of that position accumulating is tracked in issue #61.
 /// </para>
 /// </summary>
 public class Quote
 {
     public Guid Id { get; private set; }
 
-    /// <summary>نماد به شکل BASE/QUOTE — مثلاً MAUA/IRT.</summary>
+    /// <summary>Symbol in BASE/QUOTE form, for example MAUA/IRT.</summary>
     public string Symbol { get; private set; } = string.Empty;
 
     /// <summary>
-    /// قیمتی که ادمین <b>می‌خرد</b> — یعنی مشتری با این قیمت <b>می‌فروشد</b>.
-    /// بر حسب واحد پایه ذخیره می‌شود (تومان بر گرم)، نه بر مثقال؛ تبدیل مثقال در لایهٔ
-    /// ربات انجام می‌شود، همان‌جا که کاربر عدد را وارد و مشاهده می‌کند.
+    /// The price the admin <b>buys</b> at — that is, the price at which the customer <b>sells</b>.
+    /// Stored per base unit (toman per gram), not per mesghal; the mesghal conversion happens in
+    /// the bot layer, where the user enters and reads the number.
     /// </summary>
     public decimal BuyPrice { get; private set; }
 
-    /// <summary>قیمتی که ادمین <b>می‌فروشد</b> — یعنی مشتری با این قیمت <b>می‌خرد</b>.</summary>
+    /// <summary>The price the admin <b>sells</b> at — that is, the price at which the customer <b>buys</b>.</summary>
     public decimal SellPrice { get; private set; }
 
-    /// <summary>ادمینی که مظنه را منتشر کرده؛ همان کسی که طرف مقابل هر معامله خواهد بود.</summary>
+    /// <summary>The admin who published the quote; the counterparty to every trade filled against it.</summary>
     public Guid PublishedByUserId { get; private set; }
 
     public DateTime PublishedAt { get; private set; }
 
     /// <summary>
-    /// فقط یک مظنه برای هر نماد فعال است. انتشار مظنهٔ جدید، قبلی را غیرفعال می‌کند.
-    /// مظنه‌های قدیمی حذف نمی‌شوند تا بعداً بشود فهمید هر معامله روی چه قیمتی انجام شده.
+    /// Only one quote per symbol is active. Publishing a new one deactivates the previous one.
+    /// Old quotes are not deleted, so it stays possible to find out what price a past trade used.
     /// </summary>
     public bool IsActive { get; private set; }
 
     public DateTime? DeactivatedAt { get; private set; }
 
-    /// <summary>EF Core به سازندهٔ بدون پارامتر نیاز دارد.</summary>
+    /// <summary>EF Core requires a parameterless constructor.</summary>
     private Quote() { }
 
     public static Quote Publish(string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId)
@@ -69,9 +69,9 @@ public class Quote
         if (sellPrice <= 0)
             throw new ArgumentException("قیمت فروش باید بزرگ‌تر از صفر باشد.", nameof(sellPrice));
 
-        // اسپرد منفی یعنی ادمین گران‌تر می‌خرد از آنچه می‌فروشد. مشتری می‌توانست بی‌نهایت
-        // بار بخرد و بفروشد و هر بار سود کند، مستقیماً از جیب طلافروش. این را همین‌جا
-        // می‌گیریم، نه بعد از اینکه چند معامله انجام شد.
+        // A negative spread means the admin buys higher than they sell. A customer could buy and
+        // sell endlessly, profiting on every round trip straight out of the shop's pocket. Catch
+        // it here rather than after a few trades have already run.
         if (buyPrice > sellPrice)
             throw new ArgumentException(
                 $"قیمت خرید ({buyPrice}) نمی‌تواند از قیمت فروش ({sellPrice}) بیشتر باشد.");
@@ -100,11 +100,11 @@ public class Quote
     }
 
     /// <summary>
-    /// قیمتی که مشتری با آن معامله می‌کند.
+    /// The price the customer trades at.
     ///
-    /// عمداً روی خود موجودیت است و نه در سرویس: جابه‌جا کردن این دو، همان باگ وارونگی
-    /// خریدار/فروشنده است با لباس دیگر. مشتری که می‌خرد، از ادمین می‌خرد، پس قیمتِ فروشِ
-    /// ادمین را می‌پردازد.
+    /// Deliberately on the entity rather than in a service: swapping these two is the buyer/seller
+    /// inversion bug wearing a different hat. A customer who buys, buys from the admin, and so
+    /// pays the admin's sell price.
     /// </summary>
     public decimal PriceFor(OrderSide customerSide) =>
         customerSide == OrderSide.Buy ? SellPrice : BuyPrice;

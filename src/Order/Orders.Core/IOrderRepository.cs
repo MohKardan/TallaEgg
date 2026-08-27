@@ -1,4 +1,4 @@
-using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 
@@ -19,16 +19,16 @@ public interface IOrderRepository
     Task<List<Order>> GetOrdersByRoleAsync(OrderRole role);
     
     /// <summary>
-    /// دریافت تمام سفارشات فعال یک کاربر خاص
+    /// Returns every active order belonging to one user.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <returns>لیست سفارشات فعال کاربر</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The user's active orders.</returns>
     Task<List<Order>> GetActiveOrdersByUserIdAsync(Guid userId);
     
     /// <summary>
-    /// دریافت تمام سفارشات فعال سیستم
+    /// Returns every active order in the system.
     /// </summary>
-    /// <returns>لیست تمام سفارشات فعال</returns>
+    /// <returns>All active orders.</returns>
     Task<List<Order>> GetActiveOrdersAsync();
     Task<List<Order>> GetOrdersByDateRangeAsync(DateTime from, DateTime to);
     Task<List<Order>> GetAvailableMakerOrdersAsync(string asset, TradingType tradingType);

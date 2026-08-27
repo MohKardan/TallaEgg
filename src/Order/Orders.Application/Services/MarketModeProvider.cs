@@ -5,21 +5,20 @@ using TallaEgg.Core.Enums.Order;
 namespace Orders.Application.Services;
 
 /// <summary>
-/// می‌گوید هر نماد در کدام حالت بازار کار می‌کند و بازارگردانش کیست.
+/// Reports which market mode a symbol runs in, and who its market maker is.
 ///
 /// <para>
-/// <b>چرا تنظیمات و نه جدول:</b> این مقدار به‌ندرت عوض می‌شود — وقتی نقدینگی واقعی برای
-/// یک نماد به وجود بیاید. یک جدول، رابط ادمین و migration می‌خواست بدون اینکه چیزی اضافه
-/// کند. مقدارها در سازنده کش نمی‌شوند تا تغییر فایل تنظیمات نیاز به ری‌استارت نداشته باشد.
+/// <b>Why configuration and not a table:</b> this value changes rarely — when a symbol gains real
+/// liquidity. A table would have needed an admin UI and a migration without adding anything. The
+/// values are not cached in the constructor, so editing the configuration file needs no restart.
 /// </para>
 ///
 /// <para>
-/// <b>ساخته‌شده روی چیزی که از قبل بود:</b> تنظیم
-/// <c>Matching:RequireMarketMakerCounterparty</c> از قبل دقیقاً همین قاعده را بیان می‌کرد
-/// («مشتری فقط با بازارگردان معامله کند»). به‌جای ساختن یک مفهوم موازی، همان به‌عنوان
-/// پیش‌فرض سراسری خوانده می‌شود و <c>Matching:MarketModes:{نماد}</c> می‌تواند برای هر نماد
-/// بازنویسی‌اش کند. دو تعریف موازی برای یک قاعده، همان اشتباهی است که چند بار در این
-/// کدبیس دیده‌ایم.
+/// <b>Built on what was already there:</b> the <c>Matching:RequireMarketMakerCounterparty</c>
+/// setting already expressed exactly this rule — "a customer trades only with the market maker".
+/// Rather than introducing a parallel concept, it is read as the global default, and
+/// <c>Matching:MarketModes:{symbol}</c> can override it per symbol. Two parallel definitions of one
+/// rule is a mistake this codebase has made several times already.
 /// </para>
 /// </summary>
 public class MarketModeProvider
@@ -34,8 +33,8 @@ public class MarketModeProvider
     }
 
     /// <summary>
-    /// حالت بازار برای یک نماد. ترتیب: تنظیم مخصوص همان نماد، بعد تنظیم قدیمی
-    /// <c>RequireMarketMakerCounterparty</c>، و در نهایت OrderBook (رفتار تاریخی سیستم).
+    /// The market mode for a symbol. Resolution order: the symbol's own setting, then the older
+    /// <c>RequireMarketMakerCounterparty</c> setting, then OrderBook, which is the historical behaviour.
     /// </summary>
     public MarketMode GetMode(string symbol)
     {

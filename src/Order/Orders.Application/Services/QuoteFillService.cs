@@ -8,20 +8,20 @@ using TallaEgg.Infrastructure.Clients;
 namespace Orders.Application.Services;
 
 /// <summary>
-/// مشتری مظنهٔ ادمین را می‌پذیرد و معامله بلافاصله انجام می‌شود.
+/// A customer accepts the admin's quote and the trade executes immediately.
 ///
 /// <para>
-/// این جایگزین مدل «ادمین دو سفارش ۱۰۰۰ گرمی می‌گذارد» است (issue #48). به‌جای اینکه
-/// نقدینگی از قبل در دفتر بخوابد و وثیقه‌اش قفل بماند، دو سفارش <b>دقیقاً به اندازهٔ
-/// مقدار درخواستی</b> ساخته می‌شوند و در همان لحظه مصرف می‌گردند.
+/// This replaces the "admin places two 1000-gram orders" model (issue #48). Instead of liquidity
+/// resting in the book with its collateral locked, two orders are created <b>for exactly the
+/// requested quantity</b> and consumed in the same instant.
 /// </para>
 ///
 /// <para>
-/// <b>چرا سفارش می‌سازد و نه مستقیم معامله:</b> جدول <c>Trade</c> شناسهٔ سفارش خرید و
-/// فروش را الزامی کرده (FK). ساختن معامله بدون سفارش یا تغییر schema می‌خواست یا یک مسیر
-/// دوم ساخت معامله — و مسیر دوم دقیقاً همان چیزی است که issue #40 دربارهٔ آن است. این
-/// طراحی عمداً از همان <c>ExecuteAtomicMatchAsync</c> استفاده می‌کند که امروز کار می‌کند،
-/// پس outbox، تسویه، تاریخچه و گزارش‌ها همگی دست‌نخورده می‌مانند.
+/// <b>Why it creates orders rather than a trade directly:</b> the <c>Trade</c> table requires a buy
+/// and a sell order id (foreign keys). Creating a trade without orders would mean either a schema
+/// change or a second trade-creation path — and a second path is precisely what issue #40 is about.
+/// This design deliberately reuses the <c>ExecuteAtomicMatchAsync</c> that already works, so the
+/// outbox, settlement, history and reporting all stay untouched.
 /// </para>
 /// </summary>
 public class QuoteFillService
@@ -50,8 +50,8 @@ public class QuoteFillService
     }
 
     /// <summary>
-    /// مشتری مقدار مشخصی را روی مظنهٔ جاری معامله می‌کند. مشتری قیمت وارد نمی‌کند — قیمت
-    /// از مظنه می‌آید، که ابهام مثقال/گرم را هم از جریان مشتری کاملاً حذف می‌کند.
+    /// The customer trades a given quantity against the current quote. They do not enter a price —
+    /// it comes from the quote, which also removes the mesghal/gram ambiguity from their flow.
     /// </summary>
     public async Task<(bool Success, string Message, Trade? Trade)> AcceptQuoteAsync(
         Guid customerUserId, string symbol, OrderSide customerSide, decimal quantity)
@@ -73,10 +73,10 @@ public class QuoteFillService
         if (quantity <= 0)
             return (false, $"مقدار وارد‌شده از حداقل قابل معامله کمتر است.", null);
 
-        // این پیام قبلاً می‌گفت «این نماد در حالت مظنه‌ای نیست» — که به گوش مشتری یک قاعدهٔ
-        // محصول می‌رسید، درحالی‌که همیشه یعنی یک تنظیم جا افتاده (issue #73). مشتری کاری از
-        // دستش برنمی‌آید؛ فقط باید بداند بعداً دوباره امتحان کند. جزئیات برای اپراتور در
-        // MarketModeStartupValidator لاگ می‌شود، نه اینجا.
+        // This message used to say "this symbol is not in dealer mode", which reads to a customer
+        // like a product rule when it always means a missing configuration (issue #73). There is
+        // nothing the customer can do; they only need to know to try again later. The detail an
+        // operator needs is logged in MarketModeStartupValidator, not here.
         if (_marketMode.GetMode(symbol) != MarketMode.Dealer)
             return (false, "این نماد موقتاً در دسترس نیست. لطفاً کمی بعد دوباره تلاش کنید.", null);
 
@@ -95,39 +95,39 @@ public class QuoteFillService
             return (false, "در حال حاضر مظنه‌ای منتشر نشده است.", null);
         }
 
-        // ► طرف مقابلِ معامله، همان کسی است که این مظنه را منتشر کرده.
+        // The counterparty is whoever published this quote.
         //
-        // پیش‌تر یک شناسه در فایل پیکربندی بود. آن مقدار روی دیتابیسی که از صفر ساخته می‌شود
-        // قابل دانستن نبود، پس استقرار به «بالا بیاور، ثبت‌نام کن، شناسه را کپی کن، ری‌استارت
-        // کن» تبدیل می‌شد — و مقدار غلط در این میان بی‌اثر نبود: سیستم بالا می‌آمد و هر
-        // معامله را رد می‌کرد.
+        // This used to be an id in the configuration file. That value is unknowable against a
+        // database built from scratch, so deployment became "start it, register, copy the id,
+        // restart" — and a wrong value in between was not harmless: the system came up and refused
+        // every trade.
         //
-        // خودِ مظنه از قبل می‌داند چه کسی منتشرش کرده، پس این اطلاعات هرگز لازم نبود جای
-        // دیگری نگه‌داری شود. اقتصادش هم درست‌تر است: مشتری روی قیمتی معامله می‌کند که آن
-        // شخص اعلام کرده، پس معامله باید روی دفتر همان شخص بنشیند. با یک ادمین رفتار دقیقاً
-        // مثل قبل است؛ با چند ادمین، هر کدام دفتر خودشان را دارند بدون هیچ تنظیم اضافه‌ای.
+        // The quote already knows who published it, so this never needed storing anywhere else. The
+        // economics are also more correct: the customer trades at a price that person announced, so
+        // the trade belongs on that person's book. With one admin the behaviour is exactly as
+        // before; with several, each keeps their own book with no extra configuration.
         var marketMakerUserId = quote.PublishedByUserId;
 
-        // ادمین نمی‌تواند مظنهٔ خودش را بپذیرد: طرفین یکی می‌شدند و تسویه هم آن را رد
-        // می‌کرد — بهتر است همین‌جا با پیام روشن جلویش گرفته شود.
+        // An admin cannot fill their own quote: both sides would be the same user and settlement
+        // would refuse it anyway — better to stop it here with a clear message.
         if (customerUserId == marketMakerUserId)
             return (false, "بازارگردان نمی‌تواند مظنهٔ خودش را بپذیرد.", null);
 
         var price = quote.PriceFor(customerSide);
 
-        // ► بررسی موجودی و اعتبار مشتری، پیش از ساختن هر سفارشی.
+        // Check the customer's balance and credit before creating any order.
         //
-        // این بررسی در مدل دفترِ سفارش داخل SubmitOrderAsync انجام می‌شد، و مسیر مظنه‌ای
-        // (issue #48) از آن مسیر عبور نمی‌کند — پس بی‌سروصدا کنار گذاشته شده بود. تنها
-        // چیزی که باقی مانده بود قفلِ وثیقه بود، و LockBalance هیچ بررسی موجودی ندارد:
-        // گاردش در Wallet.cs کامنت شده تا حسابِ بازارگردان بتواند منفی شود.
+        // In the order-book model this check lived inside SubmitOrderAsync, and the quote-fill path
+        // (issue #48) does not go through there — so it was silently skipped. All that remained was
+        // the collateral lock, and LockBalance performs no balance check at all: its guard in
+        // Wallet.cs is deliberately disabled so the market maker's account can go negative.
         //
-        // نتیجه این بود که هر کاربر تازه، بدون یک ریال اعتبار، می‌توانست معامله کند و
-        // موجودی‌اش منفی می‌شد. روی دیتابیس قبلی دیده نمی‌شد چون همه از پیش اعتبار
-        // داشتند؛ روی دیتابیس خالی بلافاصله ظاهر شد.
+        // The result was that any brand-new user with no credit at all could trade and go negative.
+        // It was invisible on the old database because everyone already had credit; on an empty one
+        // it showed up immediately.
         //
-        // بازارگردان عمداً مستثنی است: در مدل معامله‌گری او همیشه طرف مقابل است و
-        // موقعیتِ منفی‌اش همان دفترِ کسب‌وکار است، نه یک خطا.
+        // The market maker is deliberately exempt: in the dealer model they are always the
+        // counterparty, and their negative position is the shop's book, not an error.
         var (checkSucceeded, checkMessage, hasBaseAsset, hasQuoteAsset) =
             await _walletApiClient.ValidateCreditAndBalanceAsync(customerUserId, symbol, quantity, price);
 
@@ -140,7 +140,7 @@ public class QuoteFillService
             return (false, "بررسی موجودی انجام نشد. لطفاً دوباره تلاش کنید.", null);
         }
 
-        // خرید با دارایی مظنه پرداخت می‌شود و فروش با دارایی پایه.
+        // A buy is paid for in the quote asset, a sell in the base asset.
         var hasEnough = customerSide == OrderSide.Buy ? hasQuoteAsset : hasBaseAsset;
 
         if (!hasEnough)
@@ -152,8 +152,8 @@ public class QuoteFillService
             return (false, "موجودی یا اعتبار شما برای این معامله کافی نیست.", null);
         }
 
-        // هر دو سفارش با یک قیمت و یک مقدار ساخته می‌شوند، پس تطبیق حتماً کامل انجام
-        // می‌شود و چیزی در دفتر باقی نمی‌ماند.
+        // Both orders are created at the same price and quantity, so the match is always complete
+        // and nothing is left resting in the book.
         var customerOrder = await CreateSideAsync(customerUserId, symbol, customerSide, quantity, price,
             $"پذیرش مظنه {quote.Id}");
 
@@ -166,8 +166,8 @@ public class QuoteFillService
 
         if (adminOrder is null)
         {
-            // سفارش مشتری ساخته و قفل شده ولی طرف مقابلی ندارد. لغو می‌شود تا وثیقه‌اش
-            // آزاد گردد، وگرنه پول مشتری بی‌دلیل قفل می‌ماند.
+            // The customer's order exists and is locked but has no counterparty. Cancel it to
+            // release the collateral, or their money stays locked for no reason.
             await _orderService.CancelOrderAsync(customerOrder.Id, "طرف مقابل مظنه ثبت نشد");
             return (false, "در حال حاضر امکان انجام این معامله نیست.", null);
         }
@@ -184,8 +184,8 @@ public class QuoteFillService
                 "Quote fill failed to match for user {UserId} on {Symbol}: {Error}",
                 customerUserId, symbol, error);
 
-            // هیچ معامله‌ای ثبت نشده، پس هر دو سفارش باید لغو شوند تا وثیقهٔ هر دو طرف
-            // آزاد شود.
+            // No trade was recorded, so both orders must be cancelled to release both sides'
+            // collateral.
             await _orderService.CancelOrderAsync(customerOrder.Id, "تطبیق مظنه انجام نشد");
             await _orderService.CancelOrderAsync(adminOrder.Id, "تطبیق مظنه انجام نشد");
 
@@ -200,8 +200,8 @@ public class QuoteFillService
     }
 
     /// <summary>
-    /// یک سمت معامله را می‌سازد: سفارش ثبت، وثیقه قفل و سفارش تأیید می‌شود — ولی تطبیق
-    /// نمی‌خورد. تطبیق یک بار و برای هر دو سفارش با هم انجام می‌شود.
+    /// Builds one side of the trade: the order is created, its collateral locked and the order
+    /// confirmed — but not matched. Matching happens once, for both orders together.
     /// </summary>
     private async Task<Order?> CreateSideAsync(
         Guid userId, string symbol, OrderSide side, decimal quantity, decimal price, string notes)
