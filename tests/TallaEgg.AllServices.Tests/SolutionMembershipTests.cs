@@ -38,17 +38,13 @@ public class SolutionMembershipTests
     /// not accumulated — <see cref="ExcludedProjects_AllStillExist"/> makes sure a stale one
     /// cannot sit here after the project itself is gone.
     /// </para>
+    ///
+    /// <para>
+    /// Empty on purpose. The one entry it ever held, <c>TelegramBot/TestRunner</c>, lasted a
+    /// single change before the project was deleted.
+    /// </para>
     /// </summary>
-    private static readonly Dictionary<string, string> DeliberatelyExcluded = new()
-    {
-        ["TelegramBot/TestRunner/TestRunner.csproj"] =
-            "A 2025 attempt at a bot simulator that never grew. It has no ProjectReference to " +
-            "any TallaEgg project, so its MockBotHandler is a reimplementation of the bot inside " +
-            "its own file and its assertions can only ever confirm what that mock was written to " +
-            "return. TallaEgg.TelegramBot.Simulator (#101) does the same job against the real " +
-            "BotHandler, and the four flows it scripts are covered here against real code. " +
-            "Removal is an open decision; until it is made, the exclusion is at least visible.",
-    };
+    private static readonly Dictionary<string, string> DeliberatelyExcluded = new();
 
     /// <summary>
     /// Fails naming every project that is on disk, not in the solution, and not excluded above.
