@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -50,7 +50,7 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
-// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+// Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
@@ -59,7 +59,7 @@ if (urls is { Length: > 0 })
     builder.WebHost.UseUrls(urls);
 }
 
-// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+// Serilog: log to rolling files and the console.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
@@ -67,13 +67,13 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// تنظیم اتصال به دیتابیس SQL Server
+// SQL Server connection.
 builder.Services.AddDbContext<WalletDbContext>(options =>
     options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "WalletDb"),
         b => b.MigrationsAssembly("Wallet.Api")));
 
 
-// فقط در production محافظت فعال شود
+// Protection is only wired up in Production.
 if (builder.Environment.IsProduction())
 {
     builder.Services.AddAuthentication("ApiKey")
@@ -82,7 +82,7 @@ if (builder.Environment.IsProduction())
             options.ApiKey = APIKeyConstant.RequireTallaEggApiKey();
         });
 
-    // Authorization Policy سراسری فقط برای production
+    // Global authorization policy, Production only.
     builder.Services.AddAuthorization(options =>
     {
         options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -92,7 +92,7 @@ if (builder.Environment.IsProduction())
 }
 else
 {
-    // برای development فقط authorization اضافه کنید (بدون authentication)
+    // Development adds authorization only, with no authentication in front of it.
     builder.Services.AddAuthorization();
 }
 
@@ -101,7 +101,7 @@ builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<WalletMapper>();
 builder.Services.AddTallaEggErrorHandling();
 
-// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+// CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
 // Add Swagger services
@@ -123,7 +123,7 @@ var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- مایگریشن و سیید اولیه ---
+// --- Migrations and initial seed ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -131,7 +131,7 @@ using (var scope = app.Services.CreateScope())
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
 }
 
-// Authentication و Authorization فقط در production
+// Authentication and authorization, Production only.
 if (app.Environment.IsProduction())
 {
     app.UseAuthentication();
@@ -140,7 +140,7 @@ if (app.Environment.IsProduction())
 }
 app.UseAuthorization();
 
-// تنظیم CORS
+// Apply the CORS policy.
 app.UseTallaEggCors();
 
 
@@ -235,7 +235,7 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
 {
     try
     {
-        // فرق WalletEntity و WalletDTO چیست؟ بهتر نیست این دوتا یکی باشن؟
+        // TODO: WalletEntity and WalletDTO carry nearly the same shape; consider collapsing them.
         var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
         return Results.Ok(ApiResponse<(WalletEntity,Transaction)>.Ok(result, "عملیات با موفقیت انجام شد"));
     }
@@ -305,29 +305,11 @@ app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalle
     }
 });
 
-//app.MapPost("/api/wallet/withdraw", async (WithdrawRequest request, IWalletService walletService) =>
-//{
-//    var result = await walletService.WithdrawAsync(request.UserId, request.Asset, request.Amount, request.ReferenceId);
-//    return result.success ? 
-//        Results.Ok(new { success = true, message = result.message }) :
-//        Results.BadRequest(new { success = false, message = result.message });
-//});
-
-//app.MapPost("/api/wallet/charge", async (ChargeRequest request, IWalletService walletService) =>
-//{
-//    var result = await walletService.ChargeWalletAsync(request.UserId, request.Asset, request.Amount, request.PaymentMethod);
-//    return result.success ? 
-//        Results.Ok(new { success = true, message = result.message }) :
-//        Results.BadRequest(new { success = false, message = result.message });
-//});
-
-//app.MapPost("/api/wallet/transfer", async (TransferRequest request, IWalletService walletService) =>
-//{
-//    var result = await walletService.TransferAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount);
-//    return result.success ? 
-//        Results.Ok(new { success = true, message = result.message }) :
-//        Results.BadRequest(new { success = false, message = result.message });
-//});
+// The withdraw, charge, transfer, internal/credit and internal/debit endpoints were commented
+// out here rather than deleted. Their service methods still exist and are now unreachable —
+// WalletService.WithdrawalAsync, ChargeWalletAsync, TransferAsync, DebitAsync. See audit finding
+// N-3: TransferAsync in particular is not atomic and writes no audit trail, so none of them
+// should be re-exposed as they stand.
 
 app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asset, IWalletService walletService) =>
 {
@@ -336,13 +318,13 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 });
 
 /// <summary>
-/// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید (ریال، طلا، اعتبار طلا)
+/// Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
 /// </summary>
-/// <param name="userId">شناسه کاربر</param>
-/// <param name="walletService">سرویس کیف پول</param>
-/// <returns>لیست کیف پول‌های ایجاد شده</returns>
-/// <response code="200">کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند</response>
-/// <response code="400">خطا در ایجاد کیف پول‌ها</response>
+/// <param name="userId">User id.</param>
+/// <param name="walletService">Wallet service.</param>
+/// <returns>The wallets that were created.</returns>
+/// <response code="200">Default wallets created.</response>
+/// <response code="400">Wallet creation failed.</response>
 app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     try
@@ -355,23 +337,6 @@ app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletSer
         return Results.BadRequest(ApiResponse<IEnumerable<WalletDTO>>.Fail(ex.Message));
     }
 });
-
-//// Internal wallet operations (for matching engine)
-//app.MapPost("/api/wallet/internal/credit", async (CreditRequest request, IWalletService walletService) =>
-//{
-//    //var success = await walletService.CreditAsync(request.UserId, request.Asset, request.Amount);
-//    //return success ? 
-//    //    Results.Ok(new { success = true }) :
-//    //    Results.BadRequest(new { success = false, message = "خطا در افزایش موجودی" });
-//});
-
-//app.MapPost("/api/wallet/internal/debit", async (DebitRequest request, IWalletService walletService) =>
-//{
-//    var success = await walletService.DebitAsync(request.UserId, request.Asset, request.Amount);
-//    return success ? 
-//        Results.Ok(new { success = true }) :
-//        Results.BadRequest(new { success = false, message = "خطا در کاهش موجودی" });
-//});
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
 {

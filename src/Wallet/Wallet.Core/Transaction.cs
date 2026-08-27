@@ -74,7 +74,7 @@ public class Transaction
 
     private static string GenerateTrackingCode()
     {
-        // یک کد کوتاه یکتا (مثلاً ۱۲ کاراکتر)
+        // A short unique code, around 12 characters.
         return Convert.ToBase64String(Guid.NewGuid().ToByteArray())
             .Replace("=", "")
             .Replace("+", "")

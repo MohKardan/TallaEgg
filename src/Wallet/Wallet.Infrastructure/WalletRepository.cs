@@ -32,15 +32,15 @@ public class WalletRepository : IWalletRepository
     }
 
     /// <summary>
-    /// ایجاد کیف پول جدید در دیتابیس
+    /// Creates a new wallet row.
     /// </summary>
-    /// <param name="wallet">کیف پول برای ایجاد</param>
-    /// <returns>کیف پول ایجاد شده</returns>
+    /// <param name="wallet">The wallet to create.</param>
+    /// <returns>The created wallet, or the existing one if a concurrent caller won the race.</returns>
     public async Task<WalletEntity> CreateWalletAsync(WalletEntity wallet)
     {
         try
         {
-            // بررسی مجدد وجود کیف پول (Race Condition Prevention)
+            // Re-check for an existing wallet to narrow the race window.
             var existingWallet = await GetWalletAsync(wallet.UserId, wallet.Asset);
             if (existingWallet != null)
             {
@@ -63,12 +63,12 @@ public class WalletRepository : IWalletRepository
             _logger.LogWarning("Duplicate wallet creation attempted for user {UserId}, asset {Asset}. Returning existing wallet.",
                 wallet.UserId, wallet.Asset);
 
-            // در صورت تکراری بودن، کیف پول موجود را برگردان
+            // Lost the race — return the wallet the other caller created.
             var existingWallet = await GetWalletAsync(wallet.UserId, wallet.Asset);
             if (existingWallet != null)
                 return existingWallet;
 
-            throw; // اگر هنوز هم پیدا نشد، خطا را دوباره پرتاب کن
+            throw; // Still not found, so the duplicate was not the cause. Let it surface.
         }
         catch (Exception ex)
         {
@@ -123,7 +123,7 @@ public class WalletRepository : IWalletRepository
         if (wallet == null)
         {
             // Hit live: selling BTC/SEKE_BAHAR failed for every customer and the market maker
-            // alike with "کیف پول پیدا نشد", because CreateDefaultWalletsAsync only ever seeds
+            // alike with "wallet not found", because CreateDefaultWalletsAsync only ever seeds
             // Toman/MAUA/CREDIT_MAUA at registration — a newer trading symbol's wallet never
             // existed for anyone until now. Same fix as WalletService.IncreaseBalanceAsync
             // (issue: charge-command bugs earlier in this conversation), applied here since
@@ -173,10 +173,10 @@ public class WalletRepository : IWalletRepository
         if (amount < 0)
             throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
 
-        // آزادسازیِ بیش از آنچه قفل است، LockedBalance را منفی می‌کند و همزمان Balance
-        // را بالا می‌برد — یعنی از هیچ، پول می‌سازد. پیش‌تر هیچ گاردی وجود نداشت و
-        // مسیر لغو سفارش مقدار را با فرمولی متفاوت از فرمول قفل حساب می‌کرد، پس این
-        // حالت واقعاً قابل رسیدن بود (issue #52).
+        // Releasing more than is locked drives LockedBalance negative while raising Balance —
+        // money created from nothing. There used to be no guard here at all, and the
+        // order-cancellation path computed the amount with a different formula than the lock did,
+        // so this state was genuinely reachable (issue #52).
         if (amount > wallet.LockedBalance)
         {
             _logger.LogError(
@@ -258,15 +258,16 @@ public class WalletRepository : IWalletRepository
     {
         var referenceId = tradeId.ToString();
 
-        // مسیر سریع: اگر معامله از قبل تسویه شده، بدون باز کردن تراکنش برمی‌گردیم.
+        // Fast path: if the trade is already settled, return without opening a transaction.
         //
-        // این بررسی «تضمین» نیست — فقط بهینه‌سازی است. تحویل مجدد outbox حالت عادی است
-        // (طراحی صریحاً اجازه می‌دهد پیامی که موفق شده دوباره فرستاده شود)، پس ارزش دارد
-        // که مسیر پرتکرار بدون هزینهٔ تراکنش و بدون تولید استثنا رد شود.
+        // This check is an optimisation, not the guarantee. Outbox redelivery is normal — the
+        // design explicitly allows a message that already succeeded to be sent again — so it is
+        // worth short-circuiting the common case without paying for a transaction or raising an
+        // exception.
         //
-        // تضمین واقعی، کلید اصلی جدول TradeSettlements است که پایین‌تر اعمال می‌شود.
-        // پیش‌تر همین SELECT تنها محافظ بود و چون بیرون از تراکنش اجرا می‌شد، دو تسویهٔ
-        // همزمان می‌توانستند هر دو از آن رد شوند و پول دو برابر جابه‌جا شود (issue #42).
+        // The actual guarantee is the TradeSettlements primary key, applied further down. This
+        // SELECT used to be the only protection, and because it ran outside the transaction two
+        // concurrent settlements could both pass it and move the money twice (issue #42).
         if (await _context.TradeSettlements.AnyAsync(s => s.TradeId == tradeId))
         {
             _logger.LogInformation("Trade {TradeId} already settled; skipping (idempotent).", tradeId);
@@ -286,8 +287,8 @@ public class WalletRepository : IWalletRepository
         if (feeBuyer < 0 || feeSeller < 0)
             return (false, "Fees cannot be negative.");
 
-        // دفاع در عمق: تطبیق نباید اجازهٔ خودمعاملگی بدهد، اما اگر مسیری آن را دور بزند
-        // تسویه روی یک کیف پول مشترک انجام می‌شود و رد حسابرسی نادرست تولید می‌کند.
+        // Defence in depth: matching should never permit self-trading, but if some path bypasses
+        // that, settlement would run against a single shared wallet and produce a false audit trail.
         if (buyerUserId == sellerUserId)
         {
             _logger.LogError("Refusing to settle trade {TradeId}: buyer and seller are the same user.", tradeId);
@@ -382,16 +383,17 @@ public class WalletRepository : IWalletRepository
             buyerQuote.UpdatedAt = now; buyerBase.UpdatedAt = now; sellerBase.UpdatedAt = now; sellerQuote.UpdatedAt = now;
             _context.Wallets.UpdateRange(buyerQuote, buyerBase, sellerBase, sellerQuote);
 
-            // سد یکتایی: این سطر داخل همان تراکنشِ جابه‌جایی پول درج می‌شود.
+            // The uniqueness barrier: this row is inserted inside the same transaction that moves
+            // the money.
             //
-            // چون TradeId کلید اصلی است، اگر تسویهٔ همزمانِ دیگری زودتر commit کرده باشد،
-            // این درج با نقض کلید تکراری شکست می‌خورد و کل تراکنش — شامل هر چهار تغییر
-            // موجودی — برگردانده می‌شود. یعنی «دقیقاً یک بار» را دیتابیس تضمین می‌کند،
-            // نه ترتیب اجرای کد.
+            // Because TradeId is the primary key, if a concurrent settlement committed first this
+            // insert fails on a duplicate key and the whole transaction — all four balance changes
+            // included — is rolled back. "Exactly once" is therefore guaranteed by the database,
+            // not by the order in which code happens to run.
             _context.TradeSettlements.Add(
                 TradeSettlement.Create(tradeId, buyerUserId, sellerUserId, symbol!, quantity, quoteQuantity));
 
-            await _context.SaveChangesAsync(); // یک save: ۴ تغییر موجودی + ۴ سطر تراکنش + ۱ سطر تسویه
+            await _context.SaveChangesAsync(); // One save: 4 balance changes + 4 transaction rows + 1 settlement row.
             await tx.CommitAsync();
 
             _logger.LogInformation(
@@ -401,14 +403,14 @@ public class WalletRepository : IWalletRepository
         }
         catch (DbUpdateException ex) when (IsDuplicateSettlement(ex))
         {
-            // بازندهٔ رقابت. تسویهٔ همزمانِ دیگری زودتر commit کرده و کلید اصلی، درج دوم
-            // را رد کرده است. rollback همهٔ تغییرات موجودی این تلاش را برمی‌گرداند، پس
-            // نتیجهٔ نهایی دقیقاً یک تسویه است.
+            // We lost the race. Another settlement committed first and the primary key rejected
+            // this second insert. The rollback undoes every balance change from this attempt, so
+            // the net effect is exactly one settlement.
             //
-            // این را به «موفقیت» ترجمه می‌کنیم و نه خطا، چون از دید فراخوان واقعاً موفق
-            // است: معامله تسویه شده. اگر خطا برمی‌گرداندیم، پردازشگر outbox پیام را
-            // شکست‌خورده تلقی می‌کرد، پنج بار retry می‌کرد و در نهایت به Failed می‌رسید —
-            // یعنی یک معاملهٔ کاملاً سالم به‌عنوان «گیرکرده» به اپراتور هشدار می‌داد.
+            // This is reported as success rather than an error because from the caller's point of
+            // view it genuinely is one: the trade is settled. Returning an error would make the
+            // outbox processor treat the message as failed, retry it five times and finally mark
+            // it Failed — raising a perfectly healthy trade to an operator as "stuck".
             await tx.RollbackAsync();
 
             _logger.LogInformation(
@@ -426,15 +428,15 @@ public class WalletRepository : IWalletRepository
     }
 
     /// <summary>
-    /// تشخیص اینکه آیا شکست ذخیره‌سازی به‌خاطر درج تکراری در TradeSettlements بوده است.
+    /// Decides whether a save failure was caused by a duplicate insert into TradeSettlements.
     ///
-    /// عمداً به کد خطای خاص SQL Server (۲۶۲۷ برای نقض قید، ۲۶۰۱ برای ایندکس یکتا) تکیه
-    /// نمی‌کنیم، چون تست‌ها روی SQLite اجرا می‌شوند و کد خطای دیگری تولید می‌کند. اگر
-    /// فقط کد SQL Server را می‌پذیرفتیم، این مسیر در تست‌ها هرگز اجرا نمی‌شد — یعنی
-    /// دقیقاً همان چیزی که باید تضمین شود، بی‌آزمون می‌ماند.
+    /// Deliberately does not key off SQL Server's specific error numbers (2627 for a constraint
+    /// violation, 2601 for a unique index), because the tests run against SQLite, which raises a
+    /// different code. Accepting only the SQL Server code would mean this path never executed
+    /// under test — leaving precisely the guarantee that matters most unverified.
     ///
-    /// در عوض از خودِ EF می‌پرسیم چه چیزی در حال درج بوده: اگر تنها موجودیتِ Added از
-    /// نوع TradeSettlement باشد، تنها دلیل ممکنِ نقض یکتایی همان کلید تکراری است.
+    /// Instead we ask EF what was being inserted: if the only Added entity is a TradeSettlement,
+    /// a duplicate key is the only thing the uniqueness violation can be about.
     /// </summary>
     private static bool IsDuplicateSettlement(DbUpdateException ex) =>
         ex.Entries.Count > 0 && ex.Entries.All(e => e.Entity is TradeSettlement);
