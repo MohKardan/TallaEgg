@@ -16,7 +16,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         public const string BtnMainMenu = "💰 منوی اصلی";
         public const string BtnSpot = "💰 نقدی";
-        // BtnFutures حذف شد: بازار آتی وجود ندارد و هیچ handlerی برای این دکمه نبود.
+        // BtnFutures was removed: there is no futures market and no handler existed for the button.
         public const string BtnAccounting = "📊 حسابداری";
         public const string BtnHelp = "❓ راهنما";
         public const string BtnBack = "🔙 بازگشت";
@@ -37,7 +37,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnConfirm = "✅ تایید";
         public const string BtnCancel = "❌ لغو";
         /// <summary>
-        /// Place Order همان مفهوم Make Order را دارد و به معنای ثبت سفارش است
+        /// "Place Order" and "Make Order" mean the same thing here: submitting an order.
         /// </summary>
         public const string BtnSpotCreateOrder = "📝 ثبت سفارش نقدی";
         /// <summary>
@@ -59,12 +59,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
     public static class BotMsgs
     {
         // ────────────────────────────────────────────────────────────────────────────
-        // قواعد نوشتن پیام‌ها:
-        // • تمام متن فارسی باشد؛ از کلمه یا نماد لاتین در متن استفاده نشود.
-        // • هر عدد باید با PersianFormat قالب‌بندی شود (ارقام فارسی + محافظ راست‌به‌چپ)
-        //   تا در تلگرام جابه‌جا نشود. عدد خام را مستقیم در پیام قرار ندهید.
-        // • نماد معاملاتی با PersianFormat.Symbol به نام فارسی تبدیل شود («آبشده/تومان»).
-        // • پیام باید بگوید «چه شد» و «حالا چه کار کنم»؛ از ابهام پرهیز شود.
+        // Rules for writing these messages:
+        // - All text is Persian; no Latin word or symbol appears in it.
+        // - Every number goes through PersianFormat, which gives Persian digits and a
+        //   right-to-left guard so Telegram does not reorder it. Never interpolate a raw number.
+        // - Trading symbols go through PersianFormat.Symbol to become Persian names.
+        // - A message says what happened and what to do next. Avoid ambiguity.
         // ────────────────────────────────────────────────────────────────────────────
 
         public const string MsgEnterInvite = "برای شروع، کد معرف خود را وارد کنید.\n\n" +
@@ -84,7 +84,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         public const string MsgMainMenu = "🎯 منوی اصلی\n\nیکی از گزینه‌های زیر را انتخاب کنید:";
 
-        /// <summary>{0} = نام کاربر. حساب ثبت شده ولی مدیر هنوز تایید نکرده است.</summary>
+        /// <summary>{0} = the user's name. The account is registered but an admin has not approved it yet.</summary>
         public const string MsgAccountNotApproved = "{0} عزیز، حساب کاربری شما هنوز فعال نشده است.\n\n" +
                                                     "حساب شما در انتظار تایید مدیر است؛ به‌محض تایید به شما اطلاع می‌دهیم.";
 
@@ -95,13 +95,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgEnterAmount = "مقدار مورد نظر را وارد کنید:";
 
         /// <summary>
-        /// درخواست قیمت برای طلای آبشده. واحد باید صریح باشد: قیمت «یک مثقال» به تومان.
-        /// پیام قبلی («لطفا قیمت رو وارد کنید») نمی‌گفت قیمت چه چیزی و با چه واحدی.
+        /// Price prompt for melted gold. The unit has to be explicit: the price of one mesghal in
+        /// toman. The previous message asked for "the price" without saying of what, or in what unit.
         /// </summary>
         public const string MsgEnterPriceGold = "قیمت یک مثقال طلای آبشده را به تومان وارد کنید:\n\n" +
                                                "نمونه: ۷۹۰۰۰۰۰۰";
 
-        /// <summary>درخواست قیمت برای سایر دارایی‌ها. {0} = نام فارسی دارایی</summary>
+        /// <summary>Price prompt for other assets. {0} = the asset's Persian name.</summary>
         public const string MsgEnterPrice = "قیمت هر واحد {0} را به تومان وارد کنید:";
 
         /// <summary>
@@ -110,9 +110,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// customer meets it. The total sits below the rule because it is the number they check
         /// before tapping "confirm".
         ///
-        /// {0}=نماد فارسی، {1}=سمت با آیکون رنگی، {2}=مقدار همراه واحد،
-        /// {3}=قیمت هر واحد، {4}=مبلغ کل
-        /// همهٔ مقادیر باید از قبل با PersianFormat قالب‌بندی شده باشند.
+        /// {0} = Persian symbol; {1} = side with its colour icon; {2} = quantity with unit;
+        /// {3} = price per unit; {4} = total amount.
+        /// Every value must already have been formatted through PersianFormat.
         /// </summary>
         public const string MsgOrderConfirmation = "📋 تأیید سفارش\n\n" +
                                                   "🏷️ دارایی: {0}\n" +
@@ -124,12 +124,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                   "آیا این سفارش را تأیید می‌کنید؟";
 
         /// <summary>
-        /// تایید سفارش طلای آبشده.
-        /// قیمت «هر مثقال» همان عددی است که کاربر وارد کرده و قیمت «هر گرم» معادل
-        /// محاسبه‌شدهٔ آن است. نمایش هر دو ضروری است، وگرنه کاربر عددی متفاوت از
-        /// ورودی خود می‌بیند و گمان می‌کند اشتباه ثبت شده است.
-        /// {0}=دارایی، {1}=سمت با آیکون رنگی، {2}=مقدار با واحد،
-        /// {3}=قیمت هر مثقال، {4}=قیمت هر گرم، {5}=مبلغ کل
+        /// Order confirmation for melted gold.
+        /// The per-mesghal price is the number the user typed; the per-gram price is its computed
+        /// equivalent. Both must be shown, or the user sees a figure different from their own input
+        /// and assumes the order was recorded wrongly.
+        /// {0} = asset; {1} = side with its colour icon; {2} = quantity with unit;
+        /// {3} = price per mesghal; {4} = price per gram; {5} = total amount.
         /// </summary>
         public const string MsgOrderConfirmationGold = "📋 تأیید سفارش\n\n" +
                                                        "🏷️ دارایی: {0}\n" +
@@ -141,7 +141,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                        "💵 مبلغ کل: {5} تومان\n\n" +
                                                        "آیا این سفارش را تأیید می‌کنید؟";
 
-        /// <summary>{0} = توضیح دلیل، در صورت وجود</summary>
+        /// <summary>{0} = the reason, if there is one.</summary>
         public const string MsgInsufficientBalance = "❌ موجودی شما برای این سفارش کافی نیست.\n\n" +
                                                      "{0}\n\n" +
                                                      "برای افزایش موجودی یا اعتبار، با طلافروشی خود تماس بگیرید.";
@@ -151,14 +151,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                               "سفارش‌های در جریان را از «سفارشات فعال» ببینید.";
 
         /// <summary>
-        /// نتیجهٔ معامله‌ای که واقعاً انجام شده. پس از پیام ثبت سفارش فرستاده می‌شود.
+        /// The outcome of a trade that actually executed. Sent after the order-placed message.
         ///
-        /// چرا دو پیام و نه یکی: پیام اول می‌گوید درخواست شما پذیرفته شد، پیام دوم می‌گوید
-        /// معامله انجام شد. در مدل مظنه‌ای این دو در یک لحظه‌اند، ولی در دفتر سفارش ممکن
-        /// است ساعت‌ها فاصله داشته باشند — و کاربر باید هر دو را با یک شکل ببیند، وگرنه
-        /// یاد می‌گیرد که «ثبت شد» یعنی «انجام شد»، که در دفتر سفارش درست نیست.
+        /// Why two messages and not one: the first says the request was accepted, the second says
+        /// the trade executed. In dealer mode those coincide, but in an order book they may be hours
+        /// apart — and the user must see both in the same shape, or they learn that "placed" means
+        /// "executed", which in an order book is not true.
         ///
-        /// مبلغ کل عمداً هست: کاربر باید بدون حساب کردن بداند چقدر پرداخته یا گرفته.
+        /// The total is deliberately included: the user should know what they paid or received
+        /// without doing the arithmetic.
         ///
         /// The icons match those used for the same facts in the trade history
         /// (<c>TradeListHandler</c>) on purpose: the same thing should look the same
@@ -166,8 +167,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// the total is the one number the customer checks — it is what left or entered
         /// their account, and it should not have to be found among the others.
         ///
-        /// {0}=side with its colour icon، {1}=نماد فارسی، {2}=مقدار با واحد،
-        /// {3}=برچسب قیمت، {4}=قیمت، {5}=«پرداختی» یا «دریافتی»، {6}=مبلغ کل
+        /// {0} = side with its colour icon; {1} = Persian symbol; {2} = quantity with unit;
+        /// {3} = price label; {4} = price; {5} = "paid" or "received"; {6} = total amount.
         /// </summary>
         public const string MsgTradeExecuted = "✅ معاملهٔ شما انجام شد\n\n" +
                                                "{0}\n" +
@@ -178,12 +179,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                "💵 {5}: {6} تومان\n\n" +
                                                "جزئیات را از «📊 تاریخچه معاملات» ببینید.";
 
-        /// <summary>{0} = دلیل خطا</summary>
+        /// <summary>{0} = the error reason.</summary>
         public const string MsgOrderFailed = "❌ سفارش شما ثبت نشد.\n\nدلیل: {0}\n\nلطفاً دوباره تلاش کنید.";
 
         /// <summary>
-        /// قیمت‌های بازار. {0}=نماد فارسی، {1}=بهترین خرید، {2}=بهترین فروش، {3}=اختلاف
-        /// همهٔ مقادیر از قبل قالب‌بندی‌شده.
+        /// Market prices. {0} = Persian symbol; {1} = best bid; {2} = best ask; {3} = spread.
+        /// All values are pre-formatted.
         /// </summary>
         public const string MsgMarketPrices = "📊 قیمت‌های بازار\n\n" +
                                               "دارایی: {0}\n" +
@@ -192,90 +193,90 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                               "اختلاف خرید و فروش: {3} تومان\n\n" +
                                               "عملیات مورد نظر را انتخاب کنید:";
 
-        /// <summary>{0} = نام فارسی دارایی همراه واحد آن</summary>
+        /// <summary>{0} = the asset's Persian name together with its unit.</summary>
         public const string MsgEnterQuantity = "مقدار {0} را وارد کنید:";
 
         /// <summary>
-        /// وقتی هیچ مظنه‌ای برای نماد انتخاب‌شده منتشر نشده — ادامهٔ مسیر (پرسیدن مقدار)
-        /// فقط به یک شکست تضمین‌شده در مرحلهٔ بعد می‌رسید، چون قیمتی برای ثبت سفارش وجود
-        /// ندارد. باید همین‌جا متوقف شود، نه بعد از گرفتن مقدار از کاربر.
+        /// Shown when no quote has been published for the chosen symbol. Continuing — asking for a
+        /// quantity — would only reach a guaranteed failure at the next step, since there is no price
+        /// to place an order at. Stop here, not after taking the quantity from the user.
         /// </summary>
         public const string MsgNoQuoteForSymbol = "در حال حاضر قیمتی برای این نماد منتشر نشده. لطفاً کمی بعد دوباره تلاش کنید.";
 
-        // ── نمایش موجودی ────────────────────────────────────────────────────────────
+        // ── Balance display ─────────────────────────────────────────────────────────
 
         public const string MsgBalanceHeader = "💰 موجودی حساب شما\n\n";
 
         /// <summary>
-        /// یک ردیف موجودی. {0}=نام فارسی دارایی، {1}=موجودی آزاد با واحد، {2}=مقدار درگیر سفارش با واحد
+        /// One balance row. {0} = the asset's Persian name; {1} = free balance with unit;
+        /// {2} = amount tied up in orders, with unit.
         /// </summary>
         public const string MsgBalanceRow = "▪️ {0}\n" +
                                            "   موجودی آزاد: {1}\n" +
                                            "   درگیر در سفارش: {2}\n";
 
         /// <summary>
-        /// وقتی موجودی آزاد منفی است. در مدل اعتباری این حالت طبیعی است (کاربر با اعتبار
-        /// معامله کرده) اما بدون توضیح، عدد منفی برای کاربر گیج‌کننده است.
-        /// {0} = مبلغ بدهی با واحد
+        /// Shown when the free balance is negative. Under the credit model that is normal — the user
+        /// traded on credit — but without an explanation a negative number confuses them.
+        /// {0} = the debt amount with its unit.
         /// </summary>
         public const string MsgBalanceDebtNote = "   ⚠️ بدهی شما: {0}\n";
 
         /// <summary>
-        /// اعتبار همان نماد، اگر ادمین برایش شارژ کرده باشد — حتی وقتی خودِ کیف‌پول آن
-        /// دارایی هنوز ساخته نشده (کاربری که اعتبار گرفته ولی هنوز آن نماد را معامله
-        /// نکرده). {0} = مبلغ اعتبار با واحد
+        /// The symbol's credit, where an admin has granted any — including when the asset's own
+        /// wallet does not exist yet, which is the case for a user given credit who has not traded
+        /// that symbol. {0} = the credit amount with its unit.
         /// </summary>
         public const string MsgBalanceCreditLine = "   💳 اعتبار: {0}\n";
 
-        // ── سود و زیان (issue #93) ───────────────────────────────────────────────────
-        // فقط وقتی نمایش داده می‌شود که موقعیت باز باشد (Quantity != 0) یا سود/زیان
-        // تحقق‌یافته‌ای وجود داشته باشد — نمادی که کاربر هنوز رویش معامله‌ای نکرده هیچ‌کدام
-        // از این خطوط را ندارد.
+        // ── Profit and loss (issue #93) ─────────────────────────────────────────────
+        // Only shown when the position is open (Quantity != 0) or there is realised profit or loss.
+        // A symbol the user has never traded shows none of these lines.
 
-        /// <summary>{0} = میانگین قیمت خرید با واحد (تومان)</summary>
+        /// <summary>{0} = average buy price, with unit, in toman.</summary>
         public const string MsgBalanceAverageCost = "   میانگین قیمت خرید: {0}\n";
 
-        /// <summary>{0} = ارزش فعلی موقعیت با واحد (تومان)</summary>
+        /// <summary>{0} = the position's current value, with unit, in toman.</summary>
         public const string MsgBalanceCurrentValue = "   ارزش فعلی: {0}\n";
 
-        /// <summary>سود/زیان تحقق‌نیافته (موقعیت باز، بر اساس قیمت خرید ادمین). {0} = مبلغ با واحد</summary>
+        /// <summary>Unrealised profit or loss on an open position, valued at the admin's buy price. {0} = the amount with its unit.</summary>
         public const string MsgBalanceUnrealizedGain = "   📈 سود تحقق‌نیافته: {0}\n";
         public const string MsgBalanceUnrealizedLoss = "   📉 زیان تحقق‌نیافته: {0}\n";
 
-        /// <summary>سود/زیان تحقق‌یافته (از معاملات بسته‌شده). {0} = مبلغ با واحد</summary>
+        /// <summary>Realised profit or loss from closed trades. {0} = the amount with its unit.</summary>
         public const string MsgBalanceRealizedGain = "   ✅ سود تحقق‌یافته: {0}\n";
         public const string MsgBalanceRealizedLoss = "   ❌ زیان تحقق‌یافته: {0}\n";
 
-        /// <summary>وقتی مظنه‌ای برای محاسبهٔ سود/زیان تحقق‌نیافته منتشر نشده. موقعیت باز است ولی قابل ارزش‌گذاری نیست.</summary>
+        /// <summary>Shown when no quote has been published to value an open position against.</summary>
         public const string MsgBalanceNoQuoteForUnrealized = "   سود/زیان تحقق‌نیافته: قیمتی برای این نماد منتشر نشده\n";
 
-        /// <summary>{0} = مجموع سود/زیان (تحقق‌یافته + تحقق‌نیافته) روی همهٔ نمادها، با واحد</summary>
+        /// <summary>{0} = total profit or loss, realised plus unrealised, across every symbol, with unit.</summary>
         public const string MsgBalanceTotalPnlGain = "\n📊 مجموع سود و زیان شما: 📈 {0} سود\n";
         public const string MsgBalanceTotalPnlLoss = "\n📊 مجموع سود و زیان شما: 📉 {0} زیان\n";
         public const string MsgBalanceTotalPnlNone = "\n📊 مجموع سود و زیان شما: بدون تغییر\n";
 
         public const string MsgBalanceFooter = "\nبرای افزایش اعتبار با طلافروشی خود تماس بگیرید.";
 
-        /// <summary>{0} = دلیل خطا</summary>
+        /// <summary>{0} = the error reason.</summary>
         public const string MsgActiveOrdersFailed = "❌ دریافت سفارش‌های فعال انجام نشد.\n\nدلیل: {0}";
 
         public const string MsgNoWallet = "برای شما هنوز حسابی ثبت نشده است.\n\n" +
                                           "برای فعال‌سازی حساب و دریافت اعتبار، با طلافروشی خود تماس بگیرید.";
 
-        /// <summary>راهنمای کاربر عادی. راهنمای مدیر (MsgAdminHelp) در صورت نیاز به آن اضافه می‌شود.</summary>
+        /// <summary>Help text for an ordinary user. The admin help, MsgAdminHelp, replaces it where needed.</summary>
         /// <summary>
-        /// راهنمای کاربر عادی.
+        /// Help text for an ordinary user.
         ///
         /// <para>
-        /// دکمه‌ها با نامِ ثابتِ خودشان ساخته می‌شوند، نه با متن دست‌نویس. نسخهٔ قبلی هر سه
-        /// نام را جداگانه تایپ کرده بود و با تغییر منو از واقعیت جدا شد: «بازار نقدی» به
-        /// «دریافت مظنه» تغییر نام داده بود و «سفارشات فعال» اصلاً حذف شده بود، ولی راهنما
-        /// هنوز هر دو را تبلیغ می‌کرد. کاربر دنبال دکمه‌ای می‌گشت که وجود نداشت.
+        /// The buttons are composed from their own constants, not from hand-typed text. The previous
+        /// version spelled all three names out separately and drifted from reality when the menu
+        /// changed: one button had been renamed and another removed entirely, while the help still
+        /// advertised both. Users went looking for a button that did not exist.
         /// </para>
         ///
         /// <para>
-        /// تست <c>UserHelpMatchesTheMenuTests</c> این را می‌سنجد، چون کامپایلر متنِ داخل
-        /// رشته را بررسی نمی‌کند و همین بی‌سروصدا بودنِ خرابی بود که باعث شد ماه‌ها بماند.
+        /// <c>UserHelpMatchesTheMenuTests</c> asserts this, because the compiler does not check text
+        /// inside a string, and that silence is why the breakage survived for months.
         /// </para>
         /// </summary>
         public const string MsgUserHelp = "❓ راهنما\n\n" +
@@ -284,26 +285,26 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                          "نکته: قیمت‌ها بر حسب «هر مثقال» و مقدار طلا بر حسب «گرم» است.\n\n";
 
         /// <summary>
-        /// راهنمای منوی اصلی برای مدیر — جایگزین <see cref="MsgUserHelp"/> می‌شود، نه اضافه
-        /// بر آن.
+        /// Main-menu help for an admin. It <b>replaces</b> <see cref="MsgUserHelp"/> rather than
+        /// being appended to it.
         ///
-        /// منوی مدیر دکمه‌های متفاوتی از کاربر عادی دارد: «💹 اعلام مظنه» (نه «دریافت
-        /// مظنه»ای که کاربر عادی می‌بیند) و حسابداریِ مدیر هم تاریخچهٔ مظنه‌ها را دارد، نه
-        /// فقط موجودی. پیش‌تر همان <c>MsgUserHelp</c> برای مدیر هم نمایش داده می‌شد و از
-        /// دکمه‌ای حرف می‌زد که اصلاً روی منوی او نیست.
+        /// An admin's menu has different buttons from an ordinary user's: they publish a quote
+        /// rather than request one, and their accounting menu includes quote history, not just
+        /// balances. <c>MsgUserHelp</c> used to be shown to admins too, describing a button that is
+        /// not on their menu at all.
         /// </summary>
         public const string MsgAdminMainHelp = "❓ راهنما\n\n" +
                                               BotBtns.BtnSpotSubmitPrice + ": آخرین مظنهٔ منتشرشده را نشان می‌دهد\n" +
                                               BotBtns.BtnAccounting + ": تاریخچهٔ معاملات و مظنه‌های منتشرشده\n\n" +
                                               "نکته: قیمت‌ها بر حسب «هر مثقال» و مقدار طلا بر حسب «گرم» است.\n\n";
 
-        /// <summary>در انتهای راهنما اضافه می‌شود.</summary>
+        /// <summary>Appended to the end of the help text.</summary>
         public const string MsgSupportFooter = "برای افزایش موجودی یا هر سوال دیگر، با طلافروشی خود تماس بگیرید.";
 
         /// <summary>
-        /// روش افزایش موجودی. در حال حاضر درگاه پرداخت وجود ندارد و شارژ حساب توسط
-        /// طلافروشی انجام می‌شود؛ پیام قبلی شماره حساب و کارت نمونه (غیرواقعی) نشان
-        /// می‌داد که گمراه‌کننده و خطرناک بود.
+        /// How to add funds. There is no payment gateway today and top-ups are performed by the gold
+        /// shop; the previous message displayed a sample account and card number, which was both
+        /// misleading and dangerous.
         /// </summary>
         public const string MsgChargeInfo = "💰 افزایش موجودی\n\n" +
                                            "افزایش موجودی و اعتبار حساب شما توسط طلافروشی انجام می‌شود.\n\n" +
@@ -311,22 +312,22 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                            "پس از تایید، موجودی شما در همین ربات به‌روز می‌شود.";
 
         /// <summary>
-        /// بهترین قیمت‌های خرید و فروش بازار. {0}=واحد نمایش (مثقال برای طلا، وگرنه
-        /// واحد پایهٔ همان نماد — سکه، بیت‌کوین و ...)، {1}=بهترین خرید، {2}=بهترین فروش.
-        /// ذکر واحد ضروری است، چون قیمت طلا در جای دیگر بر حسب «گرم» نمایش داده می‌شود و
-        /// واحد نمادهای دیگر (سکه، بیت‌کوین) با هم یکی نیست.
+        /// The market's best bid and ask. {0} = the display unit (mesghal for gold, otherwise the
+        /// symbol's own base unit); {1} = best bid; {2} = best ask.
+        /// Naming the unit is essential, because gold prices are shown per gram elsewhere and the
+        /// other symbols do not share a unit.
         /// </summary>
         public const string MsgBestPrices = "📊 بهترین قیمت‌های بازار (هر {0})\n\n" +
                                            "💰 خرید: {1}\n" +
                                            "💸 فروش: {2}";
 
         /// <summary>
-        /// وقتی در آن سمت بازار هیچ سفارشی ثبت نشده باشد. نمایش «۰ تومان» گمراه‌کننده
-        /// است، چون صفر یعنی قیمت صفر، نه نبودن قیمت.
+        /// Shown when that side of the market has no orders. Displaying zero would mislead, since a
+        /// zero reads as a price of zero rather than the absence of one.
         /// </summary>
         public const string MsgPriceNotAvailable = "فعلاً سفارشی ثبت نشده";
 
-        /// <summary>آرگومان‌ها مثل MsgOrderConfirmation</summary>
+        /// <summary>Same arguments as MsgOrderConfirmation.</summary>
         public const string MsgMarketOrderConfirmation = "📋 تایید سفارش بازار\n\n" +
                                                           "دارایی: {0}\n" +
                                                           "نوع سفارش: {1}\n" +
@@ -360,9 +361,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                           "روشن/خاموش: اتومات روشن یا اتومات خاموش\n\n" +
                                           "نکته: مقدارها را می‌توانید با ارقام فارسی یا انگلیسی وارد کنید.";
 
-        // ── پیام‌های افزایش اعتبار و کسر موجودی (مدیر) ──────────────────────────────
+        // ── Credit top-up and balance deduction messages (admin) ────────────────────
 
-        /// <summary>{0} = فهرست نام‌های فارسی ارزهای مجاز</summary>
+        /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminChargeFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "ش [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
@@ -371,7 +372,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
-        /// <summary>{0} = فهرست نام‌های فارسی ارزهای مجاز</summary>
+        /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminDeductFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "د [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
@@ -380,46 +381,47 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
-        /// <summary>{0} = ورودی نامعتبر کاربر، {1} = فهرست نام‌های فارسی مجاز</summary>
+        /// <summary>{0} = the user's invalid input; {1} = the list of permitted Persian names.</summary>
         public const string MsgAdminInvalidCurrency = "❌ نوع «{0}» شناسایی نشد.\n\n" +
                                                        "نوع‌های مجاز: {1}\n" +
                                                        "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         public const string MsgAdminUserNotFound = "❌ کاربری با این شمارهٔ تلفن پیدا نشد.";
 
-        // ── پیام‌های تغییر سطح دسترسی (مدیر) ────────────────────────────────────────
+        // ── Role change messages (admin) ────────────────────────────────────────────
 
-        /// <summary>{0} = فهرست نقش‌های مجاز به همراه شمارهٔ هرکدام</summary>
+        /// <summary>{0} = the permitted roles, each with its number.</summary>
         public const string MsgAdminRoleFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                        "قالب صحیح:\n" +
                                                        "ن [شمارهٔ تلفن] [نقش]\n\n" +
                                                        "نمونه: ن ۰۹۱۲۱۲۳۴۵۶۷ مدیر\n\n" +
                                                        "نقش‌های مجاز: {0}";
 
-        /// <summary>{0} = ورودی نامعتبر کاربر، {1} = فهرست نقش‌های مجاز</summary>
+        /// <summary>{0} = the user's invalid input; {1} = the permitted roles.</summary>
         public const string MsgAdminRoleUnknown = "❌ نقش «{0}» شناسایی نشد.\n\nنقش‌های مجاز: {1}";
 
         /// <summary>
-        /// وقتی مدیر بخواهد نقش خودش را عوض کند. دلیلِ رد کردن در کد توضیح داده شده:
-        /// اگر تنها مدیر خودش را عادی کند، دستوری که او را برگرداند دیگر در دسترس نیست.
+        /// Shown when an admin tries to change their own role. The reason for refusing is explained
+        /// in the code: if the only admin demotes themselves, the command that would restore them is
+        /// no longer available to anyone.
         /// </summary>
         public const string MsgAdminRoleSelfChange = "❌ نقش خودتان را نمی‌توانید تغییر دهید.\n\n" +
                                                       "اگر این کار ممکن بود، یک اشتباه می‌توانست دسترسی مدیریتی را " +
                                                       "به‌کلی از بین ببرد و بازگرداندن آن فقط با تغییر فایل پیکربندی و " +
                                                       "راه‌اندازی دوبارهٔ ربات ممکن می‌شد.";
 
-        /// <summary>{0} = شمارهٔ تلفن، {1} = نقش فعلی</summary>
+        /// <summary>{0} = phone number; {1} = current role.</summary>
         public const string MsgAdminRoleUnchanged = "ℹ️ تغییری لازم نبود.\n\n" +
                                                      "کاربر: {0}\n" +
                                                      "نقش فعلی: {1}";
 
         /// <summary>
-        /// تاییدِ تغییر نقش برای مدیر.
-        /// {0}=شمارهٔ تلفن، {1}=نقش پیشین، {2}=نقش تازه، {3}=شناسهٔ کاربر
+        /// Role-change confirmation shown to the admin.
+        /// {0} = phone number; {1} = previous role; {2} = new role; {3} = user id.
         ///
-        /// شناسهٔ کاربر عمداً نمایش داده می‌شود: مقدار <c>Matching:MarketMakerUserId</c> در
-        /// پیکربندی باید دقیقاً همین شناسه باشد و روی یک دیتابیس تازه این عدد از قبل معلوم
-        /// نیست. بدون این خط باید مستقیماً از دیتابیس پرس‌وجو شود.
+        /// The user id is shown deliberately: <c>Matching:MarketMakerUserId</c> in configuration has
+        /// to be exactly this id, and against a fresh database that value is not knowable in advance.
+        /// Without this line it would have to be queried straight out of the database.
         /// </summary>
         public const string MsgAdminRoleChanged = "✅ سطح دسترسی تغییر کرد.\n\n" +
                                                    "👤 کاربر: {0}\n" +
@@ -428,62 +430,63 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                    "➖➖➖\n" +
                                                    "🆔 شناسهٔ کاربر:\n{3}";
 
-        // ── پیام‌های تایید و رد کاربر (مدیر) ────────────────────────────────────────
+        // ── User approval and rejection messages (admin) ────────────────────────────
 
-        /// <summary>{0} = حرف دستور («ت» یا «ر»)</summary>
+        /// <summary>{0} = the command letter, "ت" (approve) or "ر" (reject).</summary>
         public const string MsgAdminStatusFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                          "قالب صحیح:\n" +
                                                          "{0} [شمارهٔ تلفن]\n\n" +
                                                          "ت ۰۹۱۲۱۲۳۴۵۶۷ ← تایید حساب\n" +
                                                          "ر ۰۹۱۲۱۲۳۴۵۶۷ ← رد حساب";
 
-        /// <summary>{0} = شمارهٔ تلفن، {1} = وضعیت تازه</summary>
+        /// <summary>{0} = phone number; {1} = new status.</summary>
         public const string MsgAdminStatusChanged = "✅ وضعیت حساب تغییر کرد.\n\n" +
                                                      "👤 کاربر: {0}\n" +
                                                      "🔖 وضعیت: {1}";
 
-        /// <summary>{0} = شمارهٔ تلفن، {1} = وضعیت فعلی</summary>
+        /// <summary>{0} = phone number; {1} = current status.</summary>
         public const string MsgAdminStatusUnchanged = "ℹ️ تغییری لازم نبود.\n\n" +
                                                        "کاربر: {0}\n" +
                                                        "وضعیت فعلی: {1}";
 
         /// <summary>
-        /// حسابی که حساب تلگرام ندارد از این راه قابل تغییر نیست، چون این سرویس با شناسهٔ
-        /// تلگرام کار می‌کند. تنها نمونه‌اش «مدیر کل»ِ خودکار است که آدم نیست و فقط کد دعوت
-        /// اولیه را نگه می‌دارد.
+        /// An account with no Telegram account cannot be changed this way, because this service works
+        /// by Telegram id. The only such account is the seeded super-admin, which is not a person and
+        /// exists only to hold the initial invitation code.
         /// </summary>
         public const string MsgAdminStatusNoTelegramAccount =
             "❌ این حساب به تلگرام متصل نیست و وضعیتش از این راه قابل تغییر نیست.";
 
-        /// <summary>پاسخ به دکمه‌ای که کاربر مجاز به زدنش نیست.</summary>
+        /// <summary>Reply when a user presses a button they are not permitted to use.</summary>
         public const string MsgNotAuthorized = "شما اجازهٔ این کار را ندارید.";
 
         /// <summary>
-        /// پاسخ عمومی وقتی پردازش پیام کاربر با خطای غیرمنتظره (بدون پاسخ اختصاصی از خود
-        /// هندلر) متوقف شود — issue #99. تنها جایی که پیام خام exception به کاربر نمی‌رسد.
+        /// The generic reply when handling a user's message stops on an unexpected error with no
+        /// specific response from the handler (issue #99). This is what keeps a raw exception message
+        /// from ever reaching a user.
         /// </summary>
         public const string MsgUnexpectedError = "❌ مشکلی پیش آمد.\n\nلطفاً دوباره تلاش کنید. اگر ادامه داشت، به طلافروشی خود اطلاع دهید.";
 
         /// <summary>
-        /// وقتی پیامی از کسی می‌رسد که هنوز ثبت‌نام نکرده است.
+        /// Shown when a message arrives from someone who has not registered yet.
         ///
-        /// «/start» عمداً به همین شکل و بدون هیچ نشانه‌گذاری نوشته شده تا تلگرام خودش آن را
-        /// به فرمانِ قابل‌لمس تبدیل کند؛ متن قبلی «با دستور شروع ثبت‌نام کنید» بود که کاربر
-        /// نمی‌توانست رویش بزند و باید دستور را حدس می‌زد.
+        /// "/start" is written plainly and without markup so Telegram turns it into a tappable
+        /// command. The previous text described the command in prose, which the user could not tap
+        /// and had to guess at.
         /// </summary>
         public const string MsgAccountNotFound = "حساب شما پیدا نشد.\n\n" +
                                                  "برای ثبت‌نام /start را بفرستید.";
 
-        // ── کارت درخواست عضویت (برای مدیران) ───────────────────────────────────────
+        // ── Membership request card, sent to admins ────────────────────────────────
 
         /// <summary>
-        /// کارتی که برای تایید یا رد کاربر تازه به مدیران فرستاده می‌شود.
+        /// The card sent to admins to approve or reject a new user.
         ///
-        /// همهٔ برچسب‌ها فارسی‌اند. قبلاً نیمی فارسی و نیمی انگلیسی بود
-        /// («👤 نام» کنار «🆔 Telegram ID» و «📞 Phone») که پیام را به‌هم‌ریخته نشان می‌داد،
-        /// چون در یک متن راست‌به‌چپ، برچسب چپ‌به‌راست جهت خط را می‌شکند.
+        /// Every label is Persian. It used to be half Persian and half English, which displayed as a
+        /// jumble: inside right-to-left text, a left-to-right label breaks the line's direction.
         ///
-        /// {0}=نام کامل، {1}=شمارهٔ تلفن، {2}=نام کاربری، {3}=شناسهٔ تلگرام، {4}=تاریخ ثبت‌نام
+        /// {0} = full name; {1} = phone number; {2} = username; {3} = Telegram id;
+        /// {4} = registration date.
         /// </summary>
         public const string MsgMembershipRequest = "📌 درخواست عضویت جدید\n\n" +
                                                     "👤 نام: {0}\n" +
@@ -492,15 +495,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                     "🆔 شناسهٔ تلگرام: {3}\n" +
                                                     "📅 تاریخ ثبت‌نام: {4}";
 
-        /// <summary>اطلاع‌رسانی تغییر نقش به خودِ کاربر. {0}=نقش تازه</summary>
+        /// <summary>Notifies the user of their own role change. {0} = the new role.</summary>
         public const string MsgUserRoleChanged = "ℹ️ سطح دسترسی حساب شما تغییر کرد.\n\n" +
                                                   "نقش تازه: {0}\n\n" +
                                                   "منوی ربات از پیام بعدی مطابق همین نقش نمایش داده می‌شود.";
 
         /// <summary>
-        /// تاییدِ افزایش اعتبار برای مدیر. عمداً «اعتبار» گفته شده نه «موجودی»، چون
-        /// شارژ مدیر به کیف پول اعتباری واریز می‌شود نه موجودی نقدی.
-        /// {0}=نام فارسی دارایی، {1}=مقدار با واحد، {2}=شمارهٔ تلفن، {3}=اعتبار جدید با واحد
+        /// Credit top-up confirmation shown to the admin. It deliberately says "credit" rather than
+        /// "balance", because an admin top-up goes into the credit wallet, not the spot balance.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
+        /// {3} = the new credit with unit.
         /// </summary>
         public const string MsgAdminChargeDone = "✅ افزایش اعتبار انجام شد.\n\n" +
                                                  "دارایی: {0}\n" +
@@ -509,8 +513,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                  "اعتبار جدید: {3}";
 
         /// <summary>
-        /// اطلاع‌رسانی افزایش اعتبار به خودِ کاربر.
-        /// {0}=نام فارسی دارایی، {1}=مقدار با واحد، {2}=اعتبار جدید با واحد
+        /// Notifies the user of their own credit top-up.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new credit with unit.
         /// </summary>
         public const string MsgUserCreditIncreased = "✅ اعتبار حساب شما افزایش یافت.\n\n" +
                                                      "دارایی: {0}\n" +
@@ -519,8 +523,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "اکنون می‌توانید سفارش خرید یا فروش ثبت کنید.";
 
         /// <summary>
-        /// تاییدِ کسر برای مدیر.
-        /// {0}=نام فارسی دارایی، {1}=مقدار با واحد، {2}=شمارهٔ تلفن، {3}=موجودی جدید با واحد
+        /// Deduction confirmation shown to the admin.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
+        /// {3} = the new balance with unit.
         /// </summary>
         public const string MsgAdminDeductDone = "✅ کسر از موجودی انجام شد.\n\n" +
                                                  "دارایی: {0}\n" +
@@ -529,25 +534,25 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                  "موجودی جدید: {3}";
 
         /// <summary>
-        /// اطلاع‌رسانی کسر به خودِ کاربر. پیام قبلی اشتباهاً «شارژ» می‌گفت.
-        /// {0}=نام فارسی دارایی، {1}=مقدار با واحد، {2}=موجودی جدید با واحد
+        /// Notifies the user of a deduction. The previous message wrongly called it a top-up.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new balance with unit.
         /// </summary>
         public const string MsgUserBalanceDeducted = "ℹ️ از موجودی حساب شما کسر شد.\n\n" +
                                                      "دارایی: {0}\n" +
                                                      "مقدار کسر: {1}\n" +
                                                      "موجودی جدید: {2}";
 
-        /// <summary>{0} = دلیل خطا</summary>
+        /// <summary>{0} = the error reason.</summary>
         public const string MsgAdminOperationFailed = "❌ عملیات انجام نشد.\n\nدلیل: {0}";
 
         public const string MsgAdminProcessing = "⏳ در حال پردازش…";
 
-        // ── تایید و رد کاربر ────────────────────────────────────────────────────────
+        // ── User approval and rejection ─────────────────────────────────────────────
 
-        /// <summary>روی پیام درخواست ثبت‌نام، پس از تایید، افزوده می‌شود.</summary>
+        /// <summary>Appended to the registration request message once approved.</summary>
         public const string MsgAdminApprovedSuffix = "\n\n✅ این کاربر تایید شد.";
 
-        /// <summary>روی پیام درخواست ثبت‌نام، پس از رد، افزوده می‌شود.</summary>
+        /// <summary>Appended to the registration request message once rejected.</summary>
         public const string MsgAdminRejectedSuffix = "\n\n❌ این کاربر رد شد.";
 
         public const string MsgUserApproved = "🎉 حساب شما تایید شد.\n\n" +
@@ -557,19 +562,19 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgUserRejected = "❌ درخواست ثبت‌نام شما تایید نشد.\n\n" +
                                               "برای اطلاع از دلیل، با طلافروشی خود تماس بگیرید.";
 
-        /// <summary>{0} = تعداد سفارش لغوشده</summary>
+        /// <summary>{0} = how many orders were cancelled.</summary>
         public const string MsgAdminPreviousPricesCancelled = "✅ {0} قیمت قبلی لغو شد.";
 
-        /// <summary>{0} = دلیل خطا</summary>
+        /// <summary>{0} = the error reason.</summary>
         public const string MsgAdminCancelPreviousFailed = "⚠️ لغو قیمت‌های قبلی با خطا مواجه شد.\n\nدلیل: {0}";
 
         /// <summary>
-        /// نتیجهٔ ثبت قیمت خرید و فروش توسط مدیر.
-        /// قیمت‌های وارد‌شده بر حسب «هر مثقال» هستند و معادل «هر گرم» نیز نمایش داده
-        /// می‌شود تا هیچ ابهامی در واحد باقی نماند.
-        /// {0}=نام فارسی دارایی، {1}=وضعیت خرید، {2}=وضعیت فروش،
-        /// {3}=قیمت خرید هر مثقال، {4}=قیمت خرید هر گرم،
-        /// {5}=قیمت فروش هر مثقال، {6}=قیمت فروش هر گرم
+        /// Result of an admin submitting buy and sell prices.
+        /// The prices entered are per mesghal, and the per-gram equivalent is shown as well so no
+        /// ambiguity about the unit remains.
+        /// {0} = the asset's Persian name; {1} = buy status; {2} = sell status;
+        /// {3} = buy price per mesghal; {4} = buy price per gram;
+        /// {5} = sell price per mesghal; {6} = sell price per gram.
         /// </summary>
         public const string MsgAdminPriceSubmitResult = "📊 نتیجهٔ ثبت قیمت\n\n" +
                                                         "دارایی: {0}\n\n" +
@@ -583,15 +588,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         public const string MsgAdminOrderOk = "✅ ثبت شد";
 
-        /// <summary>{0} = دلیل ناموفق بودن</summary>
+        /// <summary>{0} = why it failed.</summary>
         public const string MsgAdminOrderFailed = "❌ ثبت نشد — {0}";
 
         /// <summary>
-        /// نتیجهٔ انتشار مظنه (issue #48).
+        /// Result of publishing a quote (issue #48).
         ///
-        /// عمداً از «سفارش» حرفی نمی‌زند: انتشار مظنه دیگر سفارشی در دفتر نمی‌گذارد و
-        /// وثیقه‌ای قفل نمی‌کند. متن قبلی «سفارش خرید ثبت شد» را می‌گفت، که همان ابهامی
-        /// بود که مدیر را گیج می‌کرد — او «قیمت امروز» را اعلام می‌کرد، نه سفارش.
+        /// It deliberately never says "order": publishing a quote no longer places anything in the
+        /// book or locks collateral. The previous text announced that a buy order had been placed,
+        /// which was the exact ambiguity that confused admins — they were announcing today's price,
+        /// not placing an order.
         ///
         /// Each side names <b>both</b> parties — "you buy (the customer sells)". The previous
         /// wording was "خرید شما" alone, which is ambiguous to the person reading it: an admin
@@ -606,8 +612,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// The margin line is included because it is the number a price-setter actually
         /// decides, and it is the one they cannot compute at a glance from the other four.
         ///
-        /// {0}=نام دارایی، {1}=قیمت خرید هر مثقال، {2}=قیمت خرید هر گرم،
-        /// {3}=قیمت فروش هر مثقال، {4}=قیمت فروش هر گرم، {5}=حاشیه در هر مثقال
+        /// {0} = asset name; {1} = buy price per mesghal; {2} = buy price per gram;
+        /// {3} = sell price per mesghal; {4} = sell price per gram; {5} = margin per mesghal.
         /// </summary>
         public const string MsgAdminQuotePublished = "📊 مظنه منتشر شد\n\n" +
                                                      "🏷️ دارایی: {0}\n\n" +
@@ -627,7 +633,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// tracked in the conversation, not a numbered GitHub issue). The admin's number is
         /// already the per-unit price, so there is nothing to derive and show twice.
         ///
-        /// {0}=نام دارایی، {1}=قیمت خرید، {2}=قیمت فروش، {3}=حاشیه، {4}=واحد (مثل «سکه»)
+        /// {0} = asset name; {1} = buy price; {2} = sell price; {3} = margin; {4} = unit.
         /// </summary>
         public const string MsgAdminQuotePublishedSimple = "📊 مظنه منتشر شد\n\n" +
                                                      "🏷️ دارایی: {0}\n\n" +
@@ -637,10 +643,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "📈 حاشیهٔ شما: {3} تومان به ازای هر {4}\n\n" +
                                                      "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
-        /// <summary>{0} = دلیل ناموفق بودن</summary>
+        /// <summary>{0} = why it failed.</summary>
         public const string MsgAdminQuoteFailed = "❌ انتشار مظنه انجام نشد.\n\nدلیل: {0}";
 
-        // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────
+        // ── Automatic quotes (issue #90) ────────────────────────────────────────
 
         public const string MsgAutoQuoteSpreadFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                              "قالب صحیح:\n" +
@@ -648,10 +654,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                              "نمونه: اسپرد 0.5\n" +
                                                              "نمونه: اسپرد 0.5 سکه";
 
-        /// <summary>{0} = نام فارسی نماد، {1} = درصد اسپرد جدید</summary>
+        /// <summary>{0} = the symbol's Persian name; {1} = the new spread percentage.</summary>
         public const string MsgAutoQuoteSpreadUpdated = "✅ اسپرد مظنهٔ اتومات {0} روی {1}٪ تنظیم شد.";
 
-        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        /// <summary>{0} = the symbol's Persian name; {1} = the error reason.</summary>
         public const string MsgAutoQuoteSpreadFailed = "❌ تنظیم اسپرد مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         public const string MsgAutoQuoteToggleFormatError = "❌ قالب دستور درست نیست.\n\n" +
@@ -661,23 +667,23 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                              "توجه: هر نماد تنظیم اتومات جدا دارد — بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                              "با نماد دیگر: اتومات روشن سکه";
 
-        /// <summary>{0} = نام فارسی نماد</summary>
+        /// <summary>{0} = the symbol's Persian name.</summary>
         public const string MsgAutoQuoteEnabled = "✅ مظنهٔ اتومات {0} روشن شد.";
 
-        /// <summary>{0} = نام فارسی نماد</summary>
+        /// <summary>{0} = the symbol's Persian name.</summary>
         public const string MsgAutoQuoteDisabled = "⏸️ مظنهٔ اتومات {0} خاموش شد.";
 
-        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        /// <summary>{0} = the symbol's Persian name; {1} = the error reason.</summary>
         public const string MsgAutoQuoteToggleFailed = "❌ روشن/خاموش‌کردن مظنهٔ اتومات {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
-        /// وقتی نماد نوشته‌شده بعد از دستور «اسپرد»، «اتومات»، «نماد»، یا قیمت‌جفتی شناخته‌شده
-        /// نیست.
+        /// Shown when the symbol written after a spread, automatic-quote, symbol or paired-price
+        /// command is not recognised.
         /// </summary>
         public const string MsgAdminUnknownQuoteSymbol = "❌ این نماد شناخته‌شده نیست.\n\n" +
                                                           "نمادهای معتبر: (خالی = آبشده)، سکه، بیت";
 
-        // ── فعال/غیرفعال بودن نماد ───────────────────────────────────────────────
+        // ── Symbol enable/disable ───────────────────────────────────────────────
 
         public const string MsgSymbolActiveFormatError = "❌ قالب دستور درست نیست.\n\n" +
                                                           "قالب صحیح:\n" +
@@ -686,26 +692,26 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                           "توجه: بدون کلیدواژه یعنی فقط آبشده.\n" +
                                                           "با نماد دیگر: نماد فعال سکه";
 
-        /// <summary>{0} = نام فارسی نماد</summary>
+        /// <summary>{0} = the symbol's Persian name.</summary>
         public const string MsgSymbolActivated = "✅ نماد {0} فعال شد و برای مشتریان قابل‌معامله است.";
 
-        /// <summary>{0} = نام فارسی نماد</summary>
+        /// <summary>{0} = the symbol's Persian name.</summary>
         public const string MsgSymbolDeactivated = "⏸️ نماد {0} غیرفعال شد.";
 
-        /// <summary>{0} = نام فارسی نماد، {1} = دلیل خطا</summary>
+        /// <summary>{0} = the symbol's Persian name; {1} = the error reason.</summary>
         public const string MsgSymbolActiveFailed = "❌ فعال/غیرفعال‌کردن نماد {0} انجام نشد.\n\nدلیل: {1}";
 
         /// <summary>
-        /// وقتی ربات بدون تغییر نسخه دوباره اجرا می‌شود (ری‌استارت معمولی).
-        /// {0} = نسخه فعلی
+        /// Shown when the bot restarts without a version change, which is the ordinary case.
+        /// {0} = the current version.
         /// </summary>
         public const string MsgBotBackOnline = "✅ ربات دوباره در دسترس است.\n\n" +
                                                "نسخه: {0}\n" +
                                                "اگر مشکلی مشاهده کردید، لطفاً به ما اطلاع دهید 🙏";
 
         /// <summary>
-        /// فقط وقتی نسخه واقعاً تغییر کرده باشد.
-        /// {0} = نسخه جدید، {1} = فهرست خلاصه تغییرات (در صورت وجود، وگرنه خالی)
+        /// Only when the version has genuinely changed.
+        /// {0} = the new version; {1} = the changelog summary, or empty if there is none.
         /// </summary>
         public const string MsgBotUpdated = "🚀 ربات به نسخه جدید آپدیت شد!\n\n" +
                                             "نسخه فعلی: {0}\n" +
@@ -714,16 +720,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
     }
 
     /// <summary>
-    /// خلاصه تغییرات مهم هر نسخه، برای نمایش در پیام آپدیت.
-    /// کلید باید دقیقاً با خروجی IVersionService.GetCurrentVersion یکی باشد (مثل "1.1.0").
-    /// اگر برای نسخه‌ای کلیدی وجود نداشته باشد، پیام آپدیت بدون فهرست تغییرات ارسال می‌شود.
-    /// هنگام بالا بردن AssemblyVersion، یک ورودی اینجا اضافه کنید.
+    /// A summary of each version's notable changes, for the update message.
+    /// The key must match IVersionService.GetCurrentVersion exactly, for example "1.1.0".
+    /// A version with no entry here sends the update message without a changelog.
+    /// Add an entry here whenever AssemblyVersion is raised.
     /// </summary>
     public static class ReleaseNotes
     {
         private static readonly Dictionary<string, string[]> Notes = new()
         {
-            // مثال:
+            // Example:
             // ["1.1.0"] = new[]
             // {
             //     "ثبت خودکار معاملات و به‌روزرسانی موجودی",
@@ -732,8 +738,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         };
 
         /// <summary>
-        /// فهرست تغییرات را به صورت متن آماده برای درج در پیام برمی‌گرداند.
-        /// اگر برای این نسخه تغییری ثبت نشده باشد، رشته خالی برمی‌گردد.
+        /// Returns the changelog as text ready to interpolate into the message, or an empty string
+        /// if nothing is recorded for this version.
         /// </summary>
         public static string GetSummaryFor(string version)
         {
@@ -748,9 +754,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
     public static class InlineCallBackData
     {
         /// <summary>
-        /// قبل این روی دکمه نقدی در منوی اصلی کلیک شده است
+        /// Reached after the spot button on the main menu has been pressed.
         /// BotTexts.BtnSpot
-        /// دکمه شیشه ای خرید
+        /// The inline buy button.
         /// </summary>
         public const string buy_spot = "buy_spot";
         public const string sell_spot = "sell_spot";

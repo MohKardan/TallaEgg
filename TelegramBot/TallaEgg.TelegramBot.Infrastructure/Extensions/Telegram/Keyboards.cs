@@ -43,9 +43,9 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
 
-        // MainMenuKeyboard اینجا حذف شد: از هیچ‌جا صدا زده نمی‌شد و تنها جایی بود که دکمهٔ
-        // «📈 آتی» را نشان می‌داد — دکمه‌ای برای بازاری که وجود ندارد و هیچ handlerی هم
-        // نداشت. منوی اصلیِ واقعی جای دیگری ساخته می‌شود.
+        // MainMenuKeyboard was removed from here: nothing called it, and it was the only place that
+        // showed a futures button — a button for a market that does not exist and had no handler.
+        // The real main menu is built elsewhere.
 
         public static async Task SendContactKeyboardAsync(this IBotMessenger _botClient, long chatId)
         {
@@ -66,7 +66,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 
         }
         /// <summary>
-        /// منوی اصلی برای کاربر عادی و مدیر فرق میکنه
+        /// The main menu differs between an ordinary user and an admin.
         /// </summary>
         /// <param name="_botClient"></param>
         /// <param name="chatId"></param>
@@ -87,7 +87,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             await _botClient.SendAsync(chatId, BotMsgs.MsgMainMenu, replyMarkup: keyboard);
         }
         /// <summary>
-        /// منوی اصلی برای کاربر عادی و مدیر فرق میکنه
+        /// The main menu differs between an ordinary user and an admin.
         /// </summary>
         /// <param name="_botClient"></param>
         /// <param name="chatId"></param>
@@ -141,9 +141,9 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
                new[]
                {
                     new[] { new KeyboardButton(BotBtns.BtnTradeHistory), new KeyboardButton(BotBtns.BtnQuoteHistory)},
-                    // ادمین طرف مقابل هر معاملهٔ مظنه‌ای است، پس همین صفحهٔ موجودی سود و
-                    // زیان خودِ فروشگاه را هم نشان می‌دهد (issue #93) -- بدون هیچ منطق
-                    // جداگانه‌ای، چون از دید سرویس ادمین هم فقط یک شناسهٔ کاربری دیگر است.
+                    // The admin is the counterparty to every quote fill, so this same balance screen
+                    // also shows the shop's own profit and loss (issue #93) — with no separate
+                    // logic, because to the service the admin is just another user id.
                     new[] { new KeyboardButton(BotBtns.BtnWalletsBalance)},
                     new[] { new KeyboardButton(BotBtns.BtnMainMenu)},
                }
@@ -178,12 +178,11 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             await _botClient.SendAsync(chatId, "📈 معاملات نقدی\n\nلطفاً نوع معامله خود را انتخاب کنید:", replyMarkup: keyboard);
         }
 
-        // SendUserOrdersWithPagingAsync و کمکی‌هایش (GetTypeIcon/GetStatusEmoji) حذف شدند.
+        // SendUserOrdersWithPagingAsync and its helpers, GetTypeIcon and GetStatusEmoji, were removed.
         //
-        // از هیچ‌جا صدا زده نمی‌شد — نسخهٔ زندهٔ فهرست سفارش‌ها در OrderListHandler است.
-        // این نسخهٔ متروک تنها جایی بود که o.Role را به کاربر نشان می‌داد، مقداری که
-        // همیشه Maker است و درست نیست (issue #35). یعنی یک مقدار نادرست فقط یک
-        // فراخوانی با آن فاصله داشت.
+        // Nothing called it — the live order list is in OrderListHandler. This abandoned copy was
+        // the only place that displayed o.Role to a user, a value that is always Maker and therefore
+        // wrong (issue #35). An incorrect value was one call site away from being shown.
 
         /// <summary>
         /// Notifies every group admin that a user is waiting for approval.

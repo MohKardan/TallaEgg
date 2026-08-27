@@ -1,4 +1,4 @@
-using TallaEgg.Core;
+﻿using TallaEgg.Core;
 ﻿using System.Text;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -32,8 +32,8 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 return "هیچ سفارشی یافت نشد.";
             }
 
-            // متن ساده (بدون Markdown) — همان دلیل ActiveOrdersHandler: نشانه‌های
-            // قالب‌بندی توسط EscapeMarkdownV2 خنثی می‌شدند و خام نمایش داده می‌شدند.
+            // Plain text, no Markdown — the same reason as ActiveOrdersHandler: EscapeMarkdownV2
+            // neutralised the formatting markers and they were displayed raw.
             var sb = new StringBuilder();
             sb.AppendLine($"📋 سفارش‌های شما — صفحهٔ {PersianFormat.Number(currentPage)} از {PersianFormat.Number(page.TotalPages)}");
             sb.AppendLine();

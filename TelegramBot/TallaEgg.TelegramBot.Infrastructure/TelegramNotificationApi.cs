@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,11 +14,11 @@ using System.IO;
 namespace TallaEgg.TelegramBot.Infrastructure;
 
 /// <summary>
-/// Minimal API برای دریافت اطلاعیه‌های تطبیق معاملات
+/// Minimal API that receives trade-match notifications.
 /// </summary>
 /// <remarks>
-/// این برنامه endpoint هایی برای دریافت اطلاعیه‌ها از سرویس تطبیق معاملات فراهم می‌کند
-/// و آنها را به کاربران مربوطه در تلگرام ارسال می‌کند
+/// It exposes endpoints for the matching service to post notifications to, and forwards them to the
+/// relevant users on Telegram.
 /// </remarks>
 public class TelegramNotificationApi
 {
@@ -41,14 +41,11 @@ public class TelegramNotificationApi
 
 
     /// <summary>
-    /// راه‌اندازی و اجرای Minimal API برای اطلاعیه‌های تلگرام
+    /// Configures and runs the notification Minimal API.
     /// </summary>
-    /// <param name="args">آرگومان‌های خط فرمان</param>
+    /// <param name="args">Command-line arguments.</param>
     /// <remarks>
-    /// این متد:
-    /// 1. سرویس‌های مورد نیاز را پیکربندی می‌کند
-    /// 2. endpoint های API را تعریف می‌کند
-    /// 3. برنامه را اجرا می‌کند
+    /// Registers the required services, defines the API endpoints, and runs the application.
     /// </remarks>
     public static void RunNotificationApi(string[] args)
     {        var builder = WebApplication.CreateBuilder(args);
@@ -84,10 +81,10 @@ public class TelegramNotificationApi
             builder.WebHost.UseUrls(urls);
         }
 
-        // اضافه کردن سرویس‌های مورد نیاز
+        // Register the required services.
         builder.Services.AddHttpClient();
 
-        // خواندن تنظیمات
+        // Read configuration.
         var configuration = builder.Configuration;
         var botToken = configuration["TelegramBotToken"] ?? Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN");
         var usersApiUrl = configuration["UsersApiUrl"];
@@ -118,29 +115,27 @@ public class TelegramNotificationApi
 
         var app = builder.Build();
 
-        // تعریف endpoint برای دریافت اطلاعیه تطبیق معامله
+        // The endpoint that receives a trade-match notification.
         app.MapPost("/api/telegram/notifications/trade-match", 
             /// <summary>
-            /// دریافت اطلاعیه تطبیق معامله و ارسال به کاربران
+            /// Receives a trade-match notification and sends it on to the users.
             /// </summary>
-            /// <param name="notification">اطلاعات کامل معامله تطبیق یافته</param>
-            /// <param name="notificationService">سرویس اطلاع‌رسانی</param>
-            /// <returns>نتیجه عملیات ارسال اطلاعیه</returns>
+            /// <param name="notification">The matched trade in full.</param>
+            /// <param name="notificationService">Notification service.</param>
+            /// <returns>Whether the notifications were sent.</returns>
             /// <remarks>
-            /// این endpoint توسط سرویس تطبیق معاملات فراخوانی می‌شود و شامل:
-            /// - اعتبارسنجی داده‌های ورودی
-            /// - ارسال اطلاعیه به خریدار و فروشنده
-            /// - برگشت نتیجه عملیات با فرمت ApiResponse
+            /// Called by the matching service. It validates the input, notifies both the buyer and
+            /// the seller, and returns the outcome as an ApiResponse.
             /// 
-            /// TODO: اضافه کردن authentication و authorization
-            /// TODO: اضافه کردن rate limiting
-            /// TODO: اضافه کردن logging مفصل
+            /// TODO: add authentication and authorization.
+            /// TODO: add rate limiting.
+            /// TODO: add detailed logging.
             /// </remarks>
             async (TradeMatchNotificationDto notification, TradeNotificationService notificationService) =>
         {
             try
             {
-        // اعتبارسنجی ورودی
+        // Validate the input.
                 if (notification == null)
                 {
                     return Results.BadRequest(ApiResponse<object>.Fail("اطلاعات اطلاعیه نمی‌تواند خالی باشد"));
@@ -161,10 +156,10 @@ public class TelegramNotificationApi
                     return Results.BadRequest(ApiResponse<object>.Fail("نماد دارایی نمی‌تواند خالی باشد"));
                 }
 
-        // ارسال اطلاعیه‌ها
+        // Send the notifications.
                 var result = await notificationService.SendTradeMatchNotificationAsync(notification);
 
-        // تعیین نوع پاسخ بر اساس نتیجه
+        // Choose the response based on the outcome.
                 if (result.IsFullySuccessful)
                 {
                     return Results.Ok(ApiResponse<TradeNotificationResult>.Ok(result, 
@@ -192,12 +187,12 @@ public class TelegramNotificationApi
         .WithSummary("ارسال اطلاعیه تطبیق معامله")
         .WithDescription("این endpoint توسط سرویس تطبیق معاملات برای اطلاع‌رسانی به کاربران فراخوانی می‌شود");
 
-        // تعریف endpoint سلامت برای بررسی وضعیت سرویس
+        // Health endpoint.
         app.MapGet("/health", 
             /// <summary>
-            /// بررسی وضعیت سلامت سرویس اطلاع‌رسانی
+            /// Reports the notification service's health.
             /// </summary>
-            /// <returns>وضعیت سلامت سرویس</returns>
+            /// <returns>The service's health status.</returns>
             () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
         .WithName("HealthCheck")
         .WithSummary("بررسی سلامت سرویس");

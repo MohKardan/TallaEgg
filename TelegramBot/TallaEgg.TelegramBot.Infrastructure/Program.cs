@@ -80,7 +80,8 @@ public class Program
             })
             .ConfigureServices((context, services) =>
             {
-                // نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+                // Trading symbols come from appsettings.global.json (Symbols section), not
+                // compiled-in defaults.
                 TallaEgg.Core.CurrenciesConstant.Configure(context.Configuration);
 
                 services.AddOptions<TelegramBotOptions>()

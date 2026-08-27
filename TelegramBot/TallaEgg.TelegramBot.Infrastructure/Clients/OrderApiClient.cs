@@ -416,8 +416,8 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>
-    /// انتشار مظنهٔ ادمین. قیمت‌ها بر حسب واحد پایه (تومان بر گرم) فرستاده می‌شوند؛ تبدیل
-    /// از مثقال پیش از فراخوانی این متد انجام شده است.
+    /// Publishes the admin's quote. Prices are sent per base unit, toman per gram; the conversion
+    /// from mesghal happens before this method is called.
     /// </summary>
     public async Task<(bool success, string message)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId)
@@ -431,8 +431,9 @@ public class OrderApiClient : IOrderApiClient
             var response = await _httpClient.PostAsync($"{_baseUrl}/quotes", content);
             var body = await response.Content.ReadAsStringAsync();
 
-            // پیام واقعی سرور برگردانده می‌شود و با متن عمومی جایگزین نمی‌گردد — دلیل رد
-            // شدن (مثلاً اسپرد منفی) برای ادمین مفید است. همان درسی که issue #38 داد.
+            // The server's own message is returned rather than replaced with generic text — the
+            // reason for a refusal, a negative spread for instance, is useful to the admin. Same
+            // lesson as issue #38.
             var message = TryReadMessage(body);
 
             return response.IsSuccessStatusCode
@@ -445,7 +446,7 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    // ── مظنهٔ اتومات (issue #90) ─────────────────────────────────────────────────
+    // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 
     public async Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol)
     {
@@ -510,7 +511,7 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    /// <summary>نمادهایی که الان قابل معامله‌اند — خالی اگر سرور در دسترس نبود.</summary>
+    /// <summary>The symbols currently tradable, or empty if the server is unreachable.</summary>
     public async Task<List<string>> GetActiveSymbolsAsync()
     {
         try
@@ -552,7 +553,7 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    /// <summary>مظنهٔ فعال یک نماد، یا null اگر منتشر نشده باشد.</summary>
+    /// <summary>The active quote for a symbol, or null if none has been published.</summary>
     public async Task<QuoteDto?> GetActiveQuoteAsync(string symbol)
     {
         try
@@ -614,7 +615,7 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>
-    /// پذیرش مظنه توسط مشتری. قیمت فرستاده نمی‌شود — سرور آن را از مظنهٔ منتشرشده می‌خواند.
+    /// A customer fills a quote. No price is sent — the server reads it from the published quote.
     /// </summary>
     public async Task<(bool success, string message)> AcceptQuoteAsync(
         Guid userId, string symbol, OrderSide side, decimal quantity)
@@ -640,8 +641,8 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>
-    /// پیام را از بدنهٔ ApiResponse بیرون می‌کشد. اگر بدنه قابل تجزیه نبود null برمی‌گرداند
-    /// تا فراخوان خودش پیام جایگزین بسازد — خواندن پیام هرگز نباید باعث شکست عملیات شود.
+    /// Extracts the message from an ApiResponse body, returning null when it cannot be parsed so the
+    /// caller can supply its own fallback — reading a message must never fail the operation.
     /// </summary>
     private static string? TryReadMessage(string body)
     {
@@ -677,23 +678,17 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>
-    /// کنسل کردن تمام سفارشات فعال یک کاربر از طریق API
+    /// Cancels all of a user's active orders through the API.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <param name="reason">دلیل کنسل کردن سفارشات (اختیاری)</param>
+    /// <param name="userId">User id.</param>
+    /// <param name="reason">Optional cancellation reason.</param>
     /// <returns>
-    /// Tuple شامل:
-    /// - success: آیا عملیات موفق بوده یا نه
-    /// - message: پیام توضیحی از سرور
-    /// - cancelledCount: تعداد سفارشات کنسل شده
+    /// A tuple of: success, whether the operation succeeded; message, the server's explanation; and
+    /// cancelledCount, how many orders were cancelled.
     /// </returns>
     /// <remarks>
-    /// این تابع:
-    /// 1. درخواست POST به endpoint کنسل سفارشات ارسال می‌کند
-    /// 2. دلیل کنسل را در بدنه درخواست ارسال می‌کند
-    /// 3. پاسخ ApiResponse را پارس می‌کند
-    /// 4. تعداد سفارشات کنسل شده را استخراج و برمی‌گرداند
-    /// 5. خطاها را handle کرده و پیام مناسب برمی‌گرداند
+    /// POSTs to the cancel-orders endpoint with the reason in the body, parses the ApiResponse,
+    /// extracts the cancelled count, and turns any failure into a usable message.
     /// </remarks>
     public async Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null)
     {

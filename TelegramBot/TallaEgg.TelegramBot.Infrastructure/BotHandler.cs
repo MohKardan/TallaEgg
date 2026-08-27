@@ -202,7 +202,7 @@ namespace TallaEgg.TelegramBot
             }
             else
             {
-                // احتمالا بهتره که در آینده این کار را رول حسابدار انجام دهد
+                // TODO: this should probably become an accountant role's job.
                 //if (await IsTelegramAdmin(user))
                 if (IsOperator(user))
                 {
@@ -262,7 +262,6 @@ namespace TallaEgg.TelegramBot
 
                 //else
                 //{
-                //    await _messenger.SendAsync(chatId, $"خطا در استفاده از کد دعوت: {useMessage}");
                 //}
             }
             else
@@ -495,8 +494,8 @@ namespace TallaEgg.TelegramBot
                     await ShowMainMenuAsync(chatId);
                     break;
 
-                // هر دو مسیر شارژ به یک پیام واحد می‌رسند: در حال حاضر درگاه پرداخت
-                // وجود ندارد و شارژ حساب توسط طلافروشی انجام می‌شود.
+                // Both top-up paths reach the same message: there is no payment gateway today and
+                // accounts are topped up by the gold shop.
                 case InlineCallBackData.charge_card:
                 case InlineCallBackData.charge_bank:
                     await _messenger.SendAsync(chatId, BotMsgs.MsgChargeInfo);
@@ -606,7 +605,7 @@ namespace TallaEgg.TelegramBot
 
                             var text = await OrderListHandler.BuildOrdersListAsync(page.Data!, pageNum);
 
-                            // ویرایش پیام قبلی
+                            // Edit the previous message.
                             await _messenger.EditTextAsync(
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
@@ -614,7 +613,7 @@ namespace TallaEgg.TelegramBot
                                 replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
-                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
+                            // Dismiss the "please wait" spinner on the button.
                             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
                         }
                     }
@@ -627,14 +626,14 @@ namespace TallaEgg.TelegramBot
                         {
                             var page = await _orderApi.GetUserTradesAsync(uid, pageNum, pageSize: 5);
 
-                            // uid همان کاربری است که فهرست را می‌بیند؛ برای تعیین اینکه هر
-                            // معامله از دید او خرید بوده یا فروش لازم است.
+                            // uid is the user viewing the list; it decides whether each trade was a
+                            // buy or a sell from their point of view.
                             var pagerIsAdmin = await IsOperatorAsync(chatId);
                             var pagerPhones = await ResolveCounterpartyPhonesAsync(page.Data, uid, pagerIsAdmin);
 
                             var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid, pagerPhones);
 
-                            // ویرایش پیام قبلی
+                            // Edit the previous message.
                             await _messenger.EditTextAsync(
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
@@ -642,7 +641,7 @@ namespace TallaEgg.TelegramBot
                                 replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
 
-                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
+                            // Dismiss the "please wait" spinner on the button.
                             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
                         }
                     }
@@ -685,7 +684,7 @@ namespace TallaEgg.TelegramBot
                             {
                                 await _messenger.AnswerCallbackAsync(callbackQuery.Id, "✅ سفارش شما لغو شد و مبلغ درگیر آزاد گردید.");
                                 
-                                // حذف پیام یا به‌روزرسانی آن
+                                // Delete the message or update it.
                                 await _messenger.EditTextAsync(
                                     chatId: callbackQuery.Message.Chat.Id,
                                     messageId: callbackQuery.Message.MessageId,
@@ -707,12 +706,12 @@ namespace TallaEgg.TelegramBot
                         {
                             string? query = parts.Length == 3 ? parts[2] : null;
 
-                            // دیتای کاربران رو برای صفحه جدید بخون
+                            // Load the user data for the new page.
                             var page = await _usersApi.GetUsersAsync(newPage, 5, query); // (pageNumber, pageSize, query)
 
                             var text = await UserListHandler.BuildUsersListAsync(page.Data!, newPage, query);
 
-                            // ویرایش پیام قبلی
+                            // Edit the previous message.
                             await _messenger.EditTextAsync(
                                 chatId: callbackQuery.Message.Chat.Id,
                                 messageId: callbackQuery.Message.MessageId,
@@ -721,7 +720,7 @@ namespace TallaEgg.TelegramBot
                                 replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, newPage, query)
                             );
 
-                            // بستن "لطفاً چند لحظه صبر کنید…" روی دکمه
+                            // Dismiss the "please wait" spinner on the button.
                             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
                         }
                     }
@@ -731,7 +730,7 @@ namespace TallaEgg.TelegramBot
             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
         }
         /// <summary>
-        /// شاید بهتر باشه یوزرو کش کنیم که زیاد ریکئست نفرستیم
+        /// TODO: caching the user here would cut down the number of requests.
         /// </summary>
         /// <param name="chatId"></param>
         /// <returns></returns>
@@ -998,17 +997,17 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// نمایش نمادهای معاملاتی فعال به کاربر پس از انتخاب نوع سفارش
+        /// Shows the active trading symbols after the user has chosen an order type.
         /// Display active trading symbols to user after order type selection
         /// </summary>
-        /// <param name="chatId">شناسه چت تلگرام</param>
-        /// <param name="telegramId">شناسه کاربر تلگرام</param>
-        /// <returns>نتیجه عملیات ارسال پیام</returns>
+        /// <param name="chatId">Telegram chat id.</param>
+        /// <param name="telegramId">Telegram user id.</param>
+        /// <returns>Whether the message was sent.</returns>
         private async Task<bool> ShowSymbolsAsync(long chatId, long telegramId)
         {
             try
             {
-                // بررسی وجود state کاربر
+                // Check the user has conversation state.
                 if (!_conversations.TryGet(telegramId, out var conversation))
                 {
                     _logger.LogWarning("User order state not found for telegramId: {TelegramId}", telegramId);
@@ -1016,7 +1015,7 @@ namespace TallaEgg.TelegramBot
                     return false;
                 }
 
-                // دریافت جفت‌های معاملاتی فعال
+                // Fetch the active trading pairs.
                 var activeTradingPairs = await GetActiveTradingPairsAsync();
 
                 if (!activeTradingPairs.Any())
@@ -1026,10 +1025,10 @@ namespace TallaEgg.TelegramBot
                     return false;
                 }
 
-                // ساخت دکمه‌های نمادهای معاملاتی
+                // Build the symbol buttons.
                 var symbolButtons = CreateSymbolButtons(activeTradingPairs);
 
-                // اضافه کردن دکمه بازگشت
+                // Add the back button.
                 symbolButtons.Add(new[]
                 {
                     InlineKeyboardButton.WithCallbackData(BotBtns.BtnBack, InlineCallBackData.BackToMain)
@@ -1037,7 +1036,7 @@ namespace TallaEgg.TelegramBot
 
                 var keyboard = new InlineKeyboardMarkup(symbolButtons.ToArray());
 
-                // ارسال پیام با مدیریت خطا
+                // Send the message, handling failures.
                 var message = await SendMessageWithRetryAsync(chatId, BotMsgs.MsgSelectAsset, keyboard);
 
                 if (message == null)
@@ -1070,12 +1069,12 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// نمادهایی که الان قابل معامله‌اند — فعال/غیرفعال بودن هر نماد در دیتابیس سرویس
-        /// Orders نگه‌داری می‌شود (نه اینجا)، چون باید با یک دستور ادمین در بات قابل‌تغییر
-        /// باشد، بدون rebuild یا ری‌استارت. متادیتای هر نماد (نام فارسی و غیره) هنوز از
-        /// <see cref="CurrenciesConstant"/> خوانده می‌شود.
+        /// The symbols currently tradable. Whether a symbol is enabled lives in the Orders service's
+        /// database rather than here, because an admin bot command has to be able to change it
+        /// without a rebuild or a restart. Each symbol's metadata, its Persian name and so on, still
+        /// comes from <see cref="CurrenciesConstant"/>.
         /// </summary>
-        /// <returns>لیست جفت‌های معاملاتی فعال</returns>
+        /// <returns>The active trading pairs.</returns>
         private async Task<List<TradingPairInfo>> GetActiveTradingPairsAsync()
         {
             try
@@ -1101,10 +1100,10 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// ساخت دکمه‌های نمادهای معاملاتی با محدودیت تعداد
+        /// Builds the symbol buttons, subject to a count limit.
         /// </summary>
-        /// <param name="tradingPairs">لیست جفت‌های معاملاتی</param>
-        /// <returns>لیست دکمه‌های inline keyboard</returns>
+        /// <param name="tradingPairs">The trading pairs.</param>
+        /// <returns>The inline keyboard buttons.</returns>
         private List<InlineKeyboardButton[]> CreateSymbolButtons(List<TradingPairInfo> tradingPairs)
         {
             var buttons = new List<InlineKeyboardButton[]>();
@@ -1118,7 +1117,7 @@ namespace TallaEgg.TelegramBot
                 {
                     try
                     {
-                        // validation اضافی برای هر pair
+                        // Extra validation per pair.
                         if (string.IsNullOrWhiteSpace(pair.Symbol) || string.IsNullOrWhiteSpace(pair.PersianName))
                         {
                             _logger.LogWarning("Invalid trading pair data: Symbol={Symbol}, PersianName={PersianName}",
@@ -1128,7 +1127,7 @@ namespace TallaEgg.TelegramBot
 
                         var callbackData = $"{InlineCallBackData.AssetPrefix}_{pair.Symbol}";
 
-                        // بررسی طول callback data (محدودیت تلگرام: 64 کاراکتر)
+                        // Check the callback data length; Telegram's limit is 64 characters.
                         if (callbackData.Length > 64)
                         {
                             _logger.LogWarning("Callback data too long for symbol {Symbol}: {Length} characters",
@@ -1152,7 +1151,7 @@ namespace TallaEgg.TelegramBot
                     _logger.LogInformation("Showing {Shown} out of {Total} trading pairs due to pagination limit",
                         maxButtonsPerPage, tradingPairs.Count);
 
-                    // TODO: اضافه کردن دکمه‌های pagination برای صفحه‌بندی
+                    // TODO: add pagination buttons.
                 }
             }
             catch (Exception ex)
@@ -1197,10 +1196,10 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// ارسال پیام خطا استاندارد
+        /// Sends a standard error message.
         /// </summary>
-        /// <param name="chatId">شناسه چت</param>
-        /// <param name="errorMessage">پیام خطا</param>
+        /// <param name="chatId">Chat id.</param>
+        /// <param name="errorMessage">The error message.</param>
         private async Task SendErrorMessageAsync(long chatId, string errorMessage)
         {
             try
@@ -1231,15 +1230,15 @@ namespace TallaEgg.TelegramBot
 
             orderState.Amount = amount;
 
-            // در حالت مظنه‌ای اصلاً قیمتی از مشتری پرسیده نمی‌شود (issue #48): قیمت همان
-            // مظنهٔ منتشرشدهٔ ادمین است. این کل ابهام مثقال/گرم را از جریان مشتری حذف
-            // می‌کند — مشتری فقط مقدار می‌گوید.
+            // In dealer mode the customer is never asked for a price (issue #48): the price is the
+            // admin's published quote. That removes the whole mesghal/gram ambiguity from the
+            // customer's flow — they only give a quantity.
             var activeQuote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
 
             if (activeQuote is not null)
             {
-                // قیمت مظنه بر حسب گرم ذخیره شده؛ برای نمایش به مثقال تبدیل می‌شود، چون
-                // کاربر قیمت را با همان واحد می‌شناسد.
+                // The quote price is stored per gram and converted to mesghal for display, because
+                // that is the unit the user knows prices in.
                 var pricePerGram = orderState.OrderSide == OrderSide.Buy
                     ? activeQuote.SellPrice   // مشتری می‌خرد ⇒ قیمت فروش ادمین
                     : activeQuote.BuyPrice;   // مشتری می‌فروشد ⇒ قیمت خرید ادمین
@@ -1272,7 +1271,8 @@ namespace TallaEgg.TelegramBot
             {
                 orderState.State = "waiting_for_price";
 
-                // برای طلای آبشده قیمت «یک مثقال» خواسته می‌شود؛ واحد صریح ذکر می‌شود.
+                // For melted gold the prompt asks for the price of one mesghal, naming the unit
+                // explicitly.
                 var pricePrompt = orderState.Asset == CurrenciesConstant.MAUA_IRT
                     ? BotMsgs.MsgEnterPriceGold
                     : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset));
@@ -1400,13 +1400,13 @@ namespace TallaEgg.TelegramBot
 
             try
             {
-                // در حالت مظنه‌ای، مشتری مظنهٔ منتشرشده را می‌پذیرد و قیمت نمی‌فرستد
-                // (issue #48). قیمت را سرور از مظنه می‌خواند، پس امکان اختلاف بین آنچه
-                // مشتری دیده و آنچه معامله می‌شود وجود ندارد.
+                // In dealer mode the customer fills the published quote and sends no price
+                // (issue #48). The server reads the price from the quote, so there is no way for
+                // what the customer saw and what is traded to differ.
                 //
-                // اگر مظنه‌ای منتشر نشده باشد، به مسیر سفارش عادی برمی‌گردیم — همان رفتار
-                // دفتر سفارش که برای نمادهای دیگر و برای زمانی که این نماد به حالت
-                // OrderBook برود لازم است.
+                // With no published quote we fall back to the ordinary order path — the order-book
+                // behaviour, which other symbols need and which this symbol will need if it moves to
+                // OrderBook mode.
                 var quote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
 
                 var (orderSuccess, orderMessage) = quote is not null
@@ -1435,11 +1435,10 @@ namespace TallaEgg.TelegramBot
                             ResizeKeyboard = true
                         });
 
-                    // در مسیر مظنه‌ای معامله همان لحظه انجام شده، پس نتیجه‌اش بلافاصله
-                    // اعلام می‌شود. در مسیر دفتر سفارش، سفارش ممکن است ساعت‌ها منتظر بماند
-                    // و هنوز معامله‌ای وجود ندارد که گزارش شود — به همین دلیل این پیام
-                    // فقط وقتی فرستاده می‌شود که واقعاً معامله‌ای انجام شده باشد، نه صرفاً
-                    // چون سفارش ثبت شد.
+                    // On the quote path the trade executed in the same instant, so its outcome is
+                    // announced immediately. On the order-book path the order may rest for hours
+                    // with no trade yet to report — which is why this message is sent only when a
+                    // trade genuinely executed, not merely because an order was placed.
                     if (quote is not null)
                         await SendTradeExecutedAsync(chatId, orderState);
                 }
@@ -1495,8 +1494,8 @@ namespace TallaEgg.TelegramBot
         }
 
         /// <summary>
-        /// متن اعلان استارتاپ را می‌سازد: اگر نسخه واقعاً تغییر کرده باشد پیام آپدیت
-        /// (به همراه خلاصه تغییرات در صورت وجود)، وگرنه پیام «دوباره در دسترس است».
+        /// Builds the startup announcement: an update message with a changelog when the version has
+        /// genuinely changed, otherwise a "back online" message.
         /// </summary>
         private (string Message, bool IsVersionChange) BuildStartupAnnouncement()
         {
@@ -1532,7 +1531,7 @@ namespace TallaEgg.TelegramBot
                 var currentVersion = _versionService.GetCurrentVersion();
                 var (message, isVersionChange) = BuildStartupAnnouncement();
 
-                // صبر کردن ۳۰ ثانیه برای اطمینان از اینکه سرویس کاربر اجرا شده باشد وگرنه خطا میدهد
+                // Wait 30 seconds so the Users service is up; without it this fails.
                 await Task.Delay(30000);
 
                 var usersResponse = await _usersApi.GetUsersAsync();
@@ -1551,12 +1550,12 @@ namespace TallaEgg.TelegramBot
                     {
                         await _messenger.SendAsync(user.TelegramId, message);
 
-                        // ⏱ جلوگیری از Rate Limit تلگرام
+                        // Stay under Telegram's rate limit.
                         await Task.Delay(50);
                     }
                     catch (Exception ex)
                     {
-                        // حتماً لاگ بگیر
+                        // Always log this.
                         _logger.LogWarning(
                             ex,
                             "Failed to send startup announcement to user {UserId}",

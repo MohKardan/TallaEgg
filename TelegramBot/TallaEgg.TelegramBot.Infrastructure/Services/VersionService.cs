@@ -29,7 +29,7 @@
             if (version == null)
                 return "unknown";
 
-            // مثال خروجی: 1.2.0
+            // Example output: 1.2.0
             return $"{version.Major}.{version.Minor}.{version.Build}";
         }
 

@@ -1,4 +1,4 @@
-using TallaEgg.Core;
+﻿using TallaEgg.Core;
 using System.Text;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -24,12 +24,12 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
         }
 
         /// <summary>
-        /// فهرست معاملات کاربر.
+        /// The user's trade list.
         /// </summary>
         /// <param name="viewerUserId">
-        /// کاربری که فهرست را می‌بیند. لازم است چون «خرید یا فروش» یک ویژگی خودِ معامله
-        /// نیست، بلکه به این بستگی دارد که بیننده کدام طرف معامله بوده: یک معاملهٔ واحد
-        /// برای یک طرف خرید است و برای طرف دیگر فروش.
+        /// The user viewing the list. Required because buy-or-sell is not a property of the trade
+        /// itself but of which side the viewer was on: one trade is a buy to one party and a sell to
+        /// the other.
         /// </param>
         /// <param name="counterpartyPhones">
         /// Phone number per counterparty user id, for the rows where it should be shown.
@@ -52,8 +52,8 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 return "هیچ معامله‌ای انجام نشده است.";
             }
 
-            // متن ساده: نسخهٔ قبلی برچسب‌های HTML و نشانه‌های Markdown را با هم مخلوط
-            // کرده بود که هیچ‌کدام درست نمایش داده نمی‌شد.
+            // Plain text: the previous version mixed HTML tags with Markdown markers and neither
+            // rendered correctly.
             var sb = new StringBuilder();
             sb.AppendLine($"📊 معاملات شما — صفحهٔ {PersianFormat.Number(currentPage)} از {PersianFormat.Number(page.TotalPages)}");
             sb.AppendLine();
@@ -68,13 +68,13 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
                 var isBuyer = t.BuyerUserId == viewerUserId;
 
-                // دو نشانهٔ مستقل برای یک واقعیت: برچسب صریح در بالا، و جهت پول در پایین.
-                // فقط رنگ ایموجی کافی نیست — کاربری که رنگ‌ها را تفکیک نمی‌کند یا پیام را
-                // سریع مرور می‌کند باید از روی خود کلمه‌ها بفهمد.
+                // Two independent signals for one fact: an explicit label at the top, and the
+                // direction of the money at the bottom. Colour alone is not enough — a user who
+                // cannot distinguish the colours, or who is skimming, has to be able to read it.
                 var sideLabel = isBuyer ? "🟢 خرید" : "🔴 فروش";
 
-                // «ارزش کل» نمی‌گفت این پول از حساب کاربر رفته یا به آن آمده. برای خریدار
-                // این مبلغ پرداختی است و برای فروشنده دریافتی.
+                // A bare "total value" did not say whether the money left the user's account or
+                // arrived in it. To a buyer the amount is paid; to a seller it is received.
                 var amountLabel = isBuyer ? "پرداختی" : "دریافتی";
 
                 sb.AppendLine($"📌 معاملهٔ {PersianFormat.Ltr(t.Id.ToString()[..8])}");

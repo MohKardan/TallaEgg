@@ -1,4 +1,4 @@
-using TallaEgg.Core;
+﻿using TallaEgg.Core;
 using System.Text;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
@@ -12,15 +12,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
     public static class ActiveOrdersHandler
     {
         /// <summary>
-        /// فهرست سفارش‌های فعال به‌صورت متن ساده.
+        /// The active order list, as plain text.
         ///
-        /// عمداً از Markdown استفاده نمی‌شود: پیام قبلی با MarkdownV2 ارسال می‌شد اما
-        /// EscapeMarkdownV2 خودِ نشانه‌های bold را هم escape می‌کرد، بنابراین ستاره‌ها
-        /// به‌صورت متن خام به کاربر نمایش داده می‌شدند. متن ساده هم درست نمایش داده
-        /// می‌شود و هم از خطرهای escape شدن در امان است.
+        /// Markdown is deliberately not used: the previous message was sent as MarkdownV2, but
+        /// EscapeMarkdownV2 escaped the bold markers themselves, so the asterisks reached the user as
+        /// raw text. Plain text renders correctly and is immune to escaping hazards.
         ///
-        /// قیمت بر حسب «هر مثقال» نشان داده می‌شود، چون کاربر و مدیر قیمت را با همین
-        /// واحد وارد می‌کنند (در دیتابیس بر حسب «هر گرم» ذخیره می‌شود).
+        /// Prices are shown per mesghal, because that is the unit users and admins enter them in.
+        /// Storage is per gram.
         /// </summary>
         public static async Task<string> BuildActiveOrdersListAsync(List<OrderHistoryDto> orders, bool isAdmin = false)
         {
