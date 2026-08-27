@@ -12,7 +12,7 @@ namespace TallaEgg.Core.DTOs.Order
     public class OrderHistoryDto
     {
         public Guid Id { get; set; }
-        public string Asset { get; set; }
+        public string Asset { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public decimal RemainingAmount { get; set; }
         public decimal Price { get; set; }

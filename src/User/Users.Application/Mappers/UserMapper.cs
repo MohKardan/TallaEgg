@@ -11,7 +11,7 @@ namespace Users.Application.Mappers
 {
     public class UserMapper : BaseMapper<User, UserDto>
     {
-        public override UserDto Map(User entity)
+        public override UserDto? Map(User? entity)
         {
             if (entity == null) return null;
 
@@ -36,7 +36,7 @@ namespace Users.Application.Mappers
         /// entity holds that the DTO does not carry cannot be restored here and is left at its
         /// default, so the result is only safe to use as a projection, never to save.
         /// </summary>
-        public override User MapBack(UserDto dto)
+        public override User? MapBack(UserDto? dto)
         {
             if (dto == null) return null;
 

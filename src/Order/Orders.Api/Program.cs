@@ -44,7 +44,7 @@ if (!serviceSection.Exists())
 var prefix = $"Services:{applicationName}:";
 var flattened = serviceSection.AsEnumerable(true)
     .Where(pair => pair.Value is not null)
-    .Select(pair => new KeyValuePair<string, string>(
+    .Select(pair => new KeyValuePair<string, string?>(
         pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             ? pair.Key[prefix.Length..]
             : pair.Key,
@@ -444,7 +444,7 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
         if (request.Quantity <= 0)
             return Results.BadRequest(new { success = false, message = "مقدار سفارش باید بیشتر از صفر باشد" });
         
-        if ((request.Price == null || request.Price <= 0))
+        if (request.Price <= 0)
             return Results.BadRequest(new { success = false, message = "قیمت برای سفارش محدود الزامی است" });
 
         var response = await orderService.CreateOrderAsync(request);

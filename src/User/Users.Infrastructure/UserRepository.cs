@@ -1,4 +1,4 @@
-using Affiliate.Core;
+﻿using Affiliate.Core;
 using Microsoft.EntityFrameworkCore;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
@@ -67,9 +67,9 @@ public class UserRepository : IUserRepository
         if (!string.IsNullOrEmpty(q))
         {
             query = query.Where(u =>
-            u.FirstName.Contains(q) ||
-            u.LastName.Contains(q) ||
-            u.PhoneNumber.Contains(q)
+            (u.FirstName != null && u.FirstName.Contains(q)) ||
+            (u.LastName != null && u.LastName.Contains(q)) ||
+            (u.PhoneNumber != null && u.PhoneNumber.Contains(q))
             );
         }
         var totalCount = await query.CountAsync();

@@ -204,8 +204,8 @@ namespace TallaEgg.Core
         public static List<string> GetAllCodes() =>
             _currencies.Values.Select(c => c.Code).ToList();
 
-        // Look up a currency, case-insensitively.
-        public static CurrencyInfo GetCurrencyInfo(string code) =>
+        // Look up a currency, case-insensitively. Null when the code is not one we trade.
+        public static CurrencyInfo? GetCurrencyInfo(string code) =>
             _currencies.TryGetValue(code, out var info) ? info : null;
 
         // Whether a currency code is valid, case-insensitively.
@@ -407,9 +407,9 @@ namespace TallaEgg.Core
 
     public class CurrencyInfo
     {
-        public string Code { get; set; }          // مثل "MAUA" یا "IRT"
-        public string PersianName { get; set; }   // نام فارسی ارز
-        public string Unit { get; set; }          // واحد نمایش
+        public string Code { get; set; } = string.Empty;          // مثل "MAUA" یا "IRT"
+        public string PersianName { get; set; } = string.Empty;   // نام فارسی ارز
+        public string Unit { get; set; } = string.Empty;          // واحد نمایش
         public int DecimalPlaces { get; set; }    // تعداد اعشار
         public bool IsTradable { get; set; }      // قابل معامله بودن
     }

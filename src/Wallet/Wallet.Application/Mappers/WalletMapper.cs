@@ -11,7 +11,7 @@ namespace Wallet.Application.Mappers
 {
     public class WalletMapper : BaseMapper<WalletEntity, WalletDTO>
     {
-        public override WalletDTO Map(WalletEntity entity)
+        public override WalletDTO? Map(WalletEntity? entity)
         {
             if (entity == null) return null;
 
@@ -29,12 +29,12 @@ namespace Wallet.Application.Mappers
             List<WalletDTO> walletDTOs = new List<WalletDTO>();
             foreach (var entity in entities)
             { 
-                walletDTOs.Add(Map(entity));
+                walletDTOs.Add(MapRequired(entity));
             }
             return walletDTOs;
         }
 
-        public override WalletEntity MapBack(WalletDTO dto)
+        public override WalletEntity? MapBack(WalletDTO? dto)
         {
             throw new NotImplementedException();
         }

@@ -66,11 +66,11 @@ public class Program
                 var prefix = $"Services:{applicationName}:";
                 var flattened = serviceSection.AsEnumerable(true)
                     .Where(pair => pair.Value is not null)
-                    .Select(pair => new KeyValuePair<string, string>(
+                    .Select(pair => new KeyValuePair<string, string?>(
                         pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
                             ? pair.Key[prefix.Length..]
                             : pair.Key,
-                        pair.Value!))
+                        pair.Value))
                     .Where(pair => !string.IsNullOrWhiteSpace(pair.Key));
 
                 configBuilder.AddInMemoryCollection(flattened);

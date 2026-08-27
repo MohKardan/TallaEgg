@@ -13,14 +13,14 @@ namespace TallaEgg.Core
 {
     public class ApiKeyAuthenticationSchemeOptions : AuthenticationSchemeOptions
     {
-        public string ApiKey { get; set; }
+        public string ApiKey { get; set; } = string.Empty;
     }
 
     public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationSchemeOptions>
     {
         public ApiKeyAuthenticationHandler(IOptionsMonitor<ApiKeyAuthenticationSchemeOptions> options,
-            ILoggerFactory logger, UrlEncoder encoder, ISystemClock clock)
-            : base(options, logger, encoder, clock)
+            ILoggerFactory logger, UrlEncoder encoder)
+            : base(options, logger, encoder)
         {
         }
 

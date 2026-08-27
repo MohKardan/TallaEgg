@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace TallaEgg.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class seedusers : Migration
+    public partial class SeedUsers : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

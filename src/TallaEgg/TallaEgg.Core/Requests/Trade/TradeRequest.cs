@@ -11,9 +11,9 @@ namespace TallaEgg.Core.Requests.Trade
         
         public Guid FromUserId { get; set; }
         public Guid ToUserId { get; set; }
-        public string Asset { get; set; }
+        public string Asset { get; set; } = string.Empty;
         public decimal Amount { get; set; }
-        public string ReferenceId { get; set; }
+        public string ReferenceId { get; set; } = string.Empty;
 
     }
 }

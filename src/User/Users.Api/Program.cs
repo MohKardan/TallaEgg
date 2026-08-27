@@ -43,7 +43,7 @@ if (!serviceSection.Exists())
 var prefix = $"Services:{applicationName}:";
 var flattened = serviceSection.AsEnumerable(true)
     .Where(pair => pair.Value is not null)
-    .Select(pair => new KeyValuePair<string, string>(
+    .Select(pair => new KeyValuePair<string, string?>(
         pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             ? pair.Key[prefix.Length..]
             : pair.Key,
@@ -470,7 +470,7 @@ app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, Use
     {
         var content = await response.Content.ReadAsStringAsync();
         return Results.Json(
-            ApiResponse<object>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
+            ApiResponse<object?>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
         );
     }
     else

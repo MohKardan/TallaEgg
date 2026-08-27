@@ -1,11 +1,14 @@
 ﻿<Project>
 
   <PropertyGroup>
-    <!-- Warning classes that were driven to zero in #132. As errors they cannot creep back one
-         file at a time, which is how the count reached 168 in the first place. Deliberately not
-         the nullable family (CS86xx): 74 of those remain, each needs a judgment about whether it
-         is a real bug, and failing the build on them would only invite silencing with `!`. -->
-    <WarningsAsErrors>$(WarningsAsErrors);CS1587;CS0168;CS1998;CS0162;CS0219</WarningsAsErrors>
+    <!-- The count reached 168 because no single commit ever added a hundred warnings; they
+         arrived one file at a time. It is at zero now, and TreatWarningsAsErrors is what keeps it
+         there: the next one fails a build instead of joining a list nobody reads.
+
+         The nullable family is included, which it could not be while 74 of them were outstanding.
+         Each was resolved by making a signature honest or by handling the null, never by `!` — if
+         a fix ever needs that operator, the fix is wrong. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

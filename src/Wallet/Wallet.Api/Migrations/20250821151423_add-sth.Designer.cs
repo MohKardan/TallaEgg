@@ -13,7 +13,7 @@ namespace Wallet.Api.Migrations
 {
     [DbContext(typeof(WalletDbContext))]
     [Migration("20250821151423_add-sth")]
-    partial class addsth
+    partial class AddSth
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
