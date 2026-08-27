@@ -35,8 +35,8 @@ TallaEgg/
 │   └── [سایر سرویس‌ها...]
 ├── TelegramBot/
 │   ├── TallaEgg.TelegramBot.Core/     # مدل‌ها و interface های ربات
-│   ├── TallaEgg.TelegramBot.Application/ # سرویس‌های ربات
-│   └── TallaEgg.TelegramBot.Infrastructure/ # پیاده‌سازی ربات
+│   ├── TallaEgg.TelegramBot.Infrastructure/ # پیاده‌سازی ربات (پروژهٔ قابل اجرا)
+│   └── TallaEgg.TelegramBot.Simulator/ # اجرای همان handlerها بدون تلگرام
 └── tests/
 ```
 
