@@ -36,8 +36,6 @@ public class Program
             .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
             .CreateLogger();
 
-        _ = Task.Run(() => TelegramNotificationApi.RunNotificationApi(args));
-
         using var host = CreateHostBuilder(args).Build();
         await host.RunAsync();
     }
@@ -131,8 +129,6 @@ public class Program
                     return new WalletApiClient(options.WalletApiUrl,
                         provider.GetRequiredService<ILogger<WalletApiClient>>());
                 });
-
-                services.AddSingleton<TradeNotificationService>();
 
                 services.AddSingleton<TelegramLoggerService>(provider =>
                 {
