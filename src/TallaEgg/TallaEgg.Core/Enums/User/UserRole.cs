@@ -7,7 +7,7 @@
         Admin = 2,          // مدیر
         SuperAdmin = 3,      // مدیر ارشد
         /// <summary>
-        /// با رگولار یوزر چه فرقی دارد؟؟؟؟
+        /// TODO: unclear how this differs from a regular user.
         /// </summary>
         User
     }

@@ -1,4 +1,4 @@
-using Affiliate.Core;
+﻿using Affiliate.Core;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -49,7 +49,7 @@ public class UserService
 
         await _userRepository.CreateAsync(user);
         
-        // ایجاد کیف پول‌های پیش‌فرض
+        // Create the user's default wallets.
         await CreateDefaultWalletsAsync(user.Id);
         
         return _userMapper.Map(user);
@@ -111,14 +111,14 @@ public class UserService
         if (string.IsNullOrWhiteSpace(invitationCode))
             return null;
 
-        // ابتدا در جدول Users جستجو می‌کنیم
+        // Look in the Users table first.
         var id = await _userRepository.GetUserIdByInvitationCodeAsync(invitationCode);
         if (id != null)
         {
             return id;
         }
 
-        // اگر در جدول Users پیدا نشد، در جدول Invitations جستجو می‌کنیم
+        // If not there, look in the Invitations table.
         
         //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
         //if (invitation != null)
@@ -134,14 +134,14 @@ public class UserService
         if (string.IsNullOrWhiteSpace(phoneNumber))
             return null;
 
-        // ابتدا در جدول Users جستجو می‌کنیم
+        // Look in the Users table first.
         var id = await _userRepository.GetUserIdByPhonenumberAsync(phoneNumber);
         if (id != null)
         {
             return id;
         }
 
-        // اگر در جدول Users پیدا نشد، در جدول Invitations جستجو می‌کنیم
+        // If not there, look in the Invitations table.
         
         //var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
         //if (invitation != null)
@@ -175,7 +175,7 @@ public class UserService
         ArgumentNullException.ThrowIfNull(user);
         var createdUser = await _userRepository.CreateAsync(user);
         
-        // ایجاد کیف پول‌های پیش‌فرض
+        // Create the user's default wallets.
         await CreateDefaultWalletsAsync(createdUser.Id);
         
         return createdUser;
@@ -191,47 +191,18 @@ public class UserService
         return await _userRepository.GetUsersByRoleAsync(role);
     }
 
-    // اگر جایی در این فایل یا پروژه متدی دارید که آرگومان دوم آن باید از نوع Users.Core.UserRole باشد، 
-    // باید مقدار رشته را به Enum تبدیل کنید. مثال:
     public UserRole ParseUserRole(string roleString)
     {
         if (Enum.TryParse<UserRole>(roleString, true, out var role))
             return role;
-        return UserRole.User; // مقدار پیش‌فرض
+        return UserRole.User; // Default.
     }
-
-    // سپس هنگام فراخوانی متد، به جای رشته، مقدار Enum را ارسال کنید:
-    // var userRole = ParseUserRole(roleString);
-    // someMethod(userId, userRole);
-
-    // اطمینان حاصل کنید که IUserRepository متد زیر را دارد:
-    // Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
-
-    // اگر ندارد، باید به اینترفیس IUserRepository اضافه شود و در کلاس پیاده‌سازی آن نیز نوشته شود.
-    // مثال برای اینترفیس:
-    /*
-    public interface IUserRepository
-    {
-        // ...existing code...
-        Task<Invitation?> GetInvitationByCodeAsync(string invitationCode);
-        // ...existing code...
-    }
-    */
-
-    // سپس در کلاس UserRepository پیاده‌سازی کنید:
-    /*
-    public async Task<Invitation?> GetInvitationByCodeAsync(string invitationCode)
-    {
-        // منطق دریافت دعوت‌نامه از دیتابیس
-        // return await dbContext.Invitations.FirstOrDefaultAsync(x => x.Code == invitationCode);
-    }
-    */
 
     /// <summary>
-    /// دریافت کاربر بر اساس شناسه یکتا
+    /// Returns a user by id.
     /// </summary>
-    /// <param name="userId">شناسه یکتای کاربر</param>
-    /// <returns>اطلاعات کاربر در قالب DTO یا null در صورت عدم وجود</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The user as a DTO, or null if there is no such user.</returns>
     public async Task<UserDto?> GetUserByIdAsync(Guid userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
@@ -239,10 +210,10 @@ public class UserService
     }
 
     /// <summary>
-    /// ایجاد کیف پول‌های پیش‌فرض برای کاربر جدید
+    /// Creates the default wallets for a new user.
     /// </summary>
-    /// <param name="userId">شناسه کاربر</param>
-    /// <returns>نتیجه عملیات</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>Whether it succeeded.</returns>
     private async Task<bool> CreateDefaultWalletsAsync(Guid userId)
     {
         try

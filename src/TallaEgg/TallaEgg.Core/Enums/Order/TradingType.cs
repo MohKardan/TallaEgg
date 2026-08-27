@@ -1,9 +1,9 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace TallaEgg.Core.Enums.Order
 {
     /// <summary>
-    /// بازاری که سفارش در آن ثبت می‌شود.
+    /// The market an order is placed in.
     ///
     /// فعلاً فقط نقدی. مقدار Futures حذف شد چون هرگز ست نمی‌شد ولی موتور تطبیق هم آن را
     /// نادیده می‌گرفت: یک سفارش آتی بی‌صدا با سفارش نقدی تطبیق می‌خورد. یک مقدار enum که

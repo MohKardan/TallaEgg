@@ -26,7 +26,7 @@ namespace TallaEgg.Core
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            // چک کردن Header
+            // Check the header.
             if (!Request.Headers.ContainsKey("X-API-Key"))
             {
                 return Task.FromResult(AuthenticateResult.Fail("Missing API Key"));

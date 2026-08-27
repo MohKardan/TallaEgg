@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -13,7 +13,7 @@ namespace TallaEgg.Infrastructure.Clients;
 
 /// <summary>
 /// HTTP client for communicating with Wallet service
-/// کلاینت HTTP برای ارتباط با سرویس کیف پول
+/// HTTP client for the Wallet service.
 /// </summary>
 public class WalletApiClient : IWalletApiClient
 {
@@ -49,7 +49,7 @@ public class WalletApiClient : IWalletApiClient
 
     /// <summary>
     /// Lock balance for order placement
-    /// قفل کردن موجودی برای ثبت سفارش
+    /// Locks balance when placing an order.
     /// </summary>
     public async Task<(bool Success, string Message, WalletDTO? Wallet)> LockBalanceAsync(
         Guid userId,
@@ -113,7 +113,7 @@ public class WalletApiClient : IWalletApiClient
 
     /// <summary>
     /// Unlock balance when order is cancelled
-    /// آزاد کردن موجودی هنگام لغو سفارش
+    /// Releases locked balance when an order is cancelled.
     /// </summary>
     public async Task<(bool Success, string Message)> UnlockBalanceAsync(
         Guid userId,
@@ -123,7 +123,7 @@ public class WalletApiClient : IWalletApiClient
         try
         {
             // Note: This endpoint might need to be implemented in Wallet service
-            // فراخوانی endpoint آزادسازی موجودی (ممکن است نیاز به پیاده‌سازی در سرویس Wallet داشته باشد)
+            // Calls the wallet's unlock endpoint.
             var request = new WalletRequest
             {
                 UserId = userId,
@@ -202,8 +202,8 @@ public class WalletApiClient : IWalletApiClient
 
     /// <summary>
     /// Validate if user has sufficient balance for order
-    /// بررسی داشتن موجودی کافی برای سفارش
-    /// اینجا باید حجم را به عنوان ورودی دریافت کنیم
+    /// Whether the user has enough balance for an order.
+    /// TODO: this should take the quantity as an argument.
     /// valume = price * amount
     /// </summary>
     public async Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
@@ -234,26 +234,28 @@ public class WalletApiClient : IWalletApiClient
         }
     }
     /// <summary>
-    /// با استفاده از این متد می‌توان اعتبار و موجودی کاربر را برای ثبت سفارش بررسی کرد
+    /// Checks a user's credit and balance before an order is placed.
     /// 
     /// </summary>
-    /// <param name="userId">شناسه کاربر در سیستم ما</param>
+    /// <param name="userId">User id in our system.</param>
     /// <param name="symbol">
-    /// نماد معاملاتی که شامل دو دارایی است
+    /// The trading symbol, which names two assets.
     /// Trading Pair: Base Asset / Quote Asset
     /// </param>
     /// <param name="amount">
-    /// مقدار دارایی که کاربر قصد خرید یا فروش آن را دارد
+    /// The quantity the user intends to buy or sell.
     /// Quantity
     /// </param>
     /// <param name="price">
-    /// قیمت بر اساس ارز مظنه که کاربر قصد خرید یا فروش دارد
+    /// The price, denominated in the quote currency.
     /// Quote Asset
     /// </param>
     /// <returns>
-    /// اگر Success برابر true باشد یعنی عملیات بدون خطا انجام شده است
-    /// اگر HasSufficientCreditAndBalanceBase برابر true باشد یعنی کاربر برای دارایی پایه (Base Asset) اعتبار و موجودی کافی دارد و می‌تواند سفارش فروش را ثبت کند
-    /// اگر HasSufficientCreditAndBalanceQuote برابر true باشد یعنی کاربر برای دارایی مظنه (Quote Asset) اعتبار و موجودی کافی دارد و می‌تواند سفارش خرید را ثبت کند
+    /// Success is true when the check itself ran without error.
+    /// HasSufficientCreditAndBalanceBase is true when the user has enough credit and balance in the
+    /// base asset to place a sell order.
+    /// HasSufficientCreditAndBalanceQuote is true when they have enough in the quote asset to place
+    /// a buy order.
     /// </returns>
     public async Task<(
                         bool Success,
@@ -265,7 +267,7 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            // دریافت موجودی‌های مختلف کاربر
+            // Read the user's various balances.
             var spotBaseAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
             var creditBaseAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
             var spotQuoteAsset = await GetBalanceAsync(userId, symbol.Split('/')[1]);
@@ -521,11 +523,11 @@ public class WalletApiClient : IWalletApiClient
         }
     }
     /// <summary>
-    /// بعد از اینکه معامله‌ای انجام شد، باید تراکنش معامله ثبت و بالانس‌ها به‌روزرسانی شوند.
+    /// Once a trade has executed, its transaction must be recorded and the balances updated.
     ///
-    /// دلیل رد شدن تسویه باید عیناً به فراخوان برسد. پیش‌تر هر خطایی به یک پیام عمومی
-    /// تبدیل می‌شد، پس پردازشگر outbox هیچ‌وقت نمی‌فهمید مشکل واقعی چه بوده و همان
-    /// رشتهٔ بی‌فایده در LastError ذخیره می‌شد (issue #38).
+    /// The reason a settlement was refused must reach the caller verbatim. Every error used to be
+    /// collapsed into a generic message, so the outbox processor never learned what actually went
+    /// wrong and stored that useless string in LastError (issue #38).
     /// </summary>
     public async Task<(bool Success, string Message)> TradeTransactionAndBalanceChangeAsync(TradeDto trade)
     {
@@ -537,14 +539,14 @@ public class WalletApiClient : IWalletApiClient
             var response = await _httpClient.PostAsync("api/wallet/changeBalance", stringContent);
             var body = await response.Content.ReadAsStringAsync();
 
-            // endpoint در هر دو حالت موفق و ناموفق یک ApiResponse برمی‌گرداند و پیام
-            // دقیق تسویه در Message آن است.
+            // The endpoint returns an ApiResponse on both success and failure, and the precise
+            // settlement message is in its Message field.
             var parsed = TryParseMessage(body);
 
             if (response.IsSuccessStatusCode)
             {
-                // _logger عمداً با ?. صدا زده می‌شود: یکی از سازنده‌های این کلاس logger
-                // نمی‌گیرد و آن را null می‌گذارد.
+                // _logger is called with ?. deliberately: one of this class's constructors takes no
+                // logger and leaves it null.
                 _logger?.LogInformation(
                     "Trade {TradeId} settled by the wallet service. Symbol: {Symbol}, quantity: {Quantity}, quote: {QuoteQuantity}.",
                     trade.Id, trade.Symbol, trade.Quantity, trade.QuoteQuantity);
@@ -568,9 +570,9 @@ public class WalletApiClient : IWalletApiClient
     }
 
     /// <summary>
-    /// پیام را از بدنهٔ ApiResponse بیرون می‌کشد. اگر بدنه خالی یا غیرقابل‌تجزیه بود
-    /// null برمی‌گرداند تا فراخوان خودش یک پیام جایگزین بسازد — خواندن پیام هرگز نباید
-    /// خودش باعث شکست تسویه شود.
+    /// Extracts the message from an ApiResponse body. Returns null when the body is empty or cannot
+    /// be parsed, so the caller can supply its own fallback — reading a message must never be what
+    /// fails a settlement.
     /// </summary>
     private string? TryParseMessage(string body)
     {

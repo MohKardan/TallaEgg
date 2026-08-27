@@ -32,7 +32,7 @@ namespace Users.Application.Mappers
         }
 
         /// <summary>
-        ///  // todo باید کامل شود
+        /// TODO: incomplete.
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>

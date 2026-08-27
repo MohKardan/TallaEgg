@@ -3,27 +3,27 @@
 namespace TallaEgg.Core.Enums.Order
 {
     /// <summary>
-    /// نقش سفارش در بازار
+    /// The order's role in the market.
     /// Order Liquidity Role
     /// </summary>
     public enum OrderRole
     {
         /// <summary>
-        /// سفارش نقدینگی فراهم می‌کند (در Order Book منتظر)
+        /// The order provides liquidity: it rests in the order book.
         /// Liquidity Provider
         /// </summary>
         [Description("تامین‌کننده نقدینگی")]
         Maker = 0,
 
         /// <summary>
-        /// سفارش نقدینگی مصرف می‌کند (فوری اجرا شد)
+        /// The order consumes liquidity: it executed immediately.
         /// Liquidity Consumer
         /// </summary>
         [Description("مصرف‌کننده نقدینگی")]
         Taker = 1,
 
         /// <summary>
-        /// سفارش هم نقدینگی مصرف و هم فراهم کرد (ترکیبی)
+        /// The order both consumed and provided liquidity.
         /// </summary>
         [Description("ترکیبی")]
         Mixed = 2

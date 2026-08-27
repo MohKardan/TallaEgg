@@ -1,62 +1,62 @@
-using TallaEgg.Core.DTOs.Order;
+﻿using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 
 namespace TallaEgg.Core.Responses.Order;
 
 /// <summary>
-/// پاسخ ایجاد سفارش واحد
+/// Response to a single order-creation request.
 /// </summary>
 public class CreateOrderResponse
 {
     /// <summary>
-    /// اطلاعات سفارش ایجاد شده
+    /// The created order.
     /// </summary>
     public OrderHistoryDto Order { get; set; } = null!;
 
     /// <summary>
-    /// معاملات اجرا شده (در صورت تطبیق فوری)
+    /// Trades executed, if the order matched immediately.
     /// </summary>
     public List<TradeDto> ExecutedTrades { get; set; } = new();
 
     /// <summary>
-    /// نقش سفارش: Maker، Taker یا Mixed
+    /// The order's role: maker, taker or mixed.
     /// </summary>
     public OrderRole Role { get; set; }
 
     /// <summary>
-    /// پیام توضیحی برای کاربر
+    /// A message for the user.
     /// </summary>
     public string Message { get; set; } = string.Empty;
 
     /// <summary>
-    /// آیا سفارش فوری اجرا شد؟
+    /// Whether the order executed immediately.
     /// </summary>
     public bool IsExecutedImmediately => ExecutedTrades.Any();
 
     /// <summary>
-    /// مقدار اجرا شده
+    /// Quantity executed.
     /// </summary>
     public decimal ExecutedQuantity => ExecutedTrades.Sum(t => t.Quantity);
 
     /// <summary>
-    /// مقدار باقی‌مانده در Order Book
+    /// Quantity still resting in the order book.
     /// </summary>
     public decimal RemainingQuantity => Order.Amount - ExecutedQuantity;
 
     /// <summary>
-    /// درصد اجرا شده
+    /// Percentage executed.
     /// </summary>
     public decimal ExecutionPercentage => Order.Amount > 0 ? (ExecutedQuantity / Order.Amount) * 100 : 0;
 
     /// <summary>
-    /// متوسط قیمت اجرا شده
+    /// Average execution price.
     /// </summary>
     public decimal AverageExecutedPrice => ExecutedTrades.Any() 
         ? ExecutedTrades.Sum(t => t.Price * t.Quantity) / ExecutedTrades.Sum(t => t.Quantity) 
         : 0;
 
     /// <summary>
-    /// کل کارمزد پرداخت شده
+    /// Total fees paid.
     /// </summary>
     public decimal TotalFeesPaid => ExecutedTrades.Sum(t => t.FeeBuyer + t.FeeSeller);
 }

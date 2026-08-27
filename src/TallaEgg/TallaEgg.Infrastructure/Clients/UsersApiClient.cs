@@ -608,13 +608,13 @@ public class UsersApiClient : IUsersApiClient
 
 
     /// <summary>
-    /// دریافت اطلاعات کاربر بر اساس شناسه کاربر
+    /// Returns a user by id.
     /// </summary>
-    /// <param name="userId">شناسه یکتای کاربر</param>
-    /// <returns>اطلاعات کاربر یا null در صورت عدم وجود</returns>
+    /// <param name="userId">User id.</param>
+    /// <returns>The user, or null if there is no such user.</returns>
     /// <remarks>
-    /// این متد برای دریافت اطلاعات کامل کاربر شامل TelegramUserId استفاده می‌شود
-    /// که برای ارسال اطلاعیه‌های تطبیق معامله ضروری است
+    /// Used to obtain the full user record including TelegramUserId, which is required in order to
+    /// send trade-match notifications.
     /// </remarks>
     public async Task<UserDto?> GetUserByIdAsync(Guid userId)
     {

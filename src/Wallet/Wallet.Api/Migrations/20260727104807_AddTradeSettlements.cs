@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Wallet.Api.Migrations
 {
     /// <summary>
-    /// جدول TradeSettlements را می‌سازد و سطرهای معاملاتی که از قبل تسویه شده‌اند را پر می‌کند.
+    /// Creates the TradeSettlements table and backfills rows for trades that already settled.
     ///
-    /// این جدول سد یکتایی تسویه است (issue #42): چون TradeId کلید اصلی است، دو تسویهٔ
-    /// همزمان از یک معامله دیگر نمی‌توانند هر دو اعمال شوند.
+    /// This table is the settlement uniqueness barrier (issue #42): because TradeId is the primary
+    /// key, two concurrent settlements of one trade can no longer both apply.
     /// </summary>
     public partial class AddTradeSettlements : Migration
     {

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc;
@@ -42,7 +42,7 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
-// نمادهای معاملاتی از appsettings.global.json (بخش Symbols) — نه پیش‌فرض‌های کامپایل‌شده.
+// Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
@@ -51,33 +51,33 @@ if (urls is { Length: > 0 })
     builder.WebHost.UseUrls(urls);
 }
 
-// تنظیم اتصال به دیتابیس SQL Server (در appsettings.json هم می‌توان قرار داد)
+// SQL Server connection.
 builder.Services.AddDbContext<OrdersDbContext>(options =>
     options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
         b => b.MigrationsAssembly("TallaEgg.Api")));
 
-// تنظیم اتصال به دیتابیس اصلی TallaEgg
+// Connection to the main TallaEgg database.
 // builder.Services.AddDbContext<TallaEggDbContext>(options =>
 //     options.UseSqlServer(builder.Configuration.GetConnectionString("TallaEggDb") ??
 //         "Server=localhost;Database=TallaEgg;Trusted_Connection=True;TrustServerCertificate=True;",
 //         b => b.MigrationsAssembly("TallaEgg.Api")));
 
-// فقط سرویس‌های مربوط به Orders و Price ثبت شوند
+// Only the Orders and Price services are registered.
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 //builder.Services.AddScoped<IOrderService, OrderService>();
-// CreateOrderCommandHandler و CreateTakerOrderCommandHandler حذف شدند: هر دو کلاس
-// کاملاً خالی بودند (تمام بدنه کامنت شده) ولی در DI ثبت می‌شدند.
+// CreateOrderCommandHandler and CreateTakerOrderCommandHandler were removed: both classes were
+// entirely empty, with their whole bodies commented out, yet they were still registered in DI.
 
-// سرویس‌های مربوط به Symbols
+// Symbol services.
 // builder.Services.AddScoped<ISymbolRepository, SymbolRepository>();
 // builder.Services.AddScoped<ISymbolService, SymbolService>();
 
-// اضافه کردن CORS — issue #31: whitelist از پیکربندی، نه AllowAnyOrigin
+// CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddTallaEggErrorHandling();
 
-// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
+// Serilog: log to rolling files and the console.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/tallaegg-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
@@ -89,7 +89,7 @@ var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// تنظیم CORS
+// Apply the CORS policy.
 app.UseTallaEggCors();
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)

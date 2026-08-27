@@ -55,18 +55,18 @@ namespace TallaEgg.Core.Utilties
         }
 
         /// <summary>
-        /// اگر متن شامل حروف فارسی باشد، آن را راست‌چین می‌کند.
-        /// از RLE و PDF برای کنترل جهت متن استفاده می‌شود.
+        /// Forces right-to-left presentation when the text contains Persian letters, using RLE and
+        /// PDF to control direction.
         /// </summary>
         public static string AutoRtl(this string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            // چک می‌کنیم آیا متن شامل کاراکترهای فارسی/عربی هست یا نه
+            // Does the text contain Persian or Arabic characters?
             bool hasPersian = text.Any(c => c >= 0x0600 && c <= 0x06FF);
 
-            // اگر فارسی بود، متن را داخل RLE...PDF قرار می‌دهیم
+            // If so, wrap it in RLE ... PDF.
             if (hasPersian)
                 return $"\u202B{text}\u202C";
 
@@ -74,10 +74,10 @@ namespace TallaEgg.Core.Utilties
         }
 
         /// <summary>
-        /// دریافت متن فارسی از Description attribute یک enum
+        /// Reads an enum member's Persian text from its Description attribute.
         /// </summary>
-        /// <param name="value">مقدار enum</param>
-        /// <returns>متن فارسی از Description attribute یا نام enum در صورت عدم وجود</returns>
+        /// <param name="value">The enum value.</param>
+        /// <returns>The Description text, or the enum member's name if it has none.</returns>
         public static string GetEnumDescription(Enum value)
         {
             var field = value.GetType().GetField(value.ToString());
@@ -86,35 +86,33 @@ namespace TallaEgg.Core.Utilties
         }
 
         /// <summary>
-        /// تبدیل تاریخ میلادی به شمسی (تقریبی)
+        /// Converts a Gregorian date to Jalali.
         /// </summary>
-        /// <param name="dateTime">تاریخ میلادی</param>
-        /// <returns>تاریخ شمسی به فرمت yyyy/MM/dd HH:mm</returns>
+        /// <param name="dateTime">The Gregorian date.</param>
+        /// <returns>The Jalali date, formatted yyyy/MM/dd HH:mm.</returns>
         /// <summary>
-        /// تبدیل زمان UTC به تاریخ و ساعت شمسیِ تهران، با قالب yyyy/MM/dd HH:mm.
+        /// Converts a UTC instant to a Tehran-local Jalali date and time, formatted yyyy/MM/dd HH:mm.
         ///
-        /// نسخهٔ قبلی «تقریبی» بود و در عمل غلط: سال را ۶۲۱ واحد کم می‌کرد، ماه را جابه‌جا
-        /// می‌کرد، اما **روزِ میلادی را دست‌نخورده** برمی‌گرداند. مثلاً ۲۷ ژوئیهٔ ۲۰۲۶ که
-        /// معادل ۵ مرداد ۱۴۰۵ است، ۱۴۰۵/۰۵/۲۷ نمایش داده می‌شد — یعنی کاربر تاریخ معاملهٔ
-        /// خودش را ۲۲ روز اشتباه می‌دید.
+        /// The previous version was labelled "approximate" and was simply wrong: it subtracted 621
+        /// from the year and shifted the month, but returned the <b>Gregorian day unchanged</b>.
+        /// 27 July 2026, which is 5 Mordad 1405, was displayed as 1405/05/27 — so a user saw their
+        /// own trade dated 22 days out.
         ///
-        /// کامنت قبلی می‌گفت «برای پیاده‌سازی کامل نیاز به کتابخانه PersianCalendar است»؛
-        /// این درست نبود — PersianCalendar بخشی از خود دات‌نت است و هیچ وابستگی جدیدی
-        /// لازم ندارد.
+        /// The old comment claimed a full implementation would need a PersianCalendar library. That
+        /// was not true: PersianCalendar ships with .NET and needs no new dependency.
         /// </summary>
         public static string ConvertToPersianDate(DateTime dateTime)
         {
             var local = ToTehranTime(dateTime);
             var pc = new PersianCalendar();
 
-            // همهٔ قالب‌بندی‌ها با InvariantCulture انجام می‌شوند.
+            // All formatting goes through InvariantCulture.
             //
-            // بدون آن، هر قالبی به CurrentCulture تکیه می‌کرد — یعنی خروجی به «تنظیمات
-            // زبانِ ماشینی که سرویس رویش اجرا می‌شود» وابسته می‌شد. روی این دستگاه فرهنگ
-            // en-US است و درست به نظر می‌رسید؛ روی سروری با فرهنگ fa-IR، تقویمِ پیش‌فرضِ
-            // همان فرهنگ اعمال می‌شد و مسیر جایگزینِ پایین سالِ شمسی چاپ می‌کرد، یعنی یک
-            // تاریخ شمسی که برچسبش می‌گفت میلادی است. این همان وابستگی‌ای است که نباید
-            // وجود داشته باشد.
+            // Without it every format would fall back to CurrentCulture, making the output depend on
+            // the language settings of whatever machine runs the service. On this machine the
+            // culture is en-US and it looked correct; on a server with fa-IR, that culture's default
+            // calendar would apply and the fallback path below would print a Jalali year — a Jalali
+            // date labelled as Gregorian. That is exactly the dependency that should not exist.
             try
             {
                 var year = pc.GetYear(local);
@@ -127,45 +125,43 @@ namespace TallaEgg.Core.Utilties
             }
             catch (ArgumentOutOfRangeException)
             {
-                // PersianCalendar برای تاریخ‌های خیلی قدیمی استثنا می‌دهد. تاریخِ نمایشی
-                // هرگز نباید باعث شکست یک پیام شود، پس به قالب میلادی برمی‌گردیم.
+                // PersianCalendar throws for very old dates. A displayed date must never break a
+                // message, so fall back to the Gregorian format.
                 return local.ToString("yyyy/MM/dd HH:mm", CultureInfo.InvariantCulture);
             }
         }
 
         /// <summary>
-        /// زمان‌ها در دیتابیس UTC ذخیره می‌شوند (DateTime.UtcNow)، ولی کاربر ایرانی انتظار
-        /// ساعت تهران را دارد. بدون این تبدیل، معامله‌ای که ساعت ۱۳:۲۲ به وقت تهران انجام
-        /// شده، ۰۹:۵۲ نمایش داده می‌شد.
+        /// Times are stored in UTC via DateTime.UtcNow, but an Iranian user expects Tehran time.
+        /// Without this conversion a trade made at 13:22 Tehran time displayed as 09:52.
         ///
-        /// افست ثابت +۳:۳۰ است، نه جست‌وجو در پایگاه منطقه‌های زمانی سیستم‌عامل.
+        /// The offset is a fixed +03:30 rather than a lookup in the operating system's time-zone database.
         ///
-        /// ایران از سال ۱۴۰۱ ساعت تابستانی ندارد، پس ایران همیشه UTC+۳:۳۰ است و افست ثابت
-        /// همان جواب درست را می‌دهد. در عوض، تکیه بر پایگاه سیستم‌عامل سه ریسک داشت که
-        /// هیچ‌کدام سودی نداشتند: شناسهٔ منطقه روی ویندوز و لینوکس فرق دارد، سرور ممکن است
-        /// اصلاً پایگاه tz نداشته باشد (نصب‌های حداقلیِ کانتینر)، و یک پایگاهِ قدیمی هنوز
-        /// قاعدهٔ ساعت تابستانیِ منسوخ را اعمال می‌کند و ساعت را یک ساعت جابه‌جا نشان می‌دهد.
+        /// Iran has had no daylight saving since 2022, so it is always UTC+03:30 and a fixed offset
+        /// gives the right answer. Relying on the OS database instead carried three risks and no
+        /// benefit: the zone id differs between Windows and Linux, a server may have no tz database
+        /// at all in minimal container images, and an out-of-date database still applies the
+        /// obsolete daylight-saving rule and shows the time an hour out.
         ///
-        /// نتیجه این است که نمایش تاریخ روی هر ماشینی یکسان است و به پیکربندی سرور وابسته
-        /// نیست — که برای استقرار اهمیت دارد.
+        /// The result is that date display is identical on every machine and independent of server
+        /// configuration, which matters for deployment.
         /// </summary>
         public static DateTime ToTehranTime(DateTime dateTime)
         {
-            // زمان‌های Local قبلاً تبدیل شده‌اند؛ تبدیل دوباره جابه‌جایی اشتباه می‌ساخت.
-            // Unspecified مثل UTC رفتار می‌کند، چون همهٔ زمان‌های این سامانه با
-            // DateTime.UtcNow ساخته می‌شوند و پس از رفت‌وبرگشت از دیتابیس Kind خود را
-            // از دست می‌دهند.
+            // Local times have already been converted; converting again would shift them wrongly.
+            // Unspecified is treated as UTC, because every time in this system originates from
+            // DateTime.UtcNow and loses its Kind on a round trip through the database.
             if (dateTime.Kind == DateTimeKind.Local)
                 return dateTime;
 
             return dateTime.AddHours(3).AddMinutes(30);
         }
 
-        /// <summary>افست ثابت ایران نسبت به UTC. ایران ساعت تابستانی ندارد.</summary>
+        /// <summary>Iran's fixed offset from UTC. Iran does not observe daylight saving.</summary>
         public static readonly TimeSpan TehranOffset = new(3, 30, 0);
     }
     /// <summary>
-    /// برای تشخیص نوع کیف پول اینجوری خیلی راحت تره
+    /// Helpers for working out a wallet's type from its asset code.
     /// </summary>
     public static class AssetHelper
     {
@@ -174,7 +170,7 @@ namespace TallaEgg.Core.Utilties
         private const string SAVINGS_PREFIX = "SAVINGS_";
 
         /// <summary>
-        /// تبدیل Asset + WalletType به Asset string
+        /// Combines an asset and a wallet type into an asset string.
         /// </summary>
         public static string CreateAssetKey(string baseAsset, WalletType walletType)
         {
@@ -189,7 +185,7 @@ namespace TallaEgg.Core.Utilties
         }
 
         /// <summary>
-        /// استخراج نوع کیف پول از Asset string
+        /// Extracts the wallet type from an asset string.
         /// </summary>
         public static (string baseAsset, WalletType walletType) ParseAssetKey(string assetKey)
         {
@@ -206,7 +202,7 @@ namespace TallaEgg.Core.Utilties
         }
 
         /// <summary>
-        /// بررسی نوع کیف پول
+        /// Whether the asset string denotes a credit wallet.
         /// </summary>
         public static bool IsCreditWallet(string assetKey) => assetKey.StartsWith(CREDIT_PREFIX);
         public static bool IsMarginWallet(string assetKey) => assetKey.StartsWith(MARGIN_PREFIX);
