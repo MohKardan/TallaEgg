@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Core;
 using Orders.Infrastructure;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.ErrorHandling;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -65,7 +66,7 @@ public class QuoteTests : IDisposable
     [Fact]
     public void ANegativeSpreadIsRejected()
     {
-        var ex = Assert.Throws<ArgumentException>(() =>
+        var ex = Assert.Throws<BusinessRuleException>(() =>
             Quote.Publish(Symbol, buyPrice: 18_000_000m, sellPrice: 17_000_000m, Admin));
 
         Assert.Contains("قیمت خرید", ex.Message);
@@ -85,8 +86,8 @@ public class QuoteTests : IDisposable
     [InlineData(-1)]
     public void NonPositivePricesAreRejected(decimal badPrice)
     {
-        Assert.Throws<ArgumentException>(() => Quote.Publish(Symbol, badPrice, 17_500_000m, Admin));
-        Assert.Throws<ArgumentException>(() => Quote.Publish(Symbol, 17_000_000m, badPrice, Admin));
+        Assert.Throws<BusinessRuleException>(() => Quote.Publish(Symbol, badPrice, 17_500_000m, Admin));
+        Assert.Throws<BusinessRuleException>(() => Quote.Publish(Symbol, 17_000_000m, badPrice, Admin));
     }
 
     // ── Publishing ──────────────────────────────────────────────────────────────

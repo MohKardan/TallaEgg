@@ -5,6 +5,7 @@ using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 using Wallet.Infrastructure;
+using TallaEgg.Core.ErrorHandling;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -112,14 +113,14 @@ public class QuarantinedStubTests : IDisposable
     [Fact]
     public async Task MakeTradeAsync_StillRefusesATransferToSelf()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.MakeTradeAsync(_fromUserId, _fromUserId, Asset, 25m, "REF-3"));
     }
 
     [Fact]
     public async Task MakeTradeAsync_StillRefusesAMissingWallet()
     {
-        await Assert.ThrowsAsync<ArgumentException>(() =>
+        await Assert.ThrowsAsync<BusinessRuleException>(() =>
             _service.MakeTradeAsync(_fromUserId, Guid.NewGuid(), Asset, 25m, "REF-4"));
     }
 }

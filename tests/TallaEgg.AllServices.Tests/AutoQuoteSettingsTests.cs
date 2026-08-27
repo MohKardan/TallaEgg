@@ -1,4 +1,5 @@
-using Orders.Core;
+﻿using Orders.Core;
+using TallaEgg.Core.ErrorHandling;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -34,7 +35,7 @@ public class AutoQuoteSettingsTests
     {
         var settings = AutoQuoteSettings.CreateDefault("MAUA/IRT");
 
-        Assert.Throws<ArgumentException>(() => settings.UpdateSpread(-0.1m, Guid.NewGuid()));
+        Assert.Throws<BusinessRuleException>(() => settings.UpdateSpread(-0.1m, Guid.NewGuid()));
     }
 
     [Fact]

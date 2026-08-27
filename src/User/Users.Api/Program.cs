@@ -226,7 +226,7 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
 
         return ApiResponse<UserDto>.Ok(user, "User loaded successfully");
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return ApiResponse<UserDto>.Fail(ex.Message);
     }
@@ -249,7 +249,7 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
         var response = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
         return Results.Ok(ApiResponse<UserDto>.Ok(response, "Phone number updated successfully"));
     }
-    catch (InvalidOperationException ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
@@ -343,7 +343,7 @@ app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserServi
         var user = await userService.UpdateUserStatusAsync(request.TelegramId, request.NewStatus);
         return Results.Ok(ApiResponse<UserDto>.Ok(user, "وضعیت کاربر با موفقیت به‌روزرسانی شد."));
     }
-    catch (InvalidOperationException ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }

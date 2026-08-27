@@ -262,10 +262,8 @@ app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository 
 
         return Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(published), "مظنه منتشر شد."));
     }
-    catch (ArgumentException ex)
+    catch (BusinessRuleException ex)
     {
-        // Quote.Publish's messages are written for the user — a negative spread, for instance — so
-        // they are returned as-is rather than replaced with generic text.
         return Results.BadRequest(ApiResponse<QuoteDto>.Fail(ex.Message));
     }
     catch (Exception ex)
@@ -314,7 +312,7 @@ app.MapPost("/api/autoquote-settings/{Base}/{Quote}/spread", async (
 
         return Results.Ok(ApiResponse<AutoQuoteSettingsDto>.Ok(ToAutoQuoteSettingsDto(settings), "اسپرد به‌روزرسانی شد."));
     }
-    catch (ArgumentException ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<AutoQuoteSettingsDto>.Fail(ex.Message));
     }
@@ -457,11 +455,7 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
     {
         return Results.Json(ApiResponse<CreateOrderResponse>.Fail(ex.Message), statusCode: 401);
     }
-    catch (ArgumentException ex)
-    {
-        return Results.BadRequest(ApiResponse<CreateOrderResponse>.Fail(ex.Message));
-    }
-    catch (InvalidOperationException ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<CreateOrderResponse>.Fail(ex.Message));
     }
@@ -511,7 +505,7 @@ app.MapPost("/api/orders/{orderId}/cancel", async (Guid orderId, string? reason,
 
         return Results.Ok(new { success = true, message = "سفارش با موفقیت لغو شد", orderId });
     }
-    catch (InvalidOperationException ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(new { success = false, message = ex.Message });
     }
@@ -910,42 +904,34 @@ static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironm
 // queryable via includeAbandoned=true for reconciliation and audit.
 app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAbandoned = false) =>
 {
-    try
-    {
-        var query = db.OutboxMessages.AsNoTracking().Where(m => m.Status != OutboxMessageStatus.Completed);
-        if (!includeAbandoned)
-            query = query.Where(m => m.Status != OutboxMessageStatus.Abandoned);
+    var query = db.OutboxMessages.AsNoTracking().Where(m => m.Status != OutboxMessageStatus.Completed);
+    if (!includeAbandoned)
+        query = query.Where(m => m.Status != OutboxMessageStatus.Abandoned);
 
-        var stuck = await query
-            .OrderByDescending(m => m.CreatedAt)
-            .Select(m => new
-            {
-                m.Id,
-                TradeId = m.AggregateId,
-                m.Type,
-                Status = m.Status.ToString(),
-                m.RetryCount,
-                m.CreatedAt,
-                m.NextAttemptAt,
-                m.LastError,
-                m.AbandonReason,
-                m.AbandonedAt
-            })
-            .ToListAsync();
-
-        return Results.Ok(ApiResponse<object>.Ok(new
+    var stuck = await query
+        .OrderByDescending(m => m.CreatedAt)
+        .Select(m => new
         {
-            Count = stuck.Count,
-            FailedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Failed)),
-            AbandonedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Abandoned)),
-            Items = stuck
-        }, "فهرست تسویه‌های ناتمام"));
-    }
-    catch (Exception ex)
+            m.Id,
+            TradeId = m.AggregateId,
+            m.Type,
+            Status = m.Status.ToString(),
+            m.RetryCount,
+            m.CreatedAt,
+            m.NextAttemptAt,
+            m.LastError,
+            m.AbandonReason,
+            m.AbandonedAt
+        })
+        .ToListAsync();
+
+    return Results.Ok(ApiResponse<object>.Ok(new
     {
-        Log.Error(ex, "Error listing unsettled outbox messages");
-        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
-    }
+        Count = stuck.Count,
+        FailedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Failed)),
+        AbandonedCount = stuck.Count(s => s.Status == nameof(OutboxMessageStatus.Abandoned)),
+        Items = stuck
+    }, "فهرست تسویه‌های ناتمام"));
 })
 .WithTags("Outbox");
 
@@ -972,38 +958,25 @@ app.MapPost("/api/outbox/{messageId}/redrive", async (Guid messageId, OrdersDbCo
         // Raised when the message is not in a re-drivable state (Completed or Pending).
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error re-driving outbox message {MessageId}", messageId);
-        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
-    }
 })
 .WithTags("Outbox");
 
 // Re-drives every failed settlement at once, for use after a fix that affects them all.
 app.MapPost("/api/outbox/redrive-all-failed", async (OrdersDbContext db) =>
 {
-    try
-    {
-        var failed = await db.OutboxMessages
-            .Where(m => m.Status == OutboxMessageStatus.Failed)
-            .ToListAsync();
+    var failed = await db.OutboxMessages
+        .Where(m => m.Status == OutboxMessageStatus.Failed)
+        .ToListAsync();
 
-        foreach (var message in failed)
-            message.ResetForRetry();
+    foreach (var message in failed)
+        message.ResetForRetry();
 
-        await db.SaveChangesAsync();
+    await db.SaveChangesAsync();
 
-        Log.Information("{Count} failed outbox message(s) were re-driven by an operator.", failed.Count);
+    Log.Information("{Count} failed outbox message(s) were re-driven by an operator.", failed.Count);
 
-        return Results.Ok(ApiResponse<int>.Ok(failed.Count,
-            $"{failed.Count} تسویهٔ ناموفق دوباره در صف قرار گرفت."));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error re-driving all failed outbox messages");
-        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
-    }
+    return Results.Ok(ApiResponse<int>.Ok(failed.Count,
+        $"{failed.Count} تسویهٔ ناموفق دوباره در صف قرار گرفت."));
 })
 .WithTags("Outbox");
 
@@ -1037,11 +1010,6 @@ app.MapPost("/api/outbox/{messageId}/abandon", async (Guid messageId, AbandonOut
     catch (InvalidOperationException ex)
     {
         // Raised when the message is not in an abandonable state (only Failed qualifies).
-        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Error abandoning outbox message {MessageId}", messageId);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
 })

@@ -1,3 +1,5 @@
+﻿using TallaEgg.Core.ErrorHandling;
+
 namespace Orders.Core;
 
 /// <summary>
@@ -39,7 +41,7 @@ public class SymbolSettings
     public static SymbolSettings CreateDefault(string symbol)
     {
         if (string.IsNullOrWhiteSpace(symbol))
-            throw new ArgumentException("نماد نمی‌تواند خالی باشد.", nameof(symbol));
+            throw new BusinessRuleException("نماد نمی‌تواند خالی باشد.");
 
         return new SymbolSettings
         {

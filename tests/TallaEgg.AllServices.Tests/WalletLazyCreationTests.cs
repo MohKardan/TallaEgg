@@ -1,10 +1,11 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Infrastructure;
+using TallaEgg.Core.ErrorHandling;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -87,7 +88,7 @@ public class WalletLazyCreationTests : IDisposable
         var service = NewService(context);
         var userId = Guid.NewGuid();
 
-        var ex = await Assert.ThrowsAsync<ArgumentException>(
+        var ex = await Assert.ThrowsAsync<BusinessRuleException>(
             () => service.WithdrawalAsync(userId, CurrenciesConstant.Btc, 1m));
 
         Assert.DoesNotContain("وجود ندارد", ex.Message);
@@ -118,7 +119,7 @@ public class WalletLazyCreationTests : IDisposable
         using var context = NewContext();
         var service = NewService(context);
 
-        await Assert.ThrowsAsync<ArgumentException>(
+        await Assert.ThrowsAsync<BusinessRuleException>(
             () => service.DepositAsync(Guid.NewGuid(), "NOT_A_REAL_ASSET", 100m));
     }
 }

@@ -163,7 +163,7 @@ app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string as
         var balance = await walletService.GetBalanceAsync(userId, asset);
         return Results.Ok(ApiResponse<WalletDTO>.Ok(balance, ""));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
@@ -185,7 +185,7 @@ app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService 
        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
 
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
@@ -201,7 +201,7 @@ app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletServi
        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
 
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
@@ -217,7 +217,7 @@ app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletServ
        return Results.Ok(ApiResponse<WalletDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
 
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
@@ -232,7 +232,7 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
         var result = await walletService.UnlockBalanceAsync(request.UserId, request.Asset, request.Amount);
         return Results.Ok(ApiResponse<WalletDTO>.Ok(result, "عملیات با موفقیت انجام شد"));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
@@ -246,7 +246,7 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
         var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
         return Results.Ok(ApiResponse<(WalletEntity,Transaction)>.Ok(result, "عملیات با موفقیت انجام شد"));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
@@ -273,7 +273,7 @@ app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService w
 
         return Results.Ok(ApiResponse<string>.Ok(result.Message, "Trade settled"));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         logger.LogError(ex, "Error settling trade {TradeId}", trade.Id);
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
@@ -307,7 +307,7 @@ app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalle
         var result = await walletService.MakeTradeAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
         return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "Operation completed successfully"));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         logger.LogError(ex, "Error in MakeTradeAsync for users {FromUserId} -> {ToUserId}", request.FromUserId, request.ToUserId);
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
@@ -341,7 +341,7 @@ app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletSer
         var wallets = await walletService.CreateDefaultWalletsAsync(userId);
         return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند"));
     }
-    catch (Exception ex)
+    catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<IEnumerable<WalletDTO>>.Fail(ex.Message));
     }

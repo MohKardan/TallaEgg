@@ -9,6 +9,7 @@ using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Utilties;
 using Users.Application.Mappers;
 using Users.Core;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Users.Application;
 
@@ -30,7 +31,7 @@ public class UserService
     public async Task<UserDto> RegisterUserAsync(long telegramId,string invitationCode, string? username, string? firstName, string? lastName)
     {
         var createdByUserId = await GetUserIdByInvitationCode(invitationCode);
-        if (createdByUserId == null) throw new Exception("کد دعوت معتبر نیست.");
+        if (createdByUserId == null) throw new BusinessRuleException("کد دعوت معتبر نیست.");
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -78,7 +79,7 @@ public class UserService
         var user = await _userRepository.GetByTelegramIdAsync(telegramId);
         if (user == null)
         {
-            throw new InvalidOperationException("کاربر یافت نشد.");
+            throw new BusinessRuleException("کاربر یافت نشد.");
         }
 
         user.PhoneNumber = phoneNumber;
@@ -97,7 +98,7 @@ public class UserService
         var user = await _userRepository.GetByTelegramIdAsync(telegramId);
         if (user == null)
         {
-            throw new InvalidOperationException("کاربر یافت نشد.");
+            throw new BusinessRuleException("کاربر یافت نشد.");
         }
 
         user.Status = status;

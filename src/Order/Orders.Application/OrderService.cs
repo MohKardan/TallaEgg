@@ -11,6 +11,7 @@ using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Responses.Order;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Orders.Application;
 
@@ -90,7 +91,7 @@ public class OrderService
             // RoundToCurrencyPrecision(Amount x Price) over the stored order, so it can be
             // recomputed without adding a column to persist it.
             if (request.Price <= 0)
-                throw new ArgumentException("قیمت باید بزرگ‌تر از صفر باشد");
+                throw new BusinessRuleException("قیمت باید بزرگ‌تر از صفر باشد");
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
 
@@ -117,14 +118,14 @@ public class OrderService
             if (!balanceCheckSuccess)
             {
                 _logger.LogWarning("Balance validation failed for user {UserId}: {Message}", userId, balanceMessage);
-                throw new InvalidOperationException($"خطا در بررسی موجودی: {balanceMessage}");
+                throw new BusinessRuleException($"خطا در بررسی موجودی: {balanceMessage}");
             }
 
             if (!isadmin)
             if (!hasSufficientBalance)
             {
                 _logger.LogWarning("Insufficient balance for user {UserId}: {Message}", userId, balanceMessage);
-                throw new InvalidOperationException($"موجودی ناکافی: {balanceMessage}");
+                throw new BusinessRuleException($"موجودی ناکافی: {balanceMessage}");
             }
 
             // 4. Create appropriate order command based on order type
@@ -135,7 +136,7 @@ public class OrderService
 
             if (request.Price == null)
             {
-                throw new ArgumentException("قیمت برای سفارش محدود الزامی است");
+                throw new BusinessRuleException("قیمت برای سفارش محدود الزامی است");
             }
 
             // Limit orders start as Makers
@@ -188,7 +189,7 @@ public class OrderService
         catch (Exception ex) when (ex is not UnauthorizedAccessException and not ArgumentException and not InvalidOperationException)
         {
             _logger.LogError(ex, "Error creating unified order for user {UserId}", request.UserId);
-            throw new InvalidOperationException("خطا در ایجاد سفارش", ex);
+            throw new BusinessRuleException("خطا در ایجاد سفارش", ex);
         }
     }
 
@@ -268,7 +269,7 @@ public class OrderService
             await _orderRepository.UpdateStatusAsync(createdOrder.Id, OrderStatus.Failed,
                 $"قفل وثیقه انجام نشد: {lockMessage}");
 
-            throw new InvalidOperationException($"خطا در قفل کردن موجودی: {lockMessage}");
+            throw new BusinessRuleException($"خطا در قفل کردن موجودی: {lockMessage}");
         }
 
         _logger.LogInformation("Locked {Amount} {Asset} for order {OrderId} (user {UserId}).",
@@ -456,7 +457,7 @@ public class OrderService
 
         if (order.Status == OrderStatus.Completed || order.Status == OrderStatus.Failed)
         {
-            throw new InvalidOperationException("سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند");
+            throw new BusinessRuleException("سفارشات کامل شده یا رد شده قابل کنسل شدن نیستند");
         }
 
         var success = await _orderRepository.UpdateStatusAsync(orderId, OrderStatus.Cancelled, reason);
