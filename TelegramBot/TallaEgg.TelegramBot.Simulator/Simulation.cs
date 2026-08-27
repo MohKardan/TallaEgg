@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
@@ -356,7 +356,7 @@ public sealed class Simulation(
 
     private void RecordError(string action, Exception ex)
     {
-        var line = $"{action}: {ex.Message}";
+        var line = $"{action}";
         _errors.Add(line);
         logger.LogWarning(ex, "Simulation step failed: {Action}", action);
     }

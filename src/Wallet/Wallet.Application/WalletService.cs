@@ -362,7 +362,7 @@ public class WalletService : IWalletService
         }
         catch (Exception ex)
         {
-            throw new Exception($"خطا در ایجاد کیف پول‌های پیش‌فرض: {ex.Message}");
+            throw new InvalidOperationException("خطا در ایجاد کیف پول‌های پیش‌فرض", ex);
         }
     }
 

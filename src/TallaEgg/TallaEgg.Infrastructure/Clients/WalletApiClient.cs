@@ -116,7 +116,7 @@ public class WalletApiClient : IWalletApiClient
         {
             _logger.LogError(ex, "Error locking balance for user {UserId}, asset {Asset}, amount {Amount}",
                 userId, asset, amount);
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", null);
+            return (false, "خطا در ارتباط با سرویس کیف پول", null);
         }
     }
 
@@ -163,7 +163,7 @@ public class WalletApiClient : IWalletApiClient
         {
             _logger.LogError(ex, "Error unlocking balance for user {UserId}, asset {Asset}, amount {Amount}",
                 userId, asset, amount);
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+            return (false, "خطا در ارتباط با سرویس کیف پول");
         }
     }
 
@@ -205,7 +205,7 @@ public class WalletApiClient : IWalletApiClient
         {
             _logger.LogError(ex, "Error increase balance for user {UserId}, asset {Asset}, amount {Amount}",
                 userId, asset, amount);
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+            return (false, "خطا در ارتباط با سرویس کیف پول");
         }
     }
 
@@ -239,7 +239,7 @@ public class WalletApiClient : IWalletApiClient
         {
             _logger.LogError(ex, "Error validating balance for user {UserId}, asset {Asset}, amount {Amount}",
                 userId, asset, valume);
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", false);
+            return (false, "خطا در ارتباط با سرویس کیف پول", false);
         }
     }
     /// <summary>
@@ -298,7 +298,8 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}", false, false);
+            _logger?.LogError(ex, "Unexpected error while validating a balance.");
+            return (false, "خطا در ارتباط با سرویس کیف پول", false, false);
         }
     }
 
@@ -467,8 +468,9 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Unexpected error while fetching a balance.");
             // Catch-all for any other unexpected exceptions
-            return (false, $"خطای غیرمنتظره در ارتباط با سرور: {ex.Message}", null);
+            return (false, "خطای غیرمنتظره در ارتباط با سرور", null);
         }
         finally
         {
@@ -583,7 +585,7 @@ public class WalletApiClient : IWalletApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error settling trade {TradeId} against the wallet service.", trade.Id);
-            return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
+            return (false, "خطا در ارتباط با سرویس کیف پول");
         }
     }
 
