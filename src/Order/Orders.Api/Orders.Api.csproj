@@ -6,9 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
-	  <!--رفع باگ افزایش عدد سوم
-	  افزودن ویژگی جدید افزایش عدد دوم
-	  تغییر دیتابیس یا تغییرات پایه ای افزایش عدد اول-->
+	  <!-- Versioning: bug fix bumps the third number, a new feature the second,
+       a database or foundational change the first. -->
 	  <AssemblyVersion>1.0.0</AssemblyVersion>
   </PropertyGroup>
 

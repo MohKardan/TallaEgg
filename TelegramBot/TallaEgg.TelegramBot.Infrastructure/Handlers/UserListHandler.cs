@@ -24,7 +24,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
             return navButtons.Any() ? new InlineKeyboardMarkup(navButtons) : null;
         }
 
-        public static async Task<string> BuildUsersListAsync(PagedResult<UserDto> page, int currentPage, string? query)
+        public static Task<string> BuildUsersListAsync(PagedResult<UserDto> page, int currentPage, string? query)
         {
             var sb = new StringBuilder();
             sb.AppendLine($"👥 لیست کاربران – صفحه {currentPage} از {page.TotalPages}\n");
@@ -57,7 +57,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 sb.AppendLine("──────────────────────");
             }
 
-            return sb.ToString();
+            return Task.FromResult(sb.ToString());
         }
 
     }

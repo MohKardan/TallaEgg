@@ -561,8 +561,7 @@ public class OrderService
             }
             catch (Exception ex)
             {
-                // Log the error but continue with other orders
-                // TODO: Consider adding proper logging here
+                _logger.LogError(ex, "Failed to cancel order {OrderId} while cancelling every active order of user {UserId}; continuing with the rest.", order.Id, userId);
                 continue;
             }
         }
