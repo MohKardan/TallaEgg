@@ -1,0 +1,68 @@
+# TallaEgg editor configuration.
+#
+# Deliberately formatting-only. No analyzer severities are set here: turning rule sets on would
+# add hundreds of warnings overnight and undo the point of #132, which was to make the warning
+# count small enough that a real warning is visible. Style rules can be added later, one at a
+# time, each with its cleanup.
+#
+# This file changes what editors and `dotnet format` do to code as it is written. It does not
+# reformat anything on its own, and no existing file is touched by adding it.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{md,markdown}]
+# Two trailing spaces are a hard line break in Markdown.
+trim_trailing_whitespace = false
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.{csproj,props,targets,sln}]
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+
+# Namespaces: the codebase uses both block-scoped and file-scoped. New files should prefer
+# file-scoped — one less level of indentation in a file that is usually one type.
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# `var` where the type is already obvious from the right-hand side, explicit where it is not.
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Braces on their own line, as the existing code does.
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# `this.` is not used anywhere in this codebase.
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method = false:suggestion
+dotnet_style_qualification_for_event = false:suggestion
+
+# Private fields are _camelCase here.
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel.required_prefix = _
+dotnet_naming_style.underscore_camel.capitalization = camel_case
+
+# Generated EF migrations are left exactly as the tooling writes them.
+[**/Migrations/*.cs]
+generated_code = true
