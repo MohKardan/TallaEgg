@@ -579,9 +579,7 @@ public class WalletApiClient : IWalletApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                // _logger is called with ?. deliberately: one of this class's constructors takes no
-                // logger and leaves it null.
-                _logger?.LogInformation(
+                _logger.LogInformation(
                     "Trade {TradeId} settled by the wallet service. Symbol: {Symbol}, quantity: {Quantity}, quote: {QuoteQuantity}.",
                     trade.Id, trade.Symbol, trade.Quantity, trade.QuoteQuantity);
 
@@ -590,7 +588,7 @@ public class WalletApiClient : IWalletApiClient
 
             var reason = parsed ?? $"سرویس کیف پول کد {(int)response.StatusCode} برگرداند.";
 
-            _logger?.LogWarning(
+            _logger.LogWarning(
                 "Wallet service rejected settlement of trade {TradeId} with status {StatusCode}: {Reason}",
                 trade.Id, (int)response.StatusCode, reason);
 
@@ -598,7 +596,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error settling trade {TradeId} against the wallet service.", trade.Id);
+            _logger.LogError(ex, "Error settling trade {TradeId} against the wallet service.", trade.Id);
             return (false, $"خطا در ارتباط با سرویس کیف پول: {ex.Message}");
         }
     }
@@ -622,7 +620,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (JsonException)
         {
-            _logger?.LogDebug("Wallet settlement response was not a parsable ApiResponse: {Body}", body);
+            _logger.LogDebug("Wallet settlement response was not a parsable ApiResponse: {Body}", body);
             return null;
         }
     }
