@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 using System.Text.Json;
 using TallaEgg.Core;
@@ -18,11 +19,19 @@ namespace TallaEgg.Infrastructure.Clients;
 public class WalletApiClient : IWalletApiClient
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<WalletApiClient>? _logger;
+    private readonly ILogger<WalletApiClient> _logger;
     private readonly string? _walletApiUrl;
 
-    public WalletApiClient(string? apiUrl)
+    /// <summary>
+    /// Builds its own <see cref="HttpClient"/> for callers outside a DI container. The logger is
+    /// optional only so existing call sites keep compiling; pass one. Without it the field falls
+    /// back to <see cref="NullLogger{T}"/> rather than staying null, because every log call in
+    /// this class is unconditional and a null field would turn a successful lock into a
+    /// <see cref="NullReferenceException"/>.
+    /// </summary>
+    public WalletApiClient(string? apiUrl, ILogger<WalletApiClient>? logger = null)
     {
+        _logger = logger ?? NullLogger<WalletApiClient>.Instance;
 
         var handler = new HttpClientHandler();
 #if DEBUG
@@ -309,7 +318,10 @@ public class WalletApiClient : IWalletApiClient
                 var result = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WalletDTO>>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                return result;
+                // Deserialize returns null for a literal "null" body. The signature promises a
+                // response, so a caller reading .Success on it would get a NullReferenceException
+                // instead of a failure it can report.
+                return result ?? ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در دریفات اطلاعات");
             }
 
             return TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در دریفات اطلاعات");
@@ -317,7 +329,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error fetching the wallet balances of user {UserId}.", userId);
+            _logger.LogError(ex, "Error fetching the wallet balances of user {UserId}.", userId);
             return TallaEgg.Core.DTOs.ApiResponse<IEnumerable<WalletDTO>>.Fail("خطا در ارتباط با سرور");
 
         }
@@ -358,14 +370,27 @@ public class WalletApiClient : IWalletApiClient
                     //var walletDto = JsonConvert.DeserializeObject<ApiResponse<WalletDTO>>(responseContent);
                     
                     // Parse the response which should be in the format: { success, message, hasSufficientBalance }
-                    var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>> (responseContent,
+                    var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    // A body of "null", or one shaped like the envelope but carrying no wallet,
+                    // parses without throwing. Reaching through it would raise a
+                    // NullReferenceException, which this JsonException handler does not catch, so
+                    // an unreadable payload would escape the method instead of being reported as
+                    // one.
+                    if (walletDto?.Data is null)
+                    {
+                        _logger.LogError(
+                            "Balance response for user {UserId}, asset {Asset} parsed but carried no wallet.",
+                            userId, asset);
+                        return (false, "خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
+                    }
 
                     return (true, "موجودی دریافت شد.", walletDto.Data.Balance);
                 }
                 catch (JsonException jsonEx)
                 {
-                    _logger?.LogError(jsonEx, "Unreadable balance payload for user {UserId}, asset {Asset}.", userId, asset);
+                    _logger.LogError(jsonEx, "Unreadable balance payload for user {UserId}, asset {Asset}.", userId, asset);
                     return (false, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
                 }
             }
@@ -432,7 +457,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (JsonException jsonEx)
         {
-            _logger?.LogError(jsonEx, "Unreadable error payload for user {UserId}, asset {Asset}.", userId, asset);
+            _logger.LogError(jsonEx, "Unreadable error payload for user {UserId}, asset {Asset}.", userId, asset);
             // JSON parsing errors
             return (false, "خطا در پردازش اطلاعات دریافتی از سرور.", null);
         }
@@ -479,7 +504,9 @@ public class WalletApiClient : IWalletApiClient
                 var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                return result;
+                // Deserialize returns null for a literal "null" body; see the note in
+                // GetUserWalletsBalanceAsync.
+                return result ?? ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
             }
 
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
@@ -487,7 +514,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error depositing to the wallet of user {UserId}.", request.UserId);
+            _logger.LogError(ex, "Error depositing to the wallet of user {UserId}.", request.UserId);
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
 
         }
@@ -514,7 +541,9 @@ public class WalletApiClient : IWalletApiClient
                 var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                return result;
+                // Deserialize returns null for a literal "null" body; see the note in
+                // GetUserWalletsBalanceAsync.
+                return result ?? ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
             }
 
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
@@ -522,7 +551,7 @@ public class WalletApiClient : IWalletApiClient
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error withdrawing from the wallet of user {UserId}.", request.UserId);
+            _logger.LogError(ex, "Error withdrawing from the wallet of user {UserId}.", request.UserId);
             return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در ارتباط با سرور");
 
         }

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -80,7 +80,8 @@ services.AddSingleton<AffiliateApiClient>(p =>
 services.AddSingleton<WalletApiClient>(p =>
 {
     var options = p.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
-    return new WalletApiClient(options.WalletApiUrl!);
+    return new WalletApiClient(options.WalletApiUrl!,
+        p.GetRequiredService<ILogger<WalletApiClient>>());
 });
 
 // Same wiring the real bot uses (issue #65) — only IBotMessenger, ITelegramLogger and
