@@ -32,10 +32,10 @@ namespace Users.Application.Mappers
         }
 
         /// <summary>
-        /// TODO: incomplete.
+        /// Rebuilds the entity from the DTO. Mirrors <see cref="Map"/> field for field; anything the
+        /// entity holds that the DTO does not carry cannot be restored here and is left at its
+        /// default, so the result is only safe to use as a projection, never to save.
         /// </summary>
-        /// <param name="dto"></param>
-        /// <returns></returns>
         public override User MapBack(UserDto dto)
         {
             if (dto == null) return null;

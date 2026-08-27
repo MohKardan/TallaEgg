@@ -206,8 +206,9 @@ namespace TallaEgg.TelegramBot
             }
             else
             {
-                // TODO: this should probably become an accountant role's job.
-                //if (await IsTelegramAdmin(user))
+                // Operator, not Telegram group administrator: who may run admin commands is the
+                // product's own answer, not a property of one chat. Splitting an accountant role
+                // out of it is an open design question, not a decision made here.
                 if (IsOperator(user))
                 {
                     // Check for admin commands first
@@ -257,16 +258,7 @@ namespace TallaEgg.TelegramBot
 
             if (regSuccess && userId.HasValue)
             {
-                // Then use the invitation
-                //   var (useSuccess, useMessage, invitationId) = await _affiliateApi.UseInvitationAsync(invitationCode, userId.Value);
-
-                //if (useSuccess)
-                //{
                 await _messenger.SendContactKeyboardAsync(chatId);
-
-                //else
-                //{
-                //}
             }
             else
             {
@@ -762,7 +754,6 @@ namespace TallaEgg.TelegramBot
             await _messenger.AnswerCallbackAsync(callbackQuery.Id);
         }
         /// <summary>
-        /// TODO: caching the user here would cut down the number of requests.
         /// </summary>
         /// <param name="chatId"></param>
         /// <returns></returns>
@@ -1183,7 +1174,9 @@ namespace TallaEgg.TelegramBot
                     _logger.LogInformation("Showing {Shown} out of {Total} trading pairs due to pagination limit",
                         maxButtonsPerPage, tradingPairs.Count);
 
-                    // TODO: add pagination buttons.
+                    // Symbols past this limit are simply not offered. With a handful of
+                    // symbols nobody notices; the day the list grows, a customer cannot reach
+                    // the ones that fell off, and there is no sign in the bot that they exist.
                 }
             }
             catch (Exception ex)

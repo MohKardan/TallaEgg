@@ -22,10 +22,8 @@ public class Order
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public string? Notes { get; private set; }
-    public Guid? ParentOrderId { get; private set; } // برای Taker orders که به Maker order متصل می‌شوند
-
-    // Private constructor for EF Core
-    //private Order() { }
+    // Set on a taker order to point at the maker order it filled against.
+    public Guid? ParentOrderId { get; private set; }
 
     public static Order CreateMakerOrder(
         string asset, 
