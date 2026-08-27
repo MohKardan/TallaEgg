@@ -9,7 +9,7 @@
   <ItemGroup>
     <!-- OutboxProcessorService.ProcessDueMessagesAsync is internal so its batch-resilience
          behaviour (issue #44) can be tested without driving the background loop's timing. -->
-    <InternalsVisibleTo Include="Wallet.Tests" />
+    <InternalsVisibleTo Include="TallaEgg.AllServices.Tests" />
   </ItemGroup>
 
   <ItemGroup>

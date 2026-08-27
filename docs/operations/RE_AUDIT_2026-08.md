@@ -17,8 +17,15 @@ excluded from this pass at the product owner's request.
 > Like the original, this file is a stable reference of what one audit found on one day.
 > Do not edit it to mark work done — remediation status belongs in issues and PRs.
 
-**Verification performed**: `dotnet build TallaEgg.sln` succeeds with no warnings;
+**Verification performed**: `dotnet build TallaEgg.sln` succeeds with 0 errors;
 `dotnet test TallaEgg.sln` reports 483 passed / 0 failed.
+
+> **Corrected**: this line first read "succeeds with no warnings". That was a measurement
+> mistake — the build it was based on was incremental and up-to-date, so nothing
+> recompiled and nothing was emitted. A clean build reports **169 warnings**, mostly
+> `CS1587` (misplaced XML comments, concentrated in `Orders.Api/Program.cs`), `CS8981`
+> and nullability `CS8620`. None are errors and none change behaviour, but they belong
+> in the code-hygiene row below rather than being reported as absent.
 
 ---
 
@@ -181,16 +188,21 @@ Both predate the current test suite and have been superseded by it. Nothing they
 is uncovered today, so no coverage is being lost — these are leftovers, not orphaned
 work. The correct remedy is to **delete them**, not to wire them into the build.
 
-The durable part of this finding is narrower: `build-and-test.yml:59` runs `dotnet test`
+The durable part of this finding is narrower: `build-and-test.yml:59` ran `dotnet test`
 against `Wallet.Tests.csproj` by name rather than against the solution. That is what
 allowed a stale project to sit outside the build unnoticed, and it is what would let a
-genuinely new test project be silently excluded in future. Pointing CI at
-`TallaEgg.sln` costs nothing and removes the failure mode.
+genuinely new test project be silently excluded in future.
 
-Related: `Wallet.Tests` is now the solution's only test project and its name no longer
-describes it. It references seven projects across Wallet, Orders and the bot, and its
-56 files break down roughly as 23 Orders, 14 shared, 11 bot, 8 Wallet. The misleading
+Related: `Wallet.Tests` was the solution's only test project and its name no longer
+described it. It referenced seven projects across Wallet, Orders and the bot, and its
+56 files broke down roughly as 23 Orders, 14 shared, 11 bot, 8 Wallet. The misleading
 name is what produced the incorrect version of this finding in the first place.
+
+**Resolved.** Both abandoned directories were deleted; the live suite moved to
+`tests/TallaEgg.AllServices.Tests`, a name that cannot be read as belonging to one
+service; and CI now runs `dotnet test TallaEgg.sln`, so a new test project is picked up
+by adding it to the solution and nothing else has to be remembered. 483/483 still pass
+from the new location.
 
 ### N-3 (MEDIUM): Non-atomic legacy money paths remain in `WalletService`
 

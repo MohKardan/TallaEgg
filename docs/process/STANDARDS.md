@@ -36,12 +36,12 @@ TallaEgg/
 ├── src/                              # Each Bounded Context: {Name}.Api/.Application/.Core/.Infrastructure
 │   ├── User/                         #   → Users.Api, Users.Application, Users.Core, Users.Infrastructure
 │   ├── Wallet/                       #   → Wallet.Api, Wallet.Application, Wallet.Core, Wallet.Infrastructure
-│   ├── Order/                        #   → Orders.Api, Orders.Application, Orders.Core, Orders.Infrastructure, Orders.Tests
+│   ├── Order/                        #   → Orders.Api, Orders.Application, Orders.Core, Orders.Infrastructure
 │   │   └── Orders/                   #   ⚠️ duplicate/legacy folder, not in .sln — remove (TASK-010)
 │   ├── Affiliate/                    #   → Affiliate.Api, Affiliate.Application, Affiliate.Core, Affiliate.Infrastructure
 │   └── TallaEgg/                     # Shared kernel + API gateway (TallaEgg.Api/.Application/.Core/.Infrastructure)
 ├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/ (TallaEgg.TelegramBot + .Application/.Core/.Infrastructure)
-├── TallaEgg.TelegramBot.Tests/       # Test project at repo root
+├── tests/                            # → TallaEgg.AllServices.Tests — the solution's only test project, covers every service
 ├── docs/
 │   ├── CODE_AUDIT_REPORT.html        # Full audit report (see operations/AUDIT_FINDINGS.md for the summary)
 │   ├── architecture/                 # Architecture documentation (ROADMAP.md)

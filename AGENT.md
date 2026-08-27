@@ -10,11 +10,17 @@ the canonical source for coding standards, branch/commit/PR conventions, and cur
 ## Build Commands
 - **Build entire solution:** `dotnet build TallaEgg.sln`
 - **Run tests:** `dotnet test TallaEgg.sln` (xUnit only — no Moq, no FluentAssertions)
-- **Run the one test project:** `dotnet test src/Wallet/Wallet.Tests/Wallet.Tests.csproj`
+- **Run the one test project:** `dotnet test tests/TallaEgg.AllServices.Tests/TallaEgg.AllServices.Tests.csproj`
 
-`Wallet.Tests` is the only test project in the solution, and it covers more than the wallet:
-Orders, the bot's message builders, and shared formatting all have tests there. New tests go in it
-until a service earns its own project (issue #46).
+`tests/TallaEgg.AllServices.Tests` is the only test project in the solution, and it covers every
+service: Wallet, Orders, the bot's handlers and message builders, and shared formatting. **New
+tests go in it regardless of which service they cover.**
+
+It was called `Wallet.Tests` and lived under `src/Wallet/` until #117, at which point eight of
+its fifty-six files were about the wallet and the rest were not. The name was misleading enough
+that an audit concluded the bot was untested because its tests were not in a folder named after
+it. If this project is ever split, split it per service so the layout keeps predicting the
+contents.
 
 **Build before running.** `dotnet test` builds only the test project's dependency graph, so an
 API's `bin` can still hold an older build. Always `dotnet build TallaEgg.sln` before

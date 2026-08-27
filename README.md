@@ -33,7 +33,7 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 | `src/Order` | Orders service — quotes, quote fills, trades, matching engine |
 | `src/Affiliate` | Affiliate service — invitation codes (**not currently functional**, see below) |
 | `src/TallaEgg` | Shared core/application/infrastructure libraries plus a legacy orchestration API |
-| `src/Wallet/Wallet.Tests` | The test suite for the whole platform (see [Testing](#testing)) |
+| `tests/TallaEgg.AllServices.Tests` | The test suite for the whole platform (see [Testing](#testing)) |
 | `TelegramBot` | Telegram bot host, handlers, and typed API clients |
 | `config/appsettings.global.json` | Shared configuration consumed by every service — git-ignored ([#33](https://github.com/MohKardan/TallaEgg/issues/33)); copy it from `config/appsettings.global.example.json` |
 | `docs/` | Architecture, operations, process, OKRs, and the business proposal |
@@ -276,9 +276,11 @@ for the one-time setup and the `scripts/windows-services/` install scripts.
 dotnet test TallaEgg.sln
 ```
 
-**`src/Wallet/Wallet.Tests` is the only test project in the solution** and holds the suite for the whole platform — wallet, orders, matching, quote fills, bot handlers, and formatting. Its name is historical; new tests belong here regardless of which service they cover.
+**`tests/TallaEgg.AllServices.Tests` is the only test project in the solution** and holds the suite for the whole platform — wallet, orders, matching, quote fills, bot handlers, and formatting. New tests belong here regardless of which service they cover.
 
-Two older projects under `TelegramBot/TallaEgg.TelegramBot.Tests` are **not** in the solution and do not currently compile, so `dotnet test` never runs them.
+The name is deliberately explicit. This project was `src/Wallet/Wallet.Tests` until #117, by which point only eight of its fifty-six files were about the wallet — misleading enough that an audit reported the bot as untested because its tests were not under a bot-shaped folder.
+
+CI runs `dotnet test TallaEgg.sln` rather than naming this project by path, so a future test project is picked up by adding it to the solution and nothing else has to be remembered.
 
 ## Logging
 
