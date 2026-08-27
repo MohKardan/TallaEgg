@@ -152,7 +152,11 @@ namespace TallaEgg.TelegramBot
             await _telegramLogger.LogAsync<Message>($"✔➕ new message:",message);
 
 
-            message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
+            // Absent on a contact, photo or sticker message, all of which reach this handler.
+            if (message.Text is not null)
+            {
+                message.Text = TallaEgg.Core.Utilties.Utils.ConvertPersianDigitsToEnglish(message.Text);
+            }
 
             // Check if user exists
             var user = await _usersApi.GetUserAsync(telegramId);
@@ -272,9 +276,9 @@ namespace TallaEgg.TelegramBot
 
         private async Task HandlePhoneNumberRequestAsync(long chatId, long telegramId, Message message)
         {
-            if (message.Contact?.PhoneNumber != null)
+            var phoneNumber = message.Contact?.PhoneNumber;
+            if (phoneNumber != null)
             {
-                var phoneNumber = message.Contact?.PhoneNumber;
                 if (phoneNumber.StartsWith("98"))//98938621990
                 {
                     phoneNumber = phoneNumber.Replace("98", "0");
@@ -338,11 +342,22 @@ namespace TallaEgg.TelegramBot
                     var adminIds = (await _usersApi.GetOperatorTelegramIdsAsync())
                         .Union(_ownerTelegramIds)
                         .ToList();
-                    await _messenger.SendApproveOrRejectUserToAdminsKeyboard(adminIds, response.Data);
+                    if (response.Data is not null)
+                    {
+                        await _messenger.SendApproveOrRejectUserToAdminsKeyboard(adminIds, response.Data);
+                    }
+                    else
+                    {
+                        // A success with no user in it is a contract violation by the Users API,
+                        // not something the customer can act on, so it is logged rather than shown.
+                        _logger.LogError(
+                            "Users API reported a successful registration for {TelegramId} but returned no user.",
+                            telegramId);
+                    }
                 }
                 else
                 {
-                    await _messenger.SendAsync(chatId, response.Message);
+                    await _messenger.SendAsync(chatId, response.Message ?? BotMsgs.MsgUnexpectedError);
                 }
             }
             else
@@ -443,9 +458,21 @@ namespace TallaEgg.TelegramBot
 
         public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
         {
-            var chatId = callbackQuery.Message?.Chat.Id ?? 0;
-            var telegramId = callbackQuery.From?.Id ?? 0;
+            // Telegram omits Message for callbacks raised from an inline message, and for any
+            // message older than 48 hours. Every branch below edits or deletes that message, and
+            // the chat id used to fall back to 0, which no send can reach — so none of them could
+            // do anything useful anyway. Answering the callback stops the client's spinner and
+            // says why, instead of an unhandled NullReferenceException on the first old button
+            // somebody taps.
+            if (callbackQuery.Message is null)
+            {
+                await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgCallbackMessageGone);
+                return;
+            }
+
             var message = callbackQuery.Message;
+            var chatId = message.Chat.Id;
+            var telegramId = callbackQuery.From?.Id ?? 0;
             var data = callbackQuery.Data ?? "";
 
             switch (data)
@@ -526,18 +553,23 @@ namespace TallaEgg.TelegramBot
                         // Both prices come from the same published Quote (issue #48) — always
                         // both present or both absent — so either one missing means there is no
                         // quote for this symbol at all, not merely a one-sided book.
-                        var hasQuote = apiResponse is { Success: true, Data: not null }
+                        // The published quote, or null when there is none. Held as the value
+                        // rather than a bool so the branch below reads it without having to assert
+                        // it is there.
+                        var quote = apiResponse is { Success: true, Data: not null }
                             && apiResponse.Data.BestBidPrice.HasValue
-                            && apiResponse.Data.BestAskPrice.HasValue;
+                            && apiResponse.Data.BestAskPrice.HasValue
+                                ? apiResponse.Data
+                                : null;
 
                         if (apiResponse != null && apiResponse.Success)
                         {
                             await _messenger.DeleteAsync(chatId, message.Id);
 
                             await _messenger.SendAsync(chatId, BestPricesMessage.Build(
-                                apiResponse.Data.BestBidPrice, apiResponse.Data.BestAskPrice, asset));
+                                apiResponse.Data?.BestBidPrice, apiResponse.Data?.BestAskPrice, asset));
 
-                            if (hasQuote)
+                            if (quote is not null)
                             {
                                 // Stored for the market-order path (HandleOrderTypeSelectionAsync),
                                 // which feeds this straight into HandleOrderPriceInputAsync — the same
@@ -547,11 +579,11 @@ namespace TallaEgg.TelegramBot
                                 // such internal/display split and is stored as-is.
                                 var isGold = asset == CurrenciesConstant.MAUA_IRT;
                                 assetConversation.BestBidPrice = isGold
-                                    ? apiResponse.Data.BestBidPrice * CurrenciesConstant.GramsPerMesghal
-                                    : apiResponse.Data.BestBidPrice;
+                                    ? quote.BestBidPrice * CurrenciesConstant.GramsPerMesghal
+                                    : quote.BestBidPrice;
                                 assetConversation.BestAskPrice = isGold
-                                    ? apiResponse.Data.BestAskPrice * CurrenciesConstant.GramsPerMesghal
-                                    : apiResponse.Data.BestAskPrice;
+                                    ? quote.BestAskPrice * CurrenciesConstant.GramsPerMesghal
+                                    : quote.BestAskPrice;
                             }
                         }
 
@@ -559,7 +591,7 @@ namespace TallaEgg.TelegramBot
                         // asks for a price, so with no quote it has nothing to trade on. The
                         // order-book (limit) path is unaffected: it asks the customer for a
                         // price itself and never depended on GetBestPricesAsync succeeding.
-                        if (hasQuote || assetConversation.OrderType != OrderType.Market)
+                        if (quote is not null || assetConversation.OrderType != OrderType.Market)
                         {
                             await _messenger.SendSpotSideMenuKeyboard(chatId);
                         }
@@ -607,8 +639,8 @@ namespace TallaEgg.TelegramBot
 
                             // Edit the previous message.
                             await _messenger.EditTextAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                messageId: callbackQuery.Message.MessageId,
+                                chatId: message.Chat.Id,
+                                messageId: message.MessageId,
                                 text: text,
                                 replyMarkup: OrderListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
@@ -635,8 +667,8 @@ namespace TallaEgg.TelegramBot
 
                             // Edit the previous message.
                             await _messenger.EditTextAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                messageId: callbackQuery.Message.MessageId,
+                                chatId: message.Chat.Id,
+                                messageId: message.MessageId,
                                 text: text,
                                 replyMarkup: TradeListHandler.BuildPagingKeyboard(page.Data!, pageNum, uid)
                             );
@@ -666,8 +698,8 @@ namespace TallaEgg.TelegramBot
                             var quotePageResult = await _orderApi.GetQuoteHistoryAsync(symbol, quotePage, pageSize: 5);
 
                             await _messenger.EditTextAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                messageId: callbackQuery.Message.MessageId,
+                                chatId: message.Chat.Id,
+                                messageId: message.MessageId,
                                 text: QuoteHistoryHandler.BuildQuoteHistoryAsync(quotePageResult, quotePage, isAdmin, symbol),
                                 replyMarkup: QuoteHistoryHandler.BuildPagingKeyboard(quotePageResult, quotePage, symbol));
 
@@ -686,8 +718,8 @@ namespace TallaEgg.TelegramBot
                                 
                                 // Delete the message or update it.
                                 await _messenger.EditTextAsync(
-                                    chatId: callbackQuery.Message.Chat.Id,
-                                    messageId: callbackQuery.Message.MessageId,
+                                    chatId: message.Chat.Id,
+                                    messageId: message.MessageId,
                                     text: "✅ سفارش لغو شد و از فهرست حذف گردید.",
                                     replyMarkup: null
                                 );
@@ -713,8 +745,8 @@ namespace TallaEgg.TelegramBot
 
                             // Edit the previous message.
                             await _messenger.EditTextAsync(
-                                chatId: callbackQuery.Message.Chat.Id,
-                                messageId: callbackQuery.Message.MessageId,
+                                chatId: message.Chat.Id,
+                                messageId: message.MessageId,
                                 text: text,
                                 parseMode: ParseMode.MarkdownV2,
                                 replyMarkup: UserListHandler.BuildPagingKeyboard(page.Data!, newPage, query)
@@ -970,7 +1002,7 @@ namespace TallaEgg.TelegramBot
             var res = await _walletApi.GetUserWalletsBalanceAsync(userId);
             if (res.Success)
             {
-                if (res.Data.Any())
+                if (res.Data?.Any() == true)
                 {
                     // A failed positions fetch must not block the balance screen the customer
                     // actually asked for -- WalletBalanceMessage treats a null positions
@@ -990,7 +1022,7 @@ namespace TallaEgg.TelegramBot
             else
             {
 
-                await _messenger.SendAsync(chatId, res.Message);
+                await _messenger.SendAsync(chatId, res.Message ?? BotMsgs.MsgUnexpectedError);
             }
 
 

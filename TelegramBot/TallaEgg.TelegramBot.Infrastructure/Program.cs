@@ -128,7 +128,8 @@ public class Program
                 services.AddSingleton<WalletApiClient>(provider =>
                 {
                     var options = provider.GetRequiredService<IOptions<TelegramBotOptions>>().Value;
-                    return new WalletApiClient(options.WalletApiUrl);
+                    return new WalletApiClient(options.WalletApiUrl,
+                        provider.GetRequiredService<ILogger<WalletApiClient>>());
                 });
 
                 services.AddSingleton<TradeNotificationService>();
