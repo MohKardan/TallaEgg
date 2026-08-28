@@ -117,131 +117,199 @@ public class WalletRepository : IWalletRepository
         }
     }
 
+
+    /// <summary>
+    /// How many times a wallet write is re-attempted after losing an optimistic-concurrency race.
+    /// Three covers a collision with one other writer comfortably; a wallet contended by more than
+    /// that at once is a load problem, not a retry problem.
+    /// </summary>
+    private const int ConcurrencyAttempts = 3;
+
+    /// <summary>
+    /// Runs a read-modify-write against a wallet, re-running it from the start if a concurrent
+    /// writer got there first.
+    ///
+    /// <para>
+    /// Re-running the <b>whole</b> operation is the point, and the reason this wraps a delegate
+    /// rather than retrying the save. The losing writer's arithmetic was performed on a balance
+    /// that is now stale; saving it again would write exactly the number that was already wrong.
+    /// The retry has to re-read the row and recompute from what it finds. The transaction record
+    /// each caller builds also captures BallanceBefore from that read, so it has to be rebuilt too
+    /// or the audit trail would record a balance the wallet never held.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>ChangeTracker.Clear()</c> is what makes the re-read real. Without it EF's identity
+    /// resolution hands back the same tracked instance it already has — the stale one — and every
+    /// attempt recomputes from the same wrong number. That exact trap produced issue #74 in the
+    /// Orders service, where a "re-fetch with lock" comment described code that did neither.
+    /// </para>
+    ///
+    /// <para>
+    /// Retrying rather than failing is deliberate for wallets, and differs from
+    /// <c>OrderMatchingRepository</c>, which refuses. Two matchers racing for one order are
+    /// competing: the loser has nothing left to do, because the winner did it. Two writers on one
+    /// wallet are not competing — a deposit and a withdrawal must both land, they simply have to
+    /// land one after the other, which is what a retry gives them.
+    /// </para>
+    /// </summary>
+    private async Task<T> WithConcurrencyRetryAsync<T>(
+        Func<Task<T>> operation, string operationName, Guid userId, string asset)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (DbUpdateConcurrencyException) when (attempt < ConcurrencyAttempts)
+            {
+                _context.ChangeTracker.Clear();
+
+                _logger.LogWarning(
+                    "Concurrent write to the {Asset} wallet of user {UserId} during {Operation}; " +
+                    "retrying from a fresh read (attempt {Attempt} of {Limit}).",
+                    asset, userId, operationName, attempt, ConcurrencyAttempts);
+
+                await Task.Delay(TimeSpan.FromMilliseconds(20 * attempt));
+            }
+        }
+    }
+
     public async Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount)
     {
-        var wallet = await GetWalletAsync(userId, asset);
-
-        if (wallet == null)
+        return await WithConcurrencyRetryAsync(async () =>
         {
-            // Hit live: selling BTC/SEKE_BAHAR failed for every customer and the market maker
-            // alike with "wallet not found", because CreateDefaultWalletsAsync only ever seeds
-            // Toman/MAUA/CREDIT_MAUA at registration — a newer trading symbol's wallet never
-            // existed for anyone until now. Same fix as WalletService.IncreaseBalanceAsync
-            // (issue: charge-command bugs earlier in this conversation), applied here since
-            // trading locks collateral through this repository directly, not through that
-            // service. A genuinely unknown asset still fails instead of creating a phantom
-            // wallet.
-            if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new BusinessRuleException("کیف پول پیدا نشد");
+            var wallet = await GetWalletAsync(userId, asset);
 
-            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
-        }
+            if (wallet == null)
+            {
+                // Hit live: selling BTC/SEKE_BAHAR failed for every customer and the market maker
+                // alike with "wallet not found", because CreateDefaultWalletsAsync only ever seeds
+                // Toman/MAUA/CREDIT_MAUA at registration — a newer trading symbol's wallet never
+                // existed for anyone until now. Same fix as WalletService.IncreaseBalanceAsync
+                // (issue: charge-command bugs earlier in this conversation), applied here since
+                // trading locks collateral through this repository directly, not through that
+                // service. A genuinely unknown asset still fails instead of creating a phantom
+                // wallet.
+                if (!CurrenciesConstant.IsValidCurrency(asset))
+                    throw new BusinessRuleException("کیف پول پیدا نشد");
 
-        var transaction = Transaction.Create(
-          wallet.Id,
-          amount,
-          asset,
-          TransactionType.Freeze,
-          wallet.Balance,
-          wallet.Balance - amount,
-          null,
-          TransactionStatus.Completed,
-          "LockBalance transaction",
-          null,
-          null
-      );
-        wallet.LockBalance(amount);
+                wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+            }
 
-        await UpdateWalletAsync(wallet, transaction);
-        return wallet;
+            var transaction = Transaction.Create(
+              wallet.Id,
+              amount,
+              asset,
+              TransactionType.Freeze,
+              wallet.Balance,
+              wallet.Balance - amount,
+              null,
+              TransactionStatus.Completed,
+              "LockBalance transaction",
+              null,
+              null
+          );
+            wallet.LockBalance(amount);
+
+            await UpdateWalletAsync(wallet, transaction);
+            return wallet;
+        }, "lock", userId, asset);
     }
 
     public async Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
-        var wallet = await GetWalletAsync(userId, asset);
-
-        if (wallet == null)
+        return await WithConcurrencyRetryAsync(async () =>
         {
-            // Same reasoning as LockBalanceAsync — kept symmetric even though, in the normal
-            // order-cancellation flow, a Lock always precedes the matching Unlock and so the
-            // wallet already exists by then.
-            if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new BusinessRuleException("کیف پول پیدا نشد");
+            var wallet = await GetWalletAsync(userId, asset);
 
-            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
-        }
+            if (wallet == null)
+            {
+                // Same reasoning as LockBalanceAsync — kept symmetric even though, in the normal
+                // order-cancellation flow, a Lock always precedes the matching Unlock and so the
+                // wallet already exists by then.
+                if (!CurrenciesConstant.IsValidCurrency(asset))
+                    throw new BusinessRuleException("کیف پول پیدا نشد");
 
-        if (amount < 0)
-            throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
+                wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+            }
 
-        // Releasing more than is locked drives LockedBalance negative while raising Balance —
-        // money created from nothing. There used to be no guard here at all, and the
-        // order-cancellation path computed the amount with a different formula than the lock did,
-        // so this state was genuinely reachable (issue #52).
-        if (amount > wallet.LockedBalance)
-        {
-            _logger.LogError(
-                "Refusing to unlock {Amount} {Asset} for user {UserId}: only {Locked} is locked.",
-                amount, asset, userId, wallet.LockedBalance);
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
 
-            throw new BusinessRuleException(
-                $"مقدار آزادسازی ({amount}) از موجودی قفل‌شده ({wallet.LockedBalance}) بیشتر است.");
-        }
+            // Releasing more than is locked drives LockedBalance negative while raising Balance —
+            // money created from nothing. There used to be no guard here at all, and the
+            // order-cancellation path computed the amount with a different formula than the lock did,
+            // so this state was genuinely reachable (issue #52).
+            if (amount > wallet.LockedBalance)
+            {
+                _logger.LogError(
+                    "Refusing to unlock {Amount} {Asset} for user {UserId}: only {Locked} is locked.",
+                    amount, asset, userId, wallet.LockedBalance);
 
-        var transaction = Transaction.Create(
-          wallet.Id,
-          amount,
-          asset,
-          TransactionType.Unfreeze,
-          wallet.Balance,
-          wallet.Balance + amount,
-          null,
-          TransactionStatus.Completed,
-          "UnLockBalance transaction",
-          null,
-          null
-      );
-        wallet.UnLockBalance(amount);
+                throw new BusinessRuleException(
+                    $"مقدار آزادسازی ({amount}) از موجودی قفل‌شده ({wallet.LockedBalance}) بیشتر است.");
+            }
 
-        await UpdateWalletAsync(wallet, transaction);
-        return wallet;
+            var transaction = Transaction.Create(
+              wallet.Id,
+              amount,
+              asset,
+              TransactionType.Unfreeze,
+              wallet.Balance,
+              wallet.Balance + amount,
+              null,
+              TransactionStatus.Completed,
+              "UnLockBalance transaction",
+              null,
+              null
+          );
+            wallet.UnLockBalance(amount);
+
+            await UpdateWalletAsync(wallet, transaction);
+            return wallet;
+        }, "unlock", userId, asset);
     }
 
     public async Task<WalletEntity> IncreaseBalanceForTradeAsync(Guid userId, string asset, decimal amount)
     {
-        var wallet = await GetWalletAsync(userId, asset);
-
-        if (wallet == null)
+        return await WithConcurrencyRetryAsync(async () =>
         {
-            // The most serious of the three (Lock/Unlock/this): this is trade settlement
-            // crediting the buyer's side. Without this fix, a buyer's first-ever purchase of a
-            // newer symbol would have the seller's collateral already consumed while the buyer
-            // receives nothing — the outbox settlement failing here, not merely a customer-facing
-            // "wallet not found" message (issue #39 territory: a stuck settlement, not just a
-            // refused request).
-            if (!CurrenciesConstant.IsValidCurrency(asset))
-                throw new BusinessRuleException("کیف پول پیدا نشد");
+            var wallet = await GetWalletAsync(userId, asset);
 
-            wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
-        }
+            if (wallet == null)
+            {
+                // The most serious of the three (Lock/Unlock/this): this is trade settlement
+                // crediting the buyer's side. Without this fix, a buyer's first-ever purchase of a
+                // newer symbol would have the seller's collateral already consumed while the buyer
+                // receives nothing — the outbox settlement failing here, not merely a customer-facing
+                // "wallet not found" message (issue #39 territory: a stuck settlement, not just a
+                // refused request).
+                if (!CurrenciesConstant.IsValidCurrency(asset))
+                    throw new BusinessRuleException("کیف پول پیدا نشد");
 
-        var transaction = Transaction.Create(
-          wallet.Id,
-          amount,
-          asset,
-          TransactionType.Trade,
-          wallet.Balance,
-          wallet.Balance + amount,
-          null,
-          TransactionStatus.Completed,
-          "IncreaseBalanceAsync transaction",
-          null,
-          null
-                                            );
-        wallet.IncreaseBalance(amount);
+                wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
+            }
 
-        await UpdateWalletAsync(wallet, transaction);
-        return wallet;
+            var transaction = Transaction.Create(
+              wallet.Id,
+              amount,
+              asset,
+              TransactionType.Trade,
+              wallet.Balance,
+              wallet.Balance + amount,
+              null,
+              TransactionStatus.Completed,
+              "IncreaseBalanceAsync transaction",
+              null,
+              null
+                                                );
+            wallet.IncreaseBalance(amount);
+
+            await UpdateWalletAsync(wallet, transaction);
+            return wallet;
+        }, "settlement credit", userId, asset);
     }
 
 

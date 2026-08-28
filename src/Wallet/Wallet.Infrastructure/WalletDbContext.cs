@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Wallet.Core;
 
 namespace Wallet.Infrastructure;
@@ -24,6 +24,11 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<WalletEntity>().Property(w => w.LockedBalance).IsRequired().HasPrecision(28, 8);
         modelBuilder.Entity<WalletEntity>().Property(w => w.CreatedAt).IsRequired();
         modelBuilder.Entity<WalletEntity>().Property(w => w.UpdatedAt).IsRequired();
+
+        // Optimistic concurrency (audit finding C-4). This is what puts "AND Version = @read"
+        // into every UPDATE, which is the whole mechanism: a stale writer matches zero rows and
+        // EF raises DbUpdateConcurrencyException rather than overwriting.
+        modelBuilder.Entity<WalletEntity>().Property(w => w.Version).IsRequired().IsConcurrencyToken();
         
         // Unique constraint for user and asset combination
         modelBuilder.Entity<WalletEntity>().HasIndex(w => new { w.UserId, w.Asset }).IsUnique();
