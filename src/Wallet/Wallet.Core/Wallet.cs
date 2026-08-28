@@ -18,8 +18,42 @@ public class WalletEntity
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>
+    /// Optimistic concurrency token. Every UPDATE carries <c>WHERE Version = &lt;the value that was
+    /// read&gt;</c>, so a second writer working from a stale read affects zero rows and EF raises
+    /// <c>DbUpdateConcurrencyException</c> instead of silently overwriting the first writer's
+    /// result. Without it, two concurrent writes to one wallet ended in last-one-wins and a
+    /// withdrawal could vanish (audit finding C-4).
+    ///
+    /// <para>
+    /// A counter rather than SQL Server's <c>rowversion</c>, on purpose. <c>rowversion</c> is
+    /// maintained by the database and cannot be forgotten, which would be the stronger choice —
+    /// but the test suite runs on SQLite, where EF maps it to a BLOB it never updates, so the
+    /// token would never change and a concurrency test would pass while proving nothing. A
+    /// counter behaves identically on both providers, so the guarantee is actually tested.
+    /// </para>
+    ///
+    /// <para>
+    /// It is incremented in <see cref="Touch"/>, which every mutator calls, and
+    /// <c>WalletVersionTests</c> asserts that each of them does — the counter's one weakness is a
+    /// new method that forgets, and that test is what closes it.
+    /// </para>
+    /// </summary>
+    public long Version { get; set; }
+
     // Private constructor for EF Core
     private WalletEntity() { }
+
+    /// <summary>
+    /// Marks the row as changed: bumps <see cref="Version"/> so a concurrent writer's UPDATE
+    /// fails, and stamps <see cref="UpdatedAt"/>. Every method that alters a balance calls this,
+    /// and it is the only place either field is written.
+    /// </summary>
+    private void Touch()
+    {
+        Version++;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     public static WalletEntity Create(
         Guid userId,
@@ -50,7 +84,7 @@ public class WalletEntity
             throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
 
         Balance += amount;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     public void DecreaseBalance(decimal amount)
@@ -62,7 +96,7 @@ public class WalletEntity
             throw new BusinessRuleException("مقدار کسر از حساب بیشتر از حد مجاز است");
 
         Balance -= amount;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     /// <summary>
@@ -84,7 +118,7 @@ public class WalletEntity
 
         LockedBalance += amount;
         Balance -= amount;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     /// <summary>
@@ -104,7 +138,7 @@ public class WalletEntity
 
         LockedBalance -= amount;
         Balance += amount;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
     /// <summary>
@@ -120,7 +154,7 @@ public class WalletEntity
             throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
 
         LockedBalance -= amount;
-        UpdatedAt = DateTime.UtcNow;
+        Touch();
     }
 
 }
