@@ -281,46 +281,6 @@ app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService w
 })
 .WithTags("Transactions");
 
-app.MapPost("/api/wallet/transaction/trade", async (TradeRequest request, IWalletService walletService, ILogger<Program> logger, IConfiguration configuration) =>
-{
-    // Quarantine stub endpoint audit:C-8
-    // Check if stub endpoint quarantine is enabled
-    var quarantineEnabled = configuration.GetValue<bool>("FeatureFlags:QuarantineStubEndpoints", defaultValue: true);
-    
-    if (quarantineEnabled)
-    {
-        logger.LogWarning(
-            "Stub endpoint quarantined — audit:C-8 | Endpoint: POST /api/wallet/transaction/trade | " +
-            "UserId: {FromUserId}, ToUserId: {ToUserId}, Asset: {Asset}, Amount: {Amount}, ReferenceId: {ReferenceId}",
-            request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
-        
-        return Results.Json(new {
-            error = "Not Implemented",
-            message = "Stub endpoint quarantined. Implementation pending.",
-            auditRef = "C-8"
-        }, statusCode: 501);
-    }
-    
-    // Production implementation (currently unreachable due to quarantine)
-    try
-    {
-        var result = await walletService.MakeTradeAsync(request.FromUserId, request.ToUserId, request.Asset, request.Amount, request.ReferenceId);
-        return Results.Ok(ApiResponse<WalletBallanceDTO>.Ok(result, "Operation completed successfully"));
-    }
-    catch (BusinessRuleException ex)
-    {
-        logger.LogError(ex, "Error in MakeTradeAsync for users {FromUserId} -> {ToUserId}", request.FromUserId, request.ToUserId);
-        return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
-    }
-})
-.WithTags("Transactions");
-
-// The withdraw, charge, transfer, internal/credit and internal/debit endpoints were commented
-// out here rather than deleted. Their service methods still exist and are now unreachable —
-// WalletService.WithdrawalAsync, ChargeWalletAsync, TransferAsync, DebitAsync. See audit finding
-// N-3: TransferAsync in particular is not atomic and writes no audit trail, so none of them
-// should be re-exposed as they stand.
-
 app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asset, IWalletService walletService) =>
 {
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);

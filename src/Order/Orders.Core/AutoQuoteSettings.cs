@@ -11,8 +11,7 @@ namespace Orders.Core;
 /// bot, at runtime, without a redeploy — a configuration-file value is only read at startup
 /// (see <c>Program.cs</c>'s <c>ResolveSharedConfigPath</c>). <see cref="IsEnabled"/> doubles as
 /// the feature's on/off switch, so a bad reading or a misbehaving provider can be turned off
-/// from inside the product, the same way <c>FeatureFlags:QuarantineStubEndpoints</c> already
-/// works for a different feature.
+/// from inside the product rather than by editing a file and restarting five services.
 /// </para>
 /// </summary>
 public class AutoQuoteSettings
