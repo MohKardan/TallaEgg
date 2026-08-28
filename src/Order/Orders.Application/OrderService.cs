@@ -12,6 +12,7 @@ using TallaEgg.Core.Responses.Order;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.Core.ErrorHandling;
+using TallaEgg.Core.Utilties;
 
 namespace Orders.Application;
 
@@ -94,6 +95,8 @@ public class OrderService
                 throw new BusinessRuleException("قیمت باید بزرگ‌تر از صفر باشد");
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
+
+            ValidateTradingLimits(request.Symbol, request.Quantity, request.Price);
 
             var (_, amountToCheck) = ComputeCollateral(request.Symbol, orderSide, request.Quantity, request.Price);
 
@@ -200,6 +203,48 @@ public class OrderService
     /// CeilingToCurrencyPrecision). The sell side needs no rounding, since its collateral is the
     /// order quantity itself.
     /// </summary>
+    /// <summary>
+    /// Enforces the symbol's own size limits. Every trading pair has carried
+    /// <c>MinQuantity</c>, <c>MaxQuantity</c> and <c>MinNotional</c> since the pair table was
+    /// written, and until now nothing read them — the only order-size rule in the product was
+    /// <c>Quantity &gt; 0</c> at the endpoint. Configured limits that are never applied are worse
+    /// than none, because the next reader takes them for protection that exists.
+    ///
+    /// <para>
+    /// Here rather than in the endpoint, on purpose. The endpoint is one caller; this is the one
+    /// path every order takes. #122 was the same lesson — a guard belongs where the rule lives,
+    /// not where one of today's callers happens to sit.
+    /// </para>
+    ///
+    /// <para>
+    /// A symbol with no entry in the pair table is left alone. <c>CreateOrderAsync</c> already
+    /// fails later for a genuinely unknown asset, and refusing here would report an unfamiliar
+    /// symbol as a size problem.
+    /// </para>
+    /// </summary>
+    private static void ValidateTradingLimits(string symbol, decimal quantity, decimal price)
+    {
+        var pair = CurrenciesConstant.GetTradingPairInfo(symbol);
+        if (pair is null) return;
+
+        if (pair.MinQuantity > 0 && quantity < pair.MinQuantity)
+            throw new BusinessRuleException(
+                $"مقدار سفارش نمی‌تواند کمتر از {PersianFormat.Number(pair.MinQuantity, 8).TrimEnd('۰').TrimEnd('٫')} " +
+                $"{pair.BaseUnit} باشد.");
+
+        if (pair.MaxQuantity > 0 && quantity > pair.MaxQuantity)
+            throw new BusinessRuleException(
+                $"مقدار سفارش نمی‌تواند بیشتر از {PersianFormat.Number(pair.MaxQuantity, 8).TrimEnd('۰').TrimEnd('٫')} " +
+                $"{pair.BaseUnit} باشد.");
+
+        // Notional is what the order is worth, which is the limit that actually matters: a
+        // quantity above MinQuantity can still be worth less than the cost of settling it.
+        if (pair.MinNotional > 0 && quantity * price < pair.MinNotional)
+            throw new BusinessRuleException(
+                $"ارزش سفارش نمی‌تواند کمتر از {PersianFormat.Amount(pair.MinNotional, pair.QuoteAsset)} " +
+                $"{PersianFormat.Unit(pair.QuoteAsset)} باشد.");
+    }
+
     private static (string Asset, decimal Amount) ComputeCollateral(
         string symbol, OrderSide side, decimal quantity, decimal price)
     {
