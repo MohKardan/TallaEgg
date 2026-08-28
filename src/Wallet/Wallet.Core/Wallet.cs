@@ -74,6 +74,14 @@ public class WalletEntity
     /// </summary>
     public void LockBalance(decimal amount)
     {
+        // A negative amount inverts both lines below: LockedBalance falls and Balance rises, so
+        // "locking" mints money. The sufficiency rule genuinely cannot live here, for the reason
+        // above — but that reasoning is about how much is available, not about which direction the
+        // arithmetic runs, and it was silently extended to cover both. IncreaseBalance,
+        // DecreaseBalance and ConsumeLockedBalance all carry this check already.
+        if (amount <= 0)
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
+
         LockedBalance += amount;
         Balance -= amount;
         UpdatedAt = DateTime.UtcNow;
@@ -87,6 +95,13 @@ public class WalletEntity
     /// </summary>
     public void UnLockBalance(decimal amount)
     {
+        // WalletRepository.UnlockBalanceAsync refuses a negative amount, so today nothing reaches
+        // here with one. That is a guard on the path rather than on the operation: a second caller
+        // reaching the entity directly would not meet it. The invariant belongs where it cannot be
+        // walked around.
+        if (amount <= 0)
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
+
         LockedBalance -= amount;
         Balance += amount;
         UpdatedAt = DateTime.UtcNow;
