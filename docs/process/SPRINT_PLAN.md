@@ -7,7 +7,7 @@
 ---
 
 ## Sprint Goal (Sprint 1)
-Eliminate critical production blockers related to financial integrity, security, and dependency management to raise production-readiness from **30% → 60%** (see [`../operations/AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md)).
+Eliminate critical production blockers related to financial integrity, security, and dependency management to raise production-readiness from **30% → 60%** (see [`../audit/AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md)).
 
 ---
 

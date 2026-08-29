@@ -79,7 +79,7 @@ is one. Confirmed with the product owner on 6 Shahrivar 1405.
   denominated in the quote currency back a base-asset position (`creditQuote / price`) and vice
   versa. A customer holding only `CREDIT_MAUA` can legitimately drive their IRT balance negative.
   Any per-asset invariant would reject trades the business intends to allow — see the retracted
-  N-1 finding in `docs/operations/RE_AUDIT_2026-08.md`.
+  N-1 finding in `docs/audit/AUDIT_2026-08.md`.
 - **`Wallet.LockBalance` enforces no balance rule, and must not.** The credit ceiling for asset
   `A` lives in a separate wallet row keyed `CREDIT_A`, so a single-asset entity cannot evaluate
   the invariant. The check belongs where both rows are visible. The commented-out guard in that
