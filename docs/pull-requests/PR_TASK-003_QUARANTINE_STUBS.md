@@ -157,7 +157,7 @@ Total: 4 passed, 0 failed in 1.23s
 ## Documentation
 
 - [x] Updated [`docs/process/SPRINT_PLAN.md`](docs/process/SPRINT_PLAN.md) — marked TASK-003 changes
-- [x] Updated [`docs/operations/AUDIT_FINDINGS.md`](docs/operations/AUDIT_FINDINGS.md) — C-8 status updated to "In Progress → Completed"
+- [x] Updated [`docs/audit/AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md) (named `docs/operations/AUDIT_FINDINGS.md` at the time) — C-8 status updated to "In Progress → Completed"
 - [x] Code comments document quarantine intent
 - [x] Runbook will need update in TASK-010 (operational procedures)
 

@@ -18,8 +18,8 @@ This document defines all standards and conventions for the TallaEgg project to 
 - Use standard Markdown formatting
 - Use American English spelling conventions
 - **Exception**: source/reference artifacts written for a specific audience may be in Farsi
-  (e.g. `docs/CODE_AUDIT_REPORT.html`). When they are, the authoritative English summary is the
-  one linked from `INDEX.md` (for the audit: `operations/AUDIT_FINDINGS.md`).
+  (e.g. `docs/audit/AUDIT_2026-07.html`). When they are, the authoritative English summary is the
+  one linked from `INDEX.md` (for the audit: `audit/AUDIT_2026-07.md`).
 
 ---
 
@@ -28,7 +28,7 @@ This document defines all standards and conventions for the TallaEgg project to 
 ### Solution Structure
 
 This reflects the repository **as it is today**, not an idealized target. Two things below are
-known tech debt flagged by the audit (see `operations/AUDIT_FINDINGS.md` M-1) and are slated for
+known tech debt flagged by the audit (see `audit/AUDIT_2026-07.md` M-1) and are slated for
 cleanup in TASK-010 — they are marked ⚠️:
 
 ```
@@ -43,9 +43,9 @@ TallaEgg/
 ├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/ (TallaEgg.TelegramBot + .Application/.Core/.Infrastructure)
 ├── tests/                            # → TallaEgg.AllServices.Tests — the solution's only test project, covers every service
 ├── docs/
-│   ├── CODE_AUDIT_REPORT.html        # Full audit report (see operations/AUDIT_FINDINGS.md for the summary)
+│   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
 │   ├── architecture/                 # Architecture documentation (ROADMAP.md)
-│   ├── operations/                   # AUDIT_FINDINGS.md; runbooks/deployment (planned)
+│   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
 │   └── process/                      # Development process standards (this file, INDEX, WORKFLOW, SPRINT_PLAN, PR_TEMPLATE)
 └── TallaEgg.sln
 ```

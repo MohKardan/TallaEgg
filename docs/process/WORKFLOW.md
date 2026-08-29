@@ -11,9 +11,9 @@ This document defines the daily workflow for a two-person development team worki
 - Updated at sprint start and reviewed during retrospectives
 
 **Supporting References**:
-- `docs/operations/AUDIT_FINDINGS.md` — Why priorities are ordered as they are
+- `docs/audit/AUDIT_2026-07.md` — Why priorities are ordered as they are
 - `docs/architecture/ROADMAP.md` — High-level feature roadmap
-- `docs/CODE_AUDIT_REPORT.html` — Detailed technical findings
+- `docs/audit/AUDIT_2026-07.html` — Detailed technical findings
 
 ---
 

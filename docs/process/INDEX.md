@@ -24,7 +24,7 @@ opening a PR.
 - **How do I review this?** → [`docs/process/CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) — review depth, TallaEgg-specific red flags, when to approve vs request changes
 
 ### For Problem-Solving
-- **Why are we doing this?** → [`docs/operations/AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md) — Critical findings and rationale
+- **Why are we doing this?** → [`docs/audit/README.md`](../audit/README.md) — The audit archive: what each audit found, the score trend, and how the next one is run
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
 - **What's the architecture?** → [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed; `SoftwareArchitecture/` (repo root) for current component/class/ER/sequence diagrams
 
@@ -43,7 +43,12 @@ opening a PR.
 
 ```
 docs/
-├── CODE_AUDIT_REPORT.html        ← Full audit report (raw)
+├── audit/
+│   ├── README.md                  ← Archive index and score trend across all audits
+│   ├── METHODOLOGY_v7.md          ← How the next audit is run (current methodology)
+│   ├── AUDIT_2026-07.md           ← July 2026 audit — English summary
+│   ├── AUDIT_2026-07.html         ← July 2026 audit — full report (Farsi)
+│   └── AUDIT_2026-08.md           ← August 2026 re-audit
 ├── process/
 │   ├── INDEX.md (this file)
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
@@ -54,7 +59,7 @@ docs/
 ├── architecture/
 │   └── ROADMAP.md                ← Post-Sprint-1 roadmap (bot → web app migration)
 └── operations/
-    └── AUDIT_FINDINGS.md         ← Critical/high/medium findings from code audit
+    └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
 ```
 
 ### Planned (not yet created — do not link to these until they exist)
@@ -161,20 +166,23 @@ When one of these is created, move its line into "Existing today" in the same PR
 
 ---
 
-### [`AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md) — **Why We're Doing This**
-**Purpose**: Reference critical findings from code audit (4.6/10 score, 30% prod-ready).
+### [`docs/audit/`](../audit/README.md) — **Why We're Doing This**
+**Purpose**: Every risk audit the project has run, one file per run, plus the methodology
+for the next one. Start at [`README.md`](../audit/README.md) — it carries the score trend
+and says which audit is most recent.
 
 **Covers**:
-- 9 CRITICAL findings (C-1 through C-9)
-- 4 HIGH-priority findings
-- Strengths/points of leverage
-- Roadmap summary (Sprint 1–3 targets)
-- Metrics tracking
+- [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md) — 9 CRITICAL findings (C-1–C-9), 4 HIGH; 4.6/10, 30% prod-ready. Full Farsi report alongside it as `.html`
+- [`AUDIT_2026-08.md`](../audit/AUDIT_2026-08.md) — re-audit: 6.6/10, ~55%; also records which of its own findings were wrong
+- [`METHODOLOGY_v7.md`](../audit/METHODOLOGY_v7.md) — how to run the next audit
 
 **When to use**:
 - To understand the "why" behind sprint priorities
 - During task planning (link findings to tasks)
 - In PR descriptions (reference finding codes like C-4, H-1)
+
+**Never** edit an archived audit to mark work done — remediation status lives in issues
+(`gh issue list --label audit-finding`).
 
 ---
 
@@ -295,7 +303,7 @@ A: See [`WORKFLOW.md`](WORKFLOW.md), section "When You're Blocked".
 A: Copy [`PR_TEMPLATE.md`](PR_TEMPLATE.md), fill out all sections, verify checklist items.
 
 **Q: Why is security so important in TASK-001?**  
-A: See [`AUDIT_FINDINGS.md`](../operations/AUDIT_FINDINGS.md), findings C-1, C-2, C-7, C-9.
+A: See [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md), findings C-1, C-2, C-7, C-9.
 
 **Q: How do I estimate effort for a new task?**  
 A: Compare to similar tasks in [`SPRINT_PLAN.md`](SPRINT_PLAN.md); use past METRICS.md data.

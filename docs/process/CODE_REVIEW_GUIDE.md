@@ -36,7 +36,7 @@ balances, locks, matching, or credentials.
 
 ## 3. TallaEgg red flags
 
-These come from our own audit (`../operations/AUDIT_FINDINGS.md`). They are the bugs this codebase
+These come from our own audit (`../audit/AUDIT_2026-07.md`). They are the bugs this codebase
 actually produces — and they look like clean code in a diff. Check them explicitly.
 
 ### Financial correctness
