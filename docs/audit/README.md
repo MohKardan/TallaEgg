@@ -20,6 +20,9 @@ Follow [`METHODOLOGY_v7.md`](METHODOLOGY_v7.md). It is the current methodology; 
 to the auditor rather than pasting an older prompt. It detects re-audit mode from this
 file, so keep the table below current.
 
+A second audit in a month that already has one gets a letter suffix (`AUDIT_2026-08b.md`)
+rather than replacing the file that is there. Nothing in this directory is ever overwritten.
+
 An audit should be run by someone — or something — that did not write the code. The
 agent that made a change is not independent evidence about it.
 
