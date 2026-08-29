@@ -341,6 +341,12 @@ silently dropping it. Continue the ID sequence for genuinely new findings.
 
 ## Write `docs/audit/AUDIT_YYYY-MM.md` — the only deliverable
 
+**Naming, and the one way to lose an audit:** `YYYY-MM` is the month the audit runs. If a
+file with that name already exists, **never overwrite it** — an archived audit is
+evidence, and a second run in the same month is a second measurement, not a correction.
+Append a letter instead: `AUDIT_2026-08b.md`, then `c`, and so on. Check before writing,
+not after.
+
 Required sections, in this order:
 
 1. **Audit Metadata & Disclosure** — who and what performed this audit, stated plainly
