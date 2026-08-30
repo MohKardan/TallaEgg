@@ -33,7 +33,7 @@ agent that made a change is not independent evidence about it.
 |---|---|---|---|---|---|
 | 2026-07-08 | 4.6 / 10 | 30% | [v1](METHODOLOGY_v1.md) | Claude Opus 4.8 | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
 | 2026-08-26 | 6.6 / 10 | ~55% | none — ad hoc | Claude Opus 5 | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
-| 2026-08-29 | 7.8 / 10 | ~65% | v7.0 | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
+| 2026-08-29 | 7.8 / 10 | ~65% | [v7.0](METHODOLOGY_v7.md) | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
 
 **Read this column-by-column, not row-by-row.** The three runs used different methods and
 different models — the product owner supplied the model attribution for the first two rows in
