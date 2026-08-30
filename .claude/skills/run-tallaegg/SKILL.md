@@ -38,7 +38,9 @@ and every service reads its own section from it. If it doesn't exist yet, create
 template and point the four connection strings at your SQL Server:
 
 ```powershell
-Copy-Item config/appsettings.global.example.json config/appsettings.global.json
+# -NoClobber matters: the file is untracked (issue #33), so overwriting a real one destroys
+# live connection strings, bot token and OwnerTelegramIds with no git copy to recover from.
+Copy-Item config/appsettings.global.example.json config/appsettings.global.json -NoClobber
 # then edit ConnectionStrings:{UsersDb,WalletDb,OrdersDb,AffiliateDb} to a real server
 ```
 
@@ -72,22 +74,32 @@ Everything goes through `driver.ps1`:
 & .claude/skills/run-tallaegg/driver.ps1 stop      # stop whatever is listening on the 3 ports
 ```
 
-`start` builds in Release, launches the three APIs as background processes (stdout/stderr
-redirected to `run-logs/<service>.{out,err}.log`), and polls each service's Swagger page
-(`/api-docs/index.html`) until all three answer 200 or 60 seconds pass. On timeout it prints
-the last 40 lines of each service's stderr log and throws.
+`start` refuses to run if any of the three ports is already listening (tell it `stop` first —
+otherwise the new processes die on "address already in use" while the health poll answers 200
+from the old ones), builds in Release and **throws if the build fails**, launches the three
+APIs as background processes (stdout/stderr redirected to `run-logs/<service>.{out,err}.log`),
+and polls each service's Swagger page (`/api-docs/index.html`) until all three answer 200 or 60
+seconds pass. On timeout it prints the last 40 lines of *both* logs per service and throws.
 
 `smoke` is the real interaction. With no arguments it runs a small simulation
 (`--users 5 --quotes 5 --trades 10 --seed 1`): registers 5 fake Telegram users through the real
 `/start` + contact-share flow, promotes one to admin, has admin approve/reject the rest, funds
 wallets, publishes quotes through the real `18500000-18550000`-style text command, fills trades
 by quote acceptance, and clicks through the help/history/balance menu buttons — end to end,
-through the real handler and API code, against the real database. Pass your own args through
-after `smoke`:
+through the real handler and API code, against the real database. Override any subset of the
+knobs after `smoke` — the ones you don't name keep the small defaults above (the driver merges
+them; passing them straight through would drop to the Simulator's own compiled defaults of 100
+users / 120 quotes / **1000 trades**, so `smoke --seed 7` alone would be a hundred-fold bigger
+run than it looks):
 
 ```powershell
 & .claude/skills/run-tallaegg/driver.ps1 smoke --users 20 --quotes 20 --trades 50 --seed 7
+& .claude/skills/run-tallaegg/driver.ps1 smoke --trades 50    # 5 users, 5 quotes, 50 trades, seed 1
 ```
+
+`--users` must be at least 2: user #0 is promoted to admin and is the counterparty to every
+fill, so it can never trade with itself, and a 1-user run ends `errors 1` with "No approved
+users to trade with."
 
 A clean run ends with a line like:
 
@@ -95,14 +107,33 @@ A clean run ends with a line like:
 === Done in 00:00:10.26. Registered 5 (4 approved), trades attempted 10, errors 0 ===
 ```
 
-`errors 0` is the thing to check. Every simulated user has `TelegramId < 0`, and each run's
-first phase (`DataReset`) wipes only rows with `TelegramId < 0` before it starts, so re-running
-`smoke` repeatedly against the same database is safe and self-cleaning — it can never touch a
-real (positive-id) user's data.
+`errors 0` is the thing to check, and the driver checks it for you — the Simulator itself always
+exits 0 no matter how much failed, so `driver.ps1 smoke` parses that summary line and throws if
+the count isn't zero or the line never appeared.
 
-Verified end-to-end on this machine, twice (bash-launched and PowerShell-launched), against a
-real local SQL Server Express instance — both runs finished with `errors 0` and left queryable
-data behind, confirmed via:
+### What a run changes on the database
+
+- **Rows with `TelegramId < 0`.** Every simulated user is in that range, and each run's first
+  phase (`DataReset`) wipes only that range before starting, so repeated runs are self-cleaning
+  and a real (positive-id) user's data is never touched.
+- **The auto-quote flag for `MAUA/IRT`.** The Simulator turns it off in Phase 2 — a background
+  publisher replacing the run's quotes breaks quote-fill trades — and never turns it back on.
+  That is per-symbol Orders-DB state, not `TelegramId`-scoped, so `DataReset` does not restore
+  it. **`driver.ps1 smoke` reads the flag before the run and puts it back afterwards**, including
+  when the run fails part-way. If the restore itself fails the driver says so; turn it back on
+  from the bot with the admin command `اتومات روشن`, or:
+
+  ```powershell
+  Invoke-RestMethod -Method Post -ContentType 'application/json' `
+    -Uri http://localhost:5140/api/autoquote-settings/MAUA/IRT/enabled `
+    -Body '{"IsEnabled":true,"UpdatedByUserId":"00000000-0000-0000-0000-000000000000"}'
+  ```
+
+  Running the Simulator directly (not through `driver.ps1`) leaves auto-quote off.
+
+Verified end-to-end on this machine against a real local SQL Server Express instance — the run
+finished with `errors 0`, left queryable data behind, and left the auto-quote flag as it found
+it. Confirmed via:
 
 ```powershell
 Invoke-RestMethod http://localhost:5140/api/orders/MAUA/IRT/best-prices
@@ -153,9 +184,21 @@ Unit tests are a sanity check; `smoke` above is what actually proves the running
   The simulation's own error counter (`errors 0` in the final summary line) is what indicates
   real failure; the interleaved warnings are noise from a normal existence check.
 - **`Start-Process dotnet -ArgumentList 'run',...` outlives the parent shell if you don't track
-  it.** `driver.ps1 stop` doesn't rely on remembered PIDs for this reason — it resolves the
-  *current* `OwningProcess` for each of the three ports via `Get-NetTCPConnection` and kills
-  that, so it works even if the shell that ran `start` already exited.
+  it.** `driver.ps1 stop` therefore kills on two grounds: the *current* `OwningProcess` of each
+  of the three ports via `Get-NetTCPConnection` (so it works even if the shell that ran `start`
+  already exited), plus anything still alive from `run-logs/launcher.pids`. The second is what
+  catches a service that died before Kestrel bound — unreachable SQL Server, say — which owns no
+  port but is still running and still holding a lock on `bin/`. It reports only kills that
+  actually succeeded, and warns about the ones it couldn't make.
+- **All three APIs log to stdout, not stderr.** They configure Serilog `.WriteTo.Console()` with
+  no `standardErrorFromLevel`, so `run-logs/<service>.err.log` is usually empty and the real
+  error is in `<service>.out.log`. `driver.ps1 start` tails both on timeout for this reason.
+- **The `/api-docs` health probe only exists in Development.** All three APIs map Swagger inside
+  `if (app.Environment.IsDevelopment())`. `dotnet run` picks up `ASPNETCORE_ENVIRONMENT=Development`
+  from each project's `launchSettings.json`, so this works by default — but on a box where the
+  environment variable is set to Production (as `scripts/windows-services/install-services.ps1`
+  does for installed services), the services come up fine and `start` still times out. The
+  timeout message says so.
 - **Orders.Api calling Wallet/Users before they're listening just logs noisy (harmless)
   connection-refused warnings, not a failure** — `driver.ps1 start` gives Users a 3-second head
   start before launching Orders for exactly this reason, but a slow machine can still race it;
@@ -167,10 +210,22 @@ Unit tests are a sanity check; `smoke` above is what actually proves the running
   `config/appsettings.global.example.json` to that path first — see Setup above. It's
   git-ignored on purpose (`CLAUDE.md`: never commit it, it holds live credentials).
 - **`Timed out waiting for Users/Wallet/Orders APIs to report healthy.`**: `driver.ps1` prints
-  the last 40 lines of each `run-logs/*.err.log` when this happens. In practice this has meant
-  either SQL Server isn't reachable (check the `Get-Service` command under Prerequisites) or a
-  connection string in `config/appsettings.global.json` points at the wrong server/database.
+  the last 40 lines of every `run-logs/*.log` when this happens — check the `.out.log` files
+  first, that's where Serilog puts errors. In practice this has meant either SQL Server isn't
+  reachable (check the `Get-Service` command under Prerequisites), a connection string in
+  `config/appsettings.global.json` points at the wrong server/database, or
+  `ASPNETCORE_ENVIRONMENT` isn't Development (see Gotchas). The launched processes are left
+  running so their logs stay readable; `driver.ps1 stop` cleans them up.
+- **`Already listening: ...`** (thrown by `driver.ps1 start`): a previous stack is still up.
+  `driver.ps1 status` shows what owns the ports, `driver.ps1 stop` clears them. `start` refuses
+  rather than launching processes that would die on "address already in use" while the health
+  poll answered from the old ones.
+- **`Build failed (exit N)`**: fix the build. `start` stops here on purpose — it launches with
+  `--no-build`, so continuing would serve the *previous* build and quietly invalidate whatever
+  you were trying to verify.
 - **A previous `smoke` run's data is still there and you want a clean slate without running a
   new simulation**: there's no standalone reset command — `smoke`'s Phase 0 always resets
-  first, so running `smoke --users 1 --quotes 1 --trades 1` is the cheapest way to wipe
-  previously-simulated (`TelegramId < 0`) rows on demand.
+  first, so `smoke --users 5 --quotes 1 --trades 1` is the cheapest way to wipe
+  previously-simulated (`TelegramId < 0`) rows on demand. Keep `--users` at 5 rather than the
+  bare minimum of 2: each non-admin registration is only approved with probability 0.9, so a
+  2-user run can land on the one rejection and end `errors 1` with nobody left to trade.
