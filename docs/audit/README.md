@@ -32,18 +32,24 @@ agent that made a change is not independent evidence about it.
 | Date | Overall | Production readiness | Methodology | Model | Files |
 |---|---|---|---|---|---|
 | 2026-07-08 | 4.6 / 10 | 30% | [v1](METHODOLOGY_v1.md) | Claude Opus 4.8 | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
-| 2026-08-26 | 6.6 / 10 | ~55% | unversioned | Claude Opus 5 | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
+| 2026-08-26 | 6.6 / 10 | ~55% | none — ad hoc | Claude Opus 5 | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
 | 2026-08-29 | 7.8 / 10 | ~65% | v7.0 | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
 
 **Read this column-by-column, not row-by-row.** The three runs used different methods and
 different models — the product owner supplied the model attribution for the first two rows in
 August 2026, and the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known
-for every run and readable for two of the three. (The prompt used on 2026-08-26 was not kept;
-that row's method is known only from what the audit itself describes.) A score that rises between runs may
-mean the code improved, or that a different reader weighted the same code differently. The
-comparison is only sound where the methodology and model columns match — which, so far, they
-never do. v7 requires both to be recorded, so the 2026-08-29 run is the first whose successor
-can be genuinely comparable to it.
+for every run, and the method is readable for two of the three. A score that rises between
+runs may mean the code improved, or that a different reader weighted the same code
+differently. The comparison is only sound where the methodology and model columns match —
+which, so far, they never do. v7 requires both to be recorded, so the 2026-08-29 run is the
+first whose successor can be genuinely comparable to it.
+
+**The 2026-08-26 run had no methodology.** It was commissioned by two sentences inside a
+message about something else — audit the code, every service except Affiliate — and
+delivered twelve minutes later. It was also run by the same session that had been editing
+this repository that day, so it was not independent of the code it measured in even the
+weakest sense. Both facts belong next to its 6.6, and neither is visible in the audit
+itself.
 
 One independence fact, checked 2026-08-30 and worth weighting the rows by: all 31 commits
 merged between the 2026-08-26 audit and the 2026-08-29 one (`git log --since=2026-08-26
