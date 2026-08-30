@@ -56,7 +56,12 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(50);
         modelBuilder.Entity<Transaction>().Property(t => t.Type).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.Status).IsRequired();
-        modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId);
+        // Bounded so the unique index below has a key SQL Server will accept everywhere. Left
+        // unbounded, an indexed string maps to nvarchar(450) — 900 bytes, and with WalletId’s 16 that
+        // is 916, past the 900-byte index key limit on SQL Server 2014 and earlier, where the
+        // migration would fail at startup. What is stored here is trade ids (36 characters) and admin
+        // adjustment keys (around 110), so 256 is generous.
+        modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId).HasMaxLength(256);
         modelBuilder.Entity<Transaction>().Property(t => t.Description).HasMaxLength(256);
         modelBuilder.Entity<Transaction>().Property(t => t.Detail); // nvarchar(max) for JSON data
         modelBuilder.Entity<Transaction>().Property(t => t.CreatedAt).IsRequired();

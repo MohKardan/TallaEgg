@@ -92,20 +92,29 @@ namespace TallaEgg.TelegramBot
                         var amountText = $"{PersianFormat.Amount(amount, currency)} {PersianFormat.Unit(currency)}";
                         var newCreditText = $"{PersianFormat.Amount(result.Data?.BalanceAfter ?? 0m, currency)} {PersianFormat.Unit(currency)}";
 
+                        // A deduplicated repeat reports success, because the charge did happen — on the
+                        // earlier send, with nothing moving on this one. Telling the customer their
+                        // credit rose again would be a lie about their own money, so only the admin is
+                        // told, and told that it was a repeat (issue #157).
+                        var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
+
                         await _messenger.SendAsync(
                            message.Chat.Id,
-                           string.Format(BotMsgs.MsgAdminChargeDone,
+                           string.Format(alreadyApplied ? BotMsgs.MsgAdminChargeAlreadyApplied : BotMsgs.MsgAdminChargeDone,
                                PersianFormat.Asset(currency),
                                amountText,
                                PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                newCreditText));
 
-                        await _messenger.SendAsync(
-                           userDto.TelegramId,
-                           string.Format(BotMsgs.MsgUserCreditIncreased,
-                               PersianFormat.Asset(currency),
-                               amountText,
-                               newCreditText));
+                        if (!alreadyApplied)
+                        {
+                            await _messenger.SendAsync(
+                               userDto.TelegramId,
+                               string.Format(BotMsgs.MsgUserCreditIncreased,
+                                   PersianFormat.Asset(currency),
+                                   amountText,
+                                   newCreditText));
+                        }
                     }
                     else
                     {
@@ -177,20 +186,27 @@ namespace TallaEgg.TelegramBot
                         var deductAmountText = $"{PersianFormat.Amount(amount, currency)} {PersianFormat.Unit(currency)}";
                         var newBalanceText = $"{PersianFormat.Amount(result.Data?.BalanceAfter ?? 0m, currency)} {PersianFormat.Unit(currency)}";
 
+                        // Same as the charge command above: a deduplicated repeat moved nothing, so the
+                        // customer is not told a second deduction happened (issue #157).
+                        var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
+
                         await _messenger.SendAsync(
                                message.Chat.Id,
-                               string.Format(BotMsgs.MsgAdminDeductDone,
+                               string.Format(alreadyApplied ? BotMsgs.MsgAdminDeductAlreadyApplied : BotMsgs.MsgAdminDeductDone,
                                    PersianFormat.Asset(currency),
                                    deductAmountText,
                                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                                    newBalanceText));
 
-                        await _messenger.SendAsync(
-                               userDto.TelegramId,
-                               string.Format(BotMsgs.MsgUserBalanceDeducted,
-                                   PersianFormat.Asset(currency),
-                                   deductAmountText,
-                                   newBalanceText));
+                        if (!alreadyApplied)
+                        {
+                            await _messenger.SendAsync(
+                                   userDto.TelegramId,
+                                   string.Format(BotMsgs.MsgUserBalanceDeducted,
+                                       PersianFormat.Asset(currency),
+                                       deductAmountText,
+                                       newBalanceText));
+                        }
 
 
                     }

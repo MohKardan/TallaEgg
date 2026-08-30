@@ -191,10 +191,43 @@ public class AdminChargeCommandTests
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
     }
 
+    /// <summary>
+    /// A deduplicated repeat still reports success, because the charge did happen — on the earlier
+    /// send. Telling the customer their credit rose again would be a lie about their own money, so
+    /// only the admin is told, and told that it was a repeat rather than a fresh charge.
+    /// </summary>
+    [Fact]
+    public async Task ADeduplicatedChargeTellsTheAdminButNotTheCustomer()
+    {
+        var handler = Build();
+        _walletApi.ReportAlreadyApplied = true;
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("اعتبار حساب شما افزایش یافت"));
+    }
+
+    /// <summary>And an ordinary charge still notifies both, which is the behaviour that must not regress.</summary>
+    [Fact]
+    public async Task AnOrdinaryChargeStillTellsBoth()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("افزایش اعتبار انجام شد"));
+        Assert.Contains(_messenger.Texts, t => t.Contains("اعتبار حساب شما افزایش یافت"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+    }
+
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
         public List<WalletRequest> Deposits { get; } = [];
         public List<WalletRequest> Withdrawals { get; } = [];
+
+        /// <summary>Makes the wallet answer the way it does for a reference it has already applied.</summary>
+        public bool ReportAlreadyApplied { get; set; }
 
         public override Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
         {
@@ -203,7 +236,8 @@ public class AdminChargeCommandTests
             {
                 Asset = request.Asset,
                 BalanceBefore = 0,
-                BalanceAfter = request.Amount
+                BalanceAfter = request.Amount,
+                WasAlreadyApplied = ReportAlreadyApplied
             }));
         }
 

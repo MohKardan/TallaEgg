@@ -1,12 +1,12 @@
-﻿using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.DTOs.Wallet;
 
 namespace Wallet.Core;
 
 public interface IWalletService
 {
     Task<WalletDTO> GetBalanceAsync(Guid userId, string asset);
-    Task<(WalletEntity walletEntity, Transaction transactionEntity)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
-    Task<(WalletEntity walletEntity, Transaction transactionEntity)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
+    Task<(WalletEntity walletEntity, Transaction transactionEntity, bool wasAlreadyApplied)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
+    Task<(WalletEntity walletEntity, Transaction transactionEntity, bool wasAlreadyApplied)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null);
     Task<WalletDTO> LockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<WalletDTO> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
     Task<IEnumerable<WalletDTO>> GetUserWalletsAsync(Guid userId);

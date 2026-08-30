@@ -12,7 +12,7 @@ using Wallet.Infrastructure;
 namespace Wallet.Api.Migrations
 {
     [DbContext(typeof(WalletDbContext))]
-    [Migration("20260830210630_AddTransactionReferenceUniqueIndex")]
+    [Migration("20260830213754_AddTransactionReferenceUniqueIndex")]
     partial class AddTransactionReferenceUniqueIndex
     {
         /// <inheritdoc />
@@ -93,7 +93,8 @@ namespace Wallet.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ReferenceId")
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -549,6 +549,33 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "دارایی: {0}\n" +
                                                      "مقدار کسر: {1}\n" +
                                                      "موجودی جدید: {2}";
+
+        /// <summary>
+        /// Shown to the admin when the same top-up was already recorded, so this send changed
+        /// nothing. Deliberately not an error: the charge they wanted did happen, and the figures
+        /// are the ones it produced. Sent instead of MsgAdminChargeDone, and the customer gets no
+        /// notification at all, because no money moved this time (issue #157).
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
+        /// {3} = the credit with unit.
+        /// </summary>
+        public const string MsgAdminChargeAlreadyApplied = "ℹ️ این شارژ پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
+                                                          "دارایی: {0}\n" +
+                                                          "مقدار: {1}\n" +
+                                                          "کاربر: {2}\n" +
+                                                          "اعتبار فعلی: {3}\n\n" +
+                                                          "اگر قصد داشتید بار دوم هم شارژ کنید، چند دقیقه دیگر دوباره تلاش کنید.";
+
+        /// <summary>
+        /// The deduction counterpart of <see cref="MsgAdminChargeAlreadyApplied"/>.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
+        /// {3} = the balance with unit.
+        /// </summary>
+        public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
+                                                          "دارایی: {0}\n" +
+                                                          "مقدار: {1}\n" +
+                                                          "کاربر: {2}\n" +
+                                                          "موجودی فعلی: {3}\n\n" +
+                                                          "اگر قصد داشتید بار دوم هم کسر کنید، چند دقیقه دیگر دوباره تلاش کنید.";
 
         /// <summary>{0} = the error reason.</summary>
         public const string MsgAdminOperationFailed = "❌ عملیات انجام نشد.\n\nدلیل: {0}";

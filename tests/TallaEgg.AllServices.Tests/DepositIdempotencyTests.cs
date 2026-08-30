@@ -142,8 +142,9 @@ public class DepositIdempotencyTests : IDisposable
             .AsNoTracking()
             .SingleAsync(w => w.UserId == _userId && w.Asset == Asset)).UpdatedAt;
 
-        var (walletAfterRepeat, _) = await _service.IncreaseBalanceAsync(_userId, Asset, 700m, reference);
+        var (walletAfterRepeat, _, wasAlreadyApplied) = await _service.IncreaseBalanceAsync(_userId, Asset, 700m, reference);
 
+        Assert.True(wasAlreadyApplied);
         Assert.Equal(700m, walletAfterRepeat.Balance);
         Assert.Equal(storedUpdatedAt, walletAfterRepeat.UpdatedAt);
     }
@@ -225,6 +226,50 @@ public class DepositIdempotencyTests : IDisposable
 
         Assert.Equal(600m, await BalanceAsync());
         Assert.Equal(1, await TransactionCountAsync(reference));
+    }
+
+    /// <summary>
+    /// The repeat has to be recognised <b>before</b> the entity is touched, not after.
+    /// DecreaseBalance refuses to take more than is left, so a re-sent deduction of most of a
+    /// balance — 800 of 1000, leaving 200 — would ask it to take 800 from 200 and be refused. The
+    /// admin would be told the deduction failed when it had already gone through, which is exactly
+    /// the interpretation problem this issue set out to remove.
+    /// </summary>
+    [Fact]
+    public async Task ARepeatedDeductionOfMostOfTheBalanceStillSucceeds()
+    {
+        const string reference = "admin-withdrawal:most-of-it";
+
+        await _service.DepositAsync(_userId, Asset, 1_000m);
+
+        var first = await _service.WithdrawalAsync(_userId, Asset, 800m, reference);
+        var repeat = await _service.WithdrawalAsync(_userId, Asset, 800m, reference);
+
+        Assert.Equal(200m, await BalanceAsync());
+        Assert.Equal(first.TrackingCode, repeat.TrackingCode);
+        Assert.False(first.WasAlreadyApplied);
+        Assert.True(repeat.WasAlreadyApplied);
+    }
+
+    /// <summary>
+    /// The flag is what stops the bot telling a customer their money moved when it did not, so the
+    /// first application has to report false and only the repeat true.
+    /// </summary>
+    [Fact]
+    public async Task OnlyTheRepeatIsFlaggedAsAlreadyApplied()
+    {
+        const string reference = "admin-deposit:flag";
+
+        Assert.False((await _service.DepositAsync(_userId, Asset, 100m, reference)).WasAlreadyApplied);
+        Assert.True((await _service.DepositAsync(_userId, Asset, 100m, reference)).WasAlreadyApplied);
+    }
+
+    /// <summary>A deposit with no reference can never be a repeat, so the flag stays false.</summary>
+    [Fact]
+    public async Task AnUnreferencedDepositIsNeverFlagged()
+    {
+        Assert.False((await _service.DepositAsync(_userId, Asset, 100m)).WasAlreadyApplied);
+        Assert.False((await _service.DepositAsync(_userId, Asset, 100m)).WasAlreadyApplied);
     }
 
     /// <summary>

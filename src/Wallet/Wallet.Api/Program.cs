@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -243,7 +243,7 @@ app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWallet
     try
     {
         var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
-        return Results.Ok(ApiResponse<(WalletEntity,Transaction)>.Ok(result, "عملیات با موفقیت انجام شد"));
+        return Results.Ok(ApiResponse<(WalletEntity, Transaction, bool)>.Ok(result, "عملیات با موفقیت انجام شد"));
     }
     catch (BusinessRuleException ex)
     {

@@ -110,6 +110,15 @@ public class WalletRepository : IWalletRepository
             _logger.LogWarning(ex, "Concurrency conflict while updating wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
             throw;
         }
+        catch (DbUpdateException ex) when (IsDuplicateReference(ex))
+        {
+            // Rethrown for ApplyWithIdempotencyAsync to absorb, but not logged as an error on the
+            // way past. A reference arriving twice is the normal outcome this design expects, and the
+            // generic handler below would record it at Error with a stack trace — the same
+            // false-alarm shape that made the bot's error log pure noise in #148.
+            _logger.LogDebug(ex, "Duplicate reference on wallet {WalletId}; the caller will absorb it.", wallet.Id);
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
