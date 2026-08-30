@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -23,6 +24,18 @@ public class TelegramBotHostedService : BackgroundService
     private readonly IHostApplicationLifetime _applicationLifetime;
 
     private CancellationTokenSource? _receiverCts;
+
+    // A gap this much longer than the retry delay between two transient polling failures means
+    // updates were flowing again in between, so the next failure starts a fresh streak rather
+    // than continuing the old one (issue #148).
+    private static readonly TimeSpan PollingRetryDelay = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PollingRecoveryGap = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan PollingDownAlertThreshold = TimeSpan.FromMinutes(2);
+
+    private DateTimeOffset? _pollingFailureStreakStartedAt;
+    private DateTimeOffset? _lastPollingFailureAt;
+    private int _consecutivePollingFailures;
+    private bool _pollingDownAlertLogged;
 
     public TelegramBotHostedService(
         ITelegramBotClient botClient,
@@ -220,16 +233,60 @@ public class TelegramBotHostedService : BackgroundService
 
     private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Polling error ({Source})", source);
-
-        if (exception.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase) ||
-            exception.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase))
+        // ApiRequestException means Telegram itself rejected the request (rotated token, rate
+        // limit, ...). That's a real fault, not a transport blip, so it stays loud immediately.
+        if (exception is ApiRequestException apiException)
         {
-            _logger.LogWarning("Timeout detected. Waiting 10 seconds before retrying...");
-            return Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            _logger.LogError(exception, "Polling error ({Source}): Telegram API rejected the request ({ErrorCode}).", source, apiException.ErrorCode);
+            return Task.CompletedTask;
         }
 
+        // Every other RequestException is TelegramBotClient.SendRequest wrapping a transport-level
+        // failure -- a dropped connection, a timed-out request, a malformed response. These are
+        // routine on a flaky connection and recover on their own; logging each one at Error with a
+        // full stack trace was making the log 100% noise, burying the one entry that matters
+        // (issue #148). Log at Warning, without the stack trace, unless the bot has genuinely
+        // stopped receiving updates for a while -- that's worth escalating to Error once.
+        if (exception is RequestException)
+        {
+            return HandleTransientPollingFailure(source, exception, DateTimeOffset.UtcNow, cancellationToken);
+        }
+
+        // Anything else is unexpected for this handler -- keep it loud rather than risk silencing
+        // a real bug behind the transient-failure path above.
+        _logger.LogError(exception, "Polling error ({Source})", source);
         return Task.CompletedTask;
+    }
+
+    // `now` is passed in rather than read here so the escalation timing can be driven
+    // deterministically from a test without sleeping real wall-clock minutes.
+    private Task HandleTransientPollingFailure(HandleErrorSource source, Exception exception, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (_lastPollingFailureAt is null || now - _lastPollingFailureAt.Value > PollingRecoveryGap)
+        {
+            _pollingFailureStreakStartedAt = now;
+            _consecutivePollingFailures = 0;
+            _pollingDownAlertLogged = false;
+        }
+
+        _lastPollingFailureAt = now;
+        _consecutivePollingFailures++;
+        var downFor = now - _pollingFailureStreakStartedAt!.Value;
+
+        if (downFor >= PollingDownAlertThreshold && !_pollingDownAlertLogged)
+        {
+            _pollingDownAlertLogged = true;
+            _logger.LogError(exception,
+                "Polling has been failing for {Duration} ({Count} consecutive failures, {Source}); the bot may not be receiving updates.",
+                downFor, _consecutivePollingFailures, source);
+        }
+        else
+        {
+            _logger.LogWarning("Polling error ({Source}): {ExceptionType} - {Message}. Retrying in {Delay}...",
+                source, exception.GetType().Name, exception.Message, PollingRetryDelay);
+        }
+
+        return Task.Delay(PollingRetryDelay, cancellationToken);
     }
 }
 
