@@ -53,7 +53,7 @@ public class PendingOrderNotMatchableTests : IDisposable
         return order;
     }
 
-    // A note on coverage: GetBuyOrdersWithLockAsync and GetSellOrdersWithLockAsync are not tested
+    // A note on coverage: GetBuyOrdersAsync and GetSellOrdersAsync are not tested
     // directly here, because they sort with OrderBy(o => o.Price) and SQLite does not support
     // ordering on decimal, which is fine on SQL Server. Both use the same shared Matchable
     // expression that the GetActiveAssetsAsync test below covers. This is a limitation of the test

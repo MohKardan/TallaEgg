@@ -156,7 +156,7 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
     ///
     /// <para>
     /// <b>Why:</b> the order-book query cannot run under SQLite —
-    /// <c>GetSellOrdersWithLockAsync</c> orders by <c>Price</c>, and SQLite raises
+    /// <c>GetSellOrdersAsync</c> orders by <c>Price</c>, and SQLite raises
     /// <c>NotSupportedException: SQLite does not support expressions of type 'decimal' in ORDER
     /// BY clauses</c>. Verified directly, not assumed. Production uses SQL Server, where it is
     /// fine. So "a trade appears" is not reachable here, but "the engine reached the order

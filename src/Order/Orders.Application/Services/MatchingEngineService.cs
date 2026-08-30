@@ -297,10 +297,10 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             
             while (matchCount < maxMatches && !cancellationToken.IsCancellationRequested)
             {
-                // Get locked orders for this asset
-                // Fetch this asset's orders under a database lock.
-                var buyOrders = await matchingRepository.GetBuyOrdersWithLockAsync(asset);
-                var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(asset);
+                // Get this asset's orders for matching
+                // Fetch this asset's buy and sell orders.
+                var buyOrders = await matchingRepository.GetBuyOrdersAsync(asset);
+                var sellOrders = await matchingRepository.GetSellOrdersAsync(asset);
 
                 if (!buyOrders.Any() || !sellOrders.Any())
                 {
@@ -395,7 +395,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             if (incomingOrder.Side == OrderSide.Buy)
             {
                 // For buy orders, find sell orders with price <= buy price
-                var sellOrders = await matchingRepository.GetSellOrdersWithLockAsync(incomingOrder.Asset);
+                var sellOrders = await matchingRepository.GetSellOrdersAsync(incomingOrder.Asset);
                 return sellOrders
                     .Where(s => s.Price <= incomingOrder.Price && s.RemainingAmount > 0)
                     .Where(s => IsAllowedCounterparty(incomingOrder, s))
@@ -404,7 +404,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             else
             {
                 // For sell orders, find buy orders with price >= sell price
-                var buyOrders = await matchingRepository.GetBuyOrdersWithLockAsync(incomingOrder.Asset);
+                var buyOrders = await matchingRepository.GetBuyOrdersAsync(incomingOrder.Asset);
                 return buyOrders
                     .Where(b => b.Price >= incomingOrder.Price && b.RemainingAmount > 0)
                     .Where(b => IsAllowedCounterparty(incomingOrder, b))

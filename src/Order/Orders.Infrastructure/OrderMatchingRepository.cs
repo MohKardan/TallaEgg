@@ -10,8 +10,9 @@ using TallaEgg.Core.Enums.Order;
 namespace Orders.Infrastructure;
 
 /// <summary>
-/// Repository with Database Locking for Thread-Safe Order Matching
-/// Repository that uses database locking to match orders safely.
+/// Repository for order matching. Thread safety comes from the optimistic concurrency token
+/// on <see cref="Order.RemainingAmount"/>, checked in <see cref="ExecuteAtomicMatchAsync"/> —
+/// not from any database lock taken here.
 /// </summary>
 public class OrderMatchingRepository
 {
@@ -25,10 +26,11 @@ public class OrderMatchingRepository
     }
 
     /// <summary>
-    /// Get buy orders with pessimistic lock for atomic matching
-    /// Fetches buy orders under a mutual lock, for atomic matching.
+    /// Fetches confirmed buy orders for matching, ordered by price-time priority.
+    /// No lock is taken here — the actual concurrency guard is the optimistic concurrency
+    /// token on <see cref="Order.RemainingAmount"/>, applied in <see cref="ExecuteAtomicMatchAsync"/>.
     /// </summary>
-    public async Task<List<Order>> GetBuyOrdersWithLockAsync(string asset)
+    public async Task<List<Order>> GetBuyOrdersAsync(string asset)
     {
         try
         {
@@ -54,10 +56,11 @@ public class OrderMatchingRepository
     }
 
     /// <summary>
-    /// Get sell orders with pessimistic lock for atomic matching
-    /// Fetches sell orders under a mutual lock, for atomic matching.
+    /// Fetches confirmed sell orders for matching, ordered by price-time priority.
+    /// No lock is taken here — the actual concurrency guard is the optimistic concurrency
+    /// token on <see cref="Order.RemainingAmount"/>, applied in <see cref="ExecuteAtomicMatchAsync"/>.
     /// </summary>
-    public async Task<List<Order>> GetSellOrdersWithLockAsync(string asset)
+    public async Task<List<Order>> GetSellOrdersAsync(string asset)
     {
         try
         {

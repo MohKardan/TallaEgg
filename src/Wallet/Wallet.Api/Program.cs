@@ -10,7 +10,6 @@ using TallaEgg.Core.Cors;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
-using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Requests.Trade;
 using TallaEgg.Core.Requests.Wallet;
@@ -326,14 +325,3 @@ static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironm
 
 
 app.Run();
-
-// Request models
-public record WithdrawRequest(Guid UserId, string Asset, decimal Amount, string? ReferenceId = null);
-public record ChargeRequest(Guid UserId, string Asset, decimal Amount, string? PaymentMethod = null);
-public record TransferRequest(Guid FromUserId, Guid ToUserId, string Asset, decimal Amount);
-public record CreditRequest(Guid UserId, string Asset, decimal Amount);
-public record DebitRequest(Guid UserId, string Asset, decimal Amount);
-
-// Market order balance request models
-public record ValidateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide); // 0 = Buy, 1 = Sell
-public record UpdateBalanceRequest(Guid UserId, string Asset, decimal Amount, OrderSide orderSide, Guid OrderId); // 0 = Buy, 1 = Sell
