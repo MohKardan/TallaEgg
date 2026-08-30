@@ -71,16 +71,25 @@ public class AutoQuotePublisherServiceTests : IDisposable
             Task.FromResult(Price);
     }
 
-    private async Task RunTickAsync(string symbol = Symbol)
-    {
-        // A fresh service instance per tick, holding no state of its own: what the band compares
-        // against has to come from the database, which is also what makes the restart case below
-        // a real test rather than a restatement of the previous one.
-        var service = new AutoQuotePublisherService(
-            _provider.GetRequiredService<IServiceScopeFactory>(), _logger);
+    private AutoQuotePublisherService NewService() => new(
+        _provider.GetRequiredService<IServiceScopeFactory>(), _logger);
 
-        await service.PublishIfDueAsync(symbol, CancellationToken.None);
-    }
+    private AutoQuotePublisherService? _service;
+
+    /// <summary>
+    /// One service instance for every tick a test runs, because the consecutive-rejection count
+    /// that decides when to stop quoting lives on it.
+    /// <see cref="RunTickOnAFreshServiceAsync"/> is the deliberate exception.
+    /// </summary>
+    private Task RunTickAsync(string symbol = Symbol) =>
+        (_service ??= NewService()).PublishIfDueAsync(symbol, CancellationToken.None);
+
+    /// <summary>
+    /// A tick from a service that has just started and holds nothing in memory — a restart. What
+    /// the band compares against has to come from the database for this to behave at all.
+    /// </summary>
+    private Task RunTickOnAFreshServiceAsync(string symbol = Symbol) =>
+        NewService().PublishIfDueAsync(symbol, CancellationToken.None);
 
     private async Task SeedSettingsAsync(bool isEnabled, decimal spreadPercent, Guid updatedBy, string symbol = Symbol)
     {
@@ -259,10 +268,14 @@ public class AutoQuotePublisherServiceTests : IDisposable
         await RunTickAsync();
 
         var warning = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
-        Assert.Contains("2000000", warning.Message);   // the rejected value
-        Assert.Contains("1000000", warning.Message);   // the mid it was measured against
-        Assert.Contains("100", warning.Message);       // how far off it was, as a percentage
-        Assert.Contains("5", warning.Message);         // the band it violated
+
+        // Each number is asserted together with the words that give it its meaning. Bare
+        // substrings would not do: "100" for the deviation also matches inside "1000000",
+        // so the assertion would still pass with the deviation missing from the message.
+        Assert.Contains("reference price 2000000 is", warning.Message);
+        Assert.Matches(@"is 100(\.0+)?% away from the last published mid 1000000", warning.Message);
+        Assert.Contains("plausibility band of ±5%", warning.Message);
+        Assert.Matches(@"Keeping the previous quote \(buy 995000(\.0+)?, sell 1005000(\.0+)?\)", warning.Message);
     }
 
     /// <summary>
@@ -334,7 +347,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
         }
 
         _stubProvider.Price = 34_640_000m;
-        await RunTickAsync();
+        await RunTickOnAFreshServiceAsync();
 
         var quote = await ActiveQuoteAsync();
         Assert.Equal(7_960_000m, quote!.BuyPrice);
@@ -390,5 +403,133 @@ public class AutoQuotePublisherServiceTests : IDisposable
         _stubProvider.Price = 5_460_000_000m;           // a decimal slipped: 10x too low, rejected
         await RunTickAsync(btc);
         Assert.Equal(54_327_000_000m, (await ActiveQuoteAsync(btc))!.BuyPrice);
+    }
+
+    // -----------------------------------------------------------------------------------
+    // Stopping, rather than holding a stale quote forever.
+    //
+    // Holding the previous quote is right for one bad tick and wrong for an hour of them: the
+    // anchor only moves when a quote is published, and publishing only happens when the band
+    // passes, so a genuine move over the band would freeze the shop on the old price with no
+    // way out. Confirmed before this was written — thirty ticks at a stable, 10%-higher market
+    // left the old quote active and tradeable, and nothing in QuoteFillService checks a
+    // quote's age. Three consecutive rejections now take the symbol out of service instead.
+    // -----------------------------------------------------------------------------------
+
+    private async Task<bool> AutoQuoteIsEnabledAsync(string symbol = Symbol)
+    {
+        using var db = new OrdersDbContext(Options());
+        return (await db.AutoQuoteSettings.SingleAsync(x => x.Symbol == symbol)).IsEnabled;
+    }
+
+    [Fact]
+    public async Task TwoConsecutiveRejectionsKeepQuoting()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 1_100_000m;
+        await RunTickAsync();
+        await RunTickAsync();
+
+        Assert.Equal(995_000m, (await ActiveQuoteAsync())!.BuyPrice);
+        Assert.True(await AutoQuoteIsEnabledAsync());
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Error);
+    }
+
+    /// <summary>
+    /// The third rejection takes the symbol out of service: no active quote for QuoteFillService
+    /// to sell against, and auto-quote off so the next tick cannot publish an unanchored price
+    /// through the cold-start path. The old quote row is deactivated, not deleted — past trades
+    /// still need to say what price was in force.
+    /// </summary>
+    [Fact]
+    public async Task ThreeConsecutiveRejectionsStopQuotingTheSymbolAndLogAnError()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 1_100_000m;
+        await RunTickAsync();
+        await RunTickAsync();
+        await RunTickAsync();
+
+        Assert.Null(await ActiveQuoteAsync());
+        Assert.False(await AutoQuoteIsEnabledAsync());
+
+        var error = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Error);
+        Assert.Contains("stopped after 3 consecutive prices", error.Message);
+
+        using var db = new OrdersDbContext(Options());
+        Assert.Single(db.Quotes);   // deactivated, still there as history
+    }
+
+    /// <summary>
+    /// After the stop, a perfectly sane price changes nothing — an admin has to publish a quote
+    /// by hand and re-enable auto-quote. Without this the stop would be theatre: the very next
+    /// tick would publish through the cold-start path, which is unanchored by definition.
+    /// </summary>
+    [Fact]
+    public async Task AfterStoppingEvenAGoodPricePublishesNothing()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 1_100_000m;
+        for (var tick = 0; tick < 3; tick++) await RunTickAsync();
+
+        _stubProvider.Price = 1_010_000m;
+        await RunTickAsync();
+
+        Assert.Null(await ActiveQuoteAsync());
+    }
+
+    /// <summary>
+    /// Only <em>consecutive</em> rejections count. An outlier every other tick is the transient
+    /// case the band already handles by holding the previous quote, and must never accumulate
+    /// into a shutdown of a symbol that is quoting perfectly well.
+    /// </summary>
+    [Fact]
+    public async Task AnAcceptedTickClearsTheRejectionStreak()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        for (var round = 0; round < 3; round++)
+        {
+            _stubProvider.Price = 2_000_000m;   // rejected
+            await RunTickAsync();
+            await RunTickAsync();
+
+            _stubProvider.Price = 1_000_000m;   // accepted, streak back to zero
+            await RunTickAsync();
+        }
+
+        Assert.NotNull(await ActiveQuoteAsync());
+        Assert.True(await AutoQuoteIsEnabledAsync());
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Error);
+    }
+
+    /// <summary>One symbol stopping must not stop another; the streak is counted per symbol.</summary>
+    [Fact]
+    public async Task StoppingOneSymbolLeavesAnotherQuoting()
+    {
+        var coin = CurrenciesConstant.SEKE_BAHAR_IRT;
+
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid(), symbol: Symbol);
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid(), symbol: coin);
+
+        _stubProvider.Price = 1_000_000m;
+        await RunTickAsync(Symbol);
+        await RunTickAsync(coin);
+
+        _stubProvider.Price = 2_000_000m;
+        for (var tick = 0; tick < 3; tick++) await RunTickAsync(Symbol);
+
+        Assert.Null(await ActiveQuoteAsync(Symbol));
+        Assert.False(await AutoQuoteIsEnabledAsync(Symbol));
+
+        Assert.NotNull(await ActiveQuoteAsync(coin));
+        Assert.True(await AutoQuoteIsEnabledAsync(coin));
     }
 }

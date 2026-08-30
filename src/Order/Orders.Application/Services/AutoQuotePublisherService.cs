@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -49,6 +50,37 @@ public class AutoQuotePublisherService : BackgroundService
     /// </para>
     /// </summary>
     private const decimal MaxDeviationPercent = 5m;
+
+    /// <summary>
+    /// How many consecutive band rejections mean the feed, and not the market, is what changed.
+    ///
+    /// <para>
+    /// One rejection is a glitch and holding the previous quote is the whole point. Three in a
+    /// row — six minutes of a source insisting on the same implausible level — is not transient,
+    /// and the system cannot tell a real repricing from a persistently broken feed: the provider
+    /// chain returns the first source that answers and never compares two against each other.
+    /// </para>
+    ///
+    /// <para>
+    /// So it stops rather than guesses (product owner, issue #158). Continuing to hold the quote
+    /// would be the worse of the two: during a genuine fast move a stale price is exactly what a
+    /// customer arbitrages, and only in the direction that costs the shop. An outage an admin can
+    /// end in seconds is recoverable; a run of trades at a price nobody meant to offer is not.
+    /// </para>
+    /// </summary>
+    private const int MaxConsecutiveRejections = 3;
+
+    /// <summary>
+    /// Consecutive band rejections per symbol, reset by any tick that publishes.
+    ///
+    /// <para>
+    /// Deliberately in memory rather than on <see cref="AutoQuoteSettings"/>: a restart clearing
+    /// it only costs three more held ticks before the same stop happens, which does not justify a
+    /// column and a migration. The stop itself is persisted, so what a restart must not lose —
+    /// that the shop decided to stop quoting this symbol — is not held here.
+    /// </para>
+    /// </summary>
+    private readonly ConcurrentDictionary<string, int> _consecutiveRejections = new();
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AutoQuotePublisherService> _logger;
@@ -124,7 +156,15 @@ public class AutoQuotePublisherService : BackgroundService
         var quoteRepo = scope.ServiceProvider.GetRequiredService<IQuoteRepository>();
 
         if (!IsPlausible(symbol, referencePrice.Value, await quoteRepo.GetActiveAsync(symbol)))
+        {
+            await StopQuotingIfRejectionsPersistAsync(symbol, quoteRepo, settingsRepo, settings);
             return;
+        }
+
+        // Any published tick clears the streak, so only *consecutive* rejections count towards
+        // stopping. A single outlier between good ticks is the transient case the band already
+        // handles by holding the previous quote.
+        _consecutiveRejections.TryRemove(symbol, out _);
 
         // referencePrice is already Toman per traded base unit (a gram of gold, a whole coin, a
         // whole Bitcoin) — each provider does its own unit conversion, so nothing here is
@@ -202,12 +242,61 @@ public class AutoQuotePublisherService : BackgroundService
         // like a quiet market, and the point of the band is that somebody finds out. The rejected
         // value and the band it violated are both in the message so the log alone says what
         // happened, without needing the price source to be queried again.
+        //
+        // Four decimal places rather than two: a marginal breach rounded to two prints "is 5.00%
+        // away ... outside the plausibility band of ±5%", which reads as a contradiction to
+        // whoever is on call.
         _logger.LogWarning(
             "Auto-quote for {Symbol} rejected: reference price {Reference} is {Deviation}% away from the last published mid {LastMid}, " +
             "outside the plausibility band of ±{Band}%. Keeping the previous quote (buy {LastBuy}, sell {LastSell}).",
-            symbol, referencePrice, decimal.Round(deviationPercent, 2), lastMid, MaxDeviationPercent,
+            symbol, referencePrice, decimal.Round(deviationPercent, 4), lastMid, MaxDeviationPercent,
             lastQuote.BuyPrice, lastQuote.SellPrice);
 
         return false;
+    }
+
+    /// <summary>
+    /// Counts one band rejection for a symbol and, once they stop looking transient, takes the
+    /// symbol out of service: the active quote is deactivated so nothing stale stays tradeable,
+    /// and auto-quoting is switched off so the next tick cannot publish an unanchored price
+    /// through the cold-start path.
+    ///
+    /// <para>
+    /// Switching off reuses <see cref="AutoQuoteSettings.IsEnabled"/>, which exists for exactly
+    /// this — its own documentation calls it the switch to reach for when a reading or a provider
+    /// misbehaves. An admin turns it back on from the bot after publishing a price by hand, so
+    /// recovery needs no deploy and no database access.
+    /// </para>
+    /// </summary>
+    private async Task StopQuotingIfRejectionsPersistAsync(
+        string symbol,
+        IQuoteRepository quoteRepo,
+        IAutoQuoteSettingsRepository settingsRepo,
+        AutoQuoteSettings settings)
+    {
+        var rejections = _consecutiveRejections.AddOrUpdate(symbol, 1, (_, count) => count + 1);
+
+        if (rejections < MaxConsecutiveRejections) return;
+
+        // Deactivate before disabling. If the process dies between the two, the half that has
+        // happened is the one that stops customers trading a price the shop no longer believes.
+        var deactivated = await quoteRepo.DeactivateActiveAsync(symbol);
+
+        // Guid.Empty rather than the admin who last configured auto-quote: nobody turned this
+        // off, the service did, and recording a person here would send whoever investigates to
+        // ask them why.
+        settings.SetEnabled(false, Guid.Empty);
+        await settingsRepo.SaveAsync(settings);
+
+        // The streak is spent. If an admin re-enables auto-quote while the feed is still wrong,
+        // it gets a full three ticks again rather than stopping on the first one.
+        _consecutiveRejections.TryRemove(symbol, out _);
+
+        _logger.LogError(
+            "Auto-quote for {Symbol} stopped after {Rejections} consecutive prices outside the ±{Band}% band. " +
+            "{Deactivated} quote(s) deactivated and auto-quoting disabled: the price source and the last published " +
+            "quote have disagreed for {Minutes} minutes, which is a broken feed or a real repricing, and this service " +
+            "cannot tell them apart. Publish a quote by hand and re-enable auto-quote once the source is trusted.",
+            symbol, rejections, MaxDeviationPercent, deactivated, MaxConsecutiveRejections * PollInterval.TotalMinutes);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Orders.Core;
+namespace Orders.Core;
 
 public interface IQuoteRepository
 {
@@ -32,4 +32,17 @@ public interface IQuoteRepository
     /// can see.
     /// </summary>
     Task<IReadOnlyList<string>> GetActiveSymbolsAsync();
+
+    /// <summary>
+    /// Deactivates a symbol's active quote without publishing a replacement, leaving the symbol
+    /// with no tradeable price. Returns how many rows were deactivated.
+    ///
+    /// <para>
+    /// Distinct from the deactivation <see cref="PublishAsync"/> performs, which always has a
+    /// successor. This is the deliberate "stop quoting" case (issue #158): when the price feed
+    /// has persistently disagreed with the last published quote, no quote is safer than a stale
+    /// one, because a stale price during a real move is the one customers arbitrage.
+    /// </para>
+    /// </summary>
+    Task<int> DeactivateActiveAsync(string symbol);
 }

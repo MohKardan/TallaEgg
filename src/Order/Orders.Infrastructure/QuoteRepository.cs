@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 
@@ -60,6 +60,28 @@ public class QuoteRepository : IQuoteRepository
             .Select(q => q.Symbol)
             .Distinct()
             .ToListAsync();
+    }
+
+    public async Task<int> DeactivateActiveAsync(string symbol)
+    {
+        var normalized = symbol.Trim().ToUpperInvariant();
+
+        var active = await _context.Quotes
+            .Where(q => q.Symbol == normalized && q.IsActive)
+            .ToListAsync();
+
+        foreach (var quote in active)
+            quote.Deactivate();
+
+        // No transaction: unlike PublishAsync there is no insert to keep in step with the
+        // deactivation, so one SaveChanges is already atomic. Nothing is deleted — the rows stay
+        // readable as history, exactly as a replaced quote does.
+        if (active.Count > 0)
+            await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Deactivated {Count} active quote(s) for {Symbol} with no replacement.", active.Count, normalized);
+
+        return active.Count;
     }
 
     public async Task<Quote> PublishAsync(Quote quote)
