@@ -45,10 +45,12 @@ opening a PR.
 docs/
 ├── audit/
 │   ├── README.md                  ← Archive index and score trend across all audits
-│   ├── METHODOLOGY_v7.md          ← How the next audit is run (current methodology)
+│   ├── METHODOLOGY_v8.md          ← How the next audit is run (current methodology)
+│   ├── METHODOLOGY_v7.md          ← Retired; kept because AUDIT_2026-08b.md was run under it
 │   ├── AUDIT_2026-07.md           ← July 2026 audit — English summary
 │   ├── AUDIT_2026-07.html         ← July 2026 audit — full report (Farsi)
-│   └── AUDIT_2026-08.md           ← August 2026 re-audit
+│   ├── AUDIT_2026-08.md           ← August 2026 re-audit
+│   └── AUDIT_2026-08b.md          ← August 2026 second pass (first independent audit)
 ├── process/
 │   ├── INDEX.md (this file)
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
@@ -174,7 +176,8 @@ and says which audit is most recent.
 **Covers**:
 - [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md) — 9 CRITICAL findings (C-1–C-9), 4 HIGH; 4.6/10, 30% prod-ready. Full Farsi report alongside it as `.html`
 - [`AUDIT_2026-08.md`](../audit/AUDIT_2026-08.md) — re-audit: 6.6/10, ~55%; also records which of its own findings were wrong
-- [`METHODOLOGY_v7.md`](../audit/METHODOLOGY_v7.md) — how to run the next audit
+- [`AUDIT_2026-08b.md`](../audit/AUDIT_2026-08b.md) — 7.8/10, ~65%; the first audit run by a model that did not write the code
+- [`METHODOLOGY_v8.md`](../audit/METHODOLOGY_v8.md) — how to run the next audit
 
 **When to use**:
 - To understand the "why" behind sprint priorities

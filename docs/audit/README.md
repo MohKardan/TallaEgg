@@ -16,9 +16,10 @@ about a build-warning count.
 
 ## How the next audit is run
 
-Follow [`METHODOLOGY_v7.md`](METHODOLOGY_v7.md). It is the current methodology; hand it
-to the auditor rather than pasting an older prompt. It detects re-audit mode from this
-file, so keep the table below current.
+Follow [`METHODOLOGY_v8.md`](METHODOLOGY_v8.md). It is the current methodology; hand it to
+the auditor rather than pasting an older prompt. It detects re-audit mode from this file, so
+keep the table below current. [`METHODOLOGY_v7.md`](METHODOLOGY_v7.md) is retired and kept only
+because the 2026-08-29 audit was run under it.
 
 A second audit in a month that already has one gets a letter suffix (`AUDIT_2026-08b.md`)
 rather than replacing the file that is there. Nothing in this directory is ever overwritten.
@@ -30,18 +31,43 @@ agent that made a change is not independent evidence about it.
 
 | Date | Overall | Production readiness | Methodology | Model | Files |
 |---|---|---|---|---|---|
-| 2026-07-08 | 4.6 / 10 | 30% | unversioned | not recorded | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
-| 2026-08-26 | 6.6 / 10 | ~55% | unversioned | not recorded | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
+| 2026-07-08 | 4.6 / 10 | 30% | unversioned | Claude Opus 4.8 | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
+| 2026-08-26 | 6.6 / 10 | ~55% | unversioned | Claude Opus 5 | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
+| 2026-08-29 | 7.8 / 10 | ~65% | v7.0 | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
 
-**Read this column-by-column, not row-by-row.** The two runs used different methods and
-different models, and neither recorded which model. A score that rises between runs may
-mean the code improved, or that a different reader weighted the same code differently.
-The comparison is only sound where the methodology and model columns match — which, so
-far, they never do. v7 requires both to be recorded, so the next run is the first one
-that will be genuinely comparable to its successor.
+**Read this column-by-column, not row-by-row.** The three runs used different methods and
+different models — the product owner supplied the model attribution for the first two rows in
+August 2026, so the column is now known for every run. A score that rises between runs may
+mean the code improved, or that a different reader weighted the same code differently. The
+comparison is only sound where the methodology and model columns match — which, so far, they
+never do. v7 requires both to be recorded, so the 2026-08-29 run is the first whose successor
+can be genuinely comparable to it.
+
+One independence fact, checked 2026-08-30 and worth weighting the rows by: all 31 commits
+merged between the 2026-08-26 audit and the 2026-08-29 one (`git log --since=2026-08-26
+--no-merges`) were authored under the product owner's account carrying `Co-authored-by`
+trailers from Claude models — 30 by **Claude Opus 5**, the same model credited with the
+2026-08-26 audit, and 1 (#115, `83cc77b`) by **Claude Sonnet 5** — while GLM, the 2026-08-29
+run's model, appears nowhere in the repository's authorship and wrote none of the code under
+review. The 2026-08-29 run is therefore the first in this table performed by a model that did
+not write the code it audited, which is what the independence line at the top of this file
+asks for.
 
 Scope has also varied: the August pass excluded the **Affiliate** service at the product
 owner's request, and v7 keeps that exclusion.
+
+## Why the methodology keeps changing
+
+Each version answers failures found in the run before it, so the version column above is also
+a record of what this project learned about auditing itself:
+
+| Version | Answers |
+|---|---|
+| v7 | Findings inferred from the shape of the code without checking product intent; an audit that only read and never ran anything; a directory the method named but that did not exist |
+| v8 | Claims written during synthesis that no session had checked; a prior-audit status row carried forward for a problem already fixed; a verified sample stated as a verified universe; command output lost by the terminal and read as a negative result |
+
+A rising score with a rising methodology version is not evidence of a rising codebase. The two
+have to be read together, which is what the caveat above is for.
 
 ## Known reliability of what is archived here
 
