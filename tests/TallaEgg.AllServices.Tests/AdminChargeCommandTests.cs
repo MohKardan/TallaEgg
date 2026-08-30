@@ -118,9 +118,83 @@ public class AdminChargeCommandTests
         Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
     }
 
+    // -----------------------------------------------------------------------------------
+    // Deduplication key (issue #157).
+    //
+    // This command sent Asset, Amount and UserId and nothing else, so every deposit row in
+    // production held a null ReferenceId — confirmed against the local database, where all 42
+    // deposit and withdrawal rows were null. With no key there was nothing for a unique index
+    // or an endpoint check to compare, and an admin who re-sent after a lost reply credited
+    // the customer twice.
+    // -----------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task ChargingSendsADeduplicationKey()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        var deposit = Assert.Single(_walletApi.Deposits);
+        Assert.False(string.IsNullOrWhiteSpace(deposit.ReferenceId));
+        Assert.StartsWith("admin-deposit:", deposit.ReferenceId);
+    }
+
+    /// <summary>
+    /// The lost-response case: the admin sees no confirmation and types the command again. Two
+    /// different Telegram messages, so a key derived from the message id would differ and
+    /// deduplicate nothing — the key has to come from the content, and does.
+    /// </summary>
+    [Fact]
+    public async Task TheSameChargeSentTwiceCarriesTheSameKey()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        Assert.Equal(2, _walletApi.Deposits.Count);
+        Assert.Equal(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
+    }
+
+    [Fact]
+    public async Task ChargingDifferentAmountsCarriesDifferentKeys()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09158527483 200 سکه");
+
+        Assert.NotEqual(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
+    }
+
+    /// <summary>The key is over the credit ledger actually charged, not the currency as typed.</summary>
+    [Fact]
+    public async Task ChargingDifferentAssetsCarriesDifferentKeys()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09158527483 100 بیت‌کوین");
+
+        Assert.NotEqual(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
+    }
+
+    [Fact]
+    public async Task DeductingSendsItsOwnDeduplicationKey()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 تومان");
+
+        var withdrawal = Assert.Single(_walletApi.Withdrawals);
+        Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
+    }
+
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
         public List<WalletRequest> Deposits { get; } = [];
+        public List<WalletRequest> Withdrawals { get; } = [];
 
         public override Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
         {
@@ -130,6 +204,17 @@ public class AdminChargeCommandTests
                 Asset = request.Asset,
                 BalanceBefore = 0,
                 BalanceAfter = request.Amount
+            }));
+        }
+
+        public override Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> WithdrawalAsync(WalletRequest request)
+        {
+            Withdrawals.Add(request);
+            return Task.FromResult(TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Ok(new WalletBallanceDTO
+            {
+                Asset = request.Asset,
+                BalanceBefore = request.Amount,
+                BalanceAfter = 0
             }));
         }
     }

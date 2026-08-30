@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core;
@@ -68,11 +68,19 @@ namespace TallaEgg.TelegramBot
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
+                    var creditAsset = CurrenciesConstant.CreditAssetFor(currency);
+
                     var result = await _walletApi.DepositeAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = CurrenciesConstant.CreditAssetFor(currency), // شارژ ادمین همیشه اعتباری‌ست
+                        Asset = creditAsset, // شارژ ادمین همیشه اعتباری‌ست
                         Amount = amount,
-                        UserId = userDto.Id
+                        UserId = userDto.Id,
+
+                        // Without this the column was always NULL in production and the same charge
+                        // sent twice credited twice (issue #157). The realistic duplicate is an admin
+                        // re-sending after a reply that never arrived, so the key comes from what they
+                        // typed rather than from the message.
+                        ReferenceId = AdminAdjustmentKey.ForDeposit(userDto.Id, creditAsset, amount, DateTime.UtcNow)
                     });
                     if (result.Success)
                     {
@@ -154,7 +162,10 @@ namespace TallaEgg.TelegramBot
                     {
                         Asset = currency,
                         Amount = amount,
-                        UserId = userDto.Id
+                        UserId = userDto.Id,
+
+                        // Same deduplication as the charge command above (issue #157).
+                        ReferenceId = AdminAdjustmentKey.ForWithdrawal(userDto.Id, currency, amount, DateTime.UtcNow)
                     });
                     if (result.Success)
                     {

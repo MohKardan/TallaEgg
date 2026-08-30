@@ -1,4 +1,4 @@
-﻿
+
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
@@ -70,9 +70,14 @@ public class WalletService : IWalletService
                 refId,
                 null
             );
-            wallet.IncreaseBalance(amount);
-            await _walletRepository.UpdateWalletAsync(wallet,transaction);
-        return (wallet, transaction);
+        wallet.IncreaseBalance(amount);
+
+        // A repeat of a reference already applied to this wallet returns the original
+        // transaction and moves nothing, so the caller sees the same success it saw the first
+        // time (issue #157). The IncreaseBalance above is then simply never saved.
+        var recorded = await _walletRepository.ApplyWithIdempotencyAsync(wallet, transaction);
+
+        return (wallet, recorded);
              
     }
     /// <summary>
@@ -112,8 +117,12 @@ public class WalletService : IWalletService
             null
         );
         wallet.DecreaseBalance(amount);
-        await _walletRepository.UpdateWalletAsync(wallet, transaction);
-        return (wallet, transaction);
+
+        // Same deduplication as IncreaseBalanceAsync: a withdrawal has exactly the same
+        // lost-response failure as a deposit, and costs the customer rather than the shop.
+        var recorded = await _walletRepository.ApplyWithIdempotencyAsync(wallet, transaction);
+
+        return (wallet, recorded);
 
     }
 
