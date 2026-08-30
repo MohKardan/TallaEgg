@@ -31,13 +31,15 @@ agent that made a change is not independent evidence about it.
 
 | Date | Overall | Production readiness | Methodology | Model | Files |
 |---|---|---|---|---|---|
-| 2026-07-08 | 4.6 / 10 | 30% | unversioned | Claude Opus 4.8 | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
+| 2026-07-08 | 4.6 / 10 | 30% | [v1](METHODOLOGY_v1.md) | Claude Opus 4.8 | [`AUDIT_2026-07.md`](AUDIT_2026-07.md) (summary), [`AUDIT_2026-07.html`](AUDIT_2026-07.html) (full, Persian) |
 | 2026-08-26 | 6.6 / 10 | ~55% | unversioned | Claude Opus 5 | [`AUDIT_2026-08.md`](AUDIT_2026-08.md) |
 | 2026-08-29 | 7.8 / 10 | ~65% | v7.0 | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
 
 **Read this column-by-column, not row-by-row.** The three runs used different methods and
 different models — the product owner supplied the model attribution for the first two rows in
-August 2026, so the column is now known for every run. A score that rises between runs may
+August 2026, and the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known for
+every run and readable for two of the three. (The prompt used on 2026-08-26 was not kept; that
+row's method is known only from what the audit itself describes.) A score that rises between runs may
 mean the code improved, or that a different reader weighted the same code differently. The
 comparison is only sound where the methodology and model columns match — which, so far, they
 never do. v7 requires both to be recorded, so the 2026-08-29 run is the first whose successor
@@ -63,6 +65,7 @@ a record of what this project learned about auditing itself:
 
 | Version | Answers |
 |---|---|
+| v1 | Nothing yet — the first pass. Fifty-odd review dimensions weighted equally, a score for each, and no rule about evidence, reproduction, scope, or what counts as a finding |
 | v7 | Findings inferred from the shape of the code without checking product intent; an audit that only read and never ran anything; a directory the method named but that did not exist |
 | v8 | Claims written during synthesis that no session had checked; a prior-audit status row carried forward for a problem already fixed; a verified sample stated as a verified universe; command output lost by the terminal and read as a negative result |
 

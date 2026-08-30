@@ -47,6 +47,7 @@ docs/
 │   ├── README.md                  ← Archive index and score trend across all audits
 │   ├── METHODOLOGY_v8.md          ← How the next audit is run (current methodology)
 │   ├── METHODOLOGY_v7.md          ← Retired; kept because AUDIT_2026-08b.md was run under it
+│   ├── METHODOLOGY_v1.md          ← The original July prompt, archived for comparability
 │   ├── AUDIT_2026-07.md           ← July 2026 audit — English summary
 │   ├── AUDIT_2026-07.html         ← July 2026 audit — full report (Farsi)
 │   ├── AUDIT_2026-08.md           ← August 2026 re-audit
