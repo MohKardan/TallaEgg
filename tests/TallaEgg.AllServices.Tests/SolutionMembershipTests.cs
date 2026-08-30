@@ -26,6 +26,13 @@ namespace TallaEgg.AllServices.Tests;
 /// after. It also fails locally in the same way it fails in CI, which a workflow-only check does
 /// not.
 /// </para>
+///
+/// <para>
+/// That last property is what <see cref="IsToolingScratch"/> protects. "On disk" means in the
+/// repository, not merely in the folder: a project under a dot-directory is invisible to CI, so
+/// counting it here would fail on one developer's machine and nowhere else — and a test that only
+/// fails for the person who ran it is one people learn to skip.
+/// </para>
 /// </summary>
 public class SolutionMembershipTests
 {
@@ -126,7 +133,7 @@ public class SolutionMembershipTests
 
     /// <summary>
     /// Repo-relative, forward-slashed paths of every project file in the working tree, ignoring
-    /// build output.
+    /// build output and tooling scratch.
     /// </summary>
     private static List<string> ProjectsOnDisk(string root)
     {
@@ -134,9 +141,41 @@ public class SolutionMembershipTests
             .EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
             .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
             .Where(p => !p.Contains("/bin/", StringComparison.Ordinal)
-                     && !p.Contains("/obj/", StringComparison.Ordinal))
+                     && !p.Contains("/obj/", StringComparison.Ordinal)
+                     && !IsToolingScratch(p))
             .ToList();
     }
+
+    /// <summary>
+    /// Whether a path sits inside a dot-directory — <c>.audit-work/</c>, <c>.vs/</c>,
+    /// <c>.github/</c>, and whatever the next tool creates.
+    ///
+    /// <para>
+    /// A project under one of those is not a stray project. It is tooling scratch, kept out of
+    /// the repository, so nothing is rotting unbuilt and the solution has no business holding it.
+    /// Counting it fails the test on the one machine that happens to have the folder while CI
+    /// stays green — and a test that only fails for the person who ran it is one people learn to
+    /// skip. This is not hypothetical either: a disposable reproduction harness written under
+    /// <c>.audit-work/</c> during an audit turned this red locally and nowhere else.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Why the leading dot and not <c>git check-ignore</c>:</b> asking git would honour
+    /// whatever <c>.gitignore</c> says next, which is the more general rule — but it needs a
+    /// <c>git</c> executable the test host can actually start. On the Windows machine this repo
+    /// is developed on, git lives inside Git Bash and is not on the Windows <c>PATH</c>, so the
+    /// subprocess fails and the filter silently does nothing precisely where it is needed. A rule
+    /// that works identically everywhere beats a more general one that quietly stops working.
+    /// </para>
+    ///
+    /// <para>
+    /// The narrowness is deliberate. An untracked project in an ordinary folder still fails the
+    /// test — that one is a real stray, committed or about to be. Only the dot-prefix convention,
+    /// which every tool in this repository already follows, is treated as "not source".
+    /// </para>
+    /// </summary>
+    private static bool IsToolingScratch(string relativePath) =>
+        relativePath.Split('/').Any(segment => segment.StartsWith('.'));
 
     /// <summary>
     /// Walks up from the test assembly until the directory holding <c>TallaEgg.sln</c> is found.
