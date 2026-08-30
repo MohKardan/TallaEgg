@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 using TallaEgg.Core;
+using TallaEgg.Core.ErrorHandling;
 
 namespace Orders.Application.Services;
 
@@ -28,6 +29,26 @@ namespace Orders.Application.Services;
 public class AutoQuotePublisherService : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// How far the reference price may sit from the last published quote before the tick is
+    /// refused, as a percentage of that quote's mid price.
+    ///
+    /// <para>
+    /// This is a business number rather than an engineering one, set by the product owner
+    /// (issue #158). Gold does not move 5% in the two minutes between ticks, so a source that
+    /// says it did is reporting a broken feed, not a market. The value is deliberately far wider
+    /// than any real move and still far narrower than the failures it exists to catch: a
+    /// per-mithqal figure read as per-gram is roughly 4.33x, a misplaced decimal is 10x.
+    /// </para>
+    ///
+    /// <para>
+    /// One band covers every symbol. If the coin or Bitcoin ever needs its own, it belongs
+    /// alongside the spread in <see cref="AutoQuoteSettings"/> so an admin can set it per symbol,
+    /// which is a larger change than this one.
+    /// </para>
+    /// </summary>
+    private const decimal MaxDeviationPercent = 5m;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AutoQuotePublisherService> _logger;
@@ -100,14 +121,17 @@ public class AutoQuotePublisherService : BackgroundService
             return;
         }
 
+        var quoteRepo = scope.ServiceProvider.GetRequiredService<IQuoteRepository>();
+
+        if (!IsPlausible(symbol, referencePrice.Value, await quoteRepo.GetActiveAsync(symbol)))
+            return;
+
         // referencePrice is already Toman per traded base unit (a gram of gold, a whole coin, a
         // whole Bitcoin) — each provider does its own unit conversion, so nothing here is
         // specific to any one symbol.
         var halfSpread = settings.SpreadPercent / 100m / 2m;
         var buyPrice = decimal.Round(referencePrice.Value * (1 - halfSpread), 2);
         var sellPrice = decimal.Round(referencePrice.Value * (1 + halfSpread), 2);
-
-        var quoteRepo = scope.ServiceProvider.GetRequiredService<IQuoteRepository>();
 
         try
         {
@@ -118,12 +142,72 @@ public class AutoQuotePublisherService : BackgroundService
                 "Auto-published quote for {Symbol}: buy {BuyPrice}, sell {SellPrice} (reference {Reference}, spread {Spread}%).",
                 symbol, buyPrice, sellPrice, referencePrice, settings.SpreadPercent);
         }
-        catch (ArgumentException ex)
+        catch (BusinessRuleException ex)
         {
             // Quote.Publish's own validation (e.g. a zero/negative price from a source
             // returning garbage) rejects the quote. Logged and skipped, not thrown further —
             // the previous quote stays active until the next tick gets a sane price.
+            //
+            // This used to catch ArgumentException, which Quote.Publish has never thrown: all
+            // five of its validation paths raise BusinessRuleException, which derives straight
+            // from Exception. The handler could not run, so a rejected price was reported by the
+            // loop's generic catch at Error — reading as a service fault rather than the normal
+            // rejection it is — and this warning was never written (issue #158, same shape
+            // as #143).
             _logger.LogWarning(ex, "Auto-quote for {Symbol} rejected by Quote.Publish; keeping the previous quote.", symbol);
         }
+    }
+
+    /// <summary>
+    /// Whether a reference price is close enough to the last published quote to be believable.
+    ///
+    /// <para>
+    /// The comparison is against that quote's mid price, which for an auto-published quote is
+    /// exactly the reference price it was built from — the spread is applied symmetrically either
+    /// side. A manually published quote need not be symmetric, but its mid is still the best
+    /// statement available of what the shop last considered this symbol to be worth.
+    /// </para>
+    ///
+    /// <para>
+    /// Rejecting rather than clamping is deliberate. Clamping would publish a price no source
+    /// ever reported, which the shop is then bound to honour, and a feed stuck on a bad number
+    /// would walk the quote towards it one tick at a time until it arrived. Holding the previous
+    /// quote leaves the shop on the last price a source actually agreed with.
+    /// </para>
+    /// </summary>
+    /// <param name="symbol">The symbol being quoted, for the log message.</param>
+    /// <param name="referencePrice">The price the provider chain returned this tick.</param>
+    /// <param name="lastQuote">The symbol's active quote, or null if it has never had one.</param>
+    private bool IsPlausible(string symbol, decimal referencePrice, Quote? lastQuote)
+    {
+        if (lastQuote is null)
+        {
+            // Cold start: nothing has ever been published for this symbol, so there is nothing
+            // for the price to be implausible relative to. Accepting it is what lets auto-quote
+            // bootstrap a newly activated symbol at all; the band applies from the next tick on.
+            // A restart does not reach here — the active quote is read from the database, so it
+            // survives one.
+            _logger.LogInformation(
+                "Auto-quote for {Symbol}: no previous quote to compare against, so the plausibility band was not applied to reference {Reference}.",
+                symbol, referencePrice);
+            return true;
+        }
+
+        var lastMid = (lastQuote.BuyPrice + lastQuote.SellPrice) / 2m;
+        var deviationPercent = Math.Abs(referencePrice - lastMid) / lastMid * 100m;
+
+        if (deviationPercent <= MaxDeviationPercent) return true;
+
+        // Loud on purpose. Skipping the tick silently would leave a broken feed looking exactly
+        // like a quiet market, and the point of the band is that somebody finds out. The rejected
+        // value and the band it violated are both in the message so the log alone says what
+        // happened, without needing the price source to be queried again.
+        _logger.LogWarning(
+            "Auto-quote for {Symbol} rejected: reference price {Reference} is {Deviation}% away from the last published mid {LastMid}, " +
+            "outside the plausibility band of ±{Band}%. Keeping the previous quote (buy {LastBuy}, sell {LastSell}).",
+            symbol, referencePrice, decimal.Round(deviationPercent, 2), lastMid, MaxDeviationPercent,
+            lastQuote.BuyPrice, lastQuote.SellPrice);
+
+        return false;
     }
 }

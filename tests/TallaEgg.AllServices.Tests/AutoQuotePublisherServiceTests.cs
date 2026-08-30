@@ -6,6 +6,8 @@ using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
 using TallaEgg.Core;
+using TallaEgg.AllServices.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -27,6 +29,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
     private readonly SqliteConnection _connection;
     private readonly ServiceProvider _provider;
     private readonly StubProvider _stubProvider = new();
+    private readonly CapturingLogger<AutoQuotePublisherService> _logger = new();
 
     public AutoQuotePublisherServiceTests()
     {
@@ -70,8 +73,11 @@ public class AutoQuotePublisherServiceTests : IDisposable
 
     private async Task RunTickAsync(string symbol = Symbol)
     {
+        // A fresh service instance per tick, holding no state of its own: what the band compares
+        // against has to come from the database, which is also what makes the restart case below
+        // a real test rather than a restatement of the previous one.
         var service = new AutoQuotePublisherService(
-            _provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<AutoQuotePublisherService>.Instance);
+            _provider.GetRequiredService<IServiceScopeFactory>(), _logger);
 
         await service.PublishIfDueAsync(symbol, CancellationToken.None);
     }
@@ -183,5 +189,206 @@ public class AutoQuotePublisherServiceTests : IDisposable
 
         Assert.NotNull(await ActiveQuoteAsync(Symbol));
         Assert.Null(await ActiveQuoteAsync(coin));
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Plausibility band (issue #158). A glitching source — a per-mithqal figure read as
+    // per-gram, a misplaced decimal, a partial response parsed as a number — used to become a
+    // quote customers could trade against within one two-minute tick. Nothing checked whether
+    // the number was believable; the only rejections were a price <= 0 and an inverted spread.
+    //
+    // The audit that raised this could not reproduce it and marked it "reasoned, not executed"
+    // for want of a mockable provider. The provider was already mockable — StubProvider above
+    // predates the finding — so these run the real tick logic against a real database.
+    // ---------------------------------------------------------------------------------------
+
+    /// <summary>Publishes one quote from <paramref name="reference"/> so later ticks have a mid to be measured against.</summary>
+    private async Task SeedPublishedQuoteAsync(decimal reference)
+    {
+        _stubProvider.Price = reference;
+        await RunTickAsync();
+        _logger.Entries.Clear();
+    }
+
+    /// <summary>
+    /// The headline case, using the unit slip the issue names: nerkh.io and brsapi.ir both quote
+    /// gold per mithqal natively, and a mithqal is about 4.33 grams, so a conversion that fails
+    /// to happen multiplies the price by that much. 8,000,000 per gram becoming 34,640,000 is
+    /// not a market move.
+    /// </summary>
+    [Fact]
+    public async Task RejectsAReferencePriceAboveTheBand_AndKeepsThePreviousQuote()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(8_000_000m);
+
+        _stubProvider.Price = 34_640_000m;
+        await RunTickAsync();
+
+        var quote = await ActiveQuoteAsync();
+        Assert.NotNull(quote);
+        Assert.Equal(7_960_000m, quote!.BuyPrice);   // still the quote seeded from 8,000,000
+        Assert.Equal(8_040_000m, quote.SellPrice);
+    }
+
+    /// <summary>A stale cache or a truncated response reads low rather than high; the band is two-sided.</summary>
+    [Fact]
+    public async Task RejectsAReferencePriceBelowTheBand_AndKeepsThePreviousQuote()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 500_000m;
+        await RunTickAsync();
+
+        Assert.Equal(995_000m, (await ActiveQuoteAsync())!.BuyPrice);
+    }
+
+    /// <summary>
+    /// Silence is the worst outcome the issue names: a skipped tick and a quiet market look
+    /// identical from outside. The rejected value and the band it violated both have to be in
+    /// the message, or the log cannot say what happened without re-querying the price source.
+    /// </summary>
+    [Fact]
+    public async Task ARejectedPriceIsLoggedAsAWarningWithTheValueAndTheBand()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 2_000_000m;
+        await RunTickAsync();
+
+        var warning = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("2000000", warning.Message);   // the rejected value
+        Assert.Contains("1000000", warning.Message);   // the mid it was measured against
+        Assert.Contains("100", warning.Message);       // how far off it was, as a percentage
+        Assert.Contains("5", warning.Message);         // the band it violated
+    }
+
+    /// <summary>
+    /// The band must not fight the market. A 4% move in two minutes would be remarkable but it is
+    /// a price, not a glitch, and refusing it would leave the shop quoting a stale number.
+    /// </summary>
+    [Fact]
+    public async Task PublishesAMoveInsideTheBand()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 1_040_000m;
+        await RunTickAsync();
+
+        Assert.Equal(1_034_800m, (await ActiveQuoteAsync())!.BuyPrice);
+    }
+
+    /// <summary>The edge is inclusive: exactly 5% publishes, a hair over does not.</summary>
+    [Fact]
+    public async Task PublishesAMoveExactlyOnTheBandEdge_ButNotOneJustPastIt()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 1_050_000m;              // exactly +5%, so the mid becomes 1,050,000
+        await RunTickAsync();
+        Assert.Equal(1_044_750m, (await ActiveQuoteAsync())!.BuyPrice);
+
+        _stubProvider.Price = 1_102_501m;              // +5.0001% of the new mid
+        await RunTickAsync();
+        Assert.Equal(1_044_750m, (await ActiveQuoteAsync())!.BuyPrice);
+    }
+
+    /// <summary>
+    /// Cold start, decided with the product owner: a symbol that has never had a quote has
+    /// nothing for a price to be implausible relative to, and refusing would mean auto-quote
+    /// could never bootstrap a newly activated symbol. It publishes, and says in the log that
+    /// the band was not applied — that one tick is the only unguarded one.
+    /// </summary>
+    [Fact]
+    public async Task PublishesTheFirstEverQuoteWithoutABandCheck_AndSaysSoInTheLog()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+
+        _stubProvider.Price = 34_640_000m;             // would be rejected against any sane mid
+        await RunTickAsync();
+
+        Assert.NotNull(await ActiveQuoteAsync());
+        Assert.Contains(_logger.Entries, e =>
+            e.Level == LogLevel.Information && e.Message.Contains("not applied"));
+    }
+
+    /// <summary>
+    /// The first tick after a restart is the case the issue asks about, and it needs no special
+    /// handling: the active quote lives in the database, so a service instance that has just
+    /// started still has a mid to compare against. Seeding the quote without ever running a tick
+    /// is what a restart looks like from the publisher's side.
+    /// </summary>
+    [Fact]
+    public async Task TheBandComesFromTheStoredQuote_SoARestartIsStillGuarded()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+
+        using (var db = new OrdersDbContext(Options()))
+        {
+            db.Quotes.Add(Quote.Publish(Symbol, 7_960_000m, 8_040_000m, Guid.NewGuid()));
+            await db.SaveChangesAsync();
+        }
+
+        _stubProvider.Price = 34_640_000m;
+        await RunTickAsync();
+
+        var quote = await ActiveQuoteAsync();
+        Assert.Equal(7_960_000m, quote!.BuyPrice);
+        Assert.Contains(_logger.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    /// <summary>
+    /// The handler that could never run (issue #158, same shape as #143). Quote.Publish rejects
+    /// through BusinessRuleException, which derives straight from Exception, so the
+    /// <c>catch (ArgumentException)</c> that stood here was unreachable and the tick threw
+    /// instead — landing in the poll loop's generic handler and being recorded at Error, as a
+    /// service fault rather than the ordinary rejection it is.
+    ///
+    /// The trigger is the one the handler's own comment describes: a price small enough that
+    /// rounding to two decimals leaves nothing. 0.001 survives the chain's positive-price check
+    /// and then rounds to 0.00 either side of the spread.
+    /// </summary>
+    [Fact]
+    public async Task APriceRejectedByQuoteDotPublishIsLoggedAsAWarningInsteadOfThrowing()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+
+        _stubProvider.Price = 0.001m;
+        await RunTickAsync();
+
+        Assert.Null(await ActiveQuoteAsync());
+        var warning = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.IsType<TallaEgg.Core.ErrorHandling.BusinessRuleException>(warning.Exception);
+    }
+
+    /// <summary>
+    /// The band is a ratio, so it should not care how large the numbers are — but Bitcoin prices
+    /// are five orders of magnitude above gold's and the simulator only ever trades MAUA/IRT
+    /// (issue #147), so a symbol-specific arithmetic problem would survive a clean smoke run.
+    /// Both directions at BTC scale, on the same 5% boundary.
+    /// </summary>
+    [Fact]
+    public async Task TheBandBehavesTheSameAtBitcoinScale()
+    {
+        const string btc = CurrenciesConstant.BTC_IRT;
+
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid(), symbol: btc);
+
+        _stubProvider.Price = 52_000_000_000m;
+        await RunTickAsync(btc);
+        var seeded = await ActiveQuoteAsync(btc);
+        Assert.Equal(51_740_000_000m, seeded!.BuyPrice);
+
+        _stubProvider.Price = 54_600_000_000m;          // exactly +5%, accepted
+        await RunTickAsync(btc);
+        Assert.Equal(54_327_000_000m, (await ActiveQuoteAsync(btc))!.BuyPrice);
+
+        _stubProvider.Price = 5_460_000_000m;           // a decimal slipped: 10x too low, rejected
+        await RunTickAsync(btc);
+        Assert.Equal(54_327_000_000m, (await ActiveQuoteAsync(btc))!.BuyPrice);
     }
 }
