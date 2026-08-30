@@ -1,12 +1,8 @@
-# TallaEgg — MVP Risk Audit (v7)
+# TallaEgg — MVP Risk Audit (v8)
 
-**Methodology Version:** 7.0
-**Supersedes:** v6 (one-day, single-file)
-**Status:** **superseded by [`METHODOLOGY_v8.md`](METHODOLOGY_v8.md)** — do not run an audit
-from this file. It is kept because `AUDIT_2026-08b.md` was conducted under it and cites it, so
-deleting it would leave that audit describing a method nobody can read. v8 keeps every rule
-below and adds seven, all of them from failures observed in that run; its "Changes from v7"
-table lists them.
+**Methodology Version:** 8.0
+**Supersedes:** v7 (kept as `METHODOLOGY_v7.md`, since `AUDIT_2026-08b.md` was run under it)
+**Status:** current — use this file, not a pasted copy of an older prompt.
 
 ## WHAT THIS IS
 
@@ -18,11 +14,24 @@ kept, linked, diffed, and compared across future audits.
 working day, and hand the team a clear, evidence-based list of what must be fixed
 before the next release? Optimize for signal-to-noise, not report length.
 
-**A finding that is wrong costs more than a finding that is missing.** A missed risk
-leaves the product where it already was. A false one sends two developers to change
-working code — and the last audit produced two of them, both caught by the product
-owner rather than by the audit. Section 0 and the reproduction requirement exist for
-that reason and are not optional.
+**A finding that is wrong costs more than a finding that is missing.** A missed risk leaves
+the product where it already was. A false one sends two developers to change working code.
+This methodology is shaped by three such failures, each of a different kind, and every rule
+below traces to one of them:
+
+- **August 26** — two findings inferred from the *shape* of the code (a commented-out line, a
+  directory layout) and never checked against what the product is for. Both were caught by the
+  product owner. Section 0 and the reproduction requirement answer this.
+- **August 29** — a prior-audit status row copied forward and labelled "(checked)", for a
+  problem fixed three days earlier; and a verified sample ("these four entities are (28,8)")
+  generalised into a verified universe ("all money columns"). Both were written in Session 4,
+  the one session that works from notes rather than from code. The traceability rule answers
+  this.
+- **The same run** — the auditor's terminal silently lost the output of roughly a third of its
+  commands, and one empty result was read as "no match" rather than "no answer". That is what
+  produced the false status row. The unobserved-output rule answers this.
+
+None of those three answers is optional.
 
 ---
 
@@ -143,6 +152,17 @@ anyway at low depth; do not silently expand the exclusion list.
   then Recommendation. No claim without something actually viewed in the repo this
   session.
 - **Reproduction before Critical** — see the next section.
+- **An unobserved result is not a negative result.** If a command's output does not come back
+  — an empty pane, a dropped stream, a tool that returns nothing — that is "unchecked", never
+  "no match found". Re-run it. If it will not produce output, the claim it was meant to support
+  is marked unverified in the report. An audit run in an unreliable terminal is still valid; an
+  audit that reads silence as evidence is not.
+- **No quantifier without an enumeration.** "All", "every", "uniform", "none", "no X exists",
+  "nothing" may be written only where the notes contain the counted list behind them. If the
+  list cannot be produced, write what was actually checked instead.
+- **Record when each session starts and ends**, in the notes, as wall-clock time. It goes in
+  the report (§3) so a reader can weigh depth without reconstructing it from file
+  timestamps.
 - **No fabrication:** git branch/commit, package versions, vulnerability data, line
   numbers — only from a command actually run or a file actually viewed. Tool
   unavailable: say so, never guess.
@@ -187,6 +207,28 @@ leaving its strongest instrument unused.
 Trying to reproduce a finding and failing is a *result*, not a wasted hour. Write it
 down: "attempted to reproduce with X; the guard at Y refused it." That sentence is often
 worth more than the finding would have been.
+
+---
+
+## THE TRACEABILITY RULE — Session 4 may not introduce a claim
+
+Sessions 1–3 look at the code. Session 4 looks at the notes. Every factual claim in the
+archived report must therefore trace to a line in `.audit-work/` written by a session that
+actually looked — including, and especially, the prior-findings table, which is nineteen
+claims written at the end of the day and the cheapest place in the whole report to guess.
+
+**When Session 4 wants to state something the notes do not contain, it has exactly two
+options.** Go and check it now, writing the command *and its output* into
+`.audit-work/04-*.md` before citing it. Or write "this pass did not check" and leave it at
+that. There is no third option, and in particular "(checked)" is not something that may be
+written about a check with no note behind it.
+
+**The word "verified" and its relatives are reserved.** "Verified", "confirmed", "checked",
+"re-verified" may appear only where a note records what was run. Everything else says "read",
+"inferred", or "carried over" — all three of which are honest, and none of which is a defect
+in an audit.
+
+A claim that cannot be traced is not dropped quietly. It is labelled.
 
 ---
 
@@ -343,6 +385,29 @@ issue status, and classify Resolved / Partial / Contained / Open. If a prior fin
 turns out to have been wrong, mark it **Corrected** with the real explanation rather than
 silently dropping it. Continue the ID sequence for genuinely new findings.
 
+**Before writing a single row, run this and read the output:**
+
+```
+git log --oneline --since=<date of the previous audit> --no-merges
+```
+
+That is every change made since the previous measurement, usually a page of subject lines
+that name the fixes directly. A prior finding's status was true on the day it was written;
+the whole question a re-audit answers is which ones stopped being true in the interval, and
+this command is the interval. In the August 29 run it would have taken ten seconds and
+prevented the one false row that pass produced — the fix was sitting in the list by name.
+
+**Every row carries its provenance.** Against each prior finding, record which applies:
+
+- **(a)** re-verified in code during Sessions 1–3 — name the file, method, or reproduction
+- **(b)** verified now, during synthesis — name the command, with its output in the notes
+- **(c)** carried over from the previous audit without independent verification
+
+Rows may be (a) or (b). A row that would be (c) is either promoted to (b) by checking it, or
+printed as **unverified** in the report. Do not publish a (c) row dressed as either of the
+others: that is precisely the failure this rule exists for, and it is invisible to every
+reader who was not there.
+
 ## Write `docs/audit/AUDIT_YYYY-MM.md` — the only deliverable
 
 **Naming, and the one way to lose an audit:** `YYYY-MM` is the month the audit runs. If a
@@ -363,7 +428,7 @@ Required sections, in this order:
    Audit Date: <real date>
    Commit / Branch: <real git output, or "unavailable">
    Audit ID: TALLAEGG-AUDIT-<YYYYMMDD>-<short id>
-   Methodology Version: 7.0
+   Methodology Version: 8.0
    ```
    Plus, once:
    > This audit was performed with the assistance of Artificial Intelligence, based on
@@ -372,8 +437,9 @@ Required sections, in this order:
    > critical production, security, financial, or architectural decisions are made.
 2. **Executive Summary**
 3. **Audit Scope & Coverage** — what was deeply reviewed (the priority paths, by name),
-   what was sampled lightly, what was excluded and why, and **what was executed** (build,
-   tests, simulator, queries) as opposed to only read.
+   what was sampled lightly, what was excluded and why, **what was executed** (build, tests,
+   simulator, queries) as opposed to only read, and the **wall-clock time of each session**.
+   Depth is a fact about an audit and belongs on its face, not in its file timestamps.
 4. **Progress vs. Previous Audits** — if re-audit: the trend table from
    `docs/audit/README.md` (date, overall score, production readiness %, methodology
    version, model), then the prior-findings status table
@@ -395,9 +461,10 @@ Required sections, in this order:
     containing an unresolved Critical caps at 3/10; more than one unresolved High caps it
     at 5/10 — name the finding that triggered the cap.
 14. **A note on this audit's own reliability** — which findings were reproduced and which
-    were only reasoned about; anything the audit could not check; where it is most likely
-    to be wrong. The August 2026 audit's version of this section is the reason its two
-    bad findings were caught. It is required, not optional.
+    were only reasoned about; anything the audit could not check; where it is most likely to
+    be wrong; and how many prior-findings rows were (a), (b) and (c). Both audits preceding
+    this methodology had their errors found through this section rather than through their
+    findings. It is required, not optional.
 
 ## No false certification
 
@@ -413,10 +480,26 @@ Nothing else.
 
 ---
 
-## CHANGES FROM v6
+## CHANGES FROM v7
 
 Recorded so a future reader can tell whether a score moved because the code improved or
-because the method changed.
+because the method changed. Every one of these comes from a specific failure in the
+`AUDIT_2026-08b.md` run, which was conducted under v7 and reviewed afterwards.
+
+| # | Change | Why |
+|---|---|---|
+| A | The traceability rule: Session 4 may not state what no session checked; "verified" and "(checked)" reserved for claims with a recorded command | A status row was labelled "(checked)" with no note behind it, and was false |
+| B | An unobserved command result is "unchecked", never "no match" | The auditor's terminal dropped ~1/3 of its output; one empty pane became a false negative |
+| C | No quantifier without an enumeration in the notes | "All money columns are (28,8)" turned four verified entities into a false universal |
+| D | `git log --since=<previous audit date>` mandatory before the prior-findings table | The commit fixing the false row was in that list, by name |
+| E | Every prior-findings row labelled (a) re-verified / (b) checked now / (c) carried over; no (c) may be published as anything else | Three of nineteen rows were carried over silently; two of the three were wrong |
+| F | Per-session wall-clock times reported in §3 | A four-session run took 67 minutes and nothing in the report said so |
+| G | §14 reports the (a)/(b)/(c) counts | Makes the weakest part of a re-audit visible to its reader |
+
+Rules A, C, E and F were proposed by the reviewer; B and G by the auditor whose run produced
+the failures, in its own account of how they happened.
+
+v7's own changes from v6 are listed in `METHODOLOGY_v7.md`, and all of them remain in force:
 
 | # | Change | Why |
 |---|---|---|
