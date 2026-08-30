@@ -25,17 +25,35 @@ public class TelegramBotHostedService : BackgroundService
 
     private CancellationTokenSource? _receiverCts;
 
-    // A gap this much longer than the retry delay between two transient polling failures means
-    // updates were flowing again in between, so the next failure starts a fresh streak rather
-    // than continuing the old one (issue #148).
-    private static readonly TimeSpan PollingRetryDelay = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan PollingRecoveryGap = TimeSpan.FromSeconds(30);
+    // Backoff after a transient polling failure. The first retries are fast so an isolated blip --
+    // which the old code retried immediately -- does not cost the bot ten seconds of deafness, and
+    // it settles at the last entry once the failure looks sustained (issue #148).
+    private static readonly TimeSpan[] PollingRetryDelays =
+    [
+        TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2),
+        TimeSpan.FromSeconds(5),
+        TimeSpan.FromSeconds(10),
+    ];
+
+    private static readonly TimeSpan PollingRetryDelayMax = PollingRetryDelays[^1];
+
+    // How long the bot must have been failing to poll before that is worth one Error line.
     private static readonly TimeSpan PollingDownAlertThreshold = TimeSpan.FromMinutes(2);
 
     private DateTimeOffset? _pollingFailureStreakStartedAt;
     private DateTimeOffset? _lastPollingFailureAt;
+    private DateTimeOffset? _lastUpdateReceivedAt;
     private int _consecutivePollingFailures;
     private bool _pollingDownAlertLogged;
+
+    // A failing getUpdates does not fail fast: DefaultUpdateReceiver long-polls for
+    // _botClient.Timeout seconds, so under a total outage two consecutive failures land a whole
+    // poll cycle apart -- ~130s with ProxyBotClient's 120s timeout, not the ~10s that a small
+    // fixed constant would imply. Only a gap longer than one entire cycle (plus the backoff we
+    // add, plus margin) proves a poll completed in between. Deriving it from the client keeps the
+    // two in step if that timeout ever changes (issue #148).
+    private TimeSpan PollingRecoveryGap => _botClient.Timeout + PollingRetryDelayMax + TimeSpan.FromSeconds(30);
 
     public TelegramBotHostedService(
         ITelegramBotClient botClient,
@@ -185,6 +203,10 @@ public class TelegramBotHostedService : BackgroundService
 
     private async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
     {
+        // An update reaching us is the one unambiguous proof that polling is alive, which is what
+        // the down-alert below needs and cannot infer from the error path alone (issue #148).
+        RecordUpdateReceived(DateTimeOffset.UtcNow);
+
         // Resolved once so both the log entry and the fallback reply below can use them —
         // whichever branch below throws, this is who was talking to the bot (issue #99).
         var chatId = update.Message?.Chat.Id ?? update.CallbackQuery?.Message?.Chat.Id;
@@ -233,6 +255,15 @@ public class TelegramBotHostedService : BackgroundService
 
     private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
     {
+        // FatalError means the receive loop itself has died -- Telegram.Bot documents it as
+        // "Polling of updates will stop". Nothing about that is transient, and there is no loop
+        // left to back off for, so it must never take the path below however it is shaped.
+        if (source == HandleErrorSource.FatalError)
+        {
+            _logger.LogError(exception, "Polling has stopped: fatal error in the update receiver ({Source}).", source);
+            return Task.CompletedTask;
+        }
+
         // ApiRequestException means Telegram itself rejected the request (rotated token, rate
         // limit, ...). That's a real fault, not a transport blip, so it stays loud immediately.
         if (exception is ApiRequestException apiException)
@@ -258,11 +289,26 @@ public class TelegramBotHostedService : BackgroundService
         return Task.CompletedTask;
     }
 
+    // Separate from HandleUpdateAsync so a test can establish "polling was alive at time T"
+    // without having to fabricate an Update and run the whole dispatch path.
+    private void RecordUpdateReceived(DateTimeOffset now) => _lastUpdateReceivedAt = now;
+
     // `now` is passed in rather than read here so the escalation timing can be driven
     // deterministically from a test without sleeping real wall-clock minutes.
     private Task HandleTransientPollingFailure(HandleErrorSource source, Exception exception, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        if (_lastPollingFailureAt is null || now - _lastPollingFailureAt.Value > PollingRecoveryGap)
+        // Two independent signs that polling recovered since the previous failure, because
+        // neither alone is enough. An update having arrived is proof, but a bot with no traffic
+        // never produces one; a gap longer than a whole poll cycle is the fallback for that case,
+        // but on its own it also matches a busy bot whose polls keep dying part-way through --
+        // which is exactly the #148 pattern, one failure every ~71s with trades settling normally
+        // throughout. Requiring both to be absent is what keeps a real outage escalating without
+        // firing on a flaky-but-working connection.
+        var recovered =
+            (_lastUpdateReceivedAt is { } lastUpdate && _lastPollingFailureAt is { } lastFailure && lastUpdate > lastFailure)
+            || (_lastPollingFailureAt is { } previousFailure && now - previousFailure > PollingRecoveryGap);
+
+        if (_lastPollingFailureAt is null || recovered)
         {
             _pollingFailureStreakStartedAt = now;
             _consecutivePollingFailures = 0;
@@ -272,6 +318,7 @@ public class TelegramBotHostedService : BackgroundService
         _lastPollingFailureAt = now;
         _consecutivePollingFailures++;
         var downFor = now - _pollingFailureStreakStartedAt!.Value;
+        var retryDelay = PollingRetryDelays[Math.Min(_consecutivePollingFailures - 1, PollingRetryDelays.Length - 1)];
 
         if (downFor >= PollingDownAlertThreshold && !_pollingDownAlertLogged)
         {
@@ -282,11 +329,28 @@ public class TelegramBotHostedService : BackgroundService
         }
         else
         {
+            // RequestException.Message is the fixed literal "Exception during making request", so
+            // logging it alone makes every one of these lines identical and says nothing about the
+            // cause. The cause is in the inner exception -- a socket reset, a TLS failure, a DNS
+            // error, "the response ended prematurely" -- and that is the part worth keeping.
             _logger.LogWarning("Polling error ({Source}): {ExceptionType} - {Message}. Retrying in {Delay}...",
-                source, exception.GetType().Name, exception.Message, PollingRetryDelay);
+                source, exception.GetType().Name, DescribeCause(exception), retryDelay);
         }
 
-        return Task.Delay(PollingRetryDelay, cancellationToken);
+        return Task.Delay(retryDelay, cancellationToken);
+    }
+
+    private static string DescribeCause(Exception exception)
+    {
+        var innermost = exception;
+        while (innermost.InnerException is not null)
+        {
+            innermost = innermost.InnerException;
+        }
+
+        return ReferenceEquals(innermost, exception)
+            ? exception.Message
+            : $"{exception.Message} ({innermost.GetType().Name}: {innermost.Message})";
     }
 }
 

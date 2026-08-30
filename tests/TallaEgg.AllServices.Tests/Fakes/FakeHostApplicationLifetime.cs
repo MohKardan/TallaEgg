@@ -2,7 +2,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace TallaEgg.AllServices.Tests.Fakes;
 
-/// <summary>Records whether shutdown was requested, without touching a real host.</summary>
+/// <summary>
+/// Satisfies the <see cref="IHostApplicationLifetime"/> a service under test asks for, without
+/// touching a real host. <see cref="StopApplicationCalled"/> is there for a test that exercises a
+/// shutdown path; the polling-error tests only need the constructor to succeed.
+/// </summary>
 public sealed class FakeHostApplicationLifetime : IHostApplicationLifetime
 {
     public CancellationToken ApplicationStarted => CancellationToken.None;
