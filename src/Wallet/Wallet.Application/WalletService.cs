@@ -1,4 +1,4 @@
-﻿
+
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
@@ -36,7 +36,7 @@ public class WalletService : IWalletService
     /// <param name="amount">Amount to add.</param>
     /// <param name="refId">Optional reference id.</param>
     /// <returns>The updated wallet and the transaction recorded for it.</returns>
-    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity, bool wasAlreadyApplied)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
    
         var wallet = await _walletRepository.GetWalletAsync(userId, asset);
@@ -55,6 +55,13 @@ public class WalletService : IWalletService
             wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
 
+        // Before the entity is touched, not after. The balance methods enforce their own rules —
+        // DecreaseBalance refuses to take more than is left — so a repeat applied to a wallet that
+        // has already been reduced would throw, telling the admin the operation failed when it had
+        // in fact succeeded the first time (issue #157).
+        if (await AlreadyAppliedAsync(wallet, refId) is { } previous)
+            return (wallet, previous, true);
+
         // Update existing wallet
         // Create transaction record
         var transaction = Transaction.Create(
@@ -70,15 +77,19 @@ public class WalletService : IWalletService
                 refId,
                 null
             );
-            wallet.IncreaseBalance(amount);
-            await _walletRepository.UpdateWalletAsync(wallet,transaction);
-        return (wallet, transaction);
+        wallet.IncreaseBalance(amount);
+
+        // The check above is not the guarantee — a concurrent caller can pass it too. This absorbs
+        // that race against the unique index, and reports which transaction actually stands.
+        var recorded = await _walletRepository.ApplyWithIdempotencyAsync(wallet, transaction);
+
+        return (wallet, recorded, recorded.Id != transaction.Id);
              
     }
     /// <summary>
     /// Decreases a user's wallet balance. Formerly named DeCreditAsync.
     /// </summary>
-    public async Task<(WalletEntity walletEntity, Transaction transactionEntity)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
+    public async Task<(WalletEntity walletEntity, Transaction transactionEntity, bool wasAlreadyApplied)> DecreaseBalanceAsync(Guid userId, string asset, decimal amount, string? refId = null)
     {
 
 
@@ -96,6 +107,13 @@ public class WalletService : IWalletService
             wallet = await _walletRepository.CreateWalletAsync(WalletEntity.Create(userId, asset));
         }
 
+        // The case that makes checking first necessary rather than tidy: deducting 800 of a
+        // customer's 1000 leaves 200, so the re-sent command would ask DecreaseBalance to take 800
+        // from 200 and be refused with "مقدار کسر از حساب بیشتر از حد مجاز است" — an error about a
+        // deduction that had already gone through.
+        if (await AlreadyAppliedAsync(wallet, refId) is { } previous)
+            return (wallet, previous, true);
+
         // Update existing wallet
         // Create transaction record
         var transaction = Transaction.Create(
@@ -112,10 +130,22 @@ public class WalletService : IWalletService
             null
         );
         wallet.DecreaseBalance(amount);
-        await _walletRepository.UpdateWalletAsync(wallet, transaction);
-        return (wallet, transaction);
 
+        // Same deduplication as IncreaseBalanceAsync: a withdrawal has exactly the same
+        // lost-response failure as a deposit, and costs the customer rather than the shop.
+        var recorded = await _walletRepository.ApplyWithIdempotencyAsync(wallet, transaction);
+
+        return (wallet, recorded, recorded.Id != transaction.Id);
     }
+
+    /// <summary>
+    /// The transaction this reference already produced on this wallet, or null if it is new.
+    /// A caller with no reference can never be deduplicated and always gets null.
+    /// </summary>
+    private async Task<Transaction?> AlreadyAppliedAsync(WalletEntity wallet, string? refId) =>
+        string.IsNullOrWhiteSpace(refId)
+            ? null
+            : await _walletRepository.FindTransactionByReferenceAsync(wallet.Id, refId);
 
 
 
@@ -148,7 +178,7 @@ public class WalletService : IWalletService
     {
         
 
-        var result = await IncreaseBalanceAsync(userId, asset, amount,referenceId);
+        var result = await IncreaseBalanceAsync(userId, asset, amount, referenceId);
       
 
         return new WalletBallanceDTO
@@ -159,13 +189,14 @@ public class WalletService : IWalletService
             LockedBalance = result.walletEntity.LockedBalance,
             UpdatedAt = result.walletEntity.UpdatedAt,
             TrackingCode = result.transactionEntity.TrackingCode,
+            WasAlreadyApplied = result.wasAlreadyApplied,
         };
     }
 
     public async Task<WalletBallanceDTO> WithdrawalAsync(Guid userId, string asset, decimal amount, string? referenceId = null)
     {
        
-        var result = await DecreaseBalanceAsync(userId, asset, amount,referenceId);
+        var result = await DecreaseBalanceAsync(userId, asset, amount, referenceId);
       
         return new WalletBallanceDTO
         {
@@ -175,6 +206,7 @@ public class WalletService : IWalletService
             LockedBalance = result.walletEntity.LockedBalance,
             UpdatedAt = result.walletEntity.UpdatedAt,
             TrackingCode = result.transactionEntity.TrackingCode,
+            WasAlreadyApplied = result.wasAlreadyApplied,
         };
     }
 

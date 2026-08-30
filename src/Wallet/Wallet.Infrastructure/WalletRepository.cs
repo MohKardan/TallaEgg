@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TallaEgg.Core;
 using TallaEgg.Core.Enums.Wallet;
@@ -108,6 +108,15 @@ public class WalletRepository : IWalletRepository
         catch (DbUpdateConcurrencyException ex)
         {
             _logger.LogWarning(ex, "Concurrency conflict while updating wallet {WalletId} for user {UserId}", wallet.Id, wallet.UserId);
+            throw;
+        }
+        catch (DbUpdateException ex) when (IsDuplicateReference(ex))
+        {
+            // Rethrown for ApplyWithIdempotencyAsync to absorb, but not logged as an error on the
+            // way past. A reference arriving twice is the normal outcome this design expects, and the
+            // generic handler below would record it at Error with a stack trace — the same
+            // false-alarm shape that made the bot's error log pure noise in #148.
+            _logger.LogDebug(ex, "Duplicate reference on wallet {WalletId}; the caller will absorb it.", wallet.Id);
             throw;
         }
         catch (Exception ex)
@@ -319,6 +328,95 @@ public class WalletRepository : IWalletRepository
         await _context.SaveChangesAsync();
         return transaction;
     }
+
+    public async Task<Transaction?> FindTransactionByReferenceAsync(Guid walletId, string referenceId) =>
+        await _context.Transactions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.WalletId == walletId && t.ReferenceId == referenceId);
+
+    public async Task<Transaction> ApplyWithIdempotencyAsync(WalletEntity wallet, Transaction transaction)
+    {
+        var referenceId = transaction.ReferenceId;
+
+        if (string.IsNullOrWhiteSpace(referenceId))
+        {
+            await UpdateWalletAsync(wallet, transaction);
+            return transaction;
+        }
+
+        // Fast path, the same optimisation SettleTradeAsync opens with: answer an already-seen
+        // reference without paying for a failed write. It is not the guarantee — two callers can
+        // both pass it — the unique index below is.
+        var alreadyRecorded = await FindTransactionByReferenceAsync(wallet.Id, referenceId);
+        if (alreadyRecorded is not null)
+        {
+            await DiscardUnsavedChangeAsync(wallet);
+
+            _logger.LogInformation(
+                "Reference {ReferenceId} was already applied to wallet {WalletId}; returning the original transaction and moving nothing (idempotent).",
+                referenceId, wallet.Id);
+
+            return alreadyRecorded;
+        }
+
+        try
+        {
+            await UpdateWalletAsync(wallet, transaction);
+            return transaction;
+        }
+        catch (DbUpdateException ex) when (IsDuplicateReference(ex))
+        {
+            // Lost the race. The balance change and the transaction insert are one SaveChanges,
+            // so the index rejecting the insert leaves the balance untouched — the duplicate
+            // moved no money, which is the whole point.
+            _context.ChangeTracker.Clear();
+
+            var winner = await FindTransactionByReferenceAsync(wallet.Id, referenceId);
+
+            if (winner is null) throw; // The duplicate was about something else. Let it surface.
+
+            await DiscardUnsavedChangeAsync(wallet);
+
+            _logger.LogInformation(
+                "Reference {ReferenceId} was applied concurrently to wallet {WalletId}; this attempt was rejected by the database and moved nothing (idempotent).",
+                referenceId, wallet.Id);
+
+            return winner;
+        }
+    }
+
+    /// <summary>
+    /// Puts the caller's wallet instance back to what the database holds.
+    ///
+    /// <para>
+    /// A caller applies its balance change before handing the entity over — <c>IncreaseBalance</c>
+    /// adjusts <c>Balance</c> and stamps <c>UpdatedAt</c> — and on the idempotent path that change
+    /// is never saved. Left alone, the entity returned to the caller would report a balance and a
+    /// modification time the wallet never had, and the endpoint would answer with them. Reloading
+    /// makes the response describe the wallet as it actually is: unchanged, because the duplicate
+    /// changed nothing.
+    /// </para>
+    /// </summary>
+    private async Task DiscardUnsavedChangeAsync(WalletEntity wallet)
+    {
+        var entry = _context.Entry(wallet);
+
+        // Detached after a ChangeTracker.Clear() on the concurrent path; Entry() re-attaches it,
+        // and Reload() then overwrites every property from the row that is actually stored.
+        await entry.ReloadAsync();
+    }
+
+    /// <summary>
+    /// Whether a save failure was the unique index over <c>(WalletId, ReferenceId)</c> rejecting a
+    /// duplicate transaction.
+    ///
+    /// Asks EF what was being written rather than matching a provider error number, for the reason
+    /// <see cref="IsDuplicateSettlement"/> gives: the tests run on SQLite, which reports a different
+    /// code from SQL Server, and a check that only recognised the SQL Server one would leave this
+    /// path untested. A save from this method adds exactly one entity, the Transaction.
+    /// </summary>
+    private static bool IsDuplicateReference(DbUpdateException ex) =>
+        ex.Entries.Count > 0 && ex.Entries.All(e => e.Entity is Transaction);
 
     public async Task<(bool Success, string Message)> SettleTradeAsync(
         Guid tradeId, Guid buyerUserId, Guid sellerUserId,

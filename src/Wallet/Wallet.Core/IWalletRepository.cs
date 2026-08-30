@@ -1,4 +1,4 @@
-﻿namespace Wallet.Core;
+namespace Wallet.Core;
 
 public interface IWalletRepository
 {
@@ -12,6 +12,35 @@ public interface IWalletRepository
     
     // Transaction operations
     Task<Transaction> CreateTransactionAsync(Transaction transaction);
+
+    /// <summary>
+    /// The transaction already recorded against <paramref name="walletId"/> under
+    /// <paramref name="referenceId"/>, or null if that reference has not been used on this
+    /// wallet. Scoped to one wallet on purpose: settlement writes four legs under a single
+    /// trade id, one per participating wallet, so a reference is only unique together with the
+    /// wallet it moved.
+    /// </summary>
+    Task<Transaction?> FindTransactionByReferenceAsync(Guid walletId, string referenceId);
+
+    /// <summary>
+    /// Applies a wallet change and records its transaction, where the transaction's
+    /// <c>ReferenceId</c> makes the operation idempotent: if that reference has already been
+    /// recorded against this wallet, no balance moves and the original transaction is returned.
+    ///
+    /// <para>
+    /// The same shape as <see cref="SettleTradeAsync"/>, and for the same reason (issue #157):
+    /// a repeat is a success that does nothing, never an error an operator has to interpret.
+    /// The pre-check is an optimisation; the guarantee is the unique index over
+    /// <c>(WalletId, ReferenceId)</c>, which is what makes a concurrent duplicate impossible
+    /// rather than merely unlikely.
+    /// </para>
+    ///
+    /// <para>
+    /// A transaction with no reference cannot be deduplicated and is simply applied — that is
+    /// every lock, unlock and settlement leg, none of which route through here.
+    /// </para>
+    /// </summary>
+    Task<Transaction> ApplyWithIdempotencyAsync(WalletEntity wallet, Transaction transaction);
     Task<WalletTransaction?> GetTransactionAsync(Guid transactionId);
     Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null);
     Task<IEnumerable<WalletTransaction>> GetTransactionsByReferenceAsync(string referenceId);

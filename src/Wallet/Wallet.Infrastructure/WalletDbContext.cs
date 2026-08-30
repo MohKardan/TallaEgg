@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Wallet.Core;
 
 namespace Wallet.Infrastructure;
@@ -56,7 +56,12 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().Property(t => t.Currency).IsRequired().HasMaxLength(50);
         modelBuilder.Entity<Transaction>().Property(t => t.Type).IsRequired();
         modelBuilder.Entity<Transaction>().Property(t => t.Status).IsRequired();
-        modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId);
+        // Bounded so the unique index below has a key SQL Server will accept everywhere. Left
+        // unbounded, an indexed string maps to nvarchar(450) — 900 bytes, and with WalletId’s 16 that
+        // is 916, past the 900-byte index key limit on SQL Server 2014 and earlier, where the
+        // migration would fail at startup. What is stored here is trade ids (36 characters) and admin
+        // adjustment keys (around 110), so 256 is generous.
+        modelBuilder.Entity<Transaction>().Property(t => t.ReferenceId).HasMaxLength(256);
         modelBuilder.Entity<Transaction>().Property(t => t.Description).HasMaxLength(256);
         modelBuilder.Entity<Transaction>().Property(t => t.Detail); // nvarchar(max) for JSON data
         modelBuilder.Entity<Transaction>().Property(t => t.CreatedAt).IsRequired();
@@ -79,6 +84,24 @@ public class WalletDbContext : DbContext
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.WalletId, t.CreatedAt });
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Currency, t.CreatedAt });
         modelBuilder.Entity<Transaction>().HasIndex(t => new { t.Type, t.Status });
+
+        // The deduplication barrier for admin top-ups and deductions (issue #157). Same role as
+        // the TradeSettlements primary key below: the database, not the order in which code
+        // happens to run, is what makes a second application of one reference impossible.
+        //
+        // WalletId is part of the key and not optional. Settling a trade writes four transaction
+        // rows under one reference — the trade id — one for each of buyer/quote, buyer/base,
+        // seller/base and seller/quote (WalletRepository.SettleTradeAsync). Those are four
+        // different wallets, since settlement refuses a self-trade, so they stay distinct under
+        // this key; a unique index on ReferenceId alone would reject every trade in the system.
+        //
+        // The filter is not optional either. SQL Server treats NULLs as equal in a unique index,
+        // so without it a wallet could hold only one transaction with no reference — breaking
+        // every lock, unlock and unreferenced deposit after the first.
+        modelBuilder.Entity<Transaction>()
+            .HasIndex(t => new { t.WalletId, t.ReferenceId })
+            .IsUnique()
+            .HasFilter("[ReferenceId] IS NOT NULL");
 
         // TradeSettlement configuration — the settlement uniqueness barrier (issue #42).
         //
