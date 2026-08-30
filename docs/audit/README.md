@@ -64,6 +64,24 @@ asks for.
 Scope has also varied: the August pass excluded the **Affiliate** service at the product
 owner's request, and v7 keeps that exclusion.
 
+## Where these versions came from
+
+The numbered prompts in this directory are the working history of how this project learned to
+audit itself. They are archived so that a score can be read next to the method that produced
+it.
+
+- **[v1](METHODOLOGY_v1.md)** produced the 2026-07-08 audit.
+- **[v2](METHODOLOGY_v2.md)–[v6](METHODOLOGY_v6.md)** were drafted with the help of several
+  models — GPT-5.3, Claude Sonnet 5, Claude Fable 5 and Claude Opus 5 — each reviewing and
+  revising the version before it across several rounds. **None of them was ever used to run an
+  audit.** They are the iteration, not the instrument, and each carries a banner saying so.
+- **[v7](METHODOLOGY_v7.md)** is where that process settled, and the version the team decided
+  to audit with. It produced the 2026-08-29 audit.
+- **[v8](METHODOLOGY_v8.md)** is current, written from what that audit got wrong.
+
+So the jump from v1 to v7 in the trend table is not missing history: two versions have ever
+produced an audit, and the 2026-08-26 run used none at all.
+
 ## Why the methodology keeps changing
 
 Each version answers failures found in the run before it, so the version column above is also
