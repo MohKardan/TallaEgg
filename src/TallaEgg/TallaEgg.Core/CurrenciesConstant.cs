@@ -284,7 +284,9 @@ namespace TallaEgg.Core
         }
 
         /// <summary>
-        /// The storage precision of an order price. The Orders.Price column is decimal(18,2).
+        /// The storage precision of an order price. Independent of the Orders.Price column
+        /// itself, which #146 widened to decimal(28,8); this is an application-level cap, not a
+        /// mirror of the column.
         /// </summary>
         public const int OrderPriceDecimalPlaces = 2;
 

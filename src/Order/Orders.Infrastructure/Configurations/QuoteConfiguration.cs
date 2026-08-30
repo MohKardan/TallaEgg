@@ -13,10 +13,14 @@ public class QuoteConfiguration : IEntityTypeConfiguration<Quote>
 
         builder.Property(q => q.Symbol).IsRequired().HasMaxLength(20);
 
-        // Price precision must match the Orders.Price column exactly: decimal(18,2).
+        // Kept at decimal(18,2). #146 widened the Orders.Price column itself to decimal(28,8), so
+        // this no longer needs to match the column exactly — Orders.Price can hold more precision
+        // than a quote produces. It stays narrower here because nothing that creates a quote emits
+        // more than 2 decimal places today.
         //
-        // A quote price becomes an order price directly. If the quote carried more precision, it
-        // would recreate the discrepancy behind issue #52: the lock computed from one price and
+        // A quote price becomes an order price directly, so if this property carried more
+        // precision than Orders.Price could hold, storing it would silently round on the way in —
+        // the discrepancy behind issue #52, where the lock was computed from one price and
         // settlement from a differently-rounded one.
         builder.Property(q => q.BuyPrice).IsRequired().HasPrecision(18, 2);
         builder.Property(q => q.SellPrice).IsRequired().HasPrecision(18, 2);
