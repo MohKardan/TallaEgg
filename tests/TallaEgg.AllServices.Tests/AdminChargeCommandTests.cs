@@ -447,6 +447,45 @@ public class AdminChargeCommandTests
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
         Assert.Contains("CREDIT_SEKE_BAHAR", withdrawal.ReferenceId);
     }
+    /// <summary>
+    /// Whatever these commands offer, they have to accept. Found by testing the bot: the format
+    /// error listed "تومان" among the permitted types and the very next message refused it for
+    /// having no credit ledger — two lists disagreeing one screen apart, inside one command. That
+    /// is the same misleading-text defect this PR exists to close, so it is pinned rather than
+    /// just fixed.
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task ThePermittedTypesAreExactlyTheTypesTheCommandAccepts(string command)
+    {
+        var handler = Build();
+
+        // A malformed command, to make it print the list.
+        await SayAsync(handler, command + " badphone");
+
+        var help = Assert.Single(_messenger.Texts, t => t.Contains("نوع‌های مجاز"));
+
+        Assert.DoesNotContain("تومان", help);
+        foreach (var creditable in new[] { "آبشده", "سکه تمام بهار آزادی", "بیت‌کوین" })
+            Assert.Contains(creditable, help);
+    }
+
+    /// <summary>
+    /// And the list an unrecognised word is answered with is the same one, so the two ways of
+    /// asking "what may I type here" cannot drift apart.
+    /// </summary>
+    [Fact]
+    public async Task TheUnrecognisedWordListMatchesTheFormatHelpList()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 نقره");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+        Assert.DoesNotContain("تومان", reply);
+        Assert.Contains("آبشده", reply);
+    }
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
         public List<WalletRequest> Deposits { get; } = [];

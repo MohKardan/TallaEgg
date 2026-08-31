@@ -51,7 +51,7 @@ namespace TallaEgg.TelegramBot
             if (resolved is null)
             {
                 await _messenger.SendAsync(chatId,
-                    string.Format(BotMsgs.MsgAdminInvalidCurrency, typed, CurrenciesConstant.GetPersianNamesList()));
+                    string.Format(BotMsgs.MsgAdminInvalidCurrency, typed, CurrenciesConstant.GetCreditableNamesList()));
                 return null;
             }
 
@@ -87,7 +87,7 @@ namespace TallaEgg.TelegramBot
                 {
                     // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetPersianNamesList()));
+                        string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetCreditableNamesList()));
                     return true;
                 }
 
@@ -191,7 +191,7 @@ namespace TallaEgg.TelegramBot
                 {
                     // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetPersianNamesList()));
+                        string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetCreditableNamesList()));
                     return true;
                 }
 
