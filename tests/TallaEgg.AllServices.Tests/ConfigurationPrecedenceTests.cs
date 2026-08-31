@@ -167,6 +167,24 @@ public class ConfigurationPrecedenceTests
     }
 
     /// <summary>
+    /// The port override rests on a second ordering that no behavioural test can reach: the hosts
+    /// capture <c>serviceSection</c> early but read <c>Urls</c> off it late, and a
+    /// <see cref="IConfigurationSection"/> reads through to its root on every access, so the read
+    /// picks up providers registered after the capture. Move the <c>UseUrls</c> block up beside
+    /// the flattening it reads from and the port override dies silently — with every other test
+    /// in this file still green.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ApiHosts))]
+    public void EveryApiHost_ReadsItsUrls_AfterTheEnvironmentIsRegistered(string hostProgram)
+    {
+        var code = ReadHostProgram(hostProgram);
+
+        AssertRegisteredLast(code, hostProgram, "GetSection(\"Urls\")", "AddEnvironmentVariables");
+        AssertRegisteredLast(code, hostProgram, "UseUrls", "AddEnvironmentVariables");
+    }
+
+    /// <summary>
     /// Builds configuration the way the five API hosts do, in their order: the shared file, then
     /// the service's own section flattened into the root, then the host's own overrides.
     /// </summary>
@@ -216,18 +234,19 @@ public class ConfigurationPrecedenceTests
     }
 
     /// <summary>
-    /// Asserts that the last registration of <paramref name="expectedLast"/> comes after the last
-    /// registration of <paramref name="expectedFirst"/>.
+    /// Asserts that the last occurrence of <paramref name="expectedLast"/> comes after the last
+    /// occurrence of <paramref name="expectedFirst"/>.
     /// </summary>
     private static void AssertRegisteredLast(string code, string hostProgram, string expectedLast, string expectedFirst)
     {
         var last = code.LastIndexOf(expectedLast, StringComparison.Ordinal);
         var first = code.LastIndexOf(expectedFirst, StringComparison.Ordinal);
 
-        Assert.True(first >= 0, $"{hostProgram} no longer calls {expectedFirst} — this test is out of date.");
+        Assert.True(first >= 0, $"{hostProgram} no longer contains {expectedFirst} — this test is out of date.");
         Assert.True(last > first,
-            $"{hostProgram} must call {expectedLast} after {expectedFirst}. Configuration providers are " +
-            "last-wins, so registering it earlier lets the shared config file override the host (#159).");
+            $"{hostProgram} must reach {expectedLast} after {expectedFirst}, or the shared config file " +
+            "wins over the host again (#159): configuration providers are last-wins, and a section reads " +
+            "through to whatever providers exist at the moment it is read.");
     }
 
     /// <summary>
