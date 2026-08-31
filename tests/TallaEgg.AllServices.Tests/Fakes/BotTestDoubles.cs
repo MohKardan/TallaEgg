@@ -87,9 +87,20 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         throw new NotSupportedException(nameof(GetAllActiveOrdersAsync));
     public Task<(bool success, string message)> CancelOrderAsync(Guid orderId) =>
         throw new NotSupportedException(nameof(CancelOrderAsync));
-    public Task<(bool success, string message)> PublishQuoteAsync(
+    public Task<(bool success, string message, PendingQuoteDto? pending)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId) =>
         throw new NotSupportedException(nameof(PublishQuoteAsync));
+
+    // ── Quotes held by the plausibility band (issue #158) ───────────────────────
+
+    public Task<IReadOnlyList<PendingQuoteDto>> GetPendingQuotesAsync() =>
+        Task.FromResult<IReadOnlyList<PendingQuoteDto>>([]);
+
+    public Task<(bool success, string message)> ApprovePendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId) =>
+        throw new NotSupportedException(nameof(ApprovePendingQuoteAsync));
+
+    public Task<(bool success, string message)> RejectPendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId) =>
+        throw new NotSupportedException(nameof(RejectPendingQuoteAsync));
     public Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null) =>
         throw new NotSupportedException(nameof(CancelAllUserActiveOrdersAsync));
     public Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request) =>
@@ -166,6 +177,13 @@ public sealed class FakeUsersApiClient : IUsersApiClient
     public Dictionary<string, UserDto> UsersByPhone { get; } = [];
 
     public Task<UserDto?> GetUserAsync(long telegramId) => Task.FromResult(User);
+
+    /// <summary>Operators the bot should notify; empty unless a test sets it.</summary>
+    public Dictionary<UserRole, List<UserDto>> UsersByRole { get; } = [];
+
+    public Task<IReadOnlyList<UserDto>> GetUsersByRoleAsync(UserRole role) =>
+        Task.FromResult<IReadOnlyList<UserDto>>(
+            UsersByRole.TryGetValue(role, out var users) ? users : []);
 
     public Task<UserDto?> GetUserAsync(string phone) => Task.FromResult(
         UsersByPhone.Count == 0

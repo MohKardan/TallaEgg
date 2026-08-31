@@ -805,10 +805,19 @@ namespace TallaEgg.TelegramBot
             // published and the price shown cannot drift apart (issue #65).
             var quote = QuoteMessage.Prepare(asset, buyPrice, sellPrice);
 
-            var (published, publishMessage) = await _orderApi.PublishQuoteAsync(
+            var (published, publishMessage, pending) = await _orderApi.PublishQuoteAsync(
                 asset, quote.BuyPricePerGram, quote.SellPricePerGram, userId);
 
-            if (published)
+            if (pending is not null)
+            {
+                // Too far from the current quote to publish unasked. The band applies to a price
+                // an admin typed as much as to one the feed produced — a mistyped zero does the
+                // same damage, and a manual quote is tradeable the moment it lands (issue #158).
+                // The admin is right here, so the question goes straight back to them.
+                var (text, keyboard) = PendingQuoteMessage.Build(pending, DateTime.UtcNow);
+                await _messenger.SendAsync(chatId, text, keyboard);
+            }
+            else if (published)
             {
                 await _messenger.SendAsync(chatId, quote.Text);
             }
@@ -817,6 +826,46 @@ namespace TallaEgg.TelegramBot
                 await _messenger.SendAsync(chatId,
                     string.Format(BotMsgs.MsgAdminQuoteFailed, publishMessage));
             }
+        }
+
+        /// <summary>
+        /// Answers a quote the plausibility band is holding (issue #158).
+        ///
+        /// <para>
+        /// The proposal id travels in the callback data rather than in conversation state,
+        /// because the message can sit in Telegram for minutes, several symbols can be waiting at
+        /// once, and any admin may be the one who answers — none of which a per-conversation
+        /// "current pending quote" would survive.
+        /// </para>
+        ///
+        /// <para>
+        /// "Already answered" and "expired" both come back as refusals with a sentence written for
+        /// the admin, and both are ordinary: two admins can press at once, and a button in an old
+        /// message is exactly what the expiry window exists to stop.
+        /// </para>
+        /// </summary>
+        private async Task HandlePendingQuoteDecisionAsync(long chatId, Guid adminUserId, string callbackData)
+        {
+            var separator = callbackData.IndexOf(':');
+            if (separator < 0 || !Guid.TryParse(callbackData[(separator + 1)..], out var pendingQuoteId))
+            {
+                _logger.LogWarning("Unparseable pending-quote callback: {CallbackData}", callbackData);
+                return;
+            }
+
+            var approving = callbackData.StartsWith(InlineCallBackData.approve_quote, StringComparison.Ordinal);
+
+            var (success, message) = approving
+                ? await _orderApi.ApprovePendingQuoteAsync(pendingQuoteId, adminUserId)
+                : await _orderApi.RejectPendingQuoteAsync(pendingQuoteId, adminUserId);
+
+            if (!success)
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminQuoteResolveFailed, message));
+                return;
+            }
+
+            await _messenger.SendAsync(chatId, message);
         }
 
         /// <summary>

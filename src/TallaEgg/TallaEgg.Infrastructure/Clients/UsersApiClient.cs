@@ -9,6 +9,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Requests.User;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
@@ -230,6 +231,32 @@ public class UsersApiClient : IUsersApiClient
             return (false, "خطای غیرمنتظره", null);
         }
     }
+    public async Task<IReadOnlyList<UserDto>> GetUsersByRoleAsync(UserRole role)
+    {
+        try
+        {
+            using var response = await _httpClient.GetAsync($"{_baseUrl}/users/by-role/{role}");
+            var payload = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Users API returned {StatusCode} while listing {Role} users.",
+                    (int)response.StatusCode, role);
+                return [];
+            }
+
+            // This endpoint answers with a bare array rather than the ApiResponse envelope the rest
+            // of the API uses. Left as it is: changing its shape would be a change to a contract
+            // this issue has no business touching.
+            return JsonConvert.DeserializeObject<List<UserDto>>(payload) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing {Role} users.", role);
+            return [];
+        }
+    }
+
     public async Task<UserDto?> GetUserAsync(long telegramId)
     {
         try

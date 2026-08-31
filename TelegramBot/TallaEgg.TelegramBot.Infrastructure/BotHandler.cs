@@ -467,6 +467,26 @@ namespace TallaEgg.TelegramBot
             var telegramId = callbackQuery.From?.Id ?? 0;
             var data = callbackQuery.Data ?? "";
 
+            // Answering a held quote carries the proposal id after a colon, so it cannot be matched
+            // by the constant switch below (issue #158). Handled first, and only for an admin: the
+            // buttons are only ever sent to admins, but a callback is just a string and anyone who
+            // has seen one could send it back.
+            if (data.StartsWith(InlineCallBackData.approve_quote, StringComparison.Ordinal) ||
+                data.StartsWith(InlineCallBackData.reject_quote, StringComparison.Ordinal))
+            {
+                var responder = await _usersApi.GetUserAsync(telegramId);
+
+                if (responder is null || !IsOperator(responder))
+                {
+                    await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgCallbackMessageGone);
+                    return;
+                }
+
+                await _messenger.AnswerCallbackAsync(callbackQuery.Id, "");
+                await HandlePendingQuoteDecisionAsync(chatId, responder.Id, data);
+                return;
+            }
+
             switch (data)
             {
                 case InlineCallBackData.buy_spot:

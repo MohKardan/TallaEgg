@@ -421,7 +421,7 @@ public class OrderApiClient : IOrderApiClient
     /// Publishes the admin's quote. Prices are sent per base unit, toman per gram; the conversion
     /// from mesghal happens before this method is called.
     /// </summary>
-    public async Task<(bool success, string message)> PublishQuoteAsync(
+    public async Task<(bool success, string message, PendingQuoteDto? pending)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId)
     {
         try
@@ -438,13 +438,70 @@ public class OrderApiClient : IOrderApiClient
             // lesson as issue #38.
             var message = TryReadMessage(body);
 
-            return response.IsSuccessStatusCode
-                ? (true, message ?? "مظنه منتشر شد.")
-                : (false, message ?? $"خطا در انتشار مظنه (کد {(int)response.StatusCode}).");
+            if (!response.IsSuccessStatusCode)
+                return (false, message ?? $"خطا در انتشار مظنه (کد {(int)response.StatusCode}).", null);
+
+            // A 200 does not mean the quote is live: the band may be holding it for approval.
+            var result = Deserialize<ApiResponse<PublishQuoteResult>>(body);
+            var pending = result?.Data?.Pending;
+
+            return (true, message ?? "مظنه منتشر شد.", pending);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while publishing a quote.");
+            return (false, "خطا در ارتباط با سرور", null);
+        }
+    }
+
+    // ── Quotes held by the plausibility band (issue #158) ───────────────────────
+
+    public async Task<IReadOnlyList<PendingQuoteDto>> GetPendingQuotesAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_baseUrl}/quotes/pending");
+            if (!response.IsSuccessStatusCode) return [];
+
+            var body = await response.Content.ReadAsStringAsync();
+            var result = Deserialize<ApiResponse<List<PendingQuoteDto>>>(body);
+
+            return result?.Data ?? [];
+        }
+        catch (Exception ex)
+        {
+            // Polled on a timer, so one failed read costs nothing but the next interval.
+            _logger.LogWarning(ex, "Could not read the quotes waiting for approval.");
+            return [];
+        }
+    }
+
+    public Task<(bool success, string message)> ApprovePendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId) =>
+        ResolvePendingQuoteAsync(pendingQuoteId, adminUserId, "approve");
+
+    public Task<(bool success, string message)> RejectPendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId) =>
+        ResolvePendingQuoteAsync(pendingQuoteId, adminUserId, "reject");
+
+    private async Task<(bool success, string message)> ResolvePendingQuoteAsync(
+        Guid pendingQuoteId, Guid adminUserId, string action)
+    {
+        try
+        {
+            var content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(new { adminUserId }), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync($"{_baseUrl}/quotes/pending/{pendingQuoteId}/{action}", content);
+            var body = await response.Content.ReadAsStringAsync();
+
+            // "already answered" and "expired" both arrive here as a refusal with a sentence written
+            // for the admin, and both are ordinary outcomes for a button in an old message.
+            var message = TryReadMessage(body);
+
+            return (response.IsSuccessStatusCode, message ?? "خطا در ثبت پاسخ.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error while resolving pending quote {PendingQuoteId}.", pendingQuoteId);
             return (false, "خطا در ارتباط با سرور");
         }
     }
@@ -651,6 +708,27 @@ public class OrderApiClient : IOrderApiClient
     /// Extracts the message from an ApiResponse body, returning null when it cannot be parsed so the
     /// caller can supply its own fallback — reading a message must never fail the operation.
     /// </summary>
+    /// <summary>
+    /// Reads a typed body, returning null rather than throwing on anything unexpected.
+    ///
+    /// Case-insensitive to match TryReadMessage: the APIs serialize camelCase and the DTOs are
+    /// PascalCase, so a strict reader would silently produce a default-valued object.
+    /// </summary>
+    private static T? Deserialize<T>(string body) where T : class
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<T>(
+                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     private static string? TryReadMessage(string body)
     {
         if (string.IsNullOrWhiteSpace(body)) return null;

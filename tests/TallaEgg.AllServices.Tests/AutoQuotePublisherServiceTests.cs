@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -44,6 +44,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
         services.AddScoped(_ => new OrdersDbContext(Options()));
         services.AddScoped<IAutoQuoteSettingsRepository, AutoQuoteSettingsRepository>();
         services.AddScoped<IQuoteRepository, QuoteRepository>();
+        services.AddScoped<IPendingQuoteRepository, PendingQuoteRepository>();
         services.AddScoped(_ => new ReferencePriceProviderChain([_stubProvider], NullLogger<ReferencePriceProviderChain>.Instance));
         _provider = services.BuildServiceProvider();
     }
@@ -99,6 +100,19 @@ public class AutoQuotePublisherServiceTests : IDisposable
         settings.SetEnabled(isEnabled, updatedBy);
         db.AutoQuoteSettings.Add(settings);
         await db.SaveChangesAsync();
+    }
+
+    private async Task<List<PendingQuote>> ProposalsAsync(string symbol = Symbol)
+    {
+        using var db = new OrdersDbContext(Options());
+        return await db.PendingQuotes.Where(p => p.Symbol == symbol).OrderBy(p => p.CreatedAt).ToListAsync();
+    }
+
+    private async Task<PendingQuote?> AwaitingApprovalAsync(string symbol = Symbol)
+    {
+        using var db = new OrdersDbContext(Options());
+        return await db.PendingQuotes
+            .SingleOrDefaultAsync(p => p.Symbol == symbol && p.Status == PendingQuoteStatus.Pending);
     }
 
     private async Task<Quote?> ActiveQuoteAsync(string symbol = Symbol)
@@ -272,10 +286,11 @@ public class AutoQuotePublisherServiceTests : IDisposable
         // Each number is asserted together with the words that give it its meaning. Bare
         // substrings would not do: "100" for the deviation also matches inside "1000000",
         // so the assertion would still pass with the deviation missing from the message.
-        Assert.Contains("reference price 2000000 is", warning.Message);
+        Assert.Contains("held for approval", warning.Message);
+        Assert.Matches(@"proposed buy 1990000(\.0+)?, sell 2010000(\.0+)?", warning.Message);
         Assert.Matches(@"is 100(\.0+)?% away from the last published mid 1000000", warning.Message);
         Assert.Contains("plausibility band of ±5%", warning.Message);
-        Assert.Matches(@"Keeping the previous quote \(buy 995000(\.0+)?, sell 1005000(\.0+)?\)", warning.Message);
+        Assert.Contains("The previous quote stands until an admin answers", warning.Message);
     }
 
     /// <summary>
@@ -406,113 +421,99 @@ public class AutoQuotePublisherServiceTests : IDisposable
     }
 
     // -----------------------------------------------------------------------------------
-    // Stopping, rather than holding a stale quote forever.
+    // Holding an out-of-band price for an admin, rather than stopping the symbol.
     //
-    // Holding the previous quote is right for one bad tick and wrong for an hour of them: the
-    // anchor only moves when a quote is published, and publishing only happens when the band
-    // passes, so a genuine move over the band would freeze the shop on the old price with no
-    // way out. Confirmed before this was written — thirty ticks at a stable, 10%-higher market
-    // left the old quote active and tradeable, and nothing in QuoteFillService checks a
-    // quote's age. Three consecutive rejections now take the symbol out of service instead.
+    // The first design refused the tick and, after three in a row, deactivated the quote and
+    // switched auto-quote off. That turned a suspicious price into a silent outage, and it could
+    // be walked around: with the quote deactivated the symbol had no anchor, so re-enabling
+    // auto-quote hit the cold-start path and published the very price that had been refused. Seen
+    // happening in a live session, which is what produced this design.
     // -----------------------------------------------------------------------------------
 
-    private async Task<bool> AutoQuoteIsEnabledAsync(string symbol = Symbol)
-    {
-        using var db = new OrdersDbContext(Options());
-        return (await db.AutoQuoteSettings.SingleAsync(x => x.Symbol == symbol)).IsEnabled;
-    }
-
+    /// <summary>The price is not published, and it is recorded as a question rather than dropped.</summary>
     [Fact]
-    public async Task TwoConsecutiveRejectionsKeepQuoting()
+    public async Task AnOutOfBandPriceIsHeldForApprovalInsteadOfPublished()
     {
         await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
         await SeedPublishedQuoteAsync(1_000_000m);
 
-        _stubProvider.Price = 1_100_000m;
-        await RunTickAsync();
+        _stubProvider.Price = 2_000_000m;
         await RunTickAsync();
 
-        Assert.Equal(995_000m, (await ActiveQuoteAsync())!.BuyPrice);
-        Assert.True(await AutoQuoteIsEnabledAsync());
-        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Error);
+        Assert.Equal(995_000m, (await ActiveQuoteAsync())!.BuyPrice);   // the previous quote stands
+
+        var held = await AwaitingApprovalAsync();
+        Assert.NotNull(held);
+        Assert.Equal(QuoteSource.Auto, held!.Source);
+        Assert.Equal(1_990_000m, held.BuyPrice);
+        Assert.Equal(2_010_000m, held.SellPrice);
+        Assert.Equal(1_000_000m, held.PreviousMid);
+        Assert.Equal(100m, held.DeviationPercent);
     }
 
     /// <summary>
-    /// The third rejection takes the symbol out of service: no active quote for QuoteFillService
-    /// to sell against, and auto-quote off so the next tick cannot publish an unanchored price
-    /// through the cold-start path. The old quote row is deactivated, not deleted — past trades
-    /// still need to say what price was in force.
+    /// Auto-quote stays on. Switching the feature off was the old design's mistake: deciding what
+    /// gets published is the band's job, and turning the feature off is the admin's.
     /// </summary>
     [Fact]
-    public async Task ThreeConsecutiveRejectionsStopQuotingTheSymbolAndLogAnError()
+    public async Task HoldingAPriceDoesNotDisableAutoQuoteOrDeactivateTheQuote()
     {
         await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
         await SeedPublishedQuoteAsync(1_000_000m);
 
-        _stubProvider.Price = 1_100_000m;
-        await RunTickAsync();
-        await RunTickAsync();
-        await RunTickAsync();
-
-        Assert.Null(await ActiveQuoteAsync());
-        Assert.False(await AutoQuoteIsEnabledAsync());
-
-        var error = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Error);
-        Assert.Contains("stopped after 3 consecutive prices", error.Message);
+        _stubProvider.Price = 2_000_000m;
+        for (var tick = 0; tick < 5; tick++) await RunTickAsync();
 
         using var db = new OrdersDbContext(Options());
-        Assert.Single(db.Quotes);   // deactivated, still there as history
-    }
-
-    /// <summary>
-    /// After the stop, a perfectly sane price changes nothing — an admin has to publish a quote
-    /// by hand and re-enable auto-quote. Without this the stop would be theatre: the very next
-    /// tick would publish through the cold-start path, which is unanchored by definition.
-    /// </summary>
-    [Fact]
-    public async Task AfterStoppingEvenAGoodPricePublishesNothing()
-    {
-        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
-        await SeedPublishedQuoteAsync(1_000_000m);
-
-        _stubProvider.Price = 1_100_000m;
-        for (var tick = 0; tick < 3; tick++) await RunTickAsync();
-
-        _stubProvider.Price = 1_010_000m;
-        await RunTickAsync();
-
-        Assert.Null(await ActiveQuoteAsync());
-    }
-
-    /// <summary>
-    /// Only <em>consecutive</em> rejections count. An outlier every other tick is the transient
-    /// case the band already handles by holding the previous quote, and must never accumulate
-    /// into a shutdown of a symbol that is quoting perfectly well.
-    /// </summary>
-    [Fact]
-    public async Task AnAcceptedTickClearsTheRejectionStreak()
-    {
-        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
-        await SeedPublishedQuoteAsync(1_000_000m);
-
-        for (var round = 0; round < 3; round++)
-        {
-            _stubProvider.Price = 2_000_000m;   // rejected
-            await RunTickAsync();
-            await RunTickAsync();
-
-            _stubProvider.Price = 1_000_000m;   // accepted, streak back to zero
-            await RunTickAsync();
-        }
-
+        Assert.True((await db.AutoQuoteSettings.SingleAsync(a => a.Symbol == Symbol)).IsEnabled);
         Assert.NotNull(await ActiveQuoteAsync());
-        Assert.True(await AutoQuoteIsEnabledAsync());
-        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Error);
     }
 
-    /// <summary>One symbol stopping must not stop another; the streak is counted per symbol.</summary>
+    /// <summary>
+    /// A newer out-of-band price replaces the one waiting. The admin should always be deciding
+    /// about the newest price the shop has seen, not working through a backlog of stale ones.
+    /// </summary>
     [Fact]
-    public async Task StoppingOneSymbolLeavesAnotherQuoting()
+    public async Task ANewerOutOfBandPriceSupersedesTheOneWaiting()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 2_000_000m;
+        await RunTickAsync();
+
+        _stubProvider.Price = 3_000_000m;
+        await RunTickAsync();
+
+        var all = await ProposalsAsync();
+        Assert.Equal(2, all.Count);
+        Assert.Equal(PendingQuoteStatus.Superseded, all[0].Status);
+        Assert.Equal(PendingQuoteStatus.Pending, all[1].Status);
+        Assert.Equal(2_985_000m, all[1].BuyPrice);
+
+        // Still exactly one question outstanding, whatever the feed does.
+        Assert.NotNull(await AwaitingApprovalAsync());
+    }
+
+    /// <summary>A price that comes back inside the band publishes normally, question or no question.</summary>
+    [Fact]
+    public async Task APriceThatReturnsToTheBandPublishesUnaided()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 2_000_000m;
+        await RunTickAsync();
+
+        _stubProvider.Price = 1_020_000m;
+        await RunTickAsync();
+
+        Assert.Equal(1_014_900m, (await ActiveQuoteAsync())!.BuyPrice);
+    }
+
+    /// <summary>One symbol waiting on an answer must not hold up another.</summary>
+    [Fact]
+    public async Task AQuestionAboutOneSymbolDoesNotBlockAnother()
     {
         var coin = CurrenciesConstant.SEKE_BAHAR_IRT;
 
@@ -524,12 +525,67 @@ public class AutoQuotePublisherServiceTests : IDisposable
         await RunTickAsync(coin);
 
         _stubProvider.Price = 2_000_000m;
-        for (var tick = 0; tick < 3; tick++) await RunTickAsync(Symbol);
+        await RunTickAsync(Symbol);
+        await RunTickAsync(coin);
 
-        Assert.Null(await ActiveQuoteAsync(Symbol));
-        Assert.False(await AutoQuoteIsEnabledAsync(Symbol));
+        Assert.NotNull(await AwaitingApprovalAsync(Symbol));
+        Assert.NotNull(await AwaitingApprovalAsync(coin));
+        Assert.Equal(995_000m, (await ActiveQuoteAsync(Symbol))!.BuyPrice);
+        Assert.Equal(995_000m, (await ActiveQuoteAsync(coin))!.BuyPrice);
+    }
 
-        Assert.NotNull(await ActiveQuoteAsync(coin));
-        Assert.True(await AutoQuoteIsEnabledAsync(coin));
+    /// <summary>
+    /// Approving publishes the held price, and the quote is attributed to whoever proposed it —
+    /// approval says "this price is real", it does not make the approver its author.
+    /// </summary>
+    [Fact]
+    public async Task ApprovingAHeldPricePublishesIt()
+    {
+        var configuringAdmin = Guid.NewGuid();
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, configuringAdmin);
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 2_000_000m;
+        await RunTickAsync();
+
+        var held = (await AwaitingApprovalAsync())!;
+        var approver = Guid.NewGuid();
+
+        using (var scope = _provider.CreateScope())
+        {
+            var repo = scope.ServiceProvider.GetRequiredService<IPendingQuoteRepository>();
+            await repo.ApproveAsync((await repo.GetAsync(held.Id))!, approver);
+        }
+
+        var published = await ActiveQuoteAsync();
+        Assert.Equal(1_990_000m, published!.BuyPrice);
+        Assert.Equal(configuringAdmin, published.PublishedByUserId);
+
+        using var db = new OrdersDbContext(Options());
+        var resolved = await db.PendingQuotes.SingleAsync(p => p.Id == held.Id);
+        Assert.Equal(PendingQuoteStatus.Approved, resolved.Status);
+        Assert.Equal(approver, resolved.ResolvedByUserId);
+    }
+
+    /// <summary>Rejecting publishes nothing and leaves the previous quote in force.</summary>
+    [Fact]
+    public async Task RejectingAHeldPriceLeavesThePreviousQuoteInForce()
+    {
+        await SeedSettingsAsync(isEnabled: true, spreadPercent: 1m, Guid.NewGuid());
+        await SeedPublishedQuoteAsync(1_000_000m);
+
+        _stubProvider.Price = 2_000_000m;
+        await RunTickAsync();
+
+        var held = (await AwaitingApprovalAsync())!;
+
+        using (var scope = _provider.CreateScope())
+        {
+            var repo = scope.ServiceProvider.GetRequiredService<IPendingQuoteRepository>();
+            await repo.RejectAsync((await repo.GetAsync(held.Id))!, Guid.NewGuid());
+        }
+
+        Assert.Equal(995_000m, (await ActiveQuoteAsync())!.BuyPrice);
+        Assert.Null(await AwaitingApprovalAsync());
     }
 }
