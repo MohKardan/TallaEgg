@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
+using TallaEgg.Core.Utilties;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.DTOs.Wallet;
@@ -221,6 +222,77 @@ public class AdminChargeCommandTests
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
     }
 
+    /// <summary>
+    /// The figure a deduplicated repeat shows has to be what the customer holds now, not what the
+    /// original operation left behind. Found against the running bot: a deduction, then a second
+    /// larger deduction, then the first one re-sent — the reply quoted the balance from before the
+    /// second deduction, labelled as the current one.
+    /// </summary>
+    [Fact]
+    public async Task ADeduplicatedChargeQuotesTheBalanceAsItStandsNow()
+    {
+        var handler = Build();
+        _walletApi.ReportAlreadyApplied = true;
+        _walletApi.CurrentBalance = 700m;          // the wallet has moved on since
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+        Assert.Contains(PersianFormat.Amount(700m, "CREDIT_SEKE_BAHAR"), reply);
+        Assert.DoesNotContain("کنونی کاربر: " + PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
+    }
+
+    /// <summary>The deduction command carries the same correction.</summary>
+    [Fact]
+    public async Task ADeduplicatedDeductionQuotesTheBalanceAsItStandsNow()
+    {
+        var handler = Build();
+        _walletApi.ReportAlreadyApplied = true;
+        _walletApi.CurrentBalance = 4_200m;
+
+        await SayAsync(handler, "د 09158527483 500 تومان");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+        Assert.Contains(PersianFormat.Amount(4_200m, "IRT"), reply);
+    }
+
+    /// <summary>
+    /// An ordinary charge quotes the balance it just produced, not the live one. The two are the
+    /// same number in practice, so the stub is given a deliberately different CurrentBalance —
+    /// otherwise this passes whether or not the handler still distinguishes the two cases.
+    /// </summary>
+    [Fact]
+    public async Task AnOrdinaryChargeStillQuotesWhatItJustProduced()
+    {
+        var handler = Build();
+        _walletApi.CurrentBalance = 999m;          // must not appear: this charge was applied
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("افزایش اعتبار انجام شد"));
+        Assert.Contains(PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
+        Assert.DoesNotContain(PersianFormat.Amount(999m, "CREDIT_SEKE_BAHAR"), reply);
+    }
+
+    /// <summary>
+    /// A wallet too old to send CurrentBalance must not turn into a reported balance of zero. The
+    /// services are installed and restarted individually, so a bot running ahead of the wallet is
+    /// an ordinary deployment state, and the reply falls back to the figure the older wallet does
+    /// send rather than to nothing.
+    /// </summary>
+    [Fact]
+    public async Task AWalletThatSendsNoCurrentBalanceFallsBackInsteadOfReportingZero()
+    {
+        var handler = Build();
+        _walletApi.ReportAlreadyApplied = true;
+        _walletApi.OmitCurrentBalance = true;
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+        // Anchored to its label: a bare PersianFormat.Amount(0) is "۰", which also sits inside "۱۰۰".
+        Assert.Contains("اعتبار کنونی کاربر: " + PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
+    }
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
         public List<WalletRequest> Deposits { get; } = [];
@@ -228,6 +300,15 @@ public class AdminChargeCommandTests
 
         /// <summary>Makes the wallet answer the way it does for a reference it has already applied.</summary>
         public bool ReportAlreadyApplied { get; set; }
+
+        /// <summary>
+        /// What the wallet holds now. Set it apart from the amount to reproduce the case that
+        /// matters: a repeat whose original BalanceAfter is no longer what the customer holds.
+        /// </summary>
+        public decimal? CurrentBalance { get; set; }
+
+        /// <summary>Answers the way a wallet that predates the field does: without it at all.</summary>
+        public bool OmitCurrentBalance { get; set; }
 
         public override Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
         {
@@ -237,7 +318,8 @@ public class AdminChargeCommandTests
                 Asset = request.Asset,
                 BalanceBefore = 0,
                 BalanceAfter = request.Amount,
-                WasAlreadyApplied = ReportAlreadyApplied
+                WasAlreadyApplied = ReportAlreadyApplied,
+                CurrentBalance = OmitCurrentBalance ? null : CurrentBalance ?? request.Amount
             }));
         }
 
@@ -248,7 +330,9 @@ public class AdminChargeCommandTests
             {
                 Asset = request.Asset,
                 BalanceBefore = request.Amount,
-                BalanceAfter = 0
+                BalanceAfter = 0,
+                WasAlreadyApplied = ReportAlreadyApplied,
+                CurrentBalance = OmitCurrentBalance ? null : CurrentBalance ?? 0m
             }));
         }
     }

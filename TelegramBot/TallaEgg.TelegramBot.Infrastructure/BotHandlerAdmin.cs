@@ -98,13 +98,26 @@ namespace TallaEgg.TelegramBot
                         // told, and told that it was a repeat (issue #157).
                         var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
 
+                        // The repeat reports the original transaction, so its BalanceAfter is the credit
+                        // as it stood at that earlier moment. Anything charged or deducted since is
+                        // missing from it, which is why the repeat quotes CurrentBalance instead.
+                        //
+                        // Falling back to BalanceAfter, not to zero: a wallet that predates
+                        // CurrentBalance sends no such field, and the services restart independently.
+                        // The stale figure is the thing being fixed here, but telling an admin their
+                        // customer holds nothing would be the worse of the two answers.
+                        var creditNow = result.Data?.CurrentBalance ?? result.Data?.BalanceAfter ?? 0m;
+                        var creditNowText = alreadyApplied
+                            ? $"{PersianFormat.Amount(creditNow, currency)} {PersianFormat.Unit(currency)}"
+                            : newCreditText;
+
                         await _messenger.SendAsync(
                            message.Chat.Id,
                            string.Format(alreadyApplied ? BotMsgs.MsgAdminChargeAlreadyApplied : BotMsgs.MsgAdminChargeDone,
                                PersianFormat.Asset(currency),
                                amountText,
                                PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
-                               newCreditText));
+                               creditNowText));
 
                         if (!alreadyApplied)
                         {
@@ -190,13 +203,21 @@ namespace TallaEgg.TelegramBot
                         // customer is not told a second deduction happened (issue #157).
                         var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
 
+                        // Same reason as the charge command above, including the fallback: on a repeat
+                        // the figure that means "what this customer holds" is CurrentBalance, and a
+                        // wallet too old to send it must not turn into a reported balance of zero.
+                        var balanceNow = result.Data?.CurrentBalance ?? result.Data?.BalanceAfter ?? 0m;
+                        var balanceNowText = alreadyApplied
+                            ? $"{PersianFormat.Amount(balanceNow, currency)} {PersianFormat.Unit(currency)}"
+                            : newBalanceText;
+
                         await _messenger.SendAsync(
                                message.Chat.Id,
                                string.Format(alreadyApplied ? BotMsgs.MsgAdminDeductAlreadyApplied : BotMsgs.MsgAdminDeductDone,
                                    PersianFormat.Asset(currency),
                                    deductAmountText,
                                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
-                                   newBalanceText));
+                                   balanceNowText));
 
                         if (!alreadyApplied)
                         {

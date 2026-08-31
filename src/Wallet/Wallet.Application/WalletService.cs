@@ -7,6 +7,7 @@ using TallaEgg.Core.Utilties;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 using TallaEgg.Core.ErrorHandling;
+using Microsoft.Extensions.Logging;
 
 namespace Wallet.Application;
 
@@ -14,11 +15,13 @@ public class WalletService : IWalletService
 {
     private readonly IWalletRepository _walletRepository;
     private readonly WalletMapper _walletMapper;
+    private readonly ILogger<WalletService> _logger;
 
-    public WalletService(IWalletRepository walletRepository, WalletMapper walletMapper)
+    public WalletService(IWalletRepository walletRepository, WalletMapper walletMapper, ILogger<WalletService> logger)
     {
         _walletRepository = walletRepository;
         _walletMapper = walletMapper;
+        _logger = logger;
     }
 
     public async Task<WalletDTO> GetBalanceAsync(Guid userId, string asset)
@@ -141,11 +144,29 @@ public class WalletService : IWalletService
     /// <summary>
     /// The transaction this reference already produced on this wallet, or null if it is new.
     /// A caller with no reference can never be deduplicated and always gets null.
+    ///
+    /// <para>
+    /// A hit is logged here rather than in the repository. The repository logs its own
+    /// absorptions, but those only cover the concurrent case now that this check runs first — so
+    /// the ordinary repeat, which is the one that actually happens, left no trace anywhere in the
+    /// wallet service and could not be confirmed afterwards for an admin asking whether their
+    /// command had taken effect.
+    /// </para>
     /// </summary>
-    private async Task<Transaction?> AlreadyAppliedAsync(WalletEntity wallet, string? refId) =>
-        string.IsNullOrWhiteSpace(refId)
-            ? null
-            : await _walletRepository.FindTransactionByReferenceAsync(wallet.Id, refId);
+    private async Task<Transaction?> AlreadyAppliedAsync(WalletEntity wallet, string? refId)
+    {
+        if (string.IsNullOrWhiteSpace(refId)) return null;
+
+        var previous = await _walletRepository.FindTransactionByReferenceAsync(wallet.Id, refId);
+
+        if (previous is not null)
+            _logger.LogInformation(
+                "Reference {ReferenceId} was already applied to the {Asset} wallet of user {UserId} as transaction {TransactionId}; " +
+                "nothing moved and the original is being reported (idempotent).",
+                refId, wallet.Asset, wallet.UserId, previous.Id);
+
+        return previous;
+    }
 
 
 
@@ -190,6 +211,7 @@ public class WalletService : IWalletService
             UpdatedAt = result.walletEntity.UpdatedAt,
             TrackingCode = result.transactionEntity.TrackingCode,
             WasAlreadyApplied = result.wasAlreadyApplied,
+            CurrentBalance = result.walletEntity.Balance,
         };
     }
 
@@ -207,6 +229,7 @@ public class WalletService : IWalletService
             UpdatedAt = result.walletEntity.UpdatedAt,
             TrackingCode = result.transactionEntity.TrackingCode,
             WasAlreadyApplied = result.wasAlreadyApplied,
+            CurrentBalance = result.walletEntity.Balance,
         };
     }
 

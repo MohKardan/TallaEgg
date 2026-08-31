@@ -7,6 +7,8 @@ using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Core;
 using Wallet.Infrastructure;
+using TallaEgg.AllServices.Tests.Fakes;
+using Microsoft.Extensions.Logging;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -34,6 +36,7 @@ public class DepositIdempotencyTests : IDisposable
     private readonly HookedWalletDbContext _context;
     private readonly WalletRepository _repository;
     private readonly WalletService _service;
+    private readonly CapturingLogger<WalletService> _serviceLogger = new();
     private readonly Guid _userId = Guid.NewGuid();
 
     /// <summary>
@@ -67,7 +70,7 @@ public class DepositIdempotencyTests : IDisposable
         _context.Database.EnsureCreated();
 
         _repository = new WalletRepository(NullLogger<WalletRepository>.Instance, _context);
-        _service = new WalletService(_repository, new WalletMapper());
+        _service = new WalletService(_repository, new WalletMapper(), _serviceLogger);
 
         _context.Wallets.Add(WalletEntity.Create(_userId, Asset));
         _context.SaveChanges();
@@ -264,6 +267,97 @@ public class DepositIdempotencyTests : IDisposable
         Assert.True((await _service.DepositAsync(_userId, Asset, 100m, reference)).WasAlreadyApplied);
     }
 
+    /// <summary>
+    /// The number an admin reads as "what this customer holds" has to be what the wallet holds
+    /// now. A repeat reports the <em>original</em> transaction, so its BalanceAfter is the balance
+    /// at that earlier moment — correct for what it describes, and wrong for the question being
+    /// asked, because anything that happened since is missing from it.
+    ///
+    /// <para>
+    /// Found by testing the real bot: a 500 deduction, then a 1500 deduction, then the 500
+    /// re-sent. The repeat answered with the balance from before the 1500 came out, under a label
+    /// that said "current".
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ARepeatReportsTheBalanceAsItStandsNow_NotAsTheOriginalLeftIt()
+    {
+        const string reference = "admin-withdrawal:stale-figure";
+
+        await _service.DepositAsync(_userId, Asset, 10_000m);
+
+        var first = await _service.WithdrawalAsync(_userId, Asset, 500m, reference);
+        await _service.WithdrawalAsync(_userId, Asset, 1_500m, "admin-withdrawal:something-else");
+
+        var repeat = await _service.WithdrawalAsync(_userId, Asset, 500m, reference);
+
+        Assert.True(repeat.WasAlreadyApplied);
+
+        // What that first deduction left behind, unchanged: the repeat still reports the original.
+        Assert.Equal(9_500m, first.BalanceAfter);
+        Assert.Equal(9_500m, repeat.BalanceAfter);
+
+        // And what the wallet actually holds, which is the figure the admin is shown.
+        Assert.Equal(8_000m, repeat.CurrentBalance);
+        Assert.Equal(8_000m, await BalanceAsync());
+    }
+
+    /// <summary>
+    /// With nothing in between, the two agree — so quoting the live balance never makes an
+    /// ordinary repeat read differently from how it did before.
+    /// </summary>
+    [Fact]
+    public async Task WithNothingInBetweenTheRepeatsTwoFiguresAgree()
+    {
+        const string reference = "admin-deposit:agree";
+
+        await _service.DepositAsync(_userId, Asset, 300m, reference);
+        var repeat = await _service.DepositAsync(_userId, Asset, 300m, reference);
+
+        Assert.Equal(repeat.BalanceAfter, repeat.CurrentBalance);
+    }
+
+    /// <summary>An ordinary application reports the balance it just produced, as it always did.</summary>
+    [Fact]
+    public async Task AnOrdinaryApplicationReportsTheBalanceItProduced()
+    {
+        var result = await _service.DepositAsync(_userId, Asset, 250m, "admin-deposit:ordinary");
+
+        Assert.False(result.WasAlreadyApplied);
+        Assert.Equal(250m, result.BalanceAfter);
+        Assert.Equal(250m, result.CurrentBalance);
+    }
+
+    /// <summary>
+    /// A deduplicated repeat has to leave a trace in the wallet service, which is the system of
+    /// record. It did not: moving the check into the service to fix an earlier review finding
+    /// meant the ordinary repeat returned before reaching the repository, whose log line was the
+    /// only one — so an admin asking afterwards whether their command took effect could not be
+    /// answered from the wallet log at all.
+    /// </summary>
+    [Fact]
+    public async Task ADeduplicatedRepeatIsLogged()
+    {
+        const string reference = "admin-deposit:logged";
+
+        await _service.DepositAsync(_userId, Asset, 100m, reference);
+        _serviceLogger.Entries.Clear();
+
+        await _service.DepositAsync(_userId, Asset, 100m, reference);
+
+        var entry = Assert.Single(_serviceLogger.Entries, e => e.Level == LogLevel.Information);
+        Assert.Contains(reference, entry.Message);
+        Assert.Contains("idempotent", entry.Message);
+    }
+
+    /// <summary>And an ordinary application logs nothing, so the line stays a signal.</summary>
+    [Fact]
+    public async Task AnOrdinaryApplicationLogsNothing()
+    {
+        await _service.DepositAsync(_userId, Asset, 100m, "admin-deposit:quiet");
+
+        Assert.Empty(_serviceLogger.Entries);
+    }
     /// <summary>A deposit with no reference can never be a repeat, so the flag stays false.</summary>
     [Fact]
     public async Task AnUnreferencedDepositIsNeverFlagged()
