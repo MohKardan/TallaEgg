@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
@@ -40,7 +40,8 @@ public class WalletLazyCreationTests : IDisposable
         new(new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
 
     private WalletService NewService(WalletDbContext context) =>
-        new(new WalletRepository(NullLogger<WalletRepository>.Instance, context), new WalletMapper());
+        new(new WalletRepository(NullLogger<WalletRepository>.Instance, context), new WalletMapper(),
+            NullLogger<WalletService>.Instance);
 
     [Fact]
     public async Task DepositingAKnownAssetWithNoExistingWallet_CreatesOneRatherThanFailing()

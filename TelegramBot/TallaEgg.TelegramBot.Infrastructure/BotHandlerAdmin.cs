@@ -98,13 +98,20 @@ namespace TallaEgg.TelegramBot
                         // told, and told that it was a repeat (issue #157).
                         var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
 
+                        // The repeat reports the original transaction, so its BalanceAfter is the credit
+                        // as it stood at that earlier moment. Anything charged or deducted since is
+                        // missing from it, which is why the repeat quotes CurrentBalance instead.
+                        var creditNowText = alreadyApplied
+                            ? $"{PersianFormat.Amount(result.Data?.CurrentBalance ?? 0m, currency)} {PersianFormat.Unit(currency)}"
+                            : newCreditText;
+
                         await _messenger.SendAsync(
                            message.Chat.Id,
                            string.Format(alreadyApplied ? BotMsgs.MsgAdminChargeAlreadyApplied : BotMsgs.MsgAdminChargeDone,
                                PersianFormat.Asset(currency),
                                amountText,
                                PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
-                               newCreditText));
+                               creditNowText));
 
                         if (!alreadyApplied)
                         {
@@ -190,13 +197,19 @@ namespace TallaEgg.TelegramBot
                         // customer is not told a second deduction happened (issue #157).
                         var alreadyApplied = result.Data?.WasAlreadyApplied ?? false;
 
+                        // Same reason as the charge command above: on a repeat the figure that means
+                        // "what this customer holds" is CurrentBalance, not the earlier BalanceAfter.
+                        var balanceNowText = alreadyApplied
+                            ? $"{PersianFormat.Amount(result.Data?.CurrentBalance ?? 0m, currency)} {PersianFormat.Unit(currency)}"
+                            : newBalanceText;
+
                         await _messenger.SendAsync(
                                message.Chat.Id,
                                string.Format(alreadyApplied ? BotMsgs.MsgAdminDeductAlreadyApplied : BotMsgs.MsgAdminDeductDone,
                                    PersianFormat.Asset(currency),
                                    deductAmountText,
                                    PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
-                                   newBalanceText));
+                                   balanceNowText));
 
                         if (!alreadyApplied)
                         {

@@ -27,6 +27,19 @@ namespace TallaEgg.Core.DTOs.Wallet
         /// </para>
         /// </summary>
         public bool WasAlreadyApplied { get; set; }
+
+        /// <summary>
+        /// What the wallet holds now, as opposed to <see cref="BalanceAfter"/>, which is what the
+        /// operation being reported left behind.
+        ///
+        /// <para>
+        /// The two are the same for an operation that just ran, and differ whenever
+        /// <see cref="WasAlreadyApplied"/> is true: a repeat reports the original transaction, so its
+        /// BalanceAfter is the balance at that earlier moment, and anything that happened since is
+        /// not in it. Any caller writing the words "current balance" has to use this one.
+        /// </para>
+        /// </summary>
+        public decimal CurrentBalance { get; set; }
     }
 
   

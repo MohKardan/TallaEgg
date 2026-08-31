@@ -555,26 +555,34 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// nothing. Deliberately not an error: the charge they wanted did happen, and the figures
         /// are the ones it produced. Sent instead of MsgAdminChargeDone, and the customer gets no
         /// notification at all, because no money moved this time (issue #157).
+        ///
+        /// <para>
+        /// {3} is the credit the wallet holds <b>now</b>, which is not the same number as the one
+        /// the original top-up left behind: anything that happened in between is in it. An admin
+        /// re-sends precisely when they are unsure what has taken effect, so this is the worst
+        /// moment to hand them a figure whose label says "now" when it means "then".
+        /// </para>
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
-        /// {3} = the credit with unit.
+        /// {3} = the credit the wallet holds now, with unit.
         /// </summary>
         public const string MsgAdminChargeAlreadyApplied = "ℹ️ این شارژ پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
                                                           "دارایی: {0}\n" +
                                                           "مقدار: {1}\n" +
                                                           "کاربر: {2}\n" +
-                                                          "اعتبار فعلی: {3}\n\n" +
+                                                          "اعتبار کنونی کاربر: {3}\n\n" +
                                                           "اگر قصد داشتید بار دوم هم شارژ کنید، چند دقیقه دیگر دوباره تلاش کنید.";
 
         /// <summary>
-        /// The deduction counterpart of <see cref="MsgAdminChargeAlreadyApplied"/>.
+        /// The deduction counterpart of <see cref="MsgAdminChargeAlreadyApplied"/>, and {3} carries
+        /// the same meaning: the balance the wallet holds now, not the one that deduction produced.
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
-        /// {3} = the balance with unit.
+        /// {3} = the balance the wallet holds now, with unit.
         /// </summary>
         public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
                                                           "دارایی: {0}\n" +
                                                           "مقدار: {1}\n" +
                                                           "کاربر: {2}\n" +
-                                                          "موجودی فعلی: {3}\n\n" +
+                                                          "موجودی کنونی کاربر: {3}\n\n" +
                                                           "اگر قصد داشتید بار دوم هم کسر کنید، چند دقیقه دیگر دوباره تلاش کنید.";
 
         /// <summary>{0} = the error reason.</summary>
