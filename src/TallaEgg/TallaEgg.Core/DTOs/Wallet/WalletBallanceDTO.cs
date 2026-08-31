@@ -38,8 +38,17 @@ namespace TallaEgg.Core.DTOs.Wallet
         /// BalanceAfter is the balance at that earlier moment, and anything that happened since is
         /// not in it. Any caller writing the words "current balance" has to use this one.
         /// </para>
+        ///
+        /// <para>
+        /// <b>Nullable so that "the wallet did not send this" stays distinguishable from "the wallet
+        /// holds nothing".</b> The services are installed and restarted individually, so a bot that
+        /// comes back before the wallet does will deserialize a response without this field. As a
+        /// plain decimal that is silently zero, and the admin would be told the customer holds
+        /// nothing — a worse answer than the stale figure this field exists to replace. Callers fall
+        /// back to <see cref="BalanceAfter"/> when it is null.
+        /// </para>
         /// </summary>
-        public decimal CurrentBalance { get; set; }
+        public decimal? CurrentBalance { get; set; }
     }
 
   

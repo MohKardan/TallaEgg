@@ -257,18 +257,41 @@ public class AdminChargeCommandTests
     }
 
     /// <summary>
-    /// An ordinary charge is untouched: the balance it just produced is both figures, so the
-    /// message reads exactly as it did before.
+    /// An ordinary charge quotes the balance it just produced, not the live one. The two are the
+    /// same number in practice, so the stub is given a deliberately different CurrentBalance —
+    /// otherwise this passes whether or not the handler still distinguishes the two cases.
     /// </summary>
     [Fact]
     public async Task AnOrdinaryChargeStillQuotesWhatItJustProduced()
     {
         var handler = Build();
+        _walletApi.CurrentBalance = 999m;          // must not appear: this charge was applied
 
         await SayAsync(handler, "ش 09158527483 100 سکه");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("افزایش اعتبار انجام شد"));
         Assert.Contains(PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
+        Assert.DoesNotContain(PersianFormat.Amount(999m, "CREDIT_SEKE_BAHAR"), reply);
+    }
+
+    /// <summary>
+    /// A wallet too old to send CurrentBalance must not turn into a reported balance of zero. The
+    /// services are installed and restarted individually, so a bot running ahead of the wallet is
+    /// an ordinary deployment state, and the reply falls back to the figure the older wallet does
+    /// send rather than to nothing.
+    /// </summary>
+    [Fact]
+    public async Task AWalletThatSendsNoCurrentBalanceFallsBackInsteadOfReportingZero()
+    {
+        var handler = Build();
+        _walletApi.ReportAlreadyApplied = true;
+        _walletApi.OmitCurrentBalance = true;
+
+        await SayAsync(handler, "ش 09158527483 100 سکه");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
+        // Anchored to its label: a bare PersianFormat.Amount(0) is "۰", which also sits inside "۱۰۰".
+        Assert.Contains("اعتبار کنونی کاربر: " + PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
     }
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
@@ -284,6 +307,9 @@ public class AdminChargeCommandTests
         /// </summary>
         public decimal? CurrentBalance { get; set; }
 
+        /// <summary>Answers the way a wallet that predates the field does: without it at all.</summary>
+        public bool OmitCurrentBalance { get; set; }
+
         public override Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
         {
             Deposits.Add(request);
@@ -293,7 +319,7 @@ public class AdminChargeCommandTests
                 BalanceBefore = 0,
                 BalanceAfter = request.Amount,
                 WasAlreadyApplied = ReportAlreadyApplied,
-                CurrentBalance = CurrentBalance ?? request.Amount
+                CurrentBalance = OmitCurrentBalance ? null : CurrentBalance ?? request.Amount
             }));
         }
 
@@ -306,7 +332,7 @@ public class AdminChargeCommandTests
                 BalanceBefore = request.Amount,
                 BalanceAfter = 0,
                 WasAlreadyApplied = ReportAlreadyApplied,
-                CurrentBalance = CurrentBalance ?? 0m
+                CurrentBalance = OmitCurrentBalance ? null : CurrentBalance ?? 0m
             }));
         }
     }
