@@ -30,13 +30,41 @@ public class AutoQuotePublisherService : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(2);
 
+    /// <summary>
+    /// Comfortably longer than a tick (issue #160), because a tick fetches a reference price per
+    /// symbol over the network and losing the lease mid-tick would let a second instance start
+    /// publishing the same prices.
+    /// </summary>
+    private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(6);
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AutoQuotePublisherService> _logger;
+    private readonly LeaderGate _leaderGate;
 
-    public AutoQuotePublisherService(IServiceScopeFactory scopeFactory, ILogger<AutoQuotePublisherService> logger)
+    public AutoQuotePublisherService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<AutoQuotePublisherService> logger,
+        ILeaderLease leaderLease)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _leaderGate = new LeaderGate(ServiceLeaseRoles.AutoQuotePublisher, LeaseDuration, leaderLease, logger);
+    }
+
+    /// <summary>internal so a test can ask the gate directly, without driving the loop's timing.</summary>
+    internal Task<bool> TryLeadAsync(CancellationToken ct = default) => _leaderGate.TryLeadAsync(ct);
+
+    /// <summary>
+    /// Hands publishing back on a graceful shutdown so another instance takes over at once rather
+    /// than leaving the shop on a stale price for up to a lease period (issue #160).
+    /// </summary>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await base.StopAsync(cancellationToken);
+
+        // Not the caller's token: during a forced shutdown it is already cancelled, and this is a
+        // single UPDATE worth finishing.
+        await _leaderGate.ReleaseAsync(CancellationToken.None);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -45,6 +73,20 @@ public class AutoQuotePublisherService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // Only one instance publishes (issue #160). Two would write two quote rows per tick
+            // for the same symbol, and — worse — an out-of-band price would put the same approval
+            // request in front of the admin twice.
+            if (!await _leaderGate.TryLeadAsync(stoppingToken))
+            {
+                try
+                {
+                    await Task.Delay(PollInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) { break; }
+
+                continue;
+            }
+
             await ExpireStaleProposalsAsync();
 
             var activeSymbols = await ActiveSymbolsAsync(stoppingToken);

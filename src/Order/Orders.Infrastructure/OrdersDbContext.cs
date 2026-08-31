@@ -24,6 +24,9 @@ public class OrdersDbContext : DbContext
     /// <summary>Whether each symbol is enabled for trading — changeable by an admin bot command.</summary>
     public DbSet<SymbolSettings> SymbolSettings => Set<SymbolSettings>();
 
+    /// <summary>Which instance is currently running each single-writer background loop (issue #160).</summary>
+    public DbSet<ServiceLease> ServiceLeases => Set<ServiceLease>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new OrderConfigurations());
@@ -33,5 +36,6 @@ public class OrdersDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AutoQuoteSettingsConfiguration());
         modelBuilder.ApplyConfiguration(new PendingQuoteConfiguration());
         modelBuilder.ApplyConfiguration(new SymbolSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new ServiceLeaseConfiguration());
     }
 }

@@ -133,6 +133,10 @@ builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeStartupValidator>();
 builder.Services.AddScoped<Orders.Application.Services.PositionService>();
 
+// Names this instance and lets the background loops agree on which of them runs (issue #160).
+// Registered before the hosted services below, all three of which depend on it.
+builder.Services.AddInstanceCoordination();
+
 // Outbox processor: reliably delivers trade settlements to the Wallet service.
 builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorService>();
 
@@ -215,6 +219,13 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<OrdersDbContext>();
     await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+
+    // Says who this instance is before anything it writes to the database carries that name
+    // (issue #160). Running a second Orders.Api is supported now, but it is rarely intended here:
+    // this line and the follower warnings from the background loops are what make it visible
+    // instead of leaving the constraint in a code comment nobody deploying will read.
+    Log.Information("Orders.Api instance identity is {InstanceId}. Background loops coordinate through the ServiceLeases table.",
+        services.GetRequiredService<InstanceIdentity>().Value);
 
     // A symbol with an active quote but not in dealer mode means the admin's published price and
     // the configuration disagree. Logged only; it does not stop the service (issue #73).
@@ -1042,7 +1053,12 @@ app.MapGet("/api/outbox/unsettled", async (OrdersDbContext db, bool includeAband
             m.NextAttemptAt,
             m.LastError,
             m.AbandonReason,
-            m.AbandonedAt
+            m.AbandonedAt,
+            // Which instance is holding this message and until when (issue #160). A message that
+            // looks stuck while an unexpired lease sits on it is being worked on right now; one
+            // whose lease has passed was dropped by an instance that died mid-attempt.
+            m.LeasedBy,
+            m.LeaseExpiresAt
         })
         .ToListAsync();
 

@@ -23,9 +23,13 @@ public class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage
         builder.Property(m => m.LastError).HasMaxLength(2000);
         builder.Property(m => m.AbandonReason).HasMaxLength(2000);
         builder.Property(m => m.AbandonedAt);
+        builder.Property(m => m.LeasedBy).HasMaxLength(100);
+        builder.Property(m => m.LeaseExpiresAt);
 
-        // Hot-path query for the background processor: pending messages that are due.
-        builder.HasIndex(m => new { m.Status, m.NextAttemptAt });
+        // Hot-path query for the background processor: pending messages that are due and not
+        // already claimed by another instance. LeaseExpiresAt joined the index when the claim
+        // joined the query (issue #160) — the processor filters on all three every cycle.
+        builder.HasIndex(m => new { m.Status, m.NextAttemptAt, m.LeaseExpiresAt });
 
         // Idempotency guard: at most one outbox row per aggregate per message type,
         // so a retried match cannot enqueue the same settlement twice.

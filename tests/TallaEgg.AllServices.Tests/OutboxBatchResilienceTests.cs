@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
@@ -105,6 +106,7 @@ public class OutboxBatchResilienceTests : IDisposable
 
         var processor = new OutboxProcessorService(
             _provider.GetRequiredService<IServiceScopeFactory>(),
+            new InstanceIdentity("batch-resilience-tests"),
             NullLogger<OutboxProcessorService>.Instance);
 
         // Must not throw — the loop absorbs the persistence failure.

@@ -63,6 +63,25 @@ public class OutboxMessage
     /// <summary>When the message was abandoned. Null unless <see cref="Status"/> is <see cref="OutboxMessageStatus.Abandoned"/>.</summary>
     public DateTime? AbandonedAt { get; private set; }
 
+    /// <summary>
+    /// The instance currently processing this message, or null if none holds it (issue #160).
+    ///
+    /// Written by the atomic claim in the processor, not by any method here: the claim has to be
+    /// a single UPDATE with its conditions in the WHERE clause, or two instances both read "free"
+    /// before either writes. Cleared here once the attempt finishes.
+    /// </summary>
+    public string? LeasedBy { get; private set; }
+
+    /// <summary>
+    /// When the claim on this message stops being honoured. Null if it is not claimed.
+    ///
+    /// The expiry is what makes this a lease rather than a lock. A processor that crashes
+    /// mid-message leaves the claim behind; without an expiry the message would stay claimed
+    /// forever, which for a settlement means a recorded trade nobody ever pays out and collateral
+    /// locked with it. With one, the row simply becomes claimable again.
+    /// </summary>
+    public DateTime? LeaseExpiresAt { get; private set; }
+
     // EF Core
     private OutboxMessage() { }
 
@@ -95,6 +114,7 @@ public class OutboxMessage
         ProcessedAt = DateTime.UtcNow;
         NextAttemptAt = null;
         LastError = null;
+        ClearLease();
     }
 
     /// <summary>
@@ -117,6 +137,11 @@ public class OutboxMessage
             var delayTicks = baseDelay.Ticks * (long)Math.Pow(2, RetryCount - 1);
             NextAttemptAt = DateTime.UtcNow.Add(TimeSpan.FromTicks(delayTicks));
         }
+
+        // Released even though the attempt failed: the backoff in NextAttemptAt already decides
+        // when this message may run again, and holding the lease on top of it would only delay
+        // the retry by however much of the lease was left.
+        ClearLease();
     }
 
     /// <summary>
@@ -141,6 +166,10 @@ public class OutboxMessage
         RetryCount = 0;
         NextAttemptAt = DateTime.UtcNow;
         ProcessedAt = null;
+
+        // A message that failed while an instance held it can keep a stale claim. An operator
+        // re-driving it means "run this now", so the claim goes with the rest of the old attempt.
+        ClearLease();
     }
 
     /// <summary>
@@ -167,5 +196,19 @@ public class OutboxMessage
         AbandonReason = reason;
         AbandonedAt = DateTime.UtcNow;
         NextAttemptAt = null;
+        ClearLease();
+    }
+
+    /// <summary>
+    /// Gives up this instance's claim on the message (issue #160).
+    ///
+    /// Private because releasing is only ever the tail of finishing an attempt — completing it,
+    /// failing it, re-driving it or abandoning it. A caller able to release a claim on its own
+    /// could hand a message another instance is still working on to a second processor.
+    /// </summary>
+    private void ClearLease()
+    {
+        LeasedBy = null;
+        LeaseExpiresAt = null;
     }
 }

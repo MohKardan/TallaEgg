@@ -47,18 +47,34 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     // If peer-to-peer trading is ever opened, the rule has to be restated in terms of the new
     // model — probably "at least one side is an administrator" — rather than restored as it was.
 
+    /// <summary>
+    /// Decides whether this instance runs the background sweep (issue #160).
+    ///
+    /// Thirty seconds, renewed at the halfway mark, so a loop that ticks every second makes one
+    /// database round trip every fifteen rather than one per tick — and a host that dies still
+    /// hands the sweep over within about a minute.
+    /// </summary>
+    private static readonly TimeSpan LeaseDuration = TimeSpan.FromSeconds(30);
+
+    private readonly LeaderGate _leaderGate;
+
     public MatchingEngineService(
         IServiceScopeFactory scopeFactory,
         ILogger<MatchingEngineService> logger,
         IServiceProvider serviceProvider,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILeaderLease leaderLease)
     {
         _scopeFactory = scopeFactory;
 
         _logger = logger;
         _serviceProvider = serviceProvider;
 
+        _leaderGate = new LeaderGate(ServiceLeaseRoles.MatchingEngine, LeaseDuration, leaderLease, logger);
     }
+
+    /// <summary>internal so a test can ask the gate directly, without driving the loop's timing.</summary>
+    internal Task<bool> TryLeadAsync(CancellationToken ct = default) => _leaderGate.TryLeadAsync(ct);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -69,6 +85,19 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         {
             while (!stoppingToken.IsCancellationRequested && _isRunning)
             {
+                // Only one instance sweeps the order book (issue #160). The semaphore below
+                // serialises this loop against itself within one process and is invisible to a
+                // second one; the lease is not.
+                //
+                // The sweep alone is gated. ProcessOrderAsync, which OrderService calls on the
+                // request path, stays available on every instance — gating that would mean an
+                // order placed against a follower was never matched at all.
+                if (!await _leaderGate.TryLeadAsync(stoppingToken))
+                {
+                    await Task.Delay(_processingInterval, stoppingToken);
+                    continue;
+                }
+
                 using var scope = _scopeFactory.CreateScope();
                 var _walletApiClient = scope.ServiceProvider.GetRequiredService<IWalletApiClient>();
 
@@ -102,6 +131,20 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
             _isRunning = false;
             _logger.LogInformation("🛑 Matching Engine Service has stopped");
         }
+    }
+
+    /// <summary>
+    /// Hands the sweep back on a graceful shutdown so another instance can take it over at once
+    /// rather than waiting out the lease (issue #160). A crash skips this, which is what the
+    /// lease expiry is for.
+    /// </summary>
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await base.StopAsync(cancellationToken);
+
+        // Not the caller's token: on a forced shutdown it is already cancelled, and the release is
+        // a single UPDATE worth finishing so the next instance does not sit idle for half a minute.
+        await _leaderGate.ReleaseAsync(CancellationToken.None);
     }
 
     /// <summary>

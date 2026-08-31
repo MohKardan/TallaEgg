@@ -36,6 +36,8 @@ public class MatchingEngineRegistrationTests
             new ConfigurationBuilder().AddInMemoryCollection().Build());
         services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
 
+        // The engine takes a lease to decide whether it runs the background sweep (issue #160).
+        services.AddInstanceCoordination();
         services.AddMatchingEngine();
 
         return services.BuildServiceProvider();
