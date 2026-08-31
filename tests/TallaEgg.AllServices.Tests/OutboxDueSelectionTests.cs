@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
@@ -96,6 +97,7 @@ public class OutboxDueSelectionTests : IDisposable
     {
         var processor = new OutboxProcessorService(
             _provider.GetRequiredService<IServiceScopeFactory>(),
+            new InstanceIdentity("due-selection-tests"),
             NullLogger<OutboxProcessorService>.Instance);
 
         await processor.ProcessDueMessagesAsync(CancellationToken.None);

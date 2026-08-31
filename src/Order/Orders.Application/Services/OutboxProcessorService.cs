@@ -17,12 +17,15 @@ namespace Orders.Application.Services;
 /// idempotent (keyed on the trade id), redelivering a message that actually succeeded
 /// is harmless — the wallet reports "already settled".
 ///
-/// Assumes a single Orders.Api instance (MVP). For multi-instance, add a claim/lease
-/// column so two processors can't grab the same message.
+/// Safe to run on more than one instance (issue #160): each message is claimed with a lease
+/// before it is dispatched, so two processors cannot both take the same one. That idempotency
+/// remains the backstop, not the mechanism — it bounded the damage while nothing enforced the
+/// single-instance assumption this replaces.
 /// </summary>
 public class OutboxProcessorService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly InstanceIdentity _identity;
     private readonly ILogger<OutboxProcessorService> _logger;
 
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);
@@ -30,9 +33,20 @@ public class OutboxProcessorService : BackgroundService
     private const int MaxRetries = 5;
     private static readonly TimeSpan BaseRetryDelay = TimeSpan.FromSeconds(10);
 
-    public OutboxProcessorService(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessorService> logger)
+    /// <summary>
+    /// How long a claimed message stays claimed. Long enough that a slow wallet call cannot have
+    /// its message taken away mid-flight, short enough that a processor killed mid-message does
+    /// not strand a settlement for long. Dispatch is a single HTTP call measured in seconds.
+    /// </summary>
+    private static readonly TimeSpan LeaseDuration = TimeSpan.FromMinutes(2);
+
+    public OutboxProcessorService(
+        IServiceScopeFactory scopeFactory,
+        InstanceIdentity identity,
+        ILogger<OutboxProcessorService> logger)
     {
         _scopeFactory = scopeFactory;
+        _identity = identity;
         _logger = logger;
     }
 
@@ -75,13 +89,7 @@ public class OutboxProcessorService : BackgroundService
         var db = scope.ServiceProvider.GetRequiredService<OrdersDbContext>();
         var walletClient = scope.ServiceProvider.GetRequiredService<IWalletApiClient>();
 
-        var now = DateTime.UtcNow;
-        var due = await db.OutboxMessages
-            .Where(m => m.Status == OutboxMessageStatus.Pending
-                        && (m.NextAttemptAt == null || m.NextAttemptAt <= now))
-            .OrderBy(m => m.CreatedAt)
-            .Take(BatchSize)
-            .ToListAsync(ct);
+        var due = await ClaimDueMessagesAsync(db, ct);
 
         if (due.Count == 0) return;
 
@@ -167,6 +175,63 @@ public class OutboxProcessorService : BackgroundService
                 db.Entry(message).State = EntityState.Detached;
             }
         }
+    }
+
+    /// <summary>
+    /// Takes ownership of the due messages and returns the ones this instance won (issue #160).
+    ///
+    /// <para>
+    /// The claim is the point of this method. It used to be a plain SELECT, which meant two
+    /// instances read the same rows and both dispatched them; the second settlement was refused by
+    /// the wallet's key on the trade id, so nothing was paid twice, but nothing prevented the
+    /// duplicate work either and nothing said the constraint existed.
+    /// </para>
+    ///
+    /// <para>
+    /// Selecting the candidates and claiming them are two statements, but only the second decides
+    /// anything: it repeats every condition from the first in its own WHERE clause, so a row that
+    /// another instance claimed in between simply is not updated. Reading first and trusting what
+    /// was read would reintroduce the race — both instances would see "unclaimed" before either
+    /// wrote. The rows are then re-read by owner, which is why the count from the claim is not
+    /// itself used as the batch.
+    /// </para>
+    ///
+    /// The claim runs before any message is tracked, because <c>ExecuteUpdateAsync</c> goes
+    /// straight to the database and would not be reflected in entities already loaded.
+    /// </summary>
+    private async Task<List<OutboxMessage>> ClaimDueMessagesAsync(OrdersDbContext db, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var leaseExpiresAt = now.Add(LeaseDuration);
+
+        var candidateIds = await db.OutboxMessages
+            .AsNoTracking()
+            .Where(m => m.Status == OutboxMessageStatus.Pending
+                        && (m.NextAttemptAt == null || m.NextAttemptAt <= now)
+                        && (m.LeaseExpiresAt == null || m.LeaseExpiresAt <= now))
+            .OrderBy(m => m.CreatedAt)
+            .Take(BatchSize)
+            .Select(m => m.Id)
+            .ToListAsync(ct);
+
+        if (candidateIds.Count == 0) return new List<OutboxMessage>();
+
+        var claimed = await db.OutboxMessages
+            .Where(m => candidateIds.Contains(m.Id)
+                        && m.Status == OutboxMessageStatus.Pending
+                        && (m.NextAttemptAt == null || m.NextAttemptAt <= now)
+                        && (m.LeaseExpiresAt == null || m.LeaseExpiresAt <= now))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(m => m.LeasedBy, _identity.Value)
+                .SetProperty(m => m.LeaseExpiresAt, leaseExpiresAt), ct);
+
+        // Every candidate went to another instance. Normal under contention, not a problem.
+        if (claimed == 0) return new List<OutboxMessage>();
+
+        return await db.OutboxMessages
+            .Where(m => candidateIds.Contains(m.Id) && m.LeasedBy == _identity.Value)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync(ct);
     }
 
     /// <summary>

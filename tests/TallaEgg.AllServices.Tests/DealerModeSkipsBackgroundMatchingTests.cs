@@ -81,6 +81,10 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<MarketModeProvider>();
         services.AddScoped<IWalletApiClient, StubWalletApiClient>();
+
+        // The engine takes a lease to decide whether it runs the background sweep (issue #160).
+        // These tests call ProcessAllPendingOrdersAsync directly, so the gate is never consulted.
+        services.AddInstanceCoordination();
         services.AddMatchingEngine();
 
         return services.BuildServiceProvider();
