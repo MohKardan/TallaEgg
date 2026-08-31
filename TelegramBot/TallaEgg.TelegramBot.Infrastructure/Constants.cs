@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -339,10 +339,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAdminHelp = "🔧 دستورهای مدیریت\n\n" +
                                           "افزایش اعتبار:\n" +
                                           "ش [شمارهٔ تلفن] [مقدار] [نوع]\n" +
-                                          "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
-                                          "کسر از موجودی:\n" +
+                                          "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n\n" +
+                                          "کسر از اعتبار (معکوس ش):\n" +
                                           "د [شمارهٔ تلفن] [مقدار] [نوع]\n" +
-                                          "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
+                                          "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
+                                          "(هر دو روی اعتبار کار می‌کنند؛ بدون ذکر نوع، آبشده)\n\n" +
                                           "فهرست کاربران: ک [جستجو]\n" +
                                           "موجودی کاربر: م [شمارهٔ تلفن]\n" +
                                           "سفارش‌های فعال کاربر: س [شمارهٔ تلفن]\n\n" +
@@ -365,21 +366,48 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminChargeFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                        "این دستور به اعتبار کاربر اضافه می‌کند.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "ش [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
                                                         "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "اگر نوع را ننویسید، آبشده در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminDeductFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                        "این دستور از اعتبار کاربر کم می‌کند (معکوس دستور ش).\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "د [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
                                                         "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "اگر نوع را ننویسید، آبشده در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
+
+        /// <summary>
+        /// For an asset that exists but has no credit ledger — today that is Toman, which is a quote
+        /// currency, and credit ledgers are minted per tradable base asset only. Deliberately not
+        /// <see cref="MsgAdminInvalidCurrency"/>: Toman is a perfectly good asset name, and telling
+        /// the admin it was not recognised would send them hunting for a spelling mistake that is
+        /// not there. Before this, the command built CREDIT_IRT and failed at the wallet instead,
+        /// surfacing as the generic "خطا در بروزرسانی".
+        /// {0} = the asset's Persian name; {1} = the assets that do have a credit ledger.
+        /// </summary>
+        public const string MsgAdminAssetHasNoCredit = "❌ «{0}» دفتر اعتبار ندارد.\n\n" +
+                                                       "دستورهای ش و د فقط روی اعتبار کار می‌کنند، و اعتبار فقط برای دارایی‌های قابل معامله تعریف می‌شود.\n\n" +
+                                                       "دارایی‌های مجاز: {1}";
+
+        /// <summary>
+        /// For a name that resolves to a credit ledger, which both commands add for themselves.
+        /// Separate from "not recognised" because the admin typed something meaningful — and it used
+        /// to be the only spelling that could reduce a credit line, so it is worth answering kindly.
+        /// {0} = what they typed.
+        /// </summary>
+        public const string MsgAdminCreditNameNotNeeded = "ℹ️ لازم نیست «{0}» را بنویسید.\n\n" +
+                                                          "هر دو دستور ش و د همیشه روی اعتبار کار می‌کنند.\n" +
+                                                          "فقط نام دارایی را بنویسید — مثلاً «آبشده» یا «سکه».";
 
         /// <summary>{0} = the user's invalid input; {1} = the list of permitted Persian names.</summary>
         public const string MsgAdminInvalidCurrency = "❌ نوع «{0}» شناسایی نشد.\n\n" +
@@ -531,24 +559,27 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "اکنون می‌توانید سفارش خرید یا فروش ثبت کنید.";
 
         /// <summary>
-        /// Deduction confirmation shown to the admin.
+        /// Deduction confirmation shown to the admin. Says "credit" throughout, because that is
+        /// what the command now reduces — it used to debit the spot balance while its counterpart
+        /// credited the credit ledger, and the wording followed the old behaviour.
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
-        /// {3} = the new balance with unit.
+        /// {3} = the new credit with unit.
         /// </summary>
-        public const string MsgAdminDeductDone = "✅ کسر از موجودی انجام شد.\n\n" +
+        public const string MsgAdminDeductDone = "✅ کسر از اعتبار انجام شد.\n\n" +
                                                  "دارایی: {0}\n" +
                                                  "مقدار کسر: {1}\n" +
                                                  "کاربر: {2}\n" +
-                                                 "موجودی جدید: {3}";
+                                                 "اعتبار جدید: {3}";
 
         /// <summary>
-        /// Notifies the user of a deduction. The previous message wrongly called it a top-up.
-        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new balance with unit.
+        /// Notifies the user that their credit was reduced. The message named the balance while the
+        /// command debited the spot wallet; it names the credit now, because that is what moved.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new credit with unit.
         /// </summary>
-        public const string MsgUserBalanceDeducted = "ℹ️ از موجودی حساب شما کسر شد.\n\n" +
+        public const string MsgUserBalanceDeducted = "ℹ️ اعتبار حساب شما کاهش یافت.\n\n" +
                                                      "دارایی: {0}\n" +
                                                      "مقدار کسر: {1}\n" +
-                                                     "موجودی جدید: {2}";
+                                                     "اعتبار جدید: {2}";
 
         /// <summary>
         /// Shown to the admin when the same top-up was already recorded, so this send changed
@@ -578,11 +609,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
         /// {3} = the balance the wallet holds now, with unit.
         /// </summary>
-        public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
+        public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر اعتبار پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
                                                           "دارایی: {0}\n" +
                                                           "مقدار: {1}\n" +
                                                           "کاربر: {2}\n" +
-                                                          "موجودی کنونی کاربر: {3}\n\n" +
+                                                          "اعتبار کنونی کاربر: {3}\n\n" +
                                                           "اگر قصد داشتید بار دوم هم کسر کنید، چند دقیقه دیگر دوباره تلاش کنید.";
 
         /// <summary>{0} = the error reason.</summary>

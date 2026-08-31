@@ -479,6 +479,40 @@ public class WalletApiClient : IWalletApiClient
         }
     }
 
+    /// <summary>
+    /// Turns a non-success wallet response into a failure that still carries the reason.
+    ///
+    /// <para>
+    /// The endpoints answer a rejected request with 400 and the <c>BusinessRuleException</c>
+    /// message in the body — Persian, written for the person reading it, which is the whole
+    /// contract of that exception type. Discarding it and substituting "خطا در بروزرسانی" told an
+    /// admin who tried to deduct more credit than a customer has that something had gone wrong with
+    /// the system, when what actually happened was the wallet correctly refusing them.
+    /// </para>
+    ///
+    /// <para>
+    /// The generic message stays as the fallback, for a body that is empty, not JSON, or carries no
+    /// message — a 500 from an unhandled fault, say, whose detail is not for the customer.
+    /// </para>
+    /// </summary>
+    private static ApiResponse<WalletBallanceDTO> FailureFrom(string responseBody)
+    {
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(responseBody,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (!string.IsNullOrWhiteSpace(parsed?.Message))
+                return ApiResponse<WalletBallanceDTO>.Fail(parsed!.Message);
+        }
+        catch (JsonException)
+        {
+            // Not JSON at all. Nothing to salvage; fall through to the generic message.
+        }
+
+        return ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
+    }
+
     public async Task<TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>> DepositeAsync(WalletRequest request)
     {
         try
@@ -501,7 +535,7 @@ public class WalletApiClient : IWalletApiClient
                 return result ?? ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
             }
 
-            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
+            return FailureFrom(respText);
 
         }
         catch (Exception ex)
@@ -534,7 +568,7 @@ public class WalletApiClient : IWalletApiClient
                 return result ?? ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
             }
 
-            return TallaEgg.Core.DTOs.ApiResponse<WalletBallanceDTO>.Fail("خطا در بروزرسانی");
+            return FailureFrom(respText);
 
         }
         catch (Exception ex)

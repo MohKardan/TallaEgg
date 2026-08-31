@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using TallaEgg.Core.Utilties;
 using TallaEgg.Core.DTOs;
@@ -186,7 +186,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 تومان");
+        await SayAsync(handler, "د 09158527483 100 آبشده");
 
         var withdrawal = Assert.Single(_walletApi.Withdrawals);
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
@@ -250,10 +250,10 @@ public class AdminChargeCommandTests
         _walletApi.ReportAlreadyApplied = true;
         _walletApi.CurrentBalance = 4_200m;
 
-        await SayAsync(handler, "د 09158527483 500 تومان");
+        await SayAsync(handler, "د 09158527483 500 آبشده");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
-        Assert.Contains(PersianFormat.Amount(4_200m, "IRT"), reply);
+        Assert.Contains(PersianFormat.Amount(4_200m, "CREDIT_MAUA"), reply);
     }
 
     /// <summary>
@@ -292,6 +292,199 @@ public class AdminChargeCommandTests
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
         // Anchored to its label: a bare PersianFormat.Amount(0) is "۰", which also sits inside "۱۰۰".
         Assert.Contains("اعتبار کنونی کاربر: " + PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
+    }
+    // -----------------------------------------------------------------------------------
+    // ش and د as mirrors (evidence recorded on #36).
+    //
+    // They used to write to different wallets from the same Persian word: ش credited
+    // CREDIT_<X> while د debited plain <X>, with identical help text and identical examples.
+    // An admin undoing a mistaken top-up with the obvious symmetric command left the credit
+    // untouched and took the customer's real position instead. Nothing in this suite covered
+    // which asset د targeted, so the whole asymmetry was invisible to it.
+    // -----------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeductingTargetsTheCreditLedgerNotTheSpotWallet()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Equal("CREDIT_SEKE_BAHAR", Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>The property that was broken, stated directly: the same words reach the same wallet.</summary>
+    [Theory]
+    [InlineData("سکه")]
+    [InlineData("آبشده")]
+    [InlineData("بیت‌کوین")]
+    [InlineData("")]
+    public async Task ChargingAndDeductingTheSameWordsReachTheSameWallet(string asset)
+    {
+        var handler = Build();
+        var suffix = asset.Length == 0 ? "" : " " + asset;
+
+        await SayAsync(handler, "ش 09158527483 100" + suffix);
+        await SayAsync(handler, "د 09158527483 100" + suffix);
+
+        Assert.Equal(Assert.Single(_walletApi.Deposits).Asset, Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>
+    /// With no asset named, both default to gold. د used to default to Toman, so even the
+    /// shorthand forms disagreed about what they meant.
+    /// </summary>
+    [Fact]
+    public async Task DeductingWithNoCurrencyGivenDefaultsToGoldCredit()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100");
+
+        Assert.Equal("CREDIT_MAUA", Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>
+    /// Naming the credit ledger is refused on both commands, rather than being prefixed a second
+    /// time into CREDIT_CREDIT_MAUA — an asset that does not exist and would fail at the wallet
+    /// with a confusing "wallet not found". Both commands already mean the credit ledger.
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task NamingTheCreditLedgerIsRefusedRatherThanDoublePrefixed(string command)
+    {
+        var handler = Build();
+
+        await SayAsync(handler, command + " 09158527483 100 اعتبار آبشده");
+
+        Assert.Empty(_walletApi.Deposits);
+        Assert.Empty(_walletApi.Withdrawals);
+
+        // Its own sentence, not "unrecognised": the admin typed something meaningful, and being
+        // told to check their spelling would send them looking for a mistake that is not there.
+        Assert.Contains(_messenger.Texts, t => t.Contains("لازم نیست"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>
+    /// Toman has no credit ledger. Credit ledgers are minted per tradable base asset, and Toman is
+    /// a quote currency — CREDIT_IRT is not a currency, and the wallet rejects a deposit into it.
+    ///
+    /// <para>
+    /// This was already true of the top-up command before these commands were made mirrors: it has
+    /// always built CREDIT_IRT for "تومان" and always failed, opaquely, at the wallet — while the
+    /// bot's own help offered exactly that as its example. Both commands now say so directly.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task TomanIsRefusedBecauseItHasNoCreditLedger(string command)
+    {
+        var handler = Build();
+
+        await SayAsync(handler, command + " 09158527483 500 تومان");
+
+        Assert.Empty(_walletApi.Deposits);
+        Assert.Empty(_walletApi.Withdrawals);
+
+        // Not "unrecognised" either: "تومان" is a real asset, it simply cannot carry credit.
+        Assert.Contains(_messenger.Texts, t => t.Contains("دفتر اعتبار ندارد"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>An unrecognised word still gets the spelling message, so the three refusals stay distinct.</summary>
+    [Fact]
+    public async Task AnUnrecognisedWordStillGetsTheSpellingMessage()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 نقره");
+
+        Assert.Empty(_walletApi.Deposits);
+        Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>
+    /// The customer is told their credit fell, not their balance. The wording followed the old
+    /// behaviour and would otherwise now describe a wallet the command no longer touches.
+    /// </summary>
+    [Fact]
+    public async Task TheCustomerIsToldTheirCreditFellNotTheirBalance()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("اعتبار حساب شما کاهش یافت"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("از موجودی حساب شما کسر شد"));
+    }
+
+    /// <summary>And the admin's own confirmation says credit too.</summary>
+    [Fact]
+    public async Task TheAdminConfirmationSaysCredit()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("کسر از اعتبار انجام شد"));
+    }
+
+    /// <summary>
+    /// The deduplication key follows the ledger the command actually touches, so a top-up and a
+    /// deduction of the same amount still cannot be mistaken for one another.
+    /// </summary>
+    [Fact]
+    public async Task TheDeductionKeyNamesTheCreditLedger()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        var withdrawal = Assert.Single(_walletApi.Withdrawals);
+        Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
+        Assert.Contains("CREDIT_SEKE_BAHAR", withdrawal.ReferenceId);
+    }
+    /// <summary>
+    /// Whatever these commands offer, they have to accept. Found by testing the bot: the format
+    /// error listed "تومان" among the permitted types and the very next message refused it for
+    /// having no credit ledger — two lists disagreeing one screen apart, inside one command. That
+    /// is the same misleading-text defect this PR exists to close, so it is pinned rather than
+    /// just fixed.
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task ThePermittedTypesAreExactlyTheTypesTheCommandAccepts(string command)
+    {
+        var handler = Build();
+
+        // A malformed command, to make it print the list.
+        await SayAsync(handler, command + " badphone");
+
+        var help = Assert.Single(_messenger.Texts, t => t.Contains("نوع‌های مجاز"));
+
+        Assert.DoesNotContain("تومان", help);
+        foreach (var creditable in new[] { "آبشده", "سکه تمام بهار آزادی", "بیت‌کوین" })
+            Assert.Contains(creditable, help);
+    }
+
+    /// <summary>
+    /// And the list an unrecognised word is answered with is the same one, so the two ways of
+    /// asking "what may I type here" cannot drift apart.
+    /// </summary>
+    [Fact]
+    public async Task TheUnrecognisedWordListMatchesTheFormatHelpList()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 نقره");
+
+        var reply = Assert.Single(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+        Assert.DoesNotContain("تومان", reply);
+        Assert.Contains("آبشده", reply);
     }
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {

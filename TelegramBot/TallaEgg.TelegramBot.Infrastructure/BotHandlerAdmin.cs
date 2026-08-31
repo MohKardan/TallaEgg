@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core;
@@ -30,6 +30,48 @@ namespace TallaEgg.TelegramBot
     public partial class BotHandler : IBotHandler
     {
 
+        /// <summary>
+        /// Whether the asset an admin named can carry credit, answering them specifically when it
+        /// cannot. Shared by ش and د, which both act on the credit ledger and therefore both reject
+        /// exactly the same input.
+        ///
+        /// <para>
+        /// Three refusals, three different sentences, because they send the admin to three different
+        /// places: an unrecognised word is a typo; a credit name ("اعتبار طلا") is a word the
+        /// commands add for themselves; and Toman is a perfectly good asset that simply has no credit
+        /// ledger, which no amount of re-spelling will fix. All three used to be "نوع شناسایی نشد",
+        /// or in Toman's case not caught here at all — it reached the wallet and came back as the
+        /// generic "خطا در بروزرسانی".
+        /// </para>
+        /// </summary>
+        private async Task<string?> ResolveCreditableAssetAsync(long chatId, string typed)
+        {
+            var resolved = CurrenciesConstant.ResolveCurrencyCode(typed);
+
+            if (resolved is null)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminInvalidCurrency, typed, CurrenciesConstant.GetCreditableNamesList()));
+                return null;
+            }
+
+            if (CurrenciesConstant.IsCreditAsset(resolved))
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminCreditNameNotNeeded, typed));
+                return null;
+            }
+
+            if (!CurrenciesConstant.HasCreditLedger(resolved))
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminAssetHasNoCredit,
+                        PersianFormat.Asset(resolved), CurrenciesConstant.GetCreditableNamesList()));
+                return null;
+            }
+
+            return resolved;
+        }
+
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
@@ -45,7 +87,7 @@ namespace TallaEgg.TelegramBot
                 {
                     // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetPersianNamesList()));
+                        string.Format(BotMsgs.MsgAdminChargeFormatError, CurrenciesConstant.GetCreditableNamesList()));
                     return true;
                 }
 
@@ -56,14 +98,8 @@ namespace TallaEgg.TelegramBot
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Maua; // مقدار پیش‌فرض
-                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
-
-                if (currency is null)
-                {
-                    await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
-                    return true;
-                }
+                var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
+                if (currency is null) return true;
 
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
@@ -155,7 +191,7 @@ namespace TallaEgg.TelegramBot
                 {
                     // The return is required; without it the code below ran on a failed match and threw.
                     await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetPersianNamesList()));
+                        string.Format(BotMsgs.MsgAdminDeductFormatError, CurrenciesConstant.GetCreditableNamesList()));
                     return true;
                 }
 
@@ -165,29 +201,41 @@ namespace TallaEgg.TelegramBot
                 // The input may be a Persian name or a currency code.
                 // The old default was a Persian word that never matched any asset code, so the
                 // deduction ran against a wallet that did not exist.
+                //
+                // Gold, matching the charge command. The default used to be Toman, so the two
+                // commands disagreed about what an omitted asset meant as well as about which
+                // ledger they touched.
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
-                    : CurrenciesConstant.Toman; // مقدار پیش‌فرض
-                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
-
-                if (currency is null)
-                {
-                    await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
-                    return true;
-                }
+                    : CurrenciesConstant.Maua; // مقدار پیش‌فرض
+                var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
+                if (currency is null) return true;
 
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
                 {
+                    // The credit ledger, exactly as the charge command writes to it. These two
+                    // commands used to disagree: ش credited CREDIT_<X> while د debited plain <X>,
+                    // from the same Persian word and with the same help text and examples. An admin
+                    // undoing a mistaken top-up with the obvious symmetric command therefore left the
+                    // credit untouched and took the customer's real position instead — one mistake
+                    // becoming two, under a ✅ confirmation (issue #36 carries the evidence).
+                    //
+                    // The bot has never been able to add to a spot balance: this is the only place it
+                    // moves money, and the charge command has always meant credit. So a deduction that
+                    // could reach a spot balance was the asymmetry, not a capability being removed —
+                    // nothing here has a counterpart that adds. Spot balances move by trading, or
+                    // through the wallet API directly.
+                    var creditAsset = CurrenciesConstant.CreditAssetFor(currency);
+
                     var result = await _walletApi.WithdrawalAsync(new TallaEgg.Core.Requests.Wallet.WalletRequest
                     {
-                        Asset = currency,
+                        Asset = creditAsset,
                         Amount = amount,
                         UserId = userDto.Id,
 
                         // Same deduplication as the charge command above (issue #157).
-                        ReferenceId = AdminAdjustmentKey.ForWithdrawal(userDto.Id, currency, amount, DateTime.UtcNow)
+                        ReferenceId = AdminAdjustmentKey.ForWithdrawal(userDto.Id, creditAsset, amount, DateTime.UtcNow)
                     });
                     if (result.Success)
                     {
