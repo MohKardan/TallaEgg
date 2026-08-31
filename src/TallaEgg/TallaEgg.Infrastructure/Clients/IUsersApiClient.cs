@@ -23,6 +23,7 @@ public interface IUsersApiClient
     Task<ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, UserStatus newStatus);
     Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber);
 
+
     /// <summary>
     /// Looks a user up by their internal id; null when no such user exists.
     ///

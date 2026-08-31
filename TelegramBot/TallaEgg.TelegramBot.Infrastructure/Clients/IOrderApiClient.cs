@@ -19,8 +19,17 @@ public interface IOrderApiClient
     // Prices cross this boundary per base unit, toman per gram; the mesghal conversion happens only
     // in the bot's display layer.
 
-    /// <summary>Publishes the admin's quote. Places nothing in the book and locks no collateral.</summary>
-    Task<(bool success, string message)> PublishQuoteAsync(
+    /// <summary>
+    /// Publishes the admin's quote. Places nothing in the book and locks no collateral.
+    ///
+    /// <para>
+    /// A quote too far from the one currently published is <b>not</b> published: it comes back in
+    /// <c>pending</c> for an admin to confirm (issue #158). <c>success</c> is still true, because
+    /// nothing went wrong — the price is simply waiting on a human. Callers must check
+    /// <c>pending</c> before telling anyone the price is live.
+    /// </para>
+    /// </summary>
+    Task<(bool success, string message, PendingQuoteDto? pending)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId);
 
     /// <summary>The active quote for a symbol, or null if none has been published.</summary>
@@ -48,6 +57,18 @@ public interface IOrderApiClient
     // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 
     /// <summary>A symbol's current automatic-quote settings.</summary>
+    /// <summary>
+    /// Quotes the plausibility band is holding until an admin answers (issue #158). Null means
+    /// Orders could not be reached, which is not the same as nothing waiting.
+    /// </summary>
+    Task<IReadOnlyList<PendingQuoteDto>?> GetPendingQuotesAsync();
+
+    /// <summary>Approves a held quote, publishing it now. Fails if it was already answered or has expired.</summary>
+    Task<(bool success, string message)> ApprovePendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId);
+
+    /// <summary>Rejects a held quote. Nothing is published and the previous quote stands.</summary>
+    Task<(bool success, string message)> RejectPendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId);
+
     Task<AutoQuoteSettingsDto?> GetAutoQuoteSettingsAsync(string symbol);
 
     /// <summary>Changes a symbol's automatic-quote spread.</summary>

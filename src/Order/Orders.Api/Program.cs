@@ -127,6 +127,7 @@ builder.Services.AddScoped<Orders.Application.Services.OrderCollateralReconciler
 // Dealer model (issue #48): the admin publishes a price and the customer trades against it,
 // with no orders resting in the book.
 builder.Services.AddScoped<IQuoteRepository, QuoteRepository>();
+builder.Services.AddScoped<Orders.Core.IPendingQuoteRepository, Orders.Infrastructure.PendingQuoteRepository>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeProvider>();
 builder.Services.AddScoped<Orders.Application.Services.QuoteFillService>();
 builder.Services.AddScoped<Orders.Application.Services.MarketModeStartupValidator>();
@@ -253,23 +254,126 @@ if (app.Environment.IsDevelopment())
 
 // Publishes the admin's quote for a symbol. Places no order in the book and locks no collateral.
 // The symbol's previous quote is deactivated atomically.
-app.MapPost("/api/quotes", async (PublishQuoteRequest request, IQuoteRepository quotes) =>
+app.MapPost("/api/quotes", async (
+    PublishQuoteRequest request,
+    IQuoteRepository quotes,
+    Orders.Core.IPendingQuoteRepository pendingQuotes) =>
 {
     try
     {
+        // The plausibility band applies to a hand-typed price too, not only to the feed
+        // (issue #158). It began as a guard on the price source, on the theory that the machine
+        // was what could produce a wrong number; an admin typing one zero too many does the same
+        // damage, and a manual quote is the more dangerous of the two — it is tradeable the
+        // instant it lands and nobody is watching a log for it.
+        var current = await quotes.GetActiveAsync(request.Symbol);
+        var proposedMid = QuotePlausibility.MidOf(request.BuyPrice, request.SellPrice);
+        var verdict = QuotePlausibility.Check(proposedMid, current);
+
+        if (!verdict.IsWithinBand)
+        {
+            // Held, not refused: the admin may well mean it, and a real market can move more
+            // than the band in a day. They are asked to confirm rather than told no.
+            var held = await pendingQuotes.ProposeAsync(Orders.Core.PendingQuote.Propose(
+                request.Symbol, request.BuyPrice, request.SellPrice,
+                verdict.PreviousMid, verdict.DeviationPercent,
+                Orders.Core.QuoteSource.Manual, request.PublishedByUserId));
+
+            Log.Warning(
+                "Manual quote for {Symbol} held for approval: buy {BuyPrice}, sell {SellPrice} is {Deviation}% " +
+                "from the last published mid {PreviousMid}, outside ±{Band}%.",
+                request.Symbol, request.BuyPrice, request.SellPrice,
+                decimal.Round(verdict.DeviationPercent, 4), verdict.PreviousMid,
+                QuotePlausibility.MaxDeviationPercent);
+
+            return Results.Ok(ApiResponse<PublishQuoteResult>.Ok(
+                new PublishQuoteResult { Pending = ToPendingQuoteDto(held) },
+                "این مظنه با مظنهٔ فعلی اختلاف زیادی دارد و نیاز به تأیید دارد."));
+        }
+
         var quote = Quote.Publish(request.Symbol, request.BuyPrice, request.SellPrice, request.PublishedByUserId);
         var published = await quotes.PublishAsync(quote);
 
-        return Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(published), "مظنه منتشر شد."));
+        return Results.Ok(ApiResponse<PublishQuoteResult>.Ok(
+            new PublishQuoteResult { Published = ToQuoteDto(published) }, "مظنه منتشر شد."));
     }
     catch (BusinessRuleException ex)
     {
-        return Results.BadRequest(ApiResponse<QuoteDto>.Fail(ex.Message));
+        return Results.BadRequest(ApiResponse<PublishQuoteResult>.Fail(ex.Message));
     }
     catch (Exception ex)
     {
         Log.Error(ex, "Error publishing quote for {Symbol}", request.Symbol);
-        return Results.BadRequest(ApiResponse<QuoteDto>.Fail("خطا در انتشار مظنه."));
+        return Results.BadRequest(ApiResponse<PublishQuoteResult>.Fail("خطا در انتشار مظنه."));
+    }
+})
+.WithTags("Quotes");
+
+// Quotes the band held back and nobody has answered yet. The bot polls this to know what to ask
+// about — the Orders service has no way to reach Telegram itself.
+app.MapGet("/api/quotes/pending", async (Orders.Core.IPendingQuoteRepository pendingQuotes) =>
+{
+    var awaiting = await pendingQuotes.GetAwaitingApprovalAsync();
+
+    return Results.Ok(ApiResponse<IEnumerable<PendingQuoteDto>>.Ok(
+        awaiting.Select(ToPendingQuoteDto), "مظنه‌های در انتظار تأیید"));
+})
+.WithTags("Quotes");
+
+// An admin approving a held quote: it is published now, under the identity of whoever proposed it.
+app.MapPost("/api/quotes/pending/{id}/approve", async (
+    Guid id,
+    ResolvePendingQuoteRequest request,
+    Orders.Core.IPendingQuoteRepository pendingQuotes) =>
+{
+    try
+    {
+        var pending = await pendingQuotes.GetAsync(id);
+        if (pending is null)
+            return Results.BadRequest(ApiResponse<QuoteDto>.Fail("این مظنه پیدا نشد."));
+
+        var published = await pendingQuotes.ApproveAsync(pending, request.AdminUserId);
+
+        return Results.Ok(ApiResponse<QuoteDto>.Ok(ToQuoteDto(published), "مظنه تأیید و منتشر شد."));
+    }
+    catch (BusinessRuleException ex)
+    {
+        // Already answered, or past its window. Both are ordinary outcomes of a button sitting
+        // in a Telegram message, and the message says which.
+        return Results.BadRequest(ApiResponse<QuoteDto>.Fail(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error approving pending quote {PendingQuoteId}", id);
+        return Results.BadRequest(ApiResponse<QuoteDto>.Fail("خطا در تأیید مظنه."));
+    }
+})
+.WithTags("Quotes");
+
+// An admin rejecting a held quote: nothing is published and the previous quote stands.
+app.MapPost("/api/quotes/pending/{id}/reject", async (
+    Guid id,
+    ResolvePendingQuoteRequest request,
+    Orders.Core.IPendingQuoteRepository pendingQuotes) =>
+{
+    try
+    {
+        var pending = await pendingQuotes.GetAsync(id);
+        if (pending is null)
+            return Results.BadRequest(ApiResponse<string>.Fail("این مظنه پیدا نشد."));
+
+        await pendingQuotes.RejectAsync(pending, request.AdminUserId);
+
+        return Results.Ok(ApiResponse<string>.Ok(pending.Symbol, "مظنه رد شد و مظنهٔ قبلی برقرار ماند."));
+    }
+    catch (BusinessRuleException ex)
+    {
+        return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error rejecting pending quote {PendingQuoteId}", id);
+        return Results.BadRequest(ApiResponse<string>.Fail("خطا در رد مظنه."));
     }
 })
 .WithTags("Quotes");
@@ -385,6 +489,23 @@ static QuoteDto ToQuoteDto(Quote q) => new()
     PublishedAt = q.PublishedAt,
     IsActive = q.IsActive,
     DeactivatedAt = q.DeactivatedAt
+};
+
+// Same reasoning as ToQuoteDto: the band and the lifetime are domain constants, and the bot needs
+// both to write a message that states the rule as well as the breach.
+static PendingQuoteDto ToPendingQuoteDto(Orders.Core.PendingQuote p) => new()
+{
+    Id = p.Id,
+    Symbol = p.Symbol,
+    BuyPrice = p.BuyPrice,
+    SellPrice = p.SellPrice,
+    ProposedMid = p.ProposedMid,
+    PreviousMid = p.PreviousMid,
+    DeviationPercent = p.DeviationPercent,
+    BandPercent = QuotePlausibility.MaxDeviationPercent,
+    Source = p.Source.ToString(),
+    CreatedAt = p.CreatedAt,
+    ExpiresAt = p.CreatedAt + Orders.Core.PendingQuote.Lifetime
 };
 
 // Published quotes for a symbol, newest first, including ones already replaced.

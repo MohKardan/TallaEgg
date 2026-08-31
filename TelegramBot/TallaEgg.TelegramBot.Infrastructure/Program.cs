@@ -148,6 +148,12 @@ public class Program
 
                 services.AddHostedService<TelegramBotHostedService>();
 
+                // Asks the admins about quotes the plausibility band is holding (issue #158). It
+                // polls Orders rather than Orders pushing here: Orders has no Telegram dependency
+                // and this process exposes no HTTP endpoint, so the call has to run in this
+                // direction — the same one every other bot-to-service call already takes.
+                services.AddHostedService<PendingQuoteNotifierService>();
+
             });
 
     private static string ResolveSharedConfigPath(string fileName)

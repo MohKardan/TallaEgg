@@ -18,6 +18,9 @@ public class OrdersDbContext : DbContext
     /// <summary>Per-symbol spread and on/off switch for automatic quote publishing (issue #90).</summary>
     public DbSet<AutoQuoteSettings> AutoQuoteSettings => Set<AutoQuoteSettings>();
 
+    /// <summary>Quotes held back by the plausibility band until an admin answers (issue #158).</summary>
+    public DbSet<PendingQuote> PendingQuotes => Set<PendingQuote>();
+
     /// <summary>Whether each symbol is enabled for trading — changeable by an admin bot command.</summary>
     public DbSet<SymbolSettings> SymbolSettings => Set<SymbolSettings>();
 
@@ -28,6 +31,7 @@ public class OrdersDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         modelBuilder.ApplyConfiguration(new QuoteConfiguration());
         modelBuilder.ApplyConfiguration(new AutoQuoteSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new PendingQuoteConfiguration());
         modelBuilder.ApplyConfiguration(new SymbolSettingsConfiguration());
     }
 }

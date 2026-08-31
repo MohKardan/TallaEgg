@@ -45,6 +45,60 @@ namespace TallaEgg.Core.DTOs.Order
         Guid PublishedByUserId);
 
     /// <summary>
+    /// A quote the plausibility band held back until an admin says whether it is a real price
+    /// (issue #158). Nothing here is tradeable: no row reaches the Quotes table until it is
+    /// approved.
+    /// </summary>
+    public class PendingQuoteDto
+    {
+        public Guid Id { get; set; }
+        public string Symbol { get; set; } = string.Empty;
+
+        /// <summary>The price the shop would buy at, if this is approved.</summary>
+        public decimal BuyPrice { get; set; }
+
+        /// <summary>The price the shop would sell at, if this is approved.</summary>
+        public decimal SellPrice { get; set; }
+
+        /// <summary>The midpoint of the two prices above — what the band actually measured.</summary>
+        public decimal ProposedMid { get; set; }
+
+        /// <summary>The mid it was compared against; null on a symbol that has never had a quote.</summary>
+        public decimal? PreviousMid { get; set; }
+
+        /// <summary>How far the proposal sits from <see cref="PreviousMid"/>, as a percentage.</summary>
+        public decimal DeviationPercent { get; set; }
+
+        /// <summary>The band it crossed, so the message can quote the rule as well as the breach.</summary>
+        public decimal BandPercent { get; set; }
+
+        /// <summary>"Auto" for the price feed, "Manual" for a price an admin typed.</summary>
+        public string Source { get; set; } = string.Empty;
+
+        public DateTime CreatedAt { get; set; }
+
+        /// <summary>When the proposal stops being publishable. Past this it can only be discarded.</summary>
+        public DateTime ExpiresAt { get; set; }
+    }
+
+    /// <summary>An admin approving or rejecting a held quote.</summary>
+    public record ResolvePendingQuoteRequest(Guid AdminUserId);
+
+    /// <summary>
+    /// The answer to <c>POST /api/quotes</c>. A quote inside the band is published immediately and
+    /// <see cref="Published"/> carries it; one outside is held and <see cref="Pending"/> carries the
+    /// proposal instead, so the caller can put the question to whoever is at the keyboard.
+    /// </summary>
+    public class PublishQuoteResult
+    {
+        public QuoteDto? Published { get; set; }
+        public PendingQuoteDto? Pending { get; set; }
+
+        /// <summary>True when the quote is live; false when somebody has to answer first.</summary>
+        public bool NeedsApproval => Pending is not null;
+    }
+
+    /// <summary>
     /// A customer's request to fill a quote.
     ///
     /// Deliberately carries no price: the price is read from the published quote. If the customer

@@ -36,6 +36,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string BtnSharePhone = "📱 اشتراک‌گذاری شماره تلفن";
         public const string BtnConfirm = "✅ تایید";
         public const string BtnCancel = "❌ لغو";
+
+        /// <summary>Answers on a quote the band is holding — deliberately worded as a judgement about the price.</summary>
+        public const string BtnApproveQuote = "✅ قیمت درست است، منتشر کن";
+        public const string BtnRejectQuote = "❌ منتشر نکن";
         /// <summary>
         /// "Place Order" and "Make Order" mean the same thing here: submitting an order.
         /// </summary>
@@ -621,6 +625,104 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         public const string MsgAdminProcessing = "⏳ در حال پردازش…";
 
+        // ── Quotes held by the plausibility band (issue #158) ──────────────────────
+
+        /// <summary>
+        /// Asks an admin about a gold price too far from the current quote to publish unattended.
+        ///
+        /// <para>
+        /// Both units, because the admin typed mesghal and the system stores grams. The first
+        /// version of this message showed only the per-gram figure, so an admin who had typed
+        /// 333,502,239 was asked to confirm 76,989,297.52 — a number they had never seen, in a
+        /// message asking them to judge whether it was right.
+        /// </para>
+        ///
+        /// <para>
+        /// The prices are in toman; the unit is what they are <em>per</em>. Saying "۷۶٬۹۸۹٬۲۹۷ گرم"
+        /// as that first version did states a weight, not a price, and is the same confusion
+        /// issue #48 removed from the quote flow.
+        /// </para>
+        /// {0} = source, in Persian; {1} = the asset's Persian name;
+        /// {2} = proposed buy per mesghal; {3} = proposed buy per gram;
+        /// {4} = proposed sell per mesghal; {5} = proposed sell per gram;
+        /// {6} = previous mid per mesghal; {7} = previous mid per gram;
+        /// {8} = deviation percent; {9} = the band percent; {10} = minutes until it expires.
+        /// </summary>
+        public const string MsgAdminQuoteNeedsApprovalGold =
+            "⚠️ مظنهٔ {0} با قیمت فعلی اختلاف زیادی دارد و منتشر نشد.\n\n" +
+            "🏷️ دارایی: {1}\n\n" +
+            "🟢 شما می‌خرید (مشتری می‌فروشد)\n" +
+            "       هر مثقال: {2} تومان\n" +
+            "       هر گرم: {3} تومان\n\n" +
+            "🔴 شما می‌فروشید (مشتری می‌خرد)\n" +
+            "       هر مثقال: {4} تومان\n" +
+            "       هر گرم: {5} تومان\n\n" +
+            "➖➖➖➖➖➖➖➖➖\n" +
+            "میانگین قبلی: هر مثقال {6} تومان / هر گرم {7} تومان\n" +
+            "اختلاف: {8}٪ (حد مجاز: {9}٪)\n\n" +
+            "اگر این قیمت درست است تأیید کنید. تا آن زمان مظنهٔ قبلی برقرار است.\n" +
+            "این درخواست تا {10} دقیقهٔ دیگر معتبر است.";
+
+        /// <summary>
+        /// The same question for a symbol with only one unit — a coin, a Bitcoin. There is no
+        /// mesghal duality for those: the price the admin types is already per traded unit.
+        /// {0} = source; {1} = the asset's Persian name; {2} = proposed buy; {3} = proposed sell;
+        /// {4} = previous mid; {5} = the unit these are per; {6} = deviation percent;
+        /// {7} = the band percent; {8} = minutes until it expires.
+        /// </summary>
+        public const string MsgAdminQuoteNeedsApprovalSimple =
+            "⚠️ مظنهٔ {0} با قیمت فعلی اختلاف زیادی دارد و منتشر نشد.\n\n" +
+            "🏷️ دارایی: {1}\n\n" +
+            "🟢 شما می‌خرید (مشتری می‌فروشد): {2} تومان به ازای هر {5}\n" +
+            "🔴 شما می‌فروشید (مشتری می‌خرد): {3} تومان به ازای هر {5}\n\n" +
+            "➖➖➖➖➖➖➖➖➖\n" +
+            "میانگین قبلی: {4} تومان به ازای هر {5}\n" +
+            "اختلاف: {6}٪ (حد مجاز: {7}٪)\n\n" +
+            "اگر این قیمت درست است تأیید کنید. تا آن زمان مظنهٔ قبلی برقرار است.\n" +
+            "این درخواست تا {8} دقیقهٔ دیگر معتبر است.";
+
+        /// <summary>Shown in place of a previous mid on a symbol that has never had a quote.</summary>
+        public const string MsgNoPreviousQuote = "—";
+
+        public const string MsgQuoteSourceAuto = "خودکار";
+        public const string MsgQuoteSourceManual = "دستی";
+
+        /// <summary>
+        /// Confirms an approval, naming the symbol and the prices in both units — the same shape the
+        /// question used. Several questions can be open at once, and the server's own sentence
+        /// identifies none of them.
+        /// {0} = the asset's Persian name; {1} = buy per mesghal; {2} = buy per gram;
+        /// {3} = sell per mesghal; {4} = sell per gram.
+        /// </summary>
+        public const string MsgAdminQuoteApprovedGold = "✅ مظنه تأیید و منتشر شد.\n\n" +
+                                                       "🏷️ دارایی: {0}\n\n" +
+                                                       "🟢 شما می‌خرید\n" +
+                                                       "       هر مثقال: {1} تومان\n" +
+                                                       "       هر گرم: {2} تومان\n\n" +
+                                                       "🔴 شما می‌فروشید\n" +
+                                                       "       هر مثقال: {3} تومان\n" +
+                                                       "       هر گرم: {4} تومان\n\n" +
+                                                       "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
+
+        /// <summary>
+        /// The single-unit counterpart, for a coin or a Bitcoin.
+        /// {0} = the asset's Persian name; {1} = buy; {2} = sell; {3} = the unit these are per.
+        /// </summary>
+        public const string MsgAdminQuoteApprovedSimple = "✅ مظنه تأیید و منتشر شد.\n\n" +
+                                                         "🏷️ دارایی: {0}\n\n" +
+                                                         "🟢 شما می‌خرید: {1} تومان به ازای هر {3}\n" +
+                                                         "🔴 شما می‌فروشید: {2} تومان به ازای هر {3}\n\n" +
+                                                         "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
+
+        /// <summary>{0} = the asset's Persian name.</summary>
+        public const string MsgAdminQuoteRejected = "❌ مظنهٔ {0} منتشر نشد و مظنهٔ قبلی برقرار ماند.";
+
+        /// <summary>
+        /// Shown when the button no longer works: somebody else answered first, or the price sat
+        /// long enough to go stale. {0} = the reason, from the server.
+        /// </summary>
+        public const string MsgAdminQuoteResolveFailed = "ℹ️ این درخواست دیگر قابل پاسخ نیست.\n\n{0}";
+
         // ── User approval and rejection ─────────────────────────────────────────────
 
         /// <summary>Appended to the registration request message once approved.</summary>
@@ -845,6 +947,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string back_to_main = "back_to_main";
         
         public const string confirm_market_order = "confirm_market_order";
+
+        /// <summary>
+        /// Answering a quote the plausibility band held back (issue #158). The pending quote's id
+        /// is appended after the colon, because the message may sit in Telegram for minutes and
+        /// several symbols can be waiting at once — the button has to say which one it answers.
+        /// </summary>
+        public const string approve_quote = "approve_quote";
+        public const string reject_quote = "reject_quote";
 
         public const string AssetPrefix = "asset";
         public const string BackToMain = "back_to_main";
