@@ -1,4 +1,4 @@
-using TallaEgg.Core.ErrorHandling;
+﻿using TallaEgg.Core.ErrorHandling;
 
 namespace Orders.Core;
 
@@ -100,6 +100,20 @@ public class PendingQuote
     /// <summary>The admin who approved or rejected it; null while pending, and for expiry or supersession.</summary>
     public Guid? ResolvedByUserId { get; private set; }
 
+    /// <summary>
+    /// Optimistic concurrency, the same device <c>Order.RemainingAmount</c> and
+    /// <c>WalletEntity.Version</c> use: it puts "AND Version = @read" into the UPDATE, so a second
+    /// admin answering at the same moment matches zero rows and is refused rather than publishing
+    /// a second quote for the symbol.
+    ///
+    /// <para>
+    /// Checking <see cref="Status"/> in memory is not enough. Two buttons pressed together both
+    /// read Pending, both pass, and both publish — the read-then-act race that #42 closed for
+    /// settlement, arriving here through a different door.
+    /// </para>
+    /// </summary>
+    public long Version { get; private set; }
+
     /// <summary>EF Core requires a parameterless constructor.</summary>
     private PendingQuote() { }
 
@@ -170,6 +184,7 @@ public class PendingQuote
             throw new BusinessRuleException("شناسهٔ تأییدکننده الزامی است.");
 
         Status = PendingQuoteStatus.Approved;
+        Version++;
         ResolvedAt = utcNow;
         ResolvedByUserId = approvedByUserId;
 
@@ -184,6 +199,7 @@ public class PendingQuote
             throw new BusinessRuleException("این مظنه پیش‌تر بررسی شده است.");
 
         Status = PendingQuoteStatus.Rejected;
+        Version++;
         ResolvedAt = utcNow;
         ResolvedByUserId = rejectedByUserId;
     }
@@ -194,6 +210,7 @@ public class PendingQuote
         if (Status != PendingQuoteStatus.Pending) return;
 
         Status = PendingQuoteStatus.Superseded;
+        Version++;
         ResolvedAt = utcNow;
     }
 
@@ -203,6 +220,7 @@ public class PendingQuote
         if (Status != PendingQuoteStatus.Pending) return;
 
         Status = PendingQuoteStatus.Expired;
+        Version++;
         ResolvedAt = utcNow;
     }
 }

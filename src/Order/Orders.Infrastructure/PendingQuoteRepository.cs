@@ -1,4 +1,5 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using TallaEgg.Core.ErrorHandling;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 
@@ -7,13 +8,11 @@ namespace Orders.Infrastructure;
 public class PendingQuoteRepository : IPendingQuoteRepository
 {
     private readonly OrdersDbContext _context;
-    private readonly IQuoteRepository _quotes;
     private readonly ILogger<PendingQuoteRepository> _logger;
 
-    public PendingQuoteRepository(OrdersDbContext context, IQuoteRepository quotes, ILogger<PendingQuoteRepository> logger)
+    public PendingQuoteRepository(OrdersDbContext context, ILogger<PendingQuoteRepository> logger)
     {
         _context = context;
-        _quotes = quotes;
         _logger = logger;
     }
 
@@ -81,8 +80,11 @@ public class PendingQuoteRepository : IPendingQuoteRepository
 
         try
         {
-            // PublishAsync deactivates the symbol's previous quote and inserts this one; the
-            // approval is saved in the same transaction so neither can happen without the other.
+            // The same two writes IQuoteRepository.PublishAsync performs, inline rather than
+            // delegated, because they have to share this transaction with the approval: neither
+            // may happen without the other, and PublishAsync opens a transaction of its own,
+            // which cannot nest. Six duplicated lines with the reason written down beat an
+            // abstraction that would have to thread a transaction through both callers.
             var previous = await _context.Quotes
                 .Where(q => q.Symbol == quote.Symbol && q.IsActive)
                 .ToListAsync();
@@ -103,6 +105,19 @@ public class PendingQuoteRepository : IPendingQuoteRepository
 
             return quote;
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another admin answered between this one's read and this write. The token matched
+            // zero rows, so nothing was published and nothing is rolled forward — reported as the
+            // ordinary "already answered" it is, rather than as a fault.
+            await tx.RollbackAsync();
+
+            _logger.LogInformation(
+                "Quote for {Symbol} was answered concurrently by another admin; this approval published nothing.",
+                pendingQuote.Symbol);
+
+            throw new BusinessRuleException("این مظنه پیش‌تر بررسی شده است.");
+        }
         catch (Exception ex)
         {
             await tx.RollbackAsync();
@@ -114,7 +129,16 @@ public class PendingQuoteRepository : IPendingQuoteRepository
     public async Task RejectAsync(PendingQuote pendingQuote, Guid rejectedByUserId)
     {
         pendingQuote.Reject(rejectedByUserId, DateTime.UtcNow);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Same race as approval, and the same answer: somebody got here first.
+            throw new BusinessRuleException("این مظنه پیش‌تر بررسی شده است.");
+        }
 
         _logger.LogInformation(
             "Quote for {Symbol} rejected by {RejectedBy}; the previous quote stands.",

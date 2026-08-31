@@ -855,6 +855,12 @@ namespace TallaEgg.TelegramBot
 
             var approving = callbackData.StartsWith(InlineCallBackData.approve_quote, StringComparison.Ordinal);
 
+            // Read before answering: once resolved it is no longer in the awaiting list, and the
+            // confirmation needs its symbol and prices. A null here is not fatal — the server's own
+            // sentence is still shown — so a failed read costs detail, not the answer.
+            var pending = (await _orderApi.GetPendingQuotesAsync())
+                ?.FirstOrDefault(p => p.Id == pendingQuoteId);
+
             var (success, message) = approving
                 ? await _orderApi.ApprovePendingQuoteAsync(pendingQuoteId, adminUserId)
                 : await _orderApi.RejectPendingQuoteAsync(pendingQuoteId, adminUserId);
@@ -865,7 +871,16 @@ namespace TallaEgg.TelegramBot
                 return;
             }
 
-            await _messenger.SendAsync(chatId, message);
+            // The server's sentence says what happened but not to which symbol or at what price,
+            // and an admin may have several questions open at once. The confirmation is rebuilt
+            // from the proposal so it names both — in the same units the question used.
+            var answered = pending is null
+                ? message
+                : approving
+                    ? PendingQuoteMessage.Approved(pending)
+                    : PendingQuoteMessage.Rejected(pending);
+
+            await _messenger.SendAsync(chatId, answered);
         }
 
         /// <summary>

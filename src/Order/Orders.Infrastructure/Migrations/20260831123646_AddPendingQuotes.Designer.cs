@@ -12,7 +12,7 @@ using Orders.Infrastructure;
 namespace Orders.Infrastructure.Migrations
 {
     [DbContext(typeof(OrdersDbContext))]
-    [Migration("20260831111250_AddPendingQuotes")]
+    [Migration("20260831123646_AddPendingQuotes")]
     partial class AddPendingQuotes
     {
         /// <inheritdoc />
@@ -243,6 +243,10 @@ namespace Orders.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 

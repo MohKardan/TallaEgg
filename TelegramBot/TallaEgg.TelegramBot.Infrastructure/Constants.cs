@@ -687,11 +687,32 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgQuoteSourceAuto = "خودکار";
         public const string MsgQuoteSourceManual = "دستی";
 
-        /// <summary>{0} = the asset's Persian name; {1} = buy with unit; {2} = sell with unit.</summary>
-        public const string MsgAdminQuoteApproved = "✅ مظنه تأیید و منتشر شد.\n\n" +
-                                                    "دارایی: {0}\n" +
-                                                    "خرید: {1}\n" +
-                                                    "فروش: {2}";
+        /// <summary>
+        /// Confirms an approval, naming the symbol and the prices in both units — the same shape the
+        /// question used. Several questions can be open at once, and the server's own sentence
+        /// identifies none of them.
+        /// {0} = the asset's Persian name; {1} = buy per mesghal; {2} = buy per gram;
+        /// {3} = sell per mesghal; {4} = sell per gram.
+        /// </summary>
+        public const string MsgAdminQuoteApprovedGold = "✅ مظنه تأیید و منتشر شد.\n\n" +
+                                                       "🏷️ دارایی: {0}\n\n" +
+                                                       "🟢 شما می‌خرید\n" +
+                                                       "       هر مثقال: {1} تومان\n" +
+                                                       "       هر گرم: {2} تومان\n\n" +
+                                                       "🔴 شما می‌فروشید\n" +
+                                                       "       هر مثقال: {3} تومان\n" +
+                                                       "       هر گرم: {4} تومان\n\n" +
+                                                       "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
+
+        /// <summary>
+        /// The single-unit counterpart, for a coin or a Bitcoin.
+        /// {0} = the asset's Persian name; {1} = buy; {2} = sell; {3} = the unit these are per.
+        /// </summary>
+        public const string MsgAdminQuoteApprovedSimple = "✅ مظنه تأیید و منتشر شد.\n\n" +
+                                                         "🏷️ دارایی: {0}\n\n" +
+                                                         "🟢 شما می‌خرید: {1} تومان به ازای هر {3}\n" +
+                                                         "🔴 شما می‌فروشید: {2} تومان به ازای هر {3}\n\n" +
+                                                         "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
         /// <summary>{0} = the asset's Persian name.</summary>
         public const string MsgAdminQuoteRejected = "❌ مظنهٔ {0} منتشر نشد و مظنهٔ قبلی برقرار ماند.";

@@ -57,8 +57,11 @@ public interface IOrderApiClient
     // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 
     /// <summary>A symbol's current automatic-quote settings.</summary>
-    /// <summary>Quotes the plausibility band is holding until an admin answers (issue #158).</summary>
-    Task<IReadOnlyList<PendingQuoteDto>> GetPendingQuotesAsync();
+    /// <summary>
+    /// Quotes the plausibility band is holding until an admin answers (issue #158). Null means
+    /// Orders could not be reached, which is not the same as nothing waiting.
+    /// </summary>
+    Task<IReadOnlyList<PendingQuoteDto>?> GetPendingQuotesAsync();
 
     /// <summary>Approves a held quote, publishing it now. Fails if it was already answered or has expired.</summary>
     Task<(bool success, string message)> ApprovePendingQuoteAsync(Guid pendingQuoteId, Guid adminUserId);

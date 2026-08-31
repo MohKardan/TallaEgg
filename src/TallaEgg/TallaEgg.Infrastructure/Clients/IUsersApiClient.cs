@@ -23,12 +23,6 @@ public interface IUsersApiClient
     Task<ApiResponse<UserDto>> UpdateUserStatusAsync(long telegramId, UserStatus newStatus);
     Task<Guid?> GetUserIdByPhoneNumberAsync(string phonenumber);
 
-    /// <summary>
-    /// Everyone holding one role. Added so the bot can ask every admin about a quote the
-    /// plausibility band is holding (issue #158) — the alternative, paging the whole user list and
-    /// filtering, reads every customer to find a handful of operators.
-    /// </summary>
-    Task<IReadOnlyList<UserDto>> GetUsersByRoleAsync(UserRole role);
 
     /// <summary>
     /// Looks a user up by their internal id; null when no such user exists.

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Orders.Core;
 
@@ -31,6 +31,10 @@ public class PendingQuoteConfiguration : IEntityTypeConfiguration<PendingQuote>
         builder.Property(p => p.Status).IsRequired();
         builder.Property(p => p.ResolvedAt);
         builder.Property(p => p.ResolvedByUserId);
+
+        // Two admins get the same message and can press at the same instant. Without this the
+        // status check is read-then-act and both approvals publish.
+        builder.Property(p => p.Version).IsRequired().IsConcurrencyToken();
 
         // "What is still waiting for an answer" is the only hot query: the bot asks for it on
         // every poll, and the auto-publisher asks per symbol before proposing a replacement.

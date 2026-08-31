@@ -27,7 +27,8 @@ namespace Orders.Infrastructure.Migrations
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     ResolvedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ResolvedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
+                    ResolvedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Version = table.Column<long>(type: "bigint", nullable: false)
                 },
                 constraints: table =>
                 {

@@ -1,4 +1,4 @@
-using Orders.Core;
+﻿using Orders.Core;
 using TallaEgg.Core;
 using TallaEgg.Core.ErrorHandling;
 
@@ -96,6 +96,40 @@ public class PendingQuoteTests
         proposal.Reject(Guid.NewGuid(), DateTime.UtcNow);
 
         Assert.Throws<BusinessRuleException>(() => proposal.Approve(Guid.NewGuid(), DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// Every state change bumps the concurrency token, which is what makes the database refuse a
+    /// second answer rather than relying on the in-memory status check. Two admins get the same
+    /// message and can press at the same instant: both read Pending, both pass the check, and
+    /// without the token both would publish.
+    /// </summary>
+    [Fact]
+    public void EveryStateChangeBumpsTheConcurrencyToken()
+    {
+        var approved = AnyProposal();
+        var before = approved.Version;
+        approved.Approve(Guid.NewGuid(), DateTime.UtcNow);
+        Assert.Equal(before + 1, approved.Version);
+
+        var rejected = AnyProposal();
+        rejected.Reject(Guid.NewGuid(), DateTime.UtcNow);
+        Assert.Equal(1, rejected.Version);
+
+        var superseded = AnyProposal();
+        superseded.Supersede(DateTime.UtcNow);
+        Assert.Equal(1, superseded.Version);
+
+        var expired = AnyProposal();
+        expired.Expire(DateTime.UtcNow);
+        Assert.Equal(1, expired.Version);
+    }
+
+    /// <summary>A proposal nobody has answered has not been written to since it was made.</summary>
+    [Fact]
+    public void AFreshProposalStartsAtVersionZero()
+    {
+        Assert.Equal(0, AnyProposal().Version);
     }
 
     /// <summary>

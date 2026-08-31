@@ -1,4 +1,4 @@
-using TallaEgg.Core;
+﻿using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Utilties;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -48,6 +48,33 @@ public static class PendingQuoteMessage
 
         return (text, keyboard);
     }
+
+    /// <summary>
+    /// The confirmation after an admin approves. Names the symbol and the prices, in the same units
+    /// the question used, because several questions can be open at once and the server's own
+    /// sentence identifies none of them.
+    /// </summary>
+    public static string Approved(PendingQuoteDto pending)
+    {
+        var baseAsset = BaseAssetOf(pending.Symbol);
+
+        return pending.Symbol == CurrenciesConstant.MAUA_IRT
+            ? string.Format(BotMsgs.MsgAdminQuoteApprovedGold,
+                PersianFormat.Asset(baseAsset),
+                PersianFormat.Number(PerMesghal(pending.BuyPrice)),
+                PersianFormat.Number(pending.BuyPrice),
+                PersianFormat.Number(PerMesghal(pending.SellPrice)),
+                PersianFormat.Number(pending.SellPrice))
+            : string.Format(BotMsgs.MsgAdminQuoteApprovedSimple,
+                PersianFormat.Asset(baseAsset),
+                PersianFormat.Number(pending.BuyPrice),
+                PersianFormat.Number(pending.SellPrice),
+                CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset);
+    }
+
+    /// <summary>The confirmation after a rejection: which symbol, and that the previous quote stands.</summary>
+    public static string Rejected(PendingQuoteDto pending) =>
+        string.Format(BotMsgs.MsgAdminQuoteRejected, PersianFormat.Asset(BaseAssetOf(pending.Symbol)));
 
     /// <summary>
     /// Gold, in both units. The stored figures are per gram, so the per-mesghal ones are recovered

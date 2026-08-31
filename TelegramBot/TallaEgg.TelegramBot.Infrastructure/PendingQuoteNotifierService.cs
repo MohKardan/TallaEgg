@@ -1,8 +1,7 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TallaEgg.Core.DTOs.Order;
-using TallaEgg.Core.Enums.User;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Messages;
 using TallaEgg.TelegramBot.Infrastructure.Messaging;
@@ -37,22 +36,40 @@ public class PendingQuoteNotifierService : BackgroundService
     /// </summary>
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
 
+    /// <summary>
+    /// How long to stay quiet about a symbol after asking, however many new proposals arrive for it.
+    ///
+    /// <para>
+    /// A feed stuck on a wrong price produces a fresh proposal every tick, each superseding the last
+    /// and each with a new id — so keying "have I asked about this?" on the proposal alone would put
+    /// a message in front of every admin every two minutes, all night. Keying it on the symbol
+    /// instead asks once and then holds off, and the admin who answers is answering about the newest
+    /// price either way, because the button carries whichever proposal is live when they press it.
+    /// </para>
+    ///
+    /// <para>
+    /// Fifteen minutes rather than the proposal's own five: the point is to stop repeating the same
+    /// question, and re-asking the moment one expires would restore the flood a proposal at a time.
+    /// </para>
+    /// </summary>
+    private static readonly TimeSpan QuietPeriodPerSymbol = TimeSpan.FromMinutes(15);
+
     private readonly IOrderApiClient _orderApi;
     private readonly IUsersApiClient _usersApi;
     private readonly IBotMessenger _messenger;
     private readonly ILogger<PendingQuoteNotifierService> _logger;
 
     /// <summary>
-    /// Proposals already announced, so a poll every thirty seconds does not re-send the same
-    /// question while an admin is thinking about it.
+    /// When each symbol was last asked about, so a stuck feed does not turn into a stream of
+    /// identical questions.
     ///
     /// <para>
-    /// In memory, and deliberately: losing it on a restart costs one duplicate message per open
-    /// proposal, which is far cheaper than a table and a migration. Entries are dropped once the
-    /// proposal stops being offered, so this cannot grow without bound.
+    /// In memory, and deliberately: losing it on a restart costs one extra message per symbol with
+    /// something outstanding, which is far cheaper than a table and a migration. Symbols with
+    /// nothing waiting are dropped on every poll, so it cannot grow without bound.
     /// </para>
     /// </summary>
-    private readonly ConcurrentDictionary<Guid, byte> _announced = new();
+    private readonly ConcurrentDictionary<string, DateTime> _lastAskedPerSymbol = new(StringComparer.OrdinalIgnoreCase);
 
     public PendingQuoteNotifierService(
         IOrderApiClient orderApi,
@@ -102,39 +119,50 @@ public class PendingQuoteNotifierService : BackgroundService
     {
         var awaiting = await _orderApi.GetPendingQuotesAsync();
 
-        // Forget anything no longer on offer — answered, expired, or superseded by a newer price.
-        // Doing this every poll, rather than on a timer of its own, keeps the set exactly as large
-        // as the number of open proposals.
-        foreach (var id in _announced.Keys.Where(id => awaiting.All(p => p.Id != id)).ToList())
-            _announced.TryRemove(id, out _);
+        // Null is "Orders could not be answered", which says nothing about what is waiting. Treating
+        // it as an empty list would clear the record below and re-ask every admin about every open
+        // proposal on the next poll, turning one network blip into a broadcast.
+        if (awaiting is null) return;
 
-        var unannounced = awaiting
+        var now = DateTime.UtcNow;
+
+        // Forget symbols with nothing outstanding, so a symbol that goes quiet and later needs
+        // asking about again is asked immediately rather than serving out an old quiet period.
+        foreach (var symbol in _lastAskedPerSymbol.Keys.ToList())
+        {
+            if (!awaiting.Any(p => string.Equals(p.Symbol, symbol, StringComparison.OrdinalIgnoreCase)))
+                _lastAskedPerSymbol.TryRemove(symbol, out _);
+        }
+
+        var toAsk = awaiting
             .Where(p => !string.Equals(p.Source, "Manual", StringComparison.OrdinalIgnoreCase))
-            .Where(p => !_announced.ContainsKey(p.Id))
+            .Where(p => !AskedRecently(p.Symbol, now))
+            .GroupBy(p => p.Symbol, StringComparer.OrdinalIgnoreCase)
+            .Select(bySymbol => bySymbol.OrderByDescending(p => p.CreatedAt).First())
             .ToList();
 
-        if (unannounced.Count == 0) return;
+        if (toAsk.Count == 0) return;
 
-        var admins = await AdminChatIdsAsync();
+        var admins = await _usersApi.GetOperatorTelegramIdsAsync();
 
         if (admins.Count == 0)
         {
-            // Nobody to ask. Left unannounced on purpose, so that once an admin exists the question
-            // is still asked rather than having been silently dropped — but said loudly now, because
-            // a shop with no reachable admin and a held quote is stuck.
+            // Nobody to ask. Nothing is recorded as asked, so once an admin exists the question is
+            // still put — but said loudly now, because a shop with a held quote and no reachable
+            // admin is stuck on its previous price with no way to move.
             _logger.LogError(
                 "{Count} quote(s) are waiting for approval and no admin could be reached to ask.",
-                unannounced.Count);
+                toAsk.Count);
             return;
         }
 
-        foreach (var pending in unannounced)
+        foreach (var pending in toAsk)
         {
-            var (text, keyboard) = PendingQuoteMessage.Build(pending, DateTime.UtcNow);
+            var (text, keyboard) = PendingQuoteMessage.Build(pending, now);
 
-            // Marked as announced before the first send, not after the last: a failure partway
-            // through must not re-ask everyone who already received it on the next poll.
-            _announced[pending.Id] = 0;
+            // Recorded before the first send, not after the last: a failure partway through must not
+            // re-ask everyone who already received it on the next poll.
+            _lastAskedPerSymbol[pending.Symbol] = now;
 
             foreach (var chatId in admins)
             {
@@ -151,25 +179,13 @@ public class PendingQuoteNotifierService : BackgroundService
             }
 
             _logger.LogInformation(
-                "Asked {AdminCount} admin(s) about the held {Source} quote for {Symbol} (buy {BuyPrice}, sell {SellPrice}).",
-                admins.Count, pending.Source, pending.Symbol, pending.BuyPrice, pending.SellPrice);
+                "Asked {AdminCount} admin(s) about the held {Source} quote for {Symbol} (buy {BuyPrice}, sell {SellPrice}). " +
+                "No further question about this symbol for {QuietMinutes} minutes.",
+                admins.Count, pending.Source, pending.Symbol, pending.BuyPrice, pending.SellPrice,
+                QuietPeriodPerSymbol.TotalMinutes);
         }
     }
 
-    /// <summary>
-    /// Everyone who can answer: Admin and SuperAdmin alike, because anyone who can publish a quote
-    /// can judge one. The first to press decides, and the rest are told the question is closed by
-    /// the refusal their own button produces.
-    /// </summary>
-    private async Task<IReadOnlyList<long>> AdminChatIdsAsync()
-    {
-        var admins = await _usersApi.GetUsersByRoleAsync(UserRole.Admin);
-        var superAdmins = await _usersApi.GetUsersByRoleAsync(UserRole.SuperAdmin);
-
-        return admins.Concat(superAdmins)
-            .Select(u => u.TelegramId)
-            .Where(id => id != 0)
-            .Distinct()
-            .ToList();
-    }
+    private bool AskedRecently(string symbol, DateTime now) =>
+        _lastAskedPerSymbol.TryGetValue(symbol, out var lastAsked) && now - lastAsked < QuietPeriodPerSymbol;
 }

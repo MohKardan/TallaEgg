@@ -456,23 +456,30 @@ public class OrderApiClient : IOrderApiClient
 
     // ── Quotes held by the plausibility band (issue #158) ───────────────────────
 
-    public async Task<IReadOnlyList<PendingQuoteDto>> GetPendingQuotesAsync()
+    /// <summary>
+    /// Null distinguishes "Orders could not be reached" from "nothing is waiting". The caller
+    /// forgets what it has already asked about based on this list, so an empty list standing in
+    /// for a failed call would make it re-ask every admin about every open proposal.
+    /// </summary>
+    public async Task<IReadOnlyList<PendingQuoteDto>?> GetPendingQuotesAsync()
     {
         try
         {
             var response = await _httpClient.GetAsync($"{_baseUrl}/quotes/pending");
-            if (!response.IsSuccessStatusCode) return [];
+            if (!response.IsSuccessStatusCode) return null;
 
             var body = await response.Content.ReadAsStringAsync();
             var result = Deserialize<ApiResponse<List<PendingQuoteDto>>>(body);
 
-            return result?.Data ?? [];
+            // Data null on a 200 means the body did not parse, which is a failed read, not an
+            // empty one.
+            return result?.Data;
         }
         catch (Exception ex)
         {
             // Polled on a timer, so one failed read costs nothing but the next interval.
             _logger.LogWarning(ex, "Could not read the quotes waiting for approval.");
-            return [];
+            return null;
         }
     }
 
