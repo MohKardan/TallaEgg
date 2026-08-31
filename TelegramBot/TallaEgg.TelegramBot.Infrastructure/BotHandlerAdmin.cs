@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using TallaEgg.Core;
@@ -30,6 +30,48 @@ namespace TallaEgg.TelegramBot
     public partial class BotHandler : IBotHandler
     {
 
+        /// <summary>
+        /// Whether the asset an admin named can carry credit, answering them specifically when it
+        /// cannot. Shared by ش and د, which both act on the credit ledger and therefore both reject
+        /// exactly the same input.
+        ///
+        /// <para>
+        /// Three refusals, three different sentences, because they send the admin to three different
+        /// places: an unrecognised word is a typo; a credit name ("اعتبار طلا") is a word the
+        /// commands add for themselves; and Toman is a perfectly good asset that simply has no credit
+        /// ledger, which no amount of re-spelling will fix. All three used to be "نوع شناسایی نشد",
+        /// or in Toman's case not caught here at all — it reached the wallet and came back as the
+        /// generic "خطا در بروزرسانی".
+        /// </para>
+        /// </summary>
+        private async Task<string?> ResolveCreditableAssetAsync(long chatId, string typed)
+        {
+            var resolved = CurrenciesConstant.ResolveCurrencyCode(typed);
+
+            if (resolved is null)
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminInvalidCurrency, typed, CurrenciesConstant.GetPersianNamesList()));
+                return null;
+            }
+
+            if (CurrenciesConstant.IsCreditAsset(resolved))
+            {
+                await _messenger.SendAsync(chatId, string.Format(BotMsgs.MsgAdminCreditNameNotNeeded, typed));
+                return null;
+            }
+
+            if (!CurrenciesConstant.HasCreditLedger(resolved))
+            {
+                await _messenger.SendAsync(chatId,
+                    string.Format(BotMsgs.MsgAdminAssetHasNoCredit,
+                        PersianFormat.Asset(resolved), CurrenciesConstant.GetCreditableNamesList()));
+                return null;
+            }
+
+            return resolved;
+        }
+
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
@@ -56,17 +98,8 @@ namespace TallaEgg.TelegramBot
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Maua; // مقدار پیش‌فرض
-                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
-
-                // A credit name resolves, so without this "ش ... اعتبار آبشده" would be prefixed a
-                // second time into CREDIT_CREDIT_MAUA and fail at the wallet as an unknown asset.
-                // Both commands already mean the credit ledger, so naming it adds nothing.
-                if (currency is null || CurrenciesConstant.IsCreditAsset(currency))
-                {
-                    await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
-                    return true;
-                }
+                var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
+                if (currency is null) return true;
 
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)
@@ -175,15 +208,8 @@ namespace TallaEgg.TelegramBot
                 var currencyInput = match.Groups["currency"].Success
                     ? match.Groups["currency"].Value
                     : CurrenciesConstant.Maua; // مقدار پیش‌فرض
-                var currency = CurrenciesConstant.ResolveCurrencyCode(currencyInput);
-
-                // Same guard as the charge command: a credit name would be prefixed twice.
-                if (currency is null || CurrenciesConstant.IsCreditAsset(currency))
-                {
-                    await _messenger.SendAsync(message.Chat.Id,
-                        string.Format(BotMsgs.MsgAdminInvalidCurrency, currencyInput, CurrenciesConstant.GetPersianNamesList()));
-                    return true;
-                }
+                var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
+                if (currency is null) return true;
 
                 var userDto = await _usersApi.GetUserAsync(phone);
                 if (userDto != null)

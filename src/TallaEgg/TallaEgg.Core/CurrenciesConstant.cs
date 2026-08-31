@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace TallaEgg.Core
 {
@@ -99,6 +99,32 @@ namespace TallaEgg.Core
         /// </summary>
         public static bool IsCreditAsset(string? code) =>
             code is not null && code.StartsWith("CREDIT_", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Whether an asset has a credit ledger at all.
+        ///
+        /// <para>
+        /// Credit ledgers are minted per tradable <b>base</b> asset (see the loop in
+        /// <c>BuildCurrencies</c>), so gold, the coin and Bitcoin have one and Toman — a quote
+        /// currency — does not. <c>CREDIT_IRT</c> is therefore not a currency, and asking the wallet
+        /// to deposit into it fails with "wallet does not exist".
+        /// </para>
+        ///
+        /// <para>
+        /// Worth knowing: <c>ValidateCreditAndBalanceAsync</c> reads <c>CREDIT_&lt;quote&gt;</c> and would
+        /// use it if it existed, so half of the cross-asset credit design is unreachable rather than
+        /// absent. Whether it should exist is the open question on #36; this only reports what is
+        /// true today so the commands can say so plainly instead of failing at the wallet.
+        /// </para>
+        /// </summary>
+        public static bool HasCreditLedger(string? baseAsset) =>
+            baseAsset is not null && IsValidCurrency(CreditAssetFor(baseAsset));
+
+        /// <summary>The Persian names of the assets that do have a credit ledger, for an error message.</summary>
+        public static string GetCreditableNamesList() =>
+            string.Join("، ", _currencies.Values
+                .Where(c => !IsCreditAsset(c.Code) && HasCreditLedger(c.Code))
+                .Select(c => c.PersianName));
 
         /// <summary>
         /// Merges the "Symbols" section of the shared config file on top of the compiled

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using TallaEgg.Core.Utilties;
 using TallaEgg.Core.DTOs;
@@ -186,7 +186,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 تومان");
+        await SayAsync(handler, "د 09158527483 100 آبشده");
 
         var withdrawal = Assert.Single(_walletApi.Withdrawals);
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
@@ -250,10 +250,10 @@ public class AdminChargeCommandTests
         _walletApi.ReportAlreadyApplied = true;
         _walletApi.CurrentBalance = 4_200m;
 
-        await SayAsync(handler, "د 09158527483 500 تومان");
+        await SayAsync(handler, "د 09158527483 500 آبشده");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
-        Assert.Contains(PersianFormat.Amount(4_200m, "IRT"), reply);
+        Assert.Contains(PersianFormat.Amount(4_200m, "CREDIT_MAUA"), reply);
     }
 
     /// <summary>
@@ -316,7 +316,7 @@ public class AdminChargeCommandTests
     /// <summary>The property that was broken, stated directly: the same words reach the same wallet.</summary>
     [Theory]
     [InlineData("سکه")]
-    [InlineData("تومان")]
+    [InlineData("آبشده")]
     [InlineData("بیت‌کوین")]
     [InlineData("")]
     public async Task ChargingAndDeductingTheSameWordsReachTheSameWallet(string asset)
@@ -360,6 +360,49 @@ public class AdminChargeCommandTests
 
         Assert.Empty(_walletApi.Deposits);
         Assert.Empty(_walletApi.Withdrawals);
+
+        // Its own sentence, not "unrecognised": the admin typed something meaningful, and being
+        // told to check their spelling would send them looking for a mistake that is not there.
+        Assert.Contains(_messenger.Texts, t => t.Contains("لازم نیست"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>
+    /// Toman has no credit ledger. Credit ledgers are minted per tradable base asset, and Toman is
+    /// a quote currency — CREDIT_IRT is not a currency, and the wallet rejects a deposit into it.
+    ///
+    /// <para>
+    /// This was already true of the top-up command before these commands were made mirrors: it has
+    /// always built CREDIT_IRT for "تومان" and always failed, opaquely, at the wallet — while the
+    /// bot's own help offered exactly that as its example. Both commands now say so directly.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task TomanIsRefusedBecauseItHasNoCreditLedger(string command)
+    {
+        var handler = Build();
+
+        await SayAsync(handler, command + " 09158527483 500 تومان");
+
+        Assert.Empty(_walletApi.Deposits);
+        Assert.Empty(_walletApi.Withdrawals);
+
+        // Not "unrecognised" either: "تومان" is a real asset, it simply cannot carry credit.
+        Assert.Contains(_messenger.Texts, t => t.Contains("دفتر اعتبار ندارد"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>An unrecognised word still gets the spelling message, so the three refusals stay distinct.</summary>
+    [Fact]
+    public async Task AnUnrecognisedWordStillGetsTheSpellingMessage()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "ش 09158527483 100 نقره");
+
+        Assert.Empty(_walletApi.Deposits);
         Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
     }
 

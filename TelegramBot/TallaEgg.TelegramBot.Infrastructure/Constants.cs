@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -339,10 +339,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAdminHelp = "🔧 دستورهای مدیریت\n\n" +
                                           "افزایش اعتبار:\n" +
                                           "ش [شمارهٔ تلفن] [مقدار] [نوع]\n" +
-                                          "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
-                                          "کسر از موجودی:\n" +
+                                          "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n\n" +
+                                          "کسر از اعتبار (معکوس ش):\n" +
                                           "د [شمارهٔ تلفن] [مقدار] [نوع]\n" +
-                                          "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n\n" +
+                                          "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
+                                          "(هر دو روی اعتبار کار می‌کنند؛ بدون ذکر نوع، آبشده)\n\n" +
                                           "فهرست کاربران: ک [جستجو]\n" +
                                           "موجودی کاربر: م [شمارهٔ تلفن]\n" +
                                           "سفارش‌های فعال کاربر: س [شمارهٔ تلفن]\n\n" +
@@ -368,9 +369,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                         "این دستور به اعتبار کاربر اضافه می‌کند.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "ش [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
                                                         "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
-                                                        "اگر نوع را ننویسید، طلا در نظر گرفته می‌شود.\n" +
+                                                        "اگر نوع را ننویسید، آبشده در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
@@ -379,11 +380,34 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                         "این دستور از اعتبار کاربر کم می‌کند (معکوس دستور ش).\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "د [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
-                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
+                                                        "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ آبشده\n" +
                                                         "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
-                                                        "اگر نوع را ننویسید، طلا در نظر گرفته می‌شود.\n" +
+                                                        "اگر نوع را ننویسید، آبشده در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
+
+        /// <summary>
+        /// For an asset that exists but has no credit ledger — today that is Toman, which is a quote
+        /// currency, and credit ledgers are minted per tradable base asset only. Deliberately not
+        /// <see cref="MsgAdminInvalidCurrency"/>: Toman is a perfectly good asset name, and telling
+        /// the admin it was not recognised would send them hunting for a spelling mistake that is
+        /// not there. Before this, the command built CREDIT_IRT and failed at the wallet instead,
+        /// surfacing as the generic "خطا در بروزرسانی".
+        /// {0} = the asset's Persian name; {1} = the assets that do have a credit ledger.
+        /// </summary>
+        public const string MsgAdminAssetHasNoCredit = "❌ «{0}» دفتر اعتبار ندارد.\n\n" +
+                                                       "دستورهای ش و د فقط روی اعتبار کار می‌کنند، و اعتبار فقط برای دارایی‌های قابل معامله تعریف می‌شود.\n\n" +
+                                                       "دارایی‌های مجاز: {1}";
+
+        /// <summary>
+        /// For a name that resolves to a credit ledger, which both commands add for themselves.
+        /// Separate from "not recognised" because the admin typed something meaningful — and it used
+        /// to be the only spelling that could reduce a credit line, so it is worth answering kindly.
+        /// {0} = what they typed.
+        /// </summary>
+        public const string MsgAdminCreditNameNotNeeded = "ℹ️ لازم نیست «{0}» را بنویسید.\n\n" +
+                                                          "هر دو دستور ش و د همیشه روی اعتبار کار می‌کنند.\n" +
+                                                          "فقط نام دارایی را بنویسید — مثلاً «آبشده» یا «سکه».";
 
         /// <summary>{0} = the user's invalid input; {1} = the list of permitted Persian names.</summary>
         public const string MsgAdminInvalidCurrency = "❌ نوع «{0}» شناسایی نشد.\n\n" +
