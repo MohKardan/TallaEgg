@@ -53,6 +53,15 @@ var flattened = serviceSection.AsEnumerable(true)
 
 builder.Configuration.AddInMemoryCollection(flattened);
 
+// Re-registered after the shared file and the section flattened from it so that last-wins
+// puts a host on top of both. WebApplication.CreateBuilder registers these two, but ahead of
+// the AddJsonFile above, which left the file outranking them: no port, URL or connection
+// string could be varied per host without hand-editing config/appsettings.global.json, the
+// one file that holds live credentials and is deliberately untracked (#33). The file stays
+// the source of truth for every value a host does not explicitly override (issue #159).
+builder.Configuration.AddEnvironmentVariables();
+builder.Configuration.AddCommandLine(args);
+
 // Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
