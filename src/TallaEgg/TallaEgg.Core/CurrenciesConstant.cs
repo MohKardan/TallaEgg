@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace TallaEgg.Core
 {
@@ -91,6 +91,14 @@ namespace TallaEgg.Core
         /// ceiling now that there is more than one.
         /// </summary>
         public static string CreditAssetFor(string baseAsset) => "CREDIT_" + baseAsset;
+
+        /// <summary>
+        /// Whether a code is already a credit ledger. Callers that are about to apply
+        /// <see cref="CreditAssetFor"/> use it to refuse input that has been prefixed once already,
+        /// rather than building "CREDIT_CREDIT_MAUA" and failing later with a wallet-not-found.
+        /// </summary>
+        public static bool IsCreditAsset(string? code) =>
+            code is not null && code.StartsWith("CREDIT_", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Merges the "Symbols" section of the shared config file on top of the compiled
@@ -357,10 +365,21 @@ namespace TallaEgg.Core
         /// <summary>
         /// The typeable Persian currency names, for use in an error message instead of Latin codes.
         ///
-        /// Each asset's CREDIT_ variant is deliberately excluded: the top-up and withdraw commands
-        /// always add the CREDIT_ prefix themselves, so an admin typing the credit name directly
-        /// would produce a meaningless double-prefixed code ("CREDIT_CREDIT_MAUA"). This list exists
-        /// to prevent that input, not to invite it.
+        /// <para>
+        /// Each asset's CREDIT_ variant is excluded, because the top-up and deduction commands both
+        /// add the CREDIT_ prefix themselves: an admin typing the credit name would produce a
+        /// double-prefixed code ("CREDIT_CREDIT_MAUA"), which is not an asset. This list exists to
+        /// prevent that input, not to invite it — and <see cref="IsCreditAsset"/> now refuses it
+        /// outright rather than leaving the omission from a help message as the only defence.
+        /// </para>
+        ///
+        /// <para>
+        /// The reason used to be true of the top-up command only. The deduction command passed the
+        /// resolved code through unprefixed, so it read the credit name correctly while the list
+        /// hid that from the admin — the one form that reduced a credit line was the one form
+        /// nobody was told about. Both commands act on the credit ledger now, so the exclusion is
+        /// finally true of both.
+        /// </para>
         /// </summary>
         public static string GetPersianNamesList() =>
             string.Join("، ", _currencies.Values

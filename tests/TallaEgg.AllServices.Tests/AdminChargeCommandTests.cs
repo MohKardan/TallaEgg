@@ -293,6 +293,117 @@ public class AdminChargeCommandTests
         // Anchored to its label: a bare PersianFormat.Amount(0) is "۰", which also sits inside "۱۰۰".
         Assert.Contains("اعتبار کنونی کاربر: " + PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
     }
+    // -----------------------------------------------------------------------------------
+    // ش and د as mirrors (evidence recorded on #36).
+    //
+    // They used to write to different wallets from the same Persian word: ش credited
+    // CREDIT_<X> while د debited plain <X>, with identical help text and identical examples.
+    // An admin undoing a mistaken top-up with the obvious symmetric command left the credit
+    // untouched and took the customer's real position instead. Nothing in this suite covered
+    // which asset د targeted, so the whole asymmetry was invisible to it.
+    // -----------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task DeductingTargetsTheCreditLedgerNotTheSpotWallet()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Equal("CREDIT_SEKE_BAHAR", Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>The property that was broken, stated directly: the same words reach the same wallet.</summary>
+    [Theory]
+    [InlineData("سکه")]
+    [InlineData("تومان")]
+    [InlineData("بیت‌کوین")]
+    [InlineData("")]
+    public async Task ChargingAndDeductingTheSameWordsReachTheSameWallet(string asset)
+    {
+        var handler = Build();
+        var suffix = asset.Length == 0 ? "" : " " + asset;
+
+        await SayAsync(handler, "ش 09158527483 100" + suffix);
+        await SayAsync(handler, "د 09158527483 100" + suffix);
+
+        Assert.Equal(Assert.Single(_walletApi.Deposits).Asset, Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>
+    /// With no asset named, both default to gold. د used to default to Toman, so even the
+    /// shorthand forms disagreed about what they meant.
+    /// </summary>
+    [Fact]
+    public async Task DeductingWithNoCurrencyGivenDefaultsToGoldCredit()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100");
+
+        Assert.Equal("CREDIT_MAUA", Assert.Single(_walletApi.Withdrawals).Asset);
+    }
+
+    /// <summary>
+    /// Naming the credit ledger is refused on both commands, rather than being prefixed a second
+    /// time into CREDIT_CREDIT_MAUA — an asset that does not exist and would fail at the wallet
+    /// with a confusing "wallet not found". Both commands already mean the credit ledger.
+    /// </summary>
+    [Theory]
+    [InlineData("ش")]
+    [InlineData("د")]
+    public async Task NamingTheCreditLedgerIsRefusedRatherThanDoublePrefixed(string command)
+    {
+        var handler = Build();
+
+        await SayAsync(handler, command + " 09158527483 100 اعتبار آبشده");
+
+        Assert.Empty(_walletApi.Deposits);
+        Assert.Empty(_walletApi.Withdrawals);
+        Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
+    }
+
+    /// <summary>
+    /// The customer is told their credit fell, not their balance. The wording followed the old
+    /// behaviour and would otherwise now describe a wallet the command no longer touches.
+    /// </summary>
+    [Fact]
+    public async Task TheCustomerIsToldTheirCreditFellNotTheirBalance()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("اعتبار حساب شما کاهش یافت"));
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("از موجودی حساب شما کسر شد"));
+    }
+
+    /// <summary>And the admin's own confirmation says credit too.</summary>
+    [Fact]
+    public async Task TheAdminConfirmationSaysCredit()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        Assert.Contains(_messenger.Texts, t => t.Contains("کسر از اعتبار انجام شد"));
+    }
+
+    /// <summary>
+    /// The deduplication key follows the ledger the command actually touches, so a top-up and a
+    /// deduction of the same amount still cannot be mistaken for one another.
+    /// </summary>
+    [Fact]
+    public async Task TheDeductionKeyNamesTheCreditLedger()
+    {
+        var handler = Build();
+
+        await SayAsync(handler, "د 09158527483 100 سکه");
+
+        var withdrawal = Assert.Single(_walletApi.Withdrawals);
+        Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
+        Assert.Contains("CREDIT_SEKE_BAHAR", withdrawal.ReferenceId);
+    }
     private sealed class RecordingWalletApiClient : StubWalletApiClient
     {
         public List<WalletRequest> Deposits { get; } = [];

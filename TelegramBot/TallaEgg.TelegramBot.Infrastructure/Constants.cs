@@ -365,19 +365,23 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminChargeFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                        "این دستور به اعتبار کاربر اضافه می‌کند.\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "ش [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
                                                         "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
                                                         "نمونه: ش ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "اگر نوع را ننویسید، طلا در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
         /// <summary>{0} = the list of permitted currency names in Persian.</summary>
         public const string MsgAdminDeductFormatError = "❌ قالب دستور درست نیست.\n\n" +
+                                                        "این دستور از اعتبار کاربر کم می‌کند (معکوس دستور ش).\n\n" +
                                                         "قالب صحیح:\n" +
                                                         "د [شمارهٔ تلفن] [مقدار] [نوع]\n\n" +
                                                         "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۵۰۰۰۰۰ تومان\n" +
                                                         "نمونه: د ۰۹۱۲۱۲۳۴۵۶۷ ۱۰۰ سکه\n\n" +
+                                                        "اگر نوع را ننویسید، طلا در نظر گرفته می‌شود.\n" +
                                                         "نوع‌های مجاز: {0}\n" +
                                                         "(به‌جای نام کامل، کلیدواژهٔ کوتاه هم می‌پذیرد: سکه، بیت)";
 
@@ -531,24 +535,27 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "اکنون می‌توانید سفارش خرید یا فروش ثبت کنید.";
 
         /// <summary>
-        /// Deduction confirmation shown to the admin.
+        /// Deduction confirmation shown to the admin. Says "credit" throughout, because that is
+        /// what the command now reduces — it used to debit the spot balance while its counterpart
+        /// credited the credit ledger, and the wording followed the old behaviour.
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
-        /// {3} = the new balance with unit.
+        /// {3} = the new credit with unit.
         /// </summary>
-        public const string MsgAdminDeductDone = "✅ کسر از موجودی انجام شد.\n\n" +
+        public const string MsgAdminDeductDone = "✅ کسر از اعتبار انجام شد.\n\n" +
                                                  "دارایی: {0}\n" +
                                                  "مقدار کسر: {1}\n" +
                                                  "کاربر: {2}\n" +
-                                                 "موجودی جدید: {3}";
+                                                 "اعتبار جدید: {3}";
 
         /// <summary>
-        /// Notifies the user of a deduction. The previous message wrongly called it a top-up.
-        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new balance with unit.
+        /// Notifies the user that their credit was reduced. The message named the balance while the
+        /// command debited the spot wallet; it names the credit now, because that is what moved.
+        /// {0} = the asset's Persian name; {1} = amount with unit; {2} = the new credit with unit.
         /// </summary>
-        public const string MsgUserBalanceDeducted = "ℹ️ از موجودی حساب شما کسر شد.\n\n" +
+        public const string MsgUserBalanceDeducted = "ℹ️ اعتبار حساب شما کاهش یافت.\n\n" +
                                                      "دارایی: {0}\n" +
                                                      "مقدار کسر: {1}\n" +
-                                                     "موجودی جدید: {2}";
+                                                     "اعتبار جدید: {2}";
 
         /// <summary>
         /// Shown to the admin when the same top-up was already recorded, so this send changed
@@ -578,11 +585,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// {0} = the asset's Persian name; {1} = amount with unit; {2} = phone number;
         /// {3} = the balance the wallet holds now, with unit.
         /// </summary>
-        public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
+        public const string MsgAdminDeductAlreadyApplied = "ℹ️ این کسر اعتبار پیش‌تر ثبت شده بود و دوباره اعمال نشد.\n\n" +
                                                           "دارایی: {0}\n" +
                                                           "مقدار: {1}\n" +
                                                           "کاربر: {2}\n" +
-                                                          "موجودی کنونی کاربر: {3}\n\n" +
+                                                          "اعتبار کنونی کاربر: {3}\n\n" +
                                                           "اگر قصد داشتید بار دوم هم کسر کنید، چند دقیقه دیگر دوباره تلاش کنید.";
 
         /// <summary>{0} = the error reason.</summary>
