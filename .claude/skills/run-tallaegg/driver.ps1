@@ -20,6 +20,12 @@
   menu navigation) through the real IBotHandler and the real Users/Wallet/Orders APIs and
   database — everything except the live Telegram connection, which it fakes.
 
+  "smoke" also waits for settlement before it reports anything. The Simulator's summary line is
+  printed when the trading phase ends, but settlement is queued through the Orders outbox and
+  drains tens of seconds later, so that line alone is not a result (issue #175). After the run
+  the driver polls until no outbox message is Pending, and fails if the number of permanently
+  Failed messages went up.
+
   Two things it changes on the database it runs against:
     * Rows with TelegramId < 0 — created, then wiped by the next run's DataReset phase. A
       real (positive-id) user's data is never touched.
@@ -71,6 +77,67 @@ function Get-ListeningPorts {
         }
     }
     return $busy
+}
+
+function Get-OrdersConnectionString {
+    # OutboxMessages lives in the Orders database. Every service reads one shared config file
+    # (AGENT.md — Configuration) and ConnectionStrings sits at its root, not under a service
+    # section.
+    $configPath = Join-Path $repoRoot 'config/appsettings.global.json'
+    if (-not (Test-Path $configPath)) {
+        throw "config/appsettings.global.json is missing, so the settlement check cannot reach the Orders database. Copy config/appsettings.global.example.json to that path (see SKILL.md Prerequisites)."
+    }
+
+    # ReadAllText rather than Get-Content: the file is UTF-8 with a BOM, and in Windows
+    # PowerShell 5.1 the BOM survives Get-Content and makes ConvertFrom-Json fail on it.
+    $config = [System.IO.File]::ReadAllText($configPath) | ConvertFrom-Json
+    $connectionString = $config.ConnectionStrings.OrdersDb
+    if ([string]::IsNullOrWhiteSpace($connectionString)) {
+        throw "ConnectionStrings:OrdersDb is not set in config/appsettings.global.json."
+    }
+    return $connectionString
+}
+
+function Get-OutboxCount {
+    # Status values are OutboxMessageStatus in src/Order/Orders.Core/OutboxMessage.cs:
+    # 0 Pending, 1 Completed, 2 Failed, 3 Abandoned.
+    param(
+        [Parameter(Mandatory = $true)][string]$ConnectionString,
+        [Parameter(Mandatory = $true)][int]$Status
+    )
+
+    $conn = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+    try {
+        $conn.Open()
+        $cmd = $conn.CreateCommand()
+        $cmd.CommandText = 'SELECT COUNT(*) FROM OutboxMessages WHERE Status = @status'
+        $null = $cmd.Parameters.AddWithValue('@status', $Status)
+        return [int]$cmd.ExecuteScalar()
+    }
+    finally {
+        $conn.Dispose()
+    }
+}
+
+function Wait-OutboxDrained {
+    # Waits until nothing is queued or mid-dispatch. A message stays Pending for its whole
+    # working life — while an instance holds its lease and the wallet call is in flight, and
+    # while it sits between retries — so zero Pending is the point at which the run really is
+    # over. 300 x 2s = 10 minutes, the same bound DataReset's own wait uses.
+    param([Parameter(Mandatory = $true)][string]$ConnectionString)
+
+    $pending = Get-OutboxCount -ConnectionString $ConnectionString -Status 0
+    for ($i = 0; $i -lt 300 -and $pending -gt 0; $i++) {
+        if ($i % 5 -eq 0) {
+            Write-Host "Waiting for settlement: $pending outbox message(s) still pending..."
+        }
+        Start-Sleep -Seconds 2
+        $pending = Get-OutboxCount -ConnectionString $ConnectionString -Status 0
+    }
+
+    if ($pending -gt 0) {
+        throw "Settlement did not finish: $pending outbox message(s) are still Pending after 10 minutes. Inspect them at http://localhost:$($ports['orders'])/api/outbox/unsettled."
+    }
 }
 
 function Get-AutoQuoteEnabled {
@@ -215,6 +282,12 @@ switch ($Command) {
         New-Item -ItemType Directory -Force -Path $logDir | Out-Null
         $smokeLog = Join-Path $logDir 'smoke.log'
 
+        # Counted before the run and compared as a delta afterwards, never as an absolute:
+        # these databases already carry failures from earlier work that belong to nobody's
+        # current change, and a run that adds none of its own is a pass (issue #175).
+        $ordersConnectionString = Get-OrdersConnectionString
+        $failedBefore = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 2
+
         $autoQuoteWas = Get-AutoQuoteEnabled
         Write-Host "Running simulator with args: $simArgs"
         try {
@@ -245,7 +318,19 @@ switch ($Command) {
         if ($errorCount -ne 0) {
             throw "Simulation finished with $errorCount error(s). Full output: $smokeLog"
         }
-        Write-Host "Simulation completed with errors 0."
+
+        # Everything above only checks the trading phase. Settlement is queued and happens after
+        # the summary line, so without the wait below the driver reports green on a run whose
+        # settlements are still in flight — or already doomed (issue #175). Nearly every
+        # settlement regression is post-summary, which is exactly what this catches.
+        Wait-OutboxDrained -ConnectionString $ordersConnectionString
+        $failedAfter = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 2
+        $newFailures = $failedAfter - $failedBefore
+        if ($newFailures -gt 0) {
+            throw "Simulation traded cleanly but $newFailures settlement(s) failed permanently (Failed outbox messages went from $failedBefore to $failedAfter). The trades are recorded but NOT settled and their collateral is still locked. Inspect them at http://localhost:$($ports['orders'])/api/outbox/unsettled. Full output: $smokeLog"
+        }
+
+        Write-Host "Simulation completed with errors 0; outbox drained with no new failed settlements."
     }
 
     'stop' {
