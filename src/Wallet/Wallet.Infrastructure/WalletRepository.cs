@@ -592,14 +592,21 @@ public class WalletRepository : IWalletRepository
                     tradeId, symbol, attempt,
                     (long)spent.TotalMilliseconds, (long)ConcurrencyRetryBudget.TotalMilliseconds));
         }
-        catch (DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
-            // Warning, and no stack trace, because nothing is wrong: the trade is recorded, the
-            // collateral is locked, and the outbox redelivers a settlement that reports failure.
-            // This used to fall into the generic handler below and be logged at Error with a full
-            // EF stack trace, which reads as a fault and has cost more than one investigation of a
-            // perfectly healthy trade. The lock path has reported a lost race this way all along.
-            _logger.LogWarning(
+            // Warning rather than Error: the trade is recorded, the collateral is locked, and the
+            // outbox redelivers a settlement that reports failure, so nothing here is a fault. This
+            // used to fall into the generic handler below and be logged at Error, which reads as
+            // one and has cost more than one investigation of a perfectly healthy trade. The lock
+            // path has reported a lost race at Warning all along.
+            //
+            // The exception is kept even so. DbUpdateConcurrencyException is also what EF raises
+            // when an UPDATE matches no row at all — a wallet deleted out from under a queued
+            // settlement, say — and that fails identically on every attempt and every one of the
+            // outbox's five deliveries. Dropping it would leave the operator reading SETTLEMENT
+            // STUCK with nothing on the wallet side to explain it. Rare enough now (0 in 300
+            // settlements) that its stack trace is not the noise this change set out to remove.
+            _logger.LogWarning(ex,
                 "Settlement of trade {TradeId} on {Symbol} kept losing the optimistic-concurrency " +
                 "race for its whole {Budget}ms budget; leaving it to the outbox to redeliver.",
                 tradeId, symbol, (long)ConcurrencyRetryBudget.TotalMilliseconds);
@@ -632,6 +639,22 @@ public class WalletRepository : IWalletRepository
         decimal buyerReceivesBase, decimal sellerReceivesQuote,
         string referenceId)
     {
+        // The same fast path SettleTradeAsync opens with, repeated here because this method can run
+        // more than once. If a competing caller settled this trade between two attempts, it has
+        // already consumed both sides' locked collateral — so without this check the retry reads
+        // LockedBalance as 0, the guards below fire first, and a settled trade is reported as
+        // "Buyer locked IRT (0) is less than required (1000)": the signature of the lock-after-match
+        // defect (audit C-5), for a trade that is in fact perfectly settled.
+        //
+        // Still an optimisation and still not the guarantee. Two callers can pass it together; the
+        // TradeSettlements primary key below is what decides, and the duplicate-key branch is what
+        // reports the outcome when they do.
+        if (await _context.TradeSettlements.AnyAsync(s => s.TradeId == tradeId))
+        {
+            _logger.LogInformation("Trade {TradeId} already settled; skipping (idempotent).", tradeId);
+            return (true, "Trade already settled.");
+        }
+
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
