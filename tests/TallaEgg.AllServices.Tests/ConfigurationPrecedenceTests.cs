@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -23,6 +26,17 @@ namespace TallaEgg.AllServices.Tests;
 /// <see cref="EveryHost_RegistersTheEnvironment_AfterTheSharedFile"/> is what makes the reordering
 /// fail, by reading the host files themselves. Neither half is worth much without the other.
 /// </para>
+///
+/// <para>
+/// <b>The two places provider order could not reach (#181).</b> An API host called
+/// <c>UseUrls</c> with the file's value unconditionally, and <c>UseUrls</c> writes through
+/// <c>UseSetting</c>, which bypasses the provider chain — so the file beat <c>ASPNETCORE_URLS</c>
+/// and <c>--urls</c> however the providers were ordered, and a service came up somewhere other
+/// than where the host had told it to, without saying so. The bot, meanwhile, had the environment
+/// in the right place but not the command line, which <c>Host.CreateDefaultBuilder(args)</c>
+/// registers among the defaults, before the shared file. Both are covered below, in the same two
+/// halves.
+/// </para>
 /// </summary>
 public class ConfigurationPrecedenceTests
 {
@@ -40,6 +54,23 @@ public class ConfigurationPrecedenceTests
         "src/TallaEgg/TallaEgg.Api/Program.cs",
         "src/Affiliate/Affiliate.Api/Program.cs",
     };
+
+    /// <summary>
+    /// The hosts whose configuration a command-line provider feeds: the five APIs, and the bot
+    /// since #181.
+    ///
+    /// <para>
+    /// The simulator is deliberately absent. It builds a bare <c>ConfigurationBuilder</c> and
+    /// parses its own <c>--users</c>/<c>--trades</c> switches in <c>SimulationOptions.FromArgs</c>,
+    /// which a command-line configuration provider has no part in.
+    /// </para>
+    /// </summary>
+    public static TheoryData<string> CommandLineHosts()
+    {
+        var hosts = ApiHosts();
+        hosts.Add("TelegramBot/TallaEgg.TelegramBot.Infrastructure/Program.cs");
+        return hosts;
+    }
 
     /// <summary>
     /// Every host that reads the shared file, including the bot and the simulator — which had the
@@ -128,6 +159,68 @@ public class ConfigurationPrecedenceTests
     }
 
     /// <summary>
+    /// The first half of #181. <c>ASPNETCORE_URLS</c> is the spelling a deployment script, a
+    /// service definition or a container image reaches for, and it did nothing at all: the file's
+    /// address was applied unconditionally through <c>UseUrls</c>, so the service started,
+    /// reported healthy, and listened somewhere other than where it had been told.
+    /// </summary>
+    [Fact]
+    public void AspNetCoreUrls_OutranksTheConfiguredUrls()
+    {
+        using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
+        using var hostAddress = new EnvironmentVariable("ASPNETCORE_URLS", "http://localhost:61001");
+
+        Assert.Equal("http://localhost:61001", ResolveListenAddressLikeAnApiHost(sharedFile));
+    }
+
+    /// <summary>
+    /// The same through the switch. It reaches the host by a different provider than the
+    /// environment does, and both land on <see cref="WebHostDefaults.ServerUrlsKey"/>, which is
+    /// what the guard reads.
+    /// </summary>
+    [Fact]
+    public void UrlsSwitch_OutranksTheConfiguredUrls()
+    {
+        using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
+        using var noHostAddress = new EnvironmentVariable("ASPNETCORE_URLS", null);
+
+        var listenAddress = ResolveListenAddressLikeAnApiHost(
+            sharedFile, args: new[] { "--urls", "http://localhost:61002" });
+
+        Assert.Equal("http://localhost:61002", listenAddress);
+    }
+
+    /// <summary>
+    /// The half that is easy to break while fixing the other one, and the regression this change
+    /// actually risks: with no address named by the host — every host in this system today — the
+    /// file still decides where the service listens.
+    /// </summary>
+    [Fact]
+    public void ConfiguredUrls_StillApply_WhenTheHostNamedNoAddress()
+    {
+        using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
+        using var noHostAddress = new EnvironmentVariable("ASPNETCORE_URLS", null);
+
+        Assert.Equal("http://localhost:60933", ResolveListenAddressLikeAnApiHost(sharedFile));
+    }
+
+    /// <summary>
+    /// The negative control for the three above. Applying the file's address unconditionally, as
+    /// the hosts did before #181, and the address the host named is gone — which is the whole bug,
+    /// and what rules out the three passing for a reason unrelated to the guard.
+    /// </summary>
+    [Fact]
+    public void UnconditionalUseUrls_OutranksTheAddressTheHostNamed()
+    {
+        using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
+        using var hostAddress = new EnvironmentVariable("ASPNETCORE_URLS", "http://localhost:61003");
+
+        var listenAddress = ResolveListenAddressLikeAnApiHost(sharedFile, guardTheAddressTheHostNamed: false);
+
+        Assert.Equal("http://localhost:60933", listenAddress);
+    }
+
+    /// <summary>
     /// The regression guard: the environment provider has to be registered after the shared file
     /// <i>and</i> after the section flattened out of it, in the host files themselves. The
     /// flattening is the easy one to miss — it copies the file's values onto the root keys the
@@ -145,20 +238,19 @@ public class ConfigurationPrecedenceTests
     }
 
     /// <summary>
-    /// The command line, for the five APIs only.
+    /// The command line, for the five APIs and — since #181 — the bot.
     ///
     /// <para>
-    /// The bot and the simulator are deliberately absent. The simulator builds a bare
-    /// <c>ConfigurationBuilder</c> and parses its own <c>--users</c>/<c>--trades</c> switches in
-    /// <c>SimulationOptions.FromArgs</c>, which a command-line configuration provider has no part
-    /// in. The bot's <c>Host.CreateDefaultBuilder(args)</c> does register one, but early enough
-    /// that the shared file still outranks it — a real if smaller gap, left alone because #159 is
-    /// about the environment and nothing in the bot reads a setting from <c>args</c> today.
+    /// The bot's <c>Host.CreateDefaultBuilder(args)</c> registers a command-line provider among
+    /// the defaults, which run before <c>ConfigureAppConfiguration</c> adds the shared file, so
+    /// the file outranked <c>--Key=value</c> there. #159 was about the environment, which the bot
+    /// already had in the right place, so the gap outlived it. Nothing in the bot reads a setting
+    /// from <c>args</c> today — the inconsistency is what is being fixed, before something does.
     /// </para>
     /// </summary>
     [Theory]
-    [MemberData(nameof(ApiHosts))]
-    public void EveryApiHost_RegistersTheCommandLine_AfterTheSharedFile(string hostProgram)
+    [MemberData(nameof(CommandLineHosts))]
+    public void EveryHostThatParsesTheCommandLine_RegistersIt_AfterTheSharedFile(string hostProgram)
     {
         var code = ReadHostProgram(hostProgram);
 
@@ -182,6 +274,79 @@ public class ConfigurationPrecedenceTests
 
         AssertRegisteredLast(code, hostProgram, "GetSection(\"Urls\")", "AddEnvironmentVariables");
         AssertRegisteredLast(code, hostProgram, "UseUrls", "AddEnvironmentVariables");
+    }
+
+    /// <summary>
+    /// The source half of the <c>UseUrls</c> fix (#181): the file's address may only be applied
+    /// when the host named none. The behavioural tests above build that condition themselves, so
+    /// on their own they would stay green after a host went back to calling <c>UseUrls</c>
+    /// unconditionally — and because that call bypasses the provider chain, no other test in this
+    /// file would notice either.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ApiHosts))]
+    public void EveryApiHost_AppliesTheConfiguredUrls_OnlyWhenTheHostNamedNoAddress(string hostProgram)
+    {
+        var code = ReadHostProgram(hostProgram);
+
+        var guard = code.LastIndexOf("WebHostDefaults.ServerUrlsKey", StringComparison.Ordinal);
+        var useUrls = code.LastIndexOf("UseUrls", StringComparison.Ordinal);
+
+        Assert.True(guard >= 0,
+            $"{hostProgram} must read WebHostDefaults.ServerUrlsKey before applying the configured Urls, " +
+            "or ASPNETCORE_URLS and --urls are silently ignored again (#181).");
+        Assert.True(useUrls > guard,
+            $"{hostProgram} reaches UseUrls before it checks WebHostDefaults.ServerUrlsKey. UseUrls writes " +
+            "through UseSetting, which bypasses the configuration providers, so an unguarded call makes the " +
+            "file's address beat the host's whatever the provider order is (#181).");
+    }
+
+    /// <summary>
+    /// Boots configuration the way an API host does, and returns the address that host would
+    /// listen on.
+    ///
+    /// <para>
+    /// A real <see cref="WebApplicationBuilder"/> rather than a hand-built chain, because the
+    /// question is entirely about providers <c>WebApplication.CreateBuilder</c> registers — the
+    /// <c>ASPNETCORE_</c>-prefixed environment and the command line, both of which land on
+    /// <see cref="WebHostDefaults.ServerUrlsKey"/> — and about <c>UseUrls</c> writing back to that
+    /// same key through <c>UseSetting</c>. A model of that chain could model it wrong and still
+    /// pass.
+    /// </para>
+    /// </summary>
+    /// <param name="guardTheAddressTheHostNamed">
+    /// <c>false</c> reproduces the unconditional call the hosts made before #181, for the negative
+    /// control.
+    /// </param>
+    private static string? ResolveListenAddressLikeAnApiHost(
+        SharedConfigFile sharedFile,
+        string[]? args = null,
+        bool guardTheAddressTheHostNamed = true)
+    {
+        args ??= Array.Empty<string>();
+
+        // Content root is the throwaway file's own directory, so that no appsettings.json sitting
+        // beside the test assembly can take part in the answer.
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            Args = args,
+            EnvironmentName = Environments.Production,
+            ContentRootPath = sharedFile.Directory,
+        });
+
+        AddSharedFileAndItsFlattenedSection(builder.Configuration, sharedFile.Path);
+        builder.Configuration.AddEnvironmentVariables();
+        builder.Configuration.AddCommandLine(args);
+
+        var serviceSection = builder.Configuration.GetSection($"Services:{ApplicationName}");
+        var urls = serviceSection.GetSection("Urls").Get<string[]>();
+        if ((!guardTheAddressTheHostNamed || string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKey]))
+            && urls is { Length: > 0 })
+        {
+            builder.WebHost.UseUrls(urls);
+        }
+
+        return builder.Configuration[WebHostDefaults.ServerUrlsKey];
     }
 
     /// <summary>
@@ -277,7 +442,9 @@ public class ConfigurationPrecedenceTests
     {
         public SharedConfigFile(string walletDb)
         {
-            Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"tallaegg-{Guid.NewGuid():N}.json");
+            Directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"tallaegg-{Guid.NewGuid():N}");
+            System.IO.Directory.CreateDirectory(Directory);
+            Path = System.IO.Path.Combine(Directory, "appsettings.global.json");
             File.WriteAllText(Path, $$"""
                 {
                   "Services": {
@@ -293,20 +460,32 @@ public class ConfigurationPrecedenceTests
 
         public string Path { get; }
 
-        public void Dispose() => File.Delete(Path);
+        /// <summary>
+        /// The file's own directory, which the tests hand a host as its content root: a directory
+        /// with nothing else in it cannot contribute an <c>appsettings.json</c> of its own.
+        /// </summary>
+        public string Directory { get; }
+
+        public void Dispose() => System.IO.Directory.Delete(Directory, recursive: true);
     }
 
     /// <summary>
     /// Sets a process environment variable for the length of a test and puts back whatever was
     /// there. Nothing else in this suite reads the environment, but a test that leaks one fails
     /// somewhere else entirely, and those are expensive to find.
+    ///
+    /// <para>
+    /// A null <c>value</c> removes the variable instead of setting it, which is how the tests that
+    /// assert the file still supplies the listen address make sure the machine running them has
+    /// not named one (#181).
+    /// </para>
     /// </summary>
     private sealed class EnvironmentVariable : IDisposable
     {
         private readonly string _name;
         private readonly string? _original;
 
-        public EnvironmentVariable(string name, string value)
+        public EnvironmentVariable(string name, string? value)
         {
             _name = name;
             _original = Environment.GetEnvironmentVariable(name);
