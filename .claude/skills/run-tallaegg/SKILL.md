@@ -97,13 +97,17 @@ quantity round-tripped unchanged. The symbol cycles per trade, so any run with a
 trades as there are symbols touches all of them, and the run prints a per-symbol breakdown:
 
 ```
-Settled trades by symbol:
-  BTC/IRT: 4 settled
-  MAUA/IRT: 3 settled
-  SEKE_BAHAR/IRT: 3 settled
+Filled trades by symbol:
+  BTC/IRT: 4 filled
+  MAUA/IRT: 3 filled
+  SEKE_BAHAR/IRT: 3 filled
 ```
 
-A symbol showing `0 settled` means the run did not exercise it. Override any subset of the
+A symbol showing `0 filled` means the run did not exercise it. *Filled*, not *settled*: a fill is a
+matched trade with its settlement queued, and settlement is what the driver asserts after the
+outbox drains (below).
+
+Override any subset of the
 knobs after `smoke` — the ones you don't name keep the small defaults above (the driver merges
 them; passing them straight through would drop to the Simulator's own compiled defaults of 100
 users / 120 quotes / **1000 trades**, so `smoke --seed 7` alone would be a hundred-fold bigger

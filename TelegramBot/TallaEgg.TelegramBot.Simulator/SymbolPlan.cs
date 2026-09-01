@@ -62,13 +62,22 @@ internal sealed record SymbolPlan(
         if (pair.MaxQuantity > 0 && maxQuantity > pair.MaxQuantity)
             maxQuantity = pair.MaxQuantity;
 
-        // A symbol whose configured maximum is below the floor above can still be traded, at
-        // exactly one size, rather than producing an empty range the caller has to special-case.
-        if (maxQuantity < minQuantity)
-            maxQuantity = minQuantity;
-
         return new SymbolPlan(pair, referenceUnitPrice, minQuantity, maxQuantity);
     }
+
+    /// <summary>
+    /// Whether any quantity satisfies this pair's limits at this price.
+    ///
+    /// <para>
+    /// It is false only for a pair whose <see cref="TradingPairInfo.MaxQuantity"/> sits below the
+    /// floor its own <see cref="TradingPairInfo.MinNotional"/> implies — a mis-configured pair, or
+    /// one whose price has moved far enough that its limits no longer describe a tradable size.
+    /// Squeezing a size out of that range anyway would produce orders
+    /// <c>OrderService.ValidateTradingLimits</c> refuses, one per trade, which reads as a broken
+    /// simulator rather than a broken symbol. The caller drops the symbol and says why.
+    /// </para>
+    /// </summary>
+    public bool HasTradableBand => MaxTradeQuantity >= MinTradeQuantity;
 
     /// <summary>
     /// A trade size for this symbol, at this symbol's own precision — the whole point of the

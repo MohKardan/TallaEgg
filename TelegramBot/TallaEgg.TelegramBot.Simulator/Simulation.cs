@@ -150,13 +150,18 @@ public sealed class Simulation(
 
         logger.LogInformation("-- Phase 6: admin publishes {Count}+ quotes across {Symbols} symbol(s) --",
             options.QuoteCount, plans.Count);
+
+        // Marked before publishing, and used below to tell this run's quotes from the ones a
+        // previous run left active.
+        var quotePhaseStartedAt = DateTime.UtcNow;
         await PublishQuotesAsync(admin, plans, options.QuoteCount, random);
 
         // A quote too far from the one already published is held for an admin to confirm rather
-        // than published (issue #158), and a symbol with no active quote refuses every fill. Left
-        // unchecked that is a symbol quietly contributing nothing to a run that still reports
-        // itself green — the exact shape of gap this simulator exists to close.
-        var tradable = await FilterToQuotedSymbolsAsync(plans);
+        // than published (issue #158), and a symbol with no quote of this run's own refuses every
+        // fill or fills against a deleted market maker. Left unchecked that is a symbol quietly
+        // contributing nothing to a run that still reports itself green — the exact shape of gap
+        // this simulator exists to close.
+        var tradable = await FilterToQuotedSymbolsAsync(plans, quotePhaseStartedAt);
 
         logger.LogInformation("-- Phase 7: {Count}+ trades via quote acceptance --", options.TradeCount);
         var (tradesDone, tradesBySymbol) = await GenerateTradesAsync(customers, tradable, options.TradeCount, random);
@@ -170,12 +175,17 @@ public sealed class Simulation(
             stopwatch.Elapsed, users.Count, approved.Count, tradesDone, _errors.Count);
 
         // Reported per symbol because the total says nothing about coverage: a symbol with zero
-        // settled trades is a symbol this run did not exercise, however green the total looks.
-        logger.LogInformation("Settled trades by symbol:");
+        // fills is a symbol this run did not exercise, however green the total looks.
+        //
+        // "Filled", not "settled". A fill is a matched trade with its settlement queued on the
+        // outbox; settlement happens tens of seconds later and is what driver.ps1 asserts after
+        // the queue drains (issues #184, #175). Calling these settled here would be this run
+        // claiming more than it has seen, which is the habit this whole change is against.
+        logger.LogInformation("Filled trades by symbol:");
         foreach (var plan in plans)
         {
-            logger.LogInformation("  {Symbol}: {Count} settled", plan.Symbol,
-                tradesBySymbol.TryGetValue(plan.Symbol, out var settled) ? settled : 0);
+            logger.LogInformation("  {Symbol}: {Count} filled", plan.Symbol,
+                tradesBySymbol.TryGetValue(plan.Symbol, out var filled) ? filled : 0);
         }
 
         if (_errors.Count > 0)
@@ -207,7 +217,18 @@ public sealed class Simulation(
         // which symbol each round-robin trade lands on.
         foreach (var pair in CurrenciesConstant.AllTradingPairs.OrderBy(p => p.Symbol, StringComparer.Ordinal))
         {
-            plans.Add(SymbolPlan.For(pair, await ResolveReferenceUnitPriceAsync(pair)));
+            var plan = SymbolPlan.For(pair, await ResolveReferenceUnitPriceAsync(pair));
+
+            if (!plan.HasTradableBand)
+            {
+                RecordError($"size trades for {pair.Symbol}", new InvalidOperationException(
+                    $"MaxQuantity {pair.MaxQuantity} is below the {plan.MinTradeQuantity} that " +
+                    $"MinQuantity and MinNotional require at {plan.ReferenceUnitPrice} per unit, " +
+                    "so no quantity this pair accepts exists; the symbol is excluded from the run."));
+                continue;
+            }
+
+            plans.Add(plan);
         }
 
         return plans;
@@ -223,19 +244,21 @@ public sealed class Simulation(
     /// of a quote. <see cref="DataReset"/> deliberately leaves quotes behind, so this is normally
     /// the price the last run or the price feed left.
     /// </para>
+    ///
+    /// <para>
+    /// <c>GetActiveQuoteAsync</c> returns null for a symbol that has never been quoted and for an
+    /// Orders API that could not be reached, and nothing here can tell those apart — so a blip
+    /// falls back to a reference price that may be outside the band, and every quote for that
+    /// symbol is then held rather than published. That is not caught here but by
+    /// <see cref="FilterToQuotedSymbolsAsync"/>, which checks the outcome instead of guessing at
+    /// the cause.
+    /// </para>
     /// </summary>
     private async Task<decimal> ResolveReferenceUnitPriceAsync(TradingPairInfo pair)
     {
-        try
-        {
-            var quote = await orderApi.GetActiveQuoteAsync(pair.Symbol);
-            if (quote is not null && quote.BuyPrice > 0 && quote.SellPrice > 0)
-                return (quote.BuyPrice + quote.SellPrice) / 2m;
-        }
-        catch (Exception ex)
-        {
-            RecordError($"read the active quote for {pair.Symbol}", ex);
-        }
+        var quote = await orderApi.GetActiveQuoteAsync(pair.Symbol);
+        if (quote is not null && quote.BuyPrice > 0 && quote.SellPrice > 0)
+            return (quote.BuyPrice + quote.SellPrice) / 2m;
 
         if (ReferenceUnitPrices.TryGetValue(pair.BaseAsset, out var reference))
             return reference;
@@ -248,31 +271,39 @@ public sealed class Simulation(
     }
 
     /// <summary>
-    /// Drops any symbol that ended Phase 6 without an active quote, and records an error for it so
-    /// the run cannot report itself clean while silently covering fewer symbols than it claims.
+    /// Drops any symbol whose active quote is not one this run published, and records an error for
+    /// it, so the run cannot report itself clean while silently covering fewer symbols than it
+    /// claims.
+    ///
+    /// <para>
+    /// "A quote exists" is not enough, which is why this compares the publication time against the
+    /// moment Phase 6 began. A quote held for approval as implausible (issue #158) is not
+    /// published, and the previous run's quote stays active in its place — published by a market
+    /// maker <see cref="DataReset"/> has just deleted. Trading against that fills every order
+    /// against an account that no longer exists, which is a far more confusing failure than the
+    /// missing quote it grew out of.
+    /// </para>
     /// </summary>
-    private async Task<List<SymbolPlan>> FilterToQuotedSymbolsAsync(List<SymbolPlan> plans)
+    private async Task<List<SymbolPlan>> FilterToQuotedSymbolsAsync(List<SymbolPlan> plans, DateTime publishedAfter)
     {
         var quoted = new List<SymbolPlan>();
 
         foreach (var plan in plans)
         {
-            try
-            {
-                if (await orderApi.GetActiveQuoteAsync(plan.Symbol) is not null)
-                {
-                    quoted.Add(plan);
-                    continue;
-                }
+            var quote = await orderApi.GetActiveQuoteAsync(plan.Symbol);
 
-                RecordError($"publish a quote for {plan.Symbol}", new InvalidOperationException(
-                    "No active quote after the quote phase — it was probably held for approval as " +
-                    "implausible; no trade on this symbol can be filled."));
-            }
-            catch (Exception ex)
+            if (quote is not null && quote.PublishedAt >= publishedAfter)
             {
-                RecordError($"check the active quote for {plan.Symbol}", ex);
+                quoted.Add(plan);
+                continue;
             }
+
+            RecordError($"publish a quote for {plan.Symbol}", new InvalidOperationException(
+                quote is null
+                    ? "No active quote after the quote phase, so no trade on this symbol can be filled."
+                    : $"The active quote for this symbol was published at {quote.PublishedAt:O}, before this " +
+                      "run's quote phase — this run's own quote was held for approval as implausible, and " +
+                      "the quote left standing belongs to a market maker the reset has deleted."));
         }
 
         return quoted;
@@ -405,46 +436,49 @@ public sealed class Simulation(
 
         foreach (var user in users)
         {
-            try
+            foreach (var (asset, amount) in quoteFunding)
             {
-                foreach (var (asset, amount) in quoteFunding)
-                {
-                    await walletApi.DepositeAsync(new WalletRequest
-                    {
-                        UserId = user.UserId!.Value,
-                        Asset = asset,
-                        Amount = amount,
-                    });
-                }
-
-                foreach (var plan in plans)
-                {
-                    var baseFunding = CurrenciesConstant.RoundToCurrencyPrecision(
-                        plan.MaxTradeQuantity * FundedTradesPerUser * multiplier, plan.BaseAsset);
-
-                    await walletApi.DepositeAsync(new WalletRequest
-                    {
-                        UserId = user.UserId!.Value,
-                        Asset = plan.BaseAsset,
-                        Amount = baseFunding,
-                    });
-
-                    // Credit as well as balance: credit is what the trade path actually checks
-                    // (ValidateCreditAndBalanceAsync), and it is cross-asset — a customer's
-                    // CREDIT_MAUA legitimately backs an IRT position — so a symbol funded with
-                    // balance alone is a symbol whose credit ledger this run never touches.
-                    await walletApi.DepositeAsync(new WalletRequest
-                    {
-                        UserId = user.UserId!.Value,
-                        Asset = plan.CreditAsset,
-                        Amount = baseFunding,
-                    });
-                }
+                await DepositAsync(user, asset, amount);
             }
-            catch (Exception ex)
+
+            foreach (var plan in plans)
             {
-                RecordError($"fund wallet for {user.TelegramId}", ex);
+                var baseFunding = CurrenciesConstant.RoundToCurrencyPrecision(
+                    plan.MaxTradeQuantity * FundedTradesPerUser * multiplier, plan.BaseAsset);
+
+                await DepositAsync(user, plan.BaseAsset, baseFunding);
+
+                // Credit as well as balance: credit is what the trade path actually checks
+                // (ValidateCreditAndBalanceAsync), and it is cross-asset — a customer's
+                // CREDIT_MAUA legitimately backs an IRT position — so a symbol funded with
+                // balance alone is a symbol whose credit ledger this run never touches.
+                await DepositAsync(user, plan.CreditAsset, baseFunding);
             }
+        }
+    }
+
+    /// <summary>
+    /// One funding deposit, with its own error handling.
+    ///
+    /// Per deposit rather than per user on purpose: a user is funded in seven assets now, and one
+    /// try/catch around all of them turns a single failed deposit into a user left funded for some
+    /// symbols and not others. That surfaces much later as trades on one symbol failing for
+    /// insufficient balance, which reads as a problem with that symbol rather than with funding.
+    /// </summary>
+    private async Task DepositAsync(VirtualUser user, string asset, decimal amount)
+    {
+        try
+        {
+            await walletApi.DepositeAsync(new WalletRequest
+            {
+                UserId = user.UserId!.Value,
+                Asset = asset,
+                Amount = amount,
+            });
+        }
+        catch (Exception ex)
+        {
+            RecordError($"fund {asset} wallet for {user.TelegramId}", ex);
         }
     }
 
@@ -522,7 +556,19 @@ public sealed class Simulation(
                         "{Symbol} has no alias, so it cannot be quoted through the admin command; publishing it directly.",
                         plan.Symbol);
 
-                    await orderApi.PublishQuoteAsync(plan.Symbol, buy, sell, admin.UserId!.Value);
+                    // Unlike the conversation path, this one returns its outcome rather than
+                    // sending it to a chat, so it has to be read: a refusal, or a quote the
+                    // plausibility band is holding, is not a published quote.
+                    var (published, message, pending) =
+                        await orderApi.PublishQuoteAsync(plan.Symbol, buy, sell, admin.UserId!.Value);
+
+                    if (!published || pending is not null)
+                    {
+                        RecordError($"publish quote #{i} for {plan.Symbol}", new InvalidOperationException(
+                            pending is not null
+                                ? $"Held for approval: {pending.DeviationPercent}% from the previous mid."
+                                : message));
+                    }
                 }
             }
             catch (Exception ex)
@@ -542,21 +588,21 @@ public sealed class Simulation(
 
     // ── Phase 7: trade volume via quote acceptance (direct API — see class remarks) ───────
 
-    private async Task<(int Attempted, Dictionary<string, int> SettledBySymbol)> GenerateTradesAsync(
+    private async Task<(int Attempted, Dictionary<string, int> FilledBySymbol)> GenerateTradesAsync(
         List<VirtualUser> users, IReadOnlyList<SymbolPlan> plans, int targetCount, Random random)
     {
-        var settledBySymbol = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var filledBySymbol = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         if (users.Count == 0)
         {
             RecordError("generate trades", new InvalidOperationException("No approved users to trade with."));
-            return (0, settledBySymbol);
+            return (0, filledBySymbol);
         }
 
         if (plans.Count == 0)
         {
             RecordError("generate trades", new InvalidOperationException("No quoted symbols to trade."));
-            return (0, settledBySymbol);
+            return (0, filledBySymbol);
         }
 
         var done = 0;
@@ -576,7 +622,7 @@ public sealed class Simulation(
                 var (success, message) = await orderApi.AcceptQuoteAsync(user.UserId!.Value, plan.Symbol, side, quantity);
                 if (success)
                 {
-                    settledBySymbol[plan.Symbol] = settledBySymbol.GetValueOrDefault(plan.Symbol) + 1;
+                    filledBySymbol[plan.Symbol] = filledBySymbol.GetValueOrDefault(plan.Symbol) + 1;
                 }
                 else
                 {
@@ -590,7 +636,7 @@ public sealed class Simulation(
             }
         }
 
-        return (done, settledBySymbol);
+        return (done, filledBySymbol);
     }
 
     // ── Phase 8: the behaviors named explicitly — help, history, balance, active orders ───

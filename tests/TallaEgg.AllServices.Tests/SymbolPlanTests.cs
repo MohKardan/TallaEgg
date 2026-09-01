@@ -115,6 +115,28 @@ public class SymbolPlanTests
     }
 
     [Fact]
+    public void For_EverySymbolAtItsRealPrice_HasATradableBand()
+    {
+        Assert.All(
+            new[] { CurrenciesConstant.MAUA_IRT, CurrenciesConstant.SEKE_BAHAR_IRT, CurrenciesConstant.BTC_IRT },
+            symbol => Assert.True(PlanFor(symbol).HasTradableBand, $"{symbol} has no tradable band."));
+    }
+
+    [Fact]
+    public void For_MaxQuantityBelowTheNotionalFloor_ReportsNoTradableBand()
+    {
+        var pair = Pair(CurrenciesConstant.SEKE_BAHAR_IRT);
+
+        // A price so low that even MaxQuantity coins are worth less than MinNotional: no quantity
+        // this pair accepts exists. Reported rather than repaired — squeezing a size out of that
+        // range produces orders ValidateTradingLimits refuses, one per trade, which reads as a
+        // broken simulator rather than a broken symbol.
+        var plan = SymbolPlan.For(pair, pair.MinNotional / (pair.MaxQuantity * 2m));
+
+        Assert.False(plan.HasTradableBand);
+    }
+
+    [Fact]
     public void QuoteKeyword_SymbolWithAnAlias_IsThatAlias()
     {
         Assert.Equal("سکه", PlanFor(CurrenciesConstant.SEKE_BAHAR_IRT).QuoteKeyword);
