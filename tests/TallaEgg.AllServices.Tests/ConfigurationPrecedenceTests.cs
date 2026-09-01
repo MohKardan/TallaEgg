@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -53,6 +54,19 @@ public class ConfigurationPrecedenceTests
         "src/Wallet/Wallet.Api/Program.cs",
         "src/TallaEgg/TallaEgg.Api/Program.cs",
         "src/Affiliate/Affiliate.Api/Program.cs",
+    };
+
+    /// <summary>
+    /// The launch profiles of the five APIs, whose <c>applicationUrl</c> would otherwise name a
+    /// listen address behind the shared file's back. Repo-relative, forward-slashed.
+    /// </summary>
+    public static TheoryData<string> ApiLaunchSettings() => new()
+    {
+        "src/Order/Orders.Api/Properties/launchSettings.json",
+        "src/User/Users.Api/Properties/launchSettings.json",
+        "src/Wallet/Wallet.Api/Properties/launchSettings.json",
+        "src/TallaEgg/TallaEgg.Api/Properties/launchSettings.json",
+        "src/Affiliate/Affiliate.Api/Properties/launchSettings.json",
     };
 
     /// <summary>
@@ -182,7 +196,7 @@ public class ConfigurationPrecedenceTests
     public void UrlsSwitch_OutranksTheConfiguredUrls()
     {
         using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
-        using var noHostAddress = new EnvironmentVariable("ASPNETCORE_URLS", null);
+        using var noHostAddress = new NoAddressInTheEnvironment();
 
         var listenAddress = ResolveListenAddressLikeAnApiHost(
             sharedFile, args: new[] { "--urls", "http://localhost:61002" });
@@ -199,7 +213,7 @@ public class ConfigurationPrecedenceTests
     public void ConfiguredUrls_StillApply_WhenTheHostNamedNoAddress()
     {
         using var sharedFile = new SharedConfigFile(walletDb: "Server=from-the-file;Database=Wallet;");
-        using var noHostAddress = new EnvironmentVariable("ASPNETCORE_URLS", null);
+        using var noHostAddress = new NoAddressInTheEnvironment();
 
         Assert.Equal("http://localhost:60933", ResolveListenAddressLikeAnApiHost(sharedFile));
     }
@@ -299,6 +313,46 @@ public class ConfigurationPrecedenceTests
             $"{hostProgram} reaches UseUrls before it checks WebHostDefaults.ServerUrlsKey. UseUrls writes " +
             "through UseSetting, which bypasses the configuration providers, so an unguarded call makes the " +
             "file's address beat the host's whatever the provider order is (#181).");
+    }
+
+    /// <summary>
+    /// A launch profile must not name a listen address either (#181).
+    ///
+    /// <para>
+    /// <c>dotnet run</c> hands a profile's <c>applicationUrl</c> to the process as
+    /// <c>ASPNETCORE_URLS</c>, which is indistinguishable from a deployment setting it. While
+    /// <c>UseUrls</c> was unconditional that made no difference — nothing a profile said could
+    /// reach the server. Now that a host's address is honoured, a profile would quietly outrank
+    /// <c>config/appsettings.global.json</c>, and the https endpoints three of these profiles used
+    /// to name would have to be bound wherever the stack runs — including a CI runner with no
+    /// development certificate, where Kestrel refuses to start at all. The shared file is the
+    /// source of truth for where a service listens (<c>AGENT.md</c>); a profile repeating it is a
+    /// second one, free to drift.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ApiLaunchSettings))]
+    public void NoApiLaunchProfile_NamesAListenAddress(string launchSettings)
+    {
+        var path = Path.Combine(FindRepositoryRoot(), launchSettings.Replace('/', Path.DirectorySeparatorChar));
+        Assert.True(File.Exists(path), $"Launch settings not found: {launchSettings}");
+
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+
+        // iisSettings has an applicationUrl of its own, which IIS Express reads and `dotnet run`
+        // never sees — only the profiles are in question here.
+        if (!document.RootElement.TryGetProperty("profiles", out var profiles))
+        {
+            return;
+        }
+
+        foreach (var profile in profiles.EnumerateObject())
+        {
+            Assert.False(profile.Value.TryGetProperty("applicationUrl", out _),
+                $"{launchSettings}: profile '{profile.Name}' names an applicationUrl. dotnet run passes it as " +
+                "ASPNETCORE_URLS, which now outranks the shared file — the port a developer or CI reads from " +
+                "config/appsettings.global.json would stop being the port the service listens on (#181).");
+        }
     }
 
     /// <summary>
@@ -493,5 +547,31 @@ public class ConfigurationPrecedenceTests
         }
 
         public void Dispose() => Environment.SetEnvironmentVariable(_name, _original);
+    }
+
+    /// <summary>
+    /// Clears every environment variable that can name a listen address, for the tests that assert
+    /// the file supplies one when nothing else does. A host reads three spellings — the
+    /// <c>ASPNETCORE_</c> and <c>DOTNET_</c> prefixed environments both strip their prefix onto the
+    /// same <c>urls</c> key, and the unprefixed provider the services re-register reaches a bare
+    /// <c>URLS</c> — so a machine that happens to have any one of them set would fail those tests
+    /// with a message about the shared file.
+    /// </summary>
+    private sealed class NoAddressInTheEnvironment : IDisposable
+    {
+        private readonly EnvironmentVariable[] _cleared =
+        {
+            new("ASPNETCORE_URLS", null),
+            new("DOTNET_URLS", null),
+            new("URLS", null),
+        };
+
+        public void Dispose()
+        {
+            foreach (var variable in _cleared)
+            {
+                variable.Dispose();
+            }
+        }
     }
 }
