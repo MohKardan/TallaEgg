@@ -86,7 +86,28 @@ seconds pass. On timeout it prints the last 40 lines of *both* logs per service 
 `/start` + contact-share flow, promotes one to admin, has admin approve/reject the rest, funds
 wallets, publishes quotes through the real `18500000-18550000`-style text command, fills trades
 by quote acceptance, and clicks through the help/history/balance menu buttons — end to end,
-through the real handler and API code, against the real database. Override any subset of the
+through the real handler and API code, against the real database.
+
+**It trades every symbol in the pair catalogue, not just gold** (issue #147). Each symbol gets its
+own quotes, its own wallet funding (base asset *and* `CREDIT_` ledger), and quantities at its own
+precision — eight decimal places on `BTC/IRT`, two on `MAUA/IRT`. That difference is the point: the
+simulator ran a thousand clean MAUA trades on top of #146, where `Orders.Amount` was
+`decimal(18, 2)`, because MAUA's precision is exactly the two places the column held and every gold
+quantity round-tripped unchanged. The symbol cycles per trade, so any run with at least as many
+trades as there are symbols touches all of them, and the run prints a per-symbol breakdown:
+
+```
+Filled trades by symbol:
+  BTC/IRT: 4 filled
+  MAUA/IRT: 3 filled
+  SEKE_BAHAR/IRT: 3 filled
+```
+
+A symbol showing `0 filled` means the run did not exercise it. *Filled*, not *settled*: a fill is a
+matched trade with its settlement queued, and settlement is what the driver asserts after the
+outbox drains (below).
+
+Override any subset of the
 knobs after `smoke` — the ones you don't name keep the small defaults above (the driver merges
 them; passing them straight through would drop to the Simulator's own compiled defaults of 100
 users / 120 quotes / **1000 trades**, so `smoke --seed 7` alone would be a hundred-fold bigger
@@ -155,12 +176,13 @@ abandoned.
   ```
 
   It gives up after 10 minutes rather than waiting forever, and says where to look when it does.
-- **The auto-quote flag for `MAUA/IRT`.** The Simulator turns it off in Phase 2 — a background
-  publisher replacing the run's quotes breaks quote-fill trades — and never turns it back on.
-  That is per-symbol Orders-DB state, not `TelegramId`-scoped, so `DataReset` does not restore
-  it. **`driver.ps1 smoke` reads the flag before the run and puts it back afterwards**, including
-  when the run fails part-way. If the restore itself fails the driver says so; turn it back on
-  from the bot with the admin command `اتومات روشن`, or:
+- **The auto-quote flag for every symbol the run trades.** The Simulator turns each one off in
+  Phase 2 — a background publisher replacing the run's quotes breaks quote-fill trades — and never
+  turns any back on. That is per-symbol Orders-DB state, not `TelegramId`-scoped, so `DataReset`
+  does not restore it. **`driver.ps1 smoke` snapshots every symbol's flag from the
+  `AutoQuoteSettings` table before the run and puts them back afterwards**, including when the run
+  fails part-way. If a restore itself fails the driver says so; turn it back on from the bot with
+  the admin command `اتومات روشن`, or:
 
   ```powershell
   Invoke-RestMethod -Method Post -ContentType 'application/json' `

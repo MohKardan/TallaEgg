@@ -29,11 +29,11 @@
   Two things it changes on the database it runs against:
     * Rows with TelegramId < 0 — created, then wiped by the next run's DataReset phase. A
       real (positive-id) user's data is never touched.
-    * The auto-quote enabled flag for MAUA/IRT — the Simulator turns it off in its Phase 2 and
-      never turns it back on, because a background publisher replacing the run's quotes breaks
-      quote-fill trades. That is per-symbol Orders-DB state, not TelegramId-scoped, so
-      DataReset does not restore it. This script reads the flag before the run and puts it
-      back afterwards; see Restore-AutoQuote below.
+    * The auto-quote enabled flag for every symbol the run trades — the Simulator turns each
+      one off in its Phase 2 and never turns any back on, because a background publisher
+      replacing the run's quotes breaks quote-fill trades. That is per-symbol Orders-DB state,
+      not TelegramId-scoped, so DataReset does not restore it. This script snapshots every
+      symbol's flag before the run and puts them back afterwards; see Restore-AutoQuote below.
 #>
 param(
     [Parameter(Mandatory = $true, Position = 0)]
@@ -55,9 +55,6 @@ $projects = @{
 }
 $logDir = Join-Path $repoRoot 'run-logs'
 $pidFile = Join-Path $logDir 'launcher.pids'
-
-# The symbol the Simulator trades, and whose auto-quote flag it turns off (Simulation.cs).
-$smokeSymbol = 'MAUA/IRT'
 
 function Test-ServicesUp {
     foreach ($name in $ports.Keys) {
@@ -148,30 +145,47 @@ function Wait-OutboxDrained {
     }
 }
 
-function Get-AutoQuoteEnabled {
-    # Returns $true/$false, or $null if the setting could not be read (caller then skips restore
-    # rather than guessing — writing the wrong value back is worse than leaving it alone).
+function Get-AutoQuoteFlags {
+    # Every symbol's flag, as a hashtable keyed by symbol.
+    #
+    # Read from the table rather than through GET /api/autoquote-settings/{symbol}, for two
+    # reasons. That endpoint is GetOrCreate, so asking about a symbol that has never been
+    # auto-quoted creates its row as a side effect of the question. And there is no endpoint that
+    # enumerates: the Simulator now turns auto-quote off for every symbol it trades (issue #147),
+    # and which symbols those are comes from the pair catalogue, which this script cannot read.
+    param([Parameter(Mandatory = $true)][string]$ConnectionString)
+
+    $flags = @{}
+    $conn = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
     try {
-        $r = Invoke-RestMethod -TimeoutSec 10 -Uri "http://localhost:$($ports['orders'])/api/autoquote-settings/$smokeSymbol"
-        return [bool]$r.Data.IsEnabled
-    } catch {
-        Write-Warning "Could not read auto-quote setting for ${smokeSymbol}: $($_.Exception.Message)"
-        return $null
+        $conn.Open()
+        $cmd = $conn.CreateCommand()
+        $cmd.CommandText = 'SELECT Symbol, IsEnabled FROM AutoQuoteSettings'
+        $reader = $cmd.ExecuteReader()
+        while ($reader.Read()) { $flags[[string]$reader['Symbol']] = [bool]$reader['IsEnabled'] }
+        $reader.Close()
     }
+    finally {
+        $conn.Dispose()
+    }
+    return $flags
 }
 
 function Restore-AutoQuote {
-    param([bool]$Enabled)
+    param(
+        [Parameter(Mandatory = $true)][string]$Symbol,
+        [Parameter(Mandatory = $true)][bool]$Enabled
+    )
 
     try {
         # Guid.Empty as the updater: this is a dev-tooling restore, not an admin action, and
         # AutoQuoteSettings.CreateDefault already uses Guid.Empty as its no-real-user sentinel.
         $body = @{ IsEnabled = $Enabled; UpdatedByUserId = [guid]::Empty.ToString() } | ConvertTo-Json
         Invoke-RestMethod -Method Post -TimeoutSec 10 -ContentType 'application/json' -Body $body `
-            -Uri "http://localhost:$($ports['orders'])/api/autoquote-settings/$smokeSymbol/enabled" | Out-Null
-        Write-Host "Restored auto-quote for $smokeSymbol to IsEnabled=$Enabled."
+            -Uri "http://localhost:$($ports['orders'])/api/autoquote-settings/$Symbol/enabled" | Out-Null
+        Write-Host "Restored auto-quote for $Symbol to IsEnabled=$Enabled."
     } catch {
-        Write-Warning "Failed to restore auto-quote for ${smokeSymbol} to IsEnabled=${Enabled}: $($_.Exception.Message)"
+        Write-Warning "Failed to restore auto-quote for ${Symbol} to IsEnabled=${Enabled}: $($_.Exception.Message)"
         Write-Warning "Turn it back on from the bot with the admin command 'اتومات روشن' if it was on before."
     }
 }
@@ -305,7 +319,7 @@ switch ($Command) {
         $failedBefore = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 2
         $completedBefore = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 1
 
-        $autoQuoteWas = Get-AutoQuoteEnabled
+        $autoQuoteWas = Get-AutoQuoteFlags -ConnectionString $ordersConnectionString
         Write-Host "Running simulator with args: $simArgs"
         try {
             dotnet run --no-build --configuration Release `
@@ -314,10 +328,15 @@ switch ($Command) {
             $simExit = $LASTEXITCODE
         }
         finally {
-            # The Simulator disables auto-quote for the symbol and never re-enables it; put the
-            # flag back however we found it, including when the run threw part-way through.
-            if ($null -ne $autoQuoteWas -and $autoQuoteWas) {
-                Restore-AutoQuote -Enabled $true
+            # The Simulator disables auto-quote for every symbol it trades and never re-enables
+            # any of them; put each flag back however we found it, including when the run threw
+            # part-way through. Restoring unconditionally rather than re-reading first: the POST
+            # is idempotent, and a second query here would be one more thing to fail inside a
+            # cleanup block.
+            foreach ($symbol in @($autoQuoteWas.Keys)) {
+                if ($autoQuoteWas[$symbol]) {
+                    Restore-AutoQuote -Symbol $symbol -Enabled $true
+                }
             }
         }
 

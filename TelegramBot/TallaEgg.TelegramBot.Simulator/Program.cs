@@ -50,6 +50,12 @@ configBuilder.AddEnvironmentVariables();
 var configuration = configBuilder.Build();
 serviceSection = configuration.GetSection($"Services:{BotApplicationName}");
 
+// The same call every service and the real bot make at startup. It matters here now that the run
+// reads its symbols from CurrenciesConstant.AllTradingPairs (issue #147): without it the simulator
+// would trade the compiled defaults while the APIs it drives were serving whatever the shared
+// file's "Symbols" section adds on top of them.
+TallaEgg.Core.CurrenciesConstant.Configure(configuration);
+
 var services = new ServiceCollection();
 services.AddLogging(b => b.AddSimpleConsole(o =>
 {
