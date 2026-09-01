@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -174,6 +175,105 @@ public class WalletConcurrencyTests : IDisposable
         // 100 − 25 by the competitor, then − 10 moved into the lock by the retried operation.
         Assert.Equal(65m, stored.Balance);
         Assert.Equal(10m, stored.LockedBalance);
+    }
+
+    // ── The retry budget (issue #174) ───────────────────────────────────────────
+
+    /// <summary>
+    /// The market maker is the counterparty to every quote fill, so its wallet rows take the whole
+    /// shop's writes and a fill can collide with the outbox several times over. Three attempts
+    /// 20/40ms apart could not span a settlement batch, so the fill was refused with
+    /// "در حال حاضر امکان انجام این معامله نیست." while nothing was actually wrong with it.
+    ///
+    /// <para>
+    /// Five collisions is the point of the number: it is more than the old cap of three attempts,
+    /// so this test fails against the previous code and passes against the budget. Driving them
+    /// through <see cref="CollidingContext"/> rather than real parallelism keeps it deterministic —
+    /// a timing-dependent version of this test would be exactly the flake #174 is about.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task LockBalanceAsync_CollidesMoreOftenThanTheOldAttemptCap_StillApplies()
+    {
+        const int Collisions = 5;
+
+        var seeded = await SeedWalletAsync(1000m);
+        var collisions = 0;
+
+        await using var context = new CollidingContext(
+            new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
+
+        context.BeforeSave = () =>
+        {
+            if (collisions >= Collisions) return;
+            collisions++;
+
+            // A different writer takes 10 out of the wallet and commits first, every time.
+            using var competitor = NewContext();
+            var theirs = competitor.Wallets.Single(w => w.Id == seeded.Id);
+            theirs.DecreaseBalance(10m);
+            competitor.SaveChanges();
+        };
+
+        var repository = NewRepository(context);
+        await repository.LockBalanceAsync(seeded.UserId, "IRT", 40m);
+
+        Assert.Equal(Collisions, collisions);
+
+        await using var check = NewContext();
+        var stored = await check.Wallets.SingleAsync(w => w.Id == seeded.Id);
+
+        // 1000 − (5 × 10) by the competitor, then − 40 moved into the lock by the retried
+        // operation. The lock landing on 950 rather than 1000 is the recomputation working: each
+        // retry read the balance as the competitor left it, not as it was first seen.
+        Assert.Equal(910m, stored.Balance);
+        Assert.Equal(40m, stored.LockedBalance);
+    }
+
+    /// <summary>
+    /// The budget has to end the loop as well as extend it. Against a competitor that never stops,
+    /// the write can never land, and what must not happen is retrying forever while a customer
+    /// waits — the ceiling is on the delay they see.
+    ///
+    /// <para>
+    /// Asserted on the attempt count rather than a stopwatch reading: the point is that the budget
+    /// buys more chances than the old fixed cap and still terminates. A tight assertion on elapsed
+    /// time would be measuring the build agent, not the code.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task LockBalanceAsync_NeverWinsTheRace_GivesUpInsteadOfRetryingForever()
+    {
+        var seeded = await SeedWalletAsync(1000m);
+        var attempts = 0;
+
+        await using var context = new CollidingContext(
+            new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
+
+        context.BeforeSave = () =>
+        {
+            attempts++;
+            using var competitor = NewContext();
+            var theirs = competitor.Wallets.Single(w => w.Id == seeded.Id);
+            theirs.DecreaseBalance(1m);
+            competitor.SaveChanges();
+        };
+
+        var repository = NewRepository(context);
+        var elapsed = Stopwatch.StartNew();
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => repository.LockBalanceAsync(seeded.UserId, "IRT", 40m));
+
+        elapsed.Stop();
+
+        Assert.True(attempts > 3, $"the budget bought only {attempts} attempts, no more than the old cap");
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(30),
+            $"the retry loop ran for {elapsed.Elapsed} and is not bounded");
+
+        // Nothing was locked: the operation failed whole rather than half-applying.
+        await using var check = NewContext();
+        Assert.Equal(0m, (await check.Wallets.SingleAsync(w => w.Id == seeded.Id)).LockedBalance);
     }
 
     // ── The counter's one weakness ──────────────────────────────────────────────
