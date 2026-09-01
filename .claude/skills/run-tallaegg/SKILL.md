@@ -113,20 +113,29 @@ the count isn't zero or the line never appeared.
 
 **That line is not the end of the run.** It is printed when the trading phase ends, but
 settlement is queued through the Orders outbox and drains tens of seconds later, so `errors 0`
-only means the conversations and the matching worked. After the summary, `driver.ps1 smoke`
-polls the Orders database until no outbox message is `Pending` and then fails if the number of
-permanently `Failed` messages went up (issue #175). A green run now means the trades settled,
-not just that they were recorded. Expect an extra 5–15s per run for the drain:
+only means the conversations and the matching worked. `driver.ps1 smoke` therefore drains the
+queue before the run, takes its counts, and after the run polls until no outbox message is
+`Pending` again before checking two things (issue #175):
+
+- **no settlement failed** — the number of permanently `Failed` messages must not have gone up
+- **settlements actually happened** — `Completed` must have gone up, or a regression that stops
+  queueing settlements entirely would drain instantly and look perfect
+
+So a green run now means the trades settled, not just that they were recorded. Expect an extra
+5–15s per run for the drain:
 
 ```
 Waiting for settlement: 43 outbox message(s) still pending...
-Simulation completed with errors 0; outbox drained with no new failed settlements.
+Simulation completed with errors 0; 60 settlement(s) completed, no new failures.
 ```
 
-The count is compared as a **delta**, not against zero: these databases already carry failures
-from earlier work that belong to nobody's current change. If the check fires, the message names
-the before/after counts and points at `/api/outbox/unsettled`, where each stuck settlement can
-be re-driven (once the cause is fixed) or abandoned.
+Failures are compared as a **delta**, not against zero: these databases already carry failures
+from earlier work that belong to nobody's current change. The pre-run drain is part of that —
+a doomed message left over from an earlier run does not fail when it is abandoned but when it
+exhausts its retries, minutes later, and without the drain that lands inside this run's window
+and is charged to it. If either check fires, the message names the counts and points at
+`/api/outbox/unsettled`, where a stuck settlement can be re-driven (once the cause is fixed) or
+abandoned.
 
 ### What a run changes on the database
 

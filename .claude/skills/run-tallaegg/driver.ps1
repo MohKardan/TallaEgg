@@ -88,6 +88,14 @@ function Get-OrdersConnectionString {
         throw "config/appsettings.global.json is missing, so the settlement check cannot reach the Orders database. Copy config/appsettings.global.example.json to that path (see SKILL.md Prerequisites)."
     }
 
+    # Environment first, matching the precedence every service applies: each layers
+    # AddEnvironmentVariables() over the shared file (the #159 hotfix, d3956d6). Reading only
+    # the file would point this check at a different database than the one the services write
+    # to, and the settlement assertions below would then pass on an empty queue every time.
+    if (-not [string]::IsNullOrWhiteSpace($env:ConnectionStrings__OrdersDb)) {
+        return $env:ConnectionStrings__OrdersDb
+    }
+
     # ReadAllText rather than Get-Content: the file is UTF-8 with a BOM, and in Windows
     # PowerShell 5.1 the BOM survives Get-Content and makes ConvertFrom-Json fail on it.
     $config = [System.IO.File]::ReadAllText($configPath) | ConvertFrom-Json
@@ -285,8 +293,17 @@ switch ($Command) {
         # Counted before the run and compared as a delta afterwards, never as an absolute:
         # these databases already carry failures from earlier work that belong to nobody's
         # current change, and a run that adds none of its own is a pass (issue #175).
+        #
+        # The queue is drained BEFORE the baseline is read, not just after the run. A message
+        # left over from an earlier run that is doomed anyway does not fail the moment it is
+        # abandoned — it fails when it exhausts its retries, which is minutes later, inside the
+        # window this run is measured over. Counting first and draining second charged those
+        # failures to a run that had not started yet. Draining first is also what the simulator's
+        # own DataReset does before it deletes anything, so this costs one query on a clean queue.
         $ordersConnectionString = Get-OrdersConnectionString
+        Wait-OutboxDrained -ConnectionString $ordersConnectionString
         $failedBefore = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 2
+        $completedBefore = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 1
 
         $autoQuoteWas = Get-AutoQuoteEnabled
         Write-Host "Running simulator with args: $simArgs"
@@ -310,11 +327,12 @@ switch ($Command) {
 
         # The Simulator returns 0 whatever happens — it only *logs* its error count — so the
         # summary line is the real result and has to be parsed for it.
-        $summary = Select-String -Path $smokeLog -Pattern 'trades attempted \d+, errors (\d+)' | Select-Object -Last 1
+        $summary = Select-String -Path $smokeLog -Pattern 'trades attempted (\d+), errors (\d+)' | Select-Object -Last 1
         if (-not $summary) {
             throw "Simulator produced no summary line; it did not finish. Full output: $smokeLog"
         }
-        $errorCount = [int]$summary.Matches[0].Groups[1].Value
+        $tradesAttempted = [int]$summary.Matches[0].Groups[1].Value
+        $errorCount = [int]$summary.Matches[0].Groups[2].Value
         if ($errorCount -ne 0) {
             throw "Simulation finished with $errorCount error(s). Full output: $smokeLog"
         }
@@ -330,7 +348,17 @@ switch ($Command) {
             throw "Simulation traded cleanly but $newFailures settlement(s) failed permanently (Failed outbox messages went from $failedBefore to $failedAfter). The trades are recorded but NOT settled and their collateral is still locked. Inspect them at http://localhost:$($ports['orders'])/api/outbox/unsettled. Full output: $smokeLog"
         }
 
-        Write-Host "Simulation completed with errors 0; outbox drained with no new failed settlements."
+        # "Nothing failed" is not "something settled": a regression that stops queueing
+        # settlements at all leaves an empty queue, which drains instantly and adds no failures.
+        # That is the same shape of false green this check exists to remove, so the settlements
+        # have to be counted arriving, not just counted as not-failing.
+        $completedAfter = Get-OutboxCount -ConnectionString $ordersConnectionString -Status 1
+        $settled = $completedAfter - $completedBefore
+        if ($tradesAttempted -gt 0 -and $settled -le 0) {
+            throw "Simulation reported $tradesAttempted trade(s) and no errors, but not one settlement completed (Completed outbox messages stayed at $completedBefore). The trades were recorded and nothing was queued to settle them. Full output: $smokeLog"
+        }
+
+        Write-Host "Simulation completed with errors 0; $settled settlement(s) completed, no new failures."
     }
 
     'stop' {

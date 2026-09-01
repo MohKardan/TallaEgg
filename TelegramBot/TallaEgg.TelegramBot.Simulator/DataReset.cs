@@ -44,8 +44,9 @@ namespace TallaEgg.TelegramBot.Simulator;
 /// processor writing Transactions rows between the two deletes below, which is the second way
 /// this class fails on FK_Transactions_Wallets_WalletId (reproduced on unmodified main), and it
 /// would need ordering against the Trades delete that destroys the link it depends on. Waiting
-/// closes both faults with one condition, and it keeps the completed messages as the record of
-/// what the previous run settled — which is the evidence both issues were diagnosed from.
+/// addresses both faults with one condition — nothing is queued or in flight when the deletes
+/// start — and it keeps the completed messages as the record of what the previous run settled,
+/// which is the evidence both issues were diagnosed from.
 /// </summary>
 public sealed class DataReset(string usersDbConnectionString, string walletDbConnectionString,
     string ordersDbConnectionString, ILogger<DataReset> logger)
@@ -75,8 +76,14 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
 
         if (userIds.Count > 0)
         {
-            await DeleteWalletDataAsync(userIds, cancellationToken);
+            // Orders and Trades go before the wallet rows so that nothing is left able to
+            // produce a settlement while those rows are being deleted. The matching sweep runs
+            // every second and writes a Trade and its outbox message in one transaction, and
+            // the processor dispatching that message writes Transactions rows — which is the
+            // foreign key DeleteWalletDataAsync conflicts on. The wait above clears what is
+            // already queued; this order removes what could still queue more.
             await DeleteOrderDataAsync(userIds, cancellationToken);
+            await DeleteWalletDataAsync(userIds, cancellationToken);
         }
 
         await DeleteUsersAsync(cancellationToken);
