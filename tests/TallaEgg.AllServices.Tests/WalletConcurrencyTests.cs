@@ -2,6 +2,7 @@
 using System.Reflection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core.Enums.Wallet;
 using Wallet.Core;
@@ -330,6 +331,211 @@ public class WalletConcurrencyTests : IDisposable
         // Nothing was locked: the operation failed whole rather than half-applying.
         await using var check = NewContext();
         Assert.Equal(0m, (await check.Wallets.SingleAsync(w => w.Id == seeded.Id)).LockedBalance);
+    }
+
+    // ── Settlement's retry (issue #183) ─────────────────────────────────────────
+
+    private const string SettlementBase = "MAUA";
+    private const string SettlementQuote = "IRT";
+    private const decimal SettlementQuantity = 2m;
+    private const decimal SettlementQuoteQuantity = 1000m;
+
+    /// <summary>
+    /// The four wallets a settlement touches, with each side's collateral already locked — the
+    /// state <c>LockBalanceAsync</c> leaves behind at order time and settlement's guards require.
+    /// <c>LockedBalance</c> is assigned rather than moved through <c>LockBalance</c> so the seeding
+    /// states the starting position outright, as <c>SettlementSurvivesReferenceIndexTests</c> does.
+    /// </summary>
+    private async Task<(Guid Buyer, Guid Seller)> SeedSettlementWalletsAsync()
+    {
+        var buyer = Guid.NewGuid();
+        var seller = Guid.NewGuid();
+
+        await using var context = NewContext();
+
+        void Seed(Guid userId, string asset, decimal locked)
+        {
+            var wallet = WalletEntity.Create(userId, asset);
+            wallet.LockedBalance = locked;
+            context.Wallets.Add(wallet);
+        }
+
+        Seed(buyer, SettlementQuote, SettlementQuoteQuantity);  // the buyer's collateral
+        Seed(buyer, SettlementBase, 0m);
+        Seed(seller, SettlementBase, SettlementQuantity);       // the seller's collateral
+        Seed(seller, SettlementQuote, 0m);
+
+        await context.SaveChangesAsync();
+        return (buyer, seller);
+    }
+
+    private Task<(bool Success, string Message)> SettleAsync(
+        WalletRepository repository, Guid tradeId, Guid buyer, Guid seller) =>
+        repository.SettleTradeAsync(
+            tradeId, buyer, seller, $"{SettlementBase}/{SettlementQuote}",
+            SettlementQuantity, SettlementQuoteQuantity, 0m, 0m);
+
+    /// <summary>
+    /// Settlement was the one wallet write with no retry: a lost race escaped to the outbox, which
+    /// redelivered it 14-15 seconds later, and five consecutive losses would have stranded a
+    /// recorded trade with its collateral locked. It now retries like the other three.
+    ///
+    /// <para>
+    /// The collision is raised rather than raced. A real competing writer would need a second
+    /// connection, and it could not take a write lock while this attempt's own transaction is open
+    /// — so the deterministic version is also the only one available here, which suits: a test that
+    /// depended on thread timing would be the very flake this line of work is about.
+    /// </para>
+    ///
+    /// <para>
+    /// The leg count is the assertion that matters most. Four transaction rows and one settlement
+    /// row mean the discarded attempt left nothing behind: had the retry rebuilt its rows on top of
+    /// the ones still tracked from the first attempt, this would be eight and a duplicate insert.
+    /// That is what <c>ChangeTracker.Clear()</c> between attempts is for.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SettleTradeAsync_LosesTheRace_IsRetriedAndSettlesExactlyOnce()
+    {
+        var (buyer, seller) = await SeedSettlementWalletsAsync();
+        var tradeId = Guid.NewGuid();
+        var saves = 0;
+
+        await using var context = new CollidingContext(
+            new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
+
+        context.BeforeSave = () =>
+        {
+            if (++saves == 1)
+                throw new DbUpdateConcurrencyException(
+                    "another writer changed one of the four wallets between the read and the save");
+        };
+
+        var repository = NewRepository(context);
+        var (success, message) = await SettleAsync(repository, tradeId, buyer, seller);
+
+        Assert.True(success, message);
+        Assert.Equal("Trade settled.", message);
+        Assert.Equal(2, saves);  // it lost the first attempt and came back for a second
+
+        await using var check = NewContext();
+
+        Assert.Equal(1, await check.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
+        Assert.Equal(4, await check.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
+
+        // The money moved once, and only once: each side's collateral consumed, each side credited.
+        var buyerQuote = await check.Wallets.SingleAsync(w => w.UserId == buyer && w.Asset == SettlementQuote);
+        var buyerBase = await check.Wallets.SingleAsync(w => w.UserId == buyer && w.Asset == SettlementBase);
+        var sellerBase = await check.Wallets.SingleAsync(w => w.UserId == seller && w.Asset == SettlementBase);
+        var sellerQuote = await check.Wallets.SingleAsync(w => w.UserId == seller && w.Asset == SettlementQuote);
+
+        Assert.Equal(0m, buyerQuote.LockedBalance);
+        Assert.Equal(SettlementQuantity, buyerBase.Balance);
+        Assert.Equal(0m, sellerBase.LockedBalance);
+        Assert.Equal(SettlementQuoteQuantity, sellerQuote.Balance);
+    }
+
+    /// <summary>
+    /// The trap the retry had to be built around (issue #42). Losing the race on the
+    /// <c>TradeSettlements</c> primary key means somebody else already settled this trade, and that
+    /// is reported as success — so adding a retry must not turn it into a second go at moving the
+    /// money. It does not: that branch <b>returns</b> rather than throwing, which ends the loop.
+    ///
+    /// <para>
+    /// <c>saves == 1</c> is the whole point of the test. The balances are asserted alongside it
+    /// because a second attempt that somehow ran would show up there as collateral consumed twice.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SettleTradeAsync_LosesTheRaceOnTheSettlementKey_ReportsSuccessWithoutRetrying()
+    {
+        var (buyer, seller) = await SeedSettlementWalletsAsync();
+        var tradeId = Guid.NewGuid();
+        var saves = 0;
+
+        await using var context = new CollidingContext(
+            new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
+
+        context.BeforeSave = () =>
+        {
+            saves++;
+
+            // The shape EF raises when the primary key rejects this settlement's insert because
+            // another caller committed the same trade first: the only entity in the failed save is
+            // the TradeSettlement, which is exactly what IsDuplicateSettlement keys off.
+            var settlement = context.ChangeTracker.Entries<TradeSettlement>().Single();
+            throw new DbUpdateException(
+                "duplicate TradeSettlements key", new[] { (EntityEntry)settlement });
+        };
+
+        var repository = NewRepository(context);
+        var (success, message) = await SettleAsync(repository, tradeId, buyer, seller);
+
+        Assert.True(success, message);
+        Assert.Equal("Trade already settled.", message);
+        Assert.Equal(1, saves);
+
+        await using var check = NewContext();
+
+        // This attempt moved nothing: no legs written, and both sides' collateral still locked
+        // exactly as it was, waiting on the settlement that actually won.
+        Assert.Equal(0, await check.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
+        Assert.Equal(SettlementQuoteQuantity,
+            (await check.Wallets.SingleAsync(w => w.UserId == buyer && w.Asset == SettlementQuote)).LockedBalance);
+        Assert.Equal(SettlementQuantity,
+            (await check.Wallets.SingleAsync(w => w.UserId == seller && w.Asset == SettlementBase)).LockedBalance);
+    }
+
+    /// <summary>
+    /// The budget has to end settlement's loop as well as extend it, and what it hands back when it
+    /// does must be the failure the outbox already knows how to handle — not an exception, and not
+    /// a half-applied trade.
+    ///
+    /// <para>
+    /// <c>"Settlement error"</c> is asserted verbatim: the outbox turns a false result into
+    /// <c>Wallet settlement rejected: {message}</c> and reschedules, so this string is the contract
+    /// between the two services rather than an internal detail.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SettleTradeAsync_NeverWinsTheRace_LeavesTheTradeToTheOutbox()
+    {
+        var (buyer, seller) = await SeedSettlementWalletsAsync();
+        var tradeId = Guid.NewGuid();
+        var attempts = 0;
+
+        await using var context = new CollidingContext(
+            new DbContextOptionsBuilder<WalletDbContext>().UseSqlite(_connection).Options);
+
+        context.BeforeSave = () =>
+        {
+            attempts++;
+            throw new DbUpdateConcurrencyException("a competing writer wins the row every time");
+        };
+
+        var repository = NewRepository(context);
+        var elapsed = Stopwatch.StartNew();
+
+        var (success, message) = await SettleAsync(repository, tradeId, buyer, seller);
+
+        elapsed.Stop();
+
+        Assert.False(success);
+        Assert.Equal("Settlement error", message);
+        Assert.True(attempts > 3, $"the budget bought only {attempts} attempts, no more than the old cap");
+        Assert.True(elapsed.Elapsed < TimeSpan.FromSeconds(30),
+            $"the retry loop ran for {elapsed.Elapsed} and is not bounded");
+
+        // The trade is simply unsettled, which is the state the outbox redelivers into: nothing
+        // recorded, nothing moved, and both sides' collateral still locked for the next attempt.
+        await using var check = NewContext();
+
+        Assert.Equal(0, await check.TradeSettlements.CountAsync(s => s.TradeId == tradeId));
+        Assert.Equal(0, await check.Transactions.CountAsync(t => t.ReferenceId == tradeId.ToString()));
+        Assert.Equal(SettlementQuoteQuantity,
+            (await check.Wallets.SingleAsync(w => w.UserId == buyer && w.Asset == SettlementQuote)).LockedBalance);
+        Assert.Equal(SettlementQuantity,
+            (await check.Wallets.SingleAsync(w => w.UserId == seller && w.Asset == SettlementBase)).LockedBalance);
     }
 
     // ── The counter's one weakness ──────────────────────────────────────────────

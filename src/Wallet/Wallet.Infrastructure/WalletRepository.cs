@@ -206,9 +206,36 @@ public class WalletRepository : IWalletRepository
     /// wallet are not competing — a deposit and a withdrawal must both land, they simply have to
     /// land one after the other, which is what a retry gives them.
     /// </para>
+    ///
+    /// <para>
+    /// <b>The operation must not leave a transaction open when it throws.</b> The
+    /// <c>ChangeTracker.Clear()</c> above runs between attempts, which is not sound inside an open
+    /// <c>IDbContextTransaction</c>. The three wallet writes below have no transaction of their
+    /// own; <see cref="SettleTradeAsync"/> does, and opens and closes it inside the delegate so
+    /// that by the time an attempt fails there is nothing left open (issue #183).
+    /// </para>
+    /// </summary>
+    private Task<T> WithConcurrencyRetryAsync<T>(
+        Func<Task<T>> operation, string operationName, Guid userId, string asset)
+        => WithConcurrencyRetryAsync(operation, (attempt, spent) => _logger.LogWarning(
+            "Concurrent write to the {Asset} wallet of user {UserId} during {Operation}; " +
+            "retrying from a fresh read (attempt {Attempt}, {Spent}ms of {Budget}ms used).",
+            asset, userId, operationName, attempt,
+            (long)spent.TotalMilliseconds, (long)ConcurrencyRetryBudget.TotalMilliseconds));
+
+    /// <summary>
+    /// The retry loop itself, with the caller supplying its own retry log line.
+    ///
+    /// <para>
+    /// Split out for <see cref="SettleTradeAsync"/>, whose contended row is not "the {Asset} wallet
+    /// of user {UserId}" but four wallets across two users, so the wallet-shaped message above
+    /// would have had to name one of them and mislead about the rest. The budget, the floor, the
+    /// backoff and the clear are shared rather than copied: two places deciding how long a wallet
+    /// write may retry is one place too many.
+    /// </para>
     /// </summary>
     private async Task<T> WithConcurrencyRetryAsync<T>(
-        Func<Task<T>> operation, string operationName, Guid userId, string asset)
+        Func<Task<T>> operation, Action<int, TimeSpan> logRetry)
     {
         var spent = Stopwatch.StartNew();
         var backoff = InitialConcurrencyDelay;
@@ -233,11 +260,7 @@ public class WalletRepository : IWalletRepository
 
                 _context.ChangeTracker.Clear();
 
-                _logger.LogWarning(
-                    "Concurrent write to the {Asset} wallet of user {UserId} during {Operation}; " +
-                    "retrying from a fresh read (attempt {Attempt}, {Spent}ms of {Budget}ms used).",
-                    asset, userId, operationName, attempt,
-                    (long)spent.Elapsed.TotalMilliseconds, (long)ConcurrencyRetryBudget.TotalMilliseconds);
+                logRetry(attempt, spent.Elapsed);
 
                 await Task.Delay(delay);
                 backoff += backoff;
@@ -540,6 +563,75 @@ public class WalletRepository : IWalletRepository
         var buyerReceivesBase = quantity;      // no fee is deducted while fees are disabled
         var sellerReceivesQuote = quoteQuantity;
 
+        // Settlement is the wallet's fourth write, and until #183 the only one that did not retry
+        // after losing an optimistic-concurrency race. It writes four wallet rows, four transaction
+        // rows and the settlement row in one SaveChanges, so its window for losing is the widest of
+        // the four — and the market maker is the counterparty to every quote fill, so those rows are
+        // the whole shop's hot row (the same cause as #174). Measured before this change: 27 losses
+        // in 327 settlement attempts, each costing 14-15s of delay before the outbox redelivered.
+        //
+        // The retry is per *transaction*, not per save: each attempt opens its own transaction,
+        // re-reads the four wallets and rebuilds every row from what it finds. That is what makes
+        // it safe to hand to WithConcurrencyRetryAsync, whose ChangeTracker.Clear() between
+        // attempts would not be sound inside a transaction this method had left open.
+        //
+        // What does NOT change is the guarantee. The TradeSettlements primary key is still what
+        // makes settlement exactly-once, the fast path above is still only an optimisation, and the
+        // duplicate-key branch still *returns* success rather than throwing — so a settlement that
+        // another caller already committed ends the loop instead of becoming a second attempt at
+        // moving the money (issue #42).
+        try
+        {
+            return await WithConcurrencyRetryAsync(
+                () => SettleTradeOnceAsync(
+                    tradeId, buyerUserId, sellerUserId, symbol!, baseAsset, quoteAsset,
+                    quantity, quoteQuantity, buyerReceivesBase, sellerReceivesQuote, referenceId),
+                (attempt, spent) => _logger.LogWarning(
+                    "Concurrent write while settling trade {TradeId} on {Symbol}; " +
+                    "retrying from a fresh read (attempt {Attempt}, {Spent}ms of {Budget}ms used).",
+                    tradeId, symbol, attempt,
+                    (long)spent.TotalMilliseconds, (long)ConcurrencyRetryBudget.TotalMilliseconds));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Warning, and no stack trace, because nothing is wrong: the trade is recorded, the
+            // collateral is locked, and the outbox redelivers a settlement that reports failure.
+            // This used to fall into the generic handler below and be logged at Error with a full
+            // EF stack trace, which reads as a fault and has cost more than one investigation of a
+            // perfectly healthy trade. The lock path has reported a lost race this way all along.
+            _logger.LogWarning(
+                "Settlement of trade {TradeId} on {Symbol} kept losing the optimistic-concurrency " +
+                "race for its whole {Budget}ms budget; leaving it to the outbox to redeliver.",
+                tradeId, symbol, (long)ConcurrencyRetryBudget.TotalMilliseconds);
+
+            // The message the outbox has always seen for a refused settlement, unchanged.
+            return (false, "Settlement error");
+        }
+    }
+
+    /// <summary>
+    /// One attempt at settling a trade: its own transaction, its own reads, its own rows.
+    ///
+    /// <para>
+    /// Split from <see cref="SettleTradeAsync"/> so the whole attempt can be re-run by
+    /// <c>WithConcurrencyRetryAsync</c>. Every value the attempt derives from the database — the
+    /// four wallets, the <c>BallanceBefore</c> on each of the four transaction rows, the locked
+    /// collateral the guards below check — is read inside this method, so a retry recomputes them
+    /// from the row as the winning writer left it rather than from the stale one it first saw.
+    /// </para>
+    ///
+    /// <para>
+    /// It throws <see cref="DbUpdateConcurrencyException"/> rather than absorbing it, and rolls the
+    /// transaction back before it does, so the caller's retry never runs with a transaction open.
+    /// </para>
+    /// </summary>
+    private async Task<(bool Success, string Message)> SettleTradeOnceAsync(
+        Guid tradeId, Guid buyerUserId, Guid sellerUserId,
+        string symbol, string baseAsset, string quoteAsset,
+        decimal quantity, decimal quoteQuantity,
+        decimal buyerReceivesBase, decimal sellerReceivesQuote,
+        string referenceId)
+    {
         await using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
@@ -645,6 +737,18 @@ public class WalletRepository : IWalletRepository
                 tradeId);
 
             return (true, "Trade already settled.");
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A different writer changed one of the four wallets between this attempt's read and
+            // its save. Roll back first, so the caller's ChangeTracker.Clear() does not run inside
+            // an open transaction, then let it through to be retried from a fresh read.
+            //
+            // Ordered after the duplicate-key branch deliberately, to leave that branch's
+            // precedence exactly as it was: a save that fails on the TradeSettlements key is
+            // settled, not contended, and must still report success without moving money.
+            await tx.RollbackAsync();
+            throw;
         }
         catch (Exception ex)
         {
