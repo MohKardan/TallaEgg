@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TallaEgg.Core;
@@ -128,11 +129,55 @@ public class WalletRepository : IWalletRepository
 
 
     /// <summary>
-    /// How many times a wallet write is re-attempted after losing an optimistic-concurrency race.
-    /// Three covers a collision with one other writer comfortably; a wallet contended by more than
-    /// that at once is a load problem, not a retry problem.
+    /// How long a wallet write keeps re-attempting after losing an optimistic-concurrency race.
+    ///
+    /// <para>
+    /// This used to be a count — three attempts, 20/40ms apart, a 60ms budget — on the reasoning
+    /// that a wallet contended by more than one other writer at once is a load problem rather than
+    /// a retry problem. The market maker's wallet is that wallet by design: it is the counterparty
+    /// to every quote fill, so the whole shop's writes land on one row (issue #174).
+    /// </para>
+    ///
+    /// <para>
+    /// A budget in time rather than tries is what matches the thing being waited out. The competing
+    /// writer is the outbox draining settlements — a batch of twenty, back to back, roughly one to
+    /// two seconds of near-continuous writes to that same row. Sixty milliseconds could not span
+    /// that, so a fill arriving mid-batch exhausted its tries and was refused; the run that
+    /// produced this value showed four collisions inside 136ms, three retried and the fourth with
+    /// nothing left. Two seconds outlasts a full batch, and the caller is holding a customer's fill
+    /// open, so what has to be bounded is the delay they see, not the number of tries behind it.
+    /// </para>
     /// </summary>
-    private const int ConcurrencyAttempts = 3;
+    private static readonly TimeSpan ConcurrencyRetryBudget = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// First backoff after a lost race; each subsequent wait doubles it. Short enough that an
+    /// uncontended collision costs almost nothing, since most are resolved on the first retry.
+    /// </summary>
+    private static readonly TimeSpan InitialConcurrencyDelay = TimeSpan.FromMilliseconds(25);
+
+    /// <summary>
+    /// Attempts granted regardless of the clock, matching the fixed cap this replaced.
+    ///
+    /// <para>
+    /// The budget is measured from the start of the first attempt, so it covers the operation as
+    /// well as the waiting — and the operation is a read-modify-write against a contended row,
+    /// which is exactly what gets slow under the load this exists for. Without a floor, a wallet
+    /// write that spent longer than the budget before its first collision would be refused having
+    /// retried nothing at all: worse, precisely when it matters most, than the three attempts it
+    /// used to get unconditionally. The floor makes the budget able only to extend the old
+    /// behaviour, never to cut into it.
+    /// </para>
+    /// </summary>
+    private const int MinimumConcurrencyAttempts = 3;
+
+    /// <summary>
+    /// Spreads the backoff over half to one and a half of its nominal length, so two writers that
+    /// collided do not wake together and collide again for the same reason they collided the first
+    /// time. Without it, doubling keeps a pair of losers in lockstep instead of separating them.
+    /// </summary>
+    private static TimeSpan WithJitter(TimeSpan delay) =>
+        TimeSpan.FromMilliseconds(delay.TotalMilliseconds * (0.5 + Random.Shared.NextDouble()));
 
     /// <summary>
     /// Runs a read-modify-write against a wallet, re-running it from the start if a concurrent
@@ -165,22 +210,37 @@ public class WalletRepository : IWalletRepository
     private async Task<T> WithConcurrencyRetryAsync<T>(
         Func<Task<T>> operation, string operationName, Guid userId, string asset)
     {
+        var spent = Stopwatch.StartNew();
+        var backoff = InitialConcurrencyDelay;
+
         for (var attempt = 1; ; attempt++)
         {
             try
             {
                 return await operation();
             }
-            catch (DbUpdateConcurrencyException) when (attempt < ConcurrencyAttempts)
+            catch (DbUpdateConcurrencyException)
             {
+                var delay = WithJitter(backoff);
+
+                // Give up once the next wait would carry this write past the budget, rather than
+                // after a set number of tries. Checking before sleeping is what keeps the ceiling
+                // honest: waiting first and testing afterwards could overshoot by a whole backoff.
+                // The floor is checked first so a slow operation cannot exhaust the budget before
+                // the first collision and leave the write with no retries at all.
+                if (attempt >= MinimumConcurrencyAttempts && spent.Elapsed + delay > ConcurrencyRetryBudget)
+                    throw;
+
                 _context.ChangeTracker.Clear();
 
                 _logger.LogWarning(
                     "Concurrent write to the {Asset} wallet of user {UserId} during {Operation}; " +
-                    "retrying from a fresh read (attempt {Attempt} of {Limit}).",
-                    asset, userId, operationName, attempt, ConcurrencyAttempts);
+                    "retrying from a fresh read (attempt {Attempt}, {Spent}ms of {Budget}ms used).",
+                    asset, userId, operationName, attempt,
+                    (long)spent.Elapsed.TotalMilliseconds, (long)ConcurrencyRetryBudget.TotalMilliseconds);
 
-                await Task.Delay(TimeSpan.FromMilliseconds(20 * attempt));
+                await Task.Delay(delay);
+                backoff += backoff;
             }
         }
     }
