@@ -157,6 +157,21 @@ public class WalletRepository : IWalletRepository
     private static readonly TimeSpan InitialConcurrencyDelay = TimeSpan.FromMilliseconds(25);
 
     /// <summary>
+    /// Attempts granted regardless of the clock, matching the fixed cap this replaced.
+    ///
+    /// <para>
+    /// The budget is measured from the start of the first attempt, so it covers the operation as
+    /// well as the waiting — and the operation is a read-modify-write against a contended row,
+    /// which is exactly what gets slow under the load this exists for. Without a floor, a wallet
+    /// write that spent longer than the budget before its first collision would be refused having
+    /// retried nothing at all: worse, precisely when it matters most, than the three attempts it
+    /// used to get unconditionally. The floor makes the budget able only to extend the old
+    /// behaviour, never to cut into it.
+    /// </para>
+    /// </summary>
+    private const int MinimumConcurrencyAttempts = 3;
+
+    /// <summary>
     /// Spreads the backoff over half to one and a half of its nominal length, so two writers that
     /// collided do not wake together and collide again for the same reason they collided the first
     /// time. Without it, doubling keeps a pair of losers in lockstep instead of separating them.
@@ -211,7 +226,9 @@ public class WalletRepository : IWalletRepository
                 // Give up once the next wait would carry this write past the budget, rather than
                 // after a set number of tries. Checking before sleeping is what keeps the ceiling
                 // honest: waiting first and testing afterwards could overshoot by a whole backoff.
-                if (spent.Elapsed + delay > ConcurrencyRetryBudget)
+                // The floor is checked first so a slow operation cannot exhaust the budget before
+                // the first collision and leave the write with no retries at all.
+                if (attempt >= MinimumConcurrencyAttempts && spent.Elapsed + delay > ConcurrencyRetryBudget)
                     throw;
 
                 _context.ChangeTracker.Clear();
