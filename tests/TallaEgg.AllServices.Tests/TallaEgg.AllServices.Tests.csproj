@@ -38,6 +38,8 @@
     <ProjectReference Include="..\..\src\Order\Orders.Application\Orders.Application.csproj" />
     <!-- برای تست ساخت متن فهرست معاملات (خرید/فروش و تاریخ شمسی). -->
     <ProjectReference Include="..\..\TelegramBot\TallaEgg.TelegramBot.Infrastructure\TallaEgg.TelegramBot.Infrastructure.csproj" />
+    <!-- DataReset's wait for the outbox to drain before it deletes anything (issues #184, #175). -->
+    <ProjectReference Include="..\..\TelegramBot\TallaEgg.TelegramBot.Simulator\TallaEgg.TelegramBot.Simulator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

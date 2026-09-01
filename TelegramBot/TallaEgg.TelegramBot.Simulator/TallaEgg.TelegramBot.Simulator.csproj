@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- DataReset's outbox drain loop (issues #184, #175) is unit-tested in the solution's
+         single test project; the loop itself is internal because nothing outside this
+         assembly should be calling it. -->
+    <InternalsVisibleTo Include="TallaEgg.AllServices.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="9.0.8" />

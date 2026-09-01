@@ -111,11 +111,50 @@ A clean run ends with a line like:
 exits 0 no matter how much failed, so `driver.ps1 smoke` parses that summary line and throws if
 the count isn't zero or the line never appeared.
 
+**That line is not the end of the run.** It is printed when the trading phase ends, but
+settlement is queued through the Orders outbox and drains tens of seconds later, so `errors 0`
+only means the conversations and the matching worked. `driver.ps1 smoke` therefore drains the
+queue before the run, takes its counts, and after the run polls until no outbox message is
+`Pending` again before checking two things (issue #175):
+
+- **no settlement failed** — the number of permanently `Failed` messages must not have gone up
+- **settlements actually happened** — `Completed` must have gone up, or a regression that stops
+  queueing settlements entirely would drain instantly and look perfect
+
+So a green run now means the trades settled, not just that they were recorded. Expect an extra
+5–15s per run for the drain:
+
+```
+Waiting for settlement: 43 outbox message(s) still pending...
+Simulation completed with errors 0; 60 settlement(s) completed, no new failures.
+```
+
+Failures are compared as a **delta**, not against zero: these databases already carry failures
+from earlier work that belong to nobody's current change. The pre-run drain is part of that —
+a doomed message left over from an earlier run does not fail when it is abandoned but when it
+exhausts its retries, minutes later, and without the drain that lands inside this run's window
+and is charged to it. If either check fires, the message names the counts and points at
+`/api/outbox/unsettled`, where a stuck settlement can be re-driven (once the cause is fixed) or
+abandoned.
+
 ### What a run changes on the database
 
 - **Rows with `TelegramId < 0`.** Every simulated user is in that range, and each run's first
   phase (`DataReset`) wipes only that range before starting, so repeated runs are self-cleaning
   and a real (positive-id) user's data is never touched.
+- **`OutboxMessages` rows, which are never deleted.** Each trade queues one settlement message
+  and it stays in the Orders database as `Completed` afterwards. `DataReset` does not remove
+  them; it *waits* for them instead, blocking until nothing is `Pending` before it deletes
+  anything (issues #184, #175). Deleting a wallet out from under a queued settlement is what
+  used to strand it permanently, so on a queue that has not drained the reset now says so and
+  waits rather than starting:
+
+  ```
+  Reset: 1 settlement(s) from the previous run are still queued; waiting for the outbox to drain before deleting anything.
+  Reset: outbox drained.
+  ```
+
+  It gives up after 10 minutes rather than waiting forever, and says where to look when it does.
 - **The auto-quote flag for `MAUA/IRT`.** The Simulator turns it off in Phase 2 — a background
   publisher replacing the run's quotes breaks quote-fill trades — and never turns it back on.
   That is per-symbol Orders-DB state, not `TelegramId`-scoped, so `DataReset` does not restore

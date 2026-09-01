@@ -27,21 +27,63 @@ namespace TallaEgg.TelegramBot.Simulator;
 /// database (a completed 100-user/1000-trade run) left some Transactions rows behind and the
 /// following Wallets delete then failed on the foreign key. Two independent subqueries with an
 /// explicit cast, one per table, replaced it.
+///
+/// Nothing is deleted until the Orders outbox has drained (issues #184, #175). A run is not
+/// finished when the simulator prints its summary: settlement is queued, and a 60-trade run
+/// outpaces a processor that polls every 5s and takes 20 at a time, so a run reliably ends
+/// with settlements still in the queue. Deleting straight away took the wallets those
+/// settlements needed out from under them — they retried five times, were marked Failed, and
+/// stayed there, 97 of them across three consecutive runs on one machine. Worse, while those
+/// doomed messages were still retrying they were the oldest in the queue, so
+/// <c>ClaimDueMessagesAsync</c>'s OrderBy(CreatedAt) spent every batch on them and the current
+/// run's own settlements never ran at all — a run that exercised no settlement while
+/// reporting itself healthy.
+///
+/// Deleting this run's own outbox rows here instead would be faster, and was considered: the
+/// rows are identifiable, since AggregateId is the trade id. It was not chosen. It leaves the
+/// processor writing Transactions rows between the two deletes below, which is the second way
+/// this class fails on FK_Transactions_Wallets_WalletId (reproduced on unmodified main), and it
+/// would need ordering against the Trades delete that destroys the link it depends on. Waiting
+/// addresses both faults with one condition — nothing is queued or in flight when the deletes
+/// start — and it keeps the completed messages as the record of what the previous run settled,
+/// which is the evidence both issues were diagnosed from.
 /// </summary>
 public sealed class DataReset(string usersDbConnectionString, string walletDbConnectionString,
     string ordersDbConnectionString, ILogger<DataReset> logger)
 {
     private const int CommandTimeoutSeconds = 120;
 
+    /// <summary>How often <see cref="WaitForOutboxToDrainAsync"/> re-reads the queue depth.</summary>
+    private static readonly TimeSpan DrainPollInterval = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// How many polls the drain wait makes before giving up — 300 × 2s = 10 minutes.
+    ///
+    /// The bound is counted in polls rather than measured against the clock so the loop's
+    /// give-up behaviour can be tested without waiting for real time to pass. Ten minutes is
+    /// well past both cases that legitimately take a while: a message that can never succeed
+    /// exhausts its five retries in about three minutes of backoff and then stops being
+    /// Pending, and the largest run drains a thousand messages at 20 per 5s in about four.
+    /// </summary>
+    private const int MaxDrainPolls = 300;
+
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
+        await WaitForOutboxToDrainAsync(cancellationToken);
+
         var userIds = await GetSimulatedUserIdsAsync(cancellationToken);
         logger.LogInformation("Reset: found {Count} previously simulated users.", userIds.Count);
 
         if (userIds.Count > 0)
         {
-            await DeleteWalletDataAsync(userIds, cancellationToken);
+            // Orders and Trades go before the wallet rows so that nothing is left able to
+            // produce a settlement while those rows are being deleted. The matching sweep runs
+            // every second and writes a Trade and its outbox message in one transaction, and
+            // the processor dispatching that message writes Transactions rows — which is the
+            // foreign key DeleteWalletDataAsync conflicts on. The wait above clears what is
+            // already queued; this order removes what could still queue more.
             await DeleteOrderDataAsync(userIds, cancellationToken);
+            await DeleteWalletDataAsync(userIds, cancellationToken);
         }
 
         await DeleteUsersAsync(cancellationToken);
@@ -118,6 +160,89 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
             var deleted = await cmd.ExecuteNonQueryAsync(ct);
             logger.LogInformation("Reset: deleted {Count} Orders rows.", deleted);
         }
+    }
+
+    private Task WaitForOutboxToDrainAsync(CancellationToken ct) =>
+        WaitForOutboxToDrainAsync(
+            GetPendingOutboxCountAsync,
+            token => Task.Delay(DrainPollInterval, token),
+            MaxDrainPolls,
+            logger,
+            ct);
+
+    /// <summary>
+    /// Blocks until the Orders outbox holds no Pending message, so the deletes that follow
+    /// cannot take data out from under a settlement that is still queued or in flight.
+    ///
+    /// <para>
+    /// Pending is the right condition to wait on because a message holds that status for its
+    /// whole working life: it is still Pending while an instance holds the lease and the wallet
+    /// call is in flight, and while it sits between retries. It leaves Pending only by
+    /// completing or by exhausting its retries. Zero Pending therefore means nothing is queued
+    /// and nothing is mid-dispatch on any instance — which is also what makes the deletes below
+    /// safe from a concurrent writer.
+    /// </para>
+    ///
+    /// <para>
+    /// The polling and the give-up bound are parameters rather than reads of the clock so this
+    /// loop can be tested directly; the private overload above is what production passes.
+    /// </para>
+    /// </summary>
+    internal static async Task WaitForOutboxToDrainAsync(
+        Func<CancellationToken, Task<int>> getPendingCount,
+        Func<CancellationToken, Task> waitBetweenPolls,
+        int maxPolls,
+        ILogger logger,
+        CancellationToken ct)
+    {
+        var pending = await getPendingCount(ct);
+        if (pending == 0)
+        {
+            return;
+        }
+
+        logger.LogInformation(
+            "Reset: {Count} settlement(s) from the previous run are still queued; waiting for the outbox to drain before deleting anything.",
+            pending);
+
+        for (var poll = 0; poll < maxPolls; poll++)
+        {
+            await waitBetweenPolls(ct);
+
+            var remaining = await getPendingCount(ct);
+            if (remaining == 0)
+            {
+                logger.LogInformation("Reset: outbox drained.");
+                return;
+            }
+
+            // Progress matters more than the number here: someone watching a wait that is going
+            // nowhere needs to see that it is going nowhere, not a silent pause.
+            if (remaining != pending)
+            {
+                logger.LogInformation("Reset: {Count} settlement(s) still queued.", remaining);
+                pending = remaining;
+            }
+        }
+
+        throw new TimeoutException(
+            $"The Orders outbox still has {pending} Pending message(s) after waiting for it to drain. " +
+            "Nothing was deleted: resetting now would orphan those settlements. Inspect them at " +
+            "GET /api/outbox/unsettled, then re-drive or abandon them and run again.");
+    }
+
+    private async Task<int> GetPendingOutboxCountAsync(CancellationToken ct)
+    {
+        await using var conn = new SqlConnection(ordersDbConnectionString);
+        await conn.OpenAsync(ct);
+        // Status 0 is OutboxMessageStatus.Pending. Spelled out rather than referenced because
+        // this class deliberately talks to the databases in plain SQL — see the class comment.
+        await using var cmd = new SqlCommand(
+            "SELECT COUNT(*) FROM OutboxMessages WHERE Status = 0", conn)
+        {
+            CommandTimeout = CommandTimeoutSeconds
+        };
+        return (int)(await cmd.ExecuteScalarAsync(ct))!;
     }
 
     private async Task DeleteUsersAsync(CancellationToken ct)
