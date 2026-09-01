@@ -75,6 +75,12 @@ public class Program
 
                 configBuilder.AddInMemoryCollection(flattened);
                 configBuilder.AddEnvironmentVariables();
+
+                // Host.CreateDefaultBuilder(args) registers a command-line provider among its
+                // defaults, which run before this callback — so the shared file outranked
+                // --Key=value, the same defect #159 fixed in the five APIs. Re-registered here
+                // beside the environment, which was already in the right place (issue #181).
+                configBuilder.AddCommandLine(args);
             })
             .ConfigureServices((context, services) =>
             {

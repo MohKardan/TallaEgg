@@ -66,8 +66,12 @@ builder.Configuration.AddCommandLine(args);
 // Trading symbols come from appsettings.global.json (Symbols section), not compiled-in defaults.
 TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 
+// UseUrls writes through UseSetting, which bypasses the configuration providers entirely, so
+// calling it unconditionally let the file's address beat ASPNETCORE_URLS and --urls however the
+// providers were ordered — the one override #159 could not reach. The file now supplies the
+// listen address only when the host has not already named one (issue #181).
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
-if (urls is { Length: > 0 })
+if (string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKey]) && urls is { Length: > 0 })
 {
     builder.WebHost.UseUrls(urls);
 }
