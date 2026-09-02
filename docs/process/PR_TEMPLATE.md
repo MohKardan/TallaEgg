@@ -35,7 +35,6 @@ List each significant change. Use bullet points.
 - Added `[Timestamp] byte[] RowVersion` to `WalletEntity`
 - Implemented `DbUpdateConcurrencyException` handler with 3-retry limit, 100ms base delay
 - Added integration tests for concurrent wallet operations
-- Updated `SPRINT_PLAN.md` with task completion notes
 
 ---
 
@@ -48,15 +47,17 @@ List each significant change. Use bullet points.
 
 **Example**:
 ```
-dotnet test TallaEgg.Wallet.Tests --filter Category=Unit
-Tests: 25 passed, 0 failed
-Coverage: Wallet.Service → 92%
+dotnet test TallaEgg.sln
+Passed! - Failed: 0, Passed: 708, Skipped: 0, Total: 708
 ```
 
-### Integration Tests
-- [ ] Integration tests added (if applicable)
-- [ ] Tests run successfully on staging (`dotnet test --filter Category=Integration`)
-- [ ] Manual smoke test on staging (date/time: _____)
+`tests/TallaEgg.AllServices.Tests` is the solution's only test project and no test carries a
+`Category` trait, so run the whole solution — a `--filter Category=…` matches nothing.
+
+### End-to-end
+- [ ] Exercised against the running stack, not just unit tests — `.claude/skills/run-tallaegg/driver.ps1 smoke`
+- [ ] Or via the `manual-test-run` workflow (Actions → manual-test-run → Run workflow)
+- [ ] Date/time run: _____
 
 **Example**:
 ```

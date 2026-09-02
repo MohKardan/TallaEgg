@@ -3,9 +3,10 @@
 ## Process & Standards
 
 Before writing code or opening a PR, read [`docs/process/INDEX.md`](docs/process/INDEX.md) — it is
-the canonical source for coding standards, branch/commit/PR conventions, and current sprint priorities
-(`docs/process/STANDARDS.md`, `docs/process/WORKFLOW.md`, `docs/process/SPRINT_PLAN.md`,
-`docs/process/PR_TEMPLATE.md`). It applies equally to human developers and AI agents.
+the canonical source for coding standards and branch/commit/PR conventions
+(`docs/process/STANDARDS.md`, `docs/process/WORKFLOW.md`, `docs/process/PR_TEMPLATE.md`,
+`docs/process/CODE_REVIEW_GUIDE.md`). It applies equally to human developers and AI agents.
+**Live priorities are GitHub issues** — `gh issue list` — not any document in this repository.
 
 ## Build Commands
 - **Build entire solution:** `dotnet build TallaEgg.sln`

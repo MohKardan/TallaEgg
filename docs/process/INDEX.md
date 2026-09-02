@@ -20,9 +20,6 @@ opening a PR.
 2. **How work flows**: [`docs/process/WORKFLOW.md`](WORKFLOW.md) — task selection, PR process, review
 3. **Code standards**: [`docs/process/STANDARDS.md`](STANDARDS.md) — Naming conventions, comments, PR checklist
 
-> [`SPRINT_PLAN.md`](SPRINT_PLAN.md) is **history**, not a task list. Its three sprints ran
-> July 17 – August 28, 2026 and are scored in [`docs/OKR.md`](../OKR.md).
-
 ### For Reviewing Someone Else's PR
 - **How do I review this?** → [`docs/process/CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) — review depth, TallaEgg-specific red flags, when to approve vs request changes
 
@@ -61,13 +58,12 @@ docs/
 ├── process/
 │   ├── INDEX.md (this file)
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
-│   ├── WORKFLOW.md               ← Daily process, standup, PR review, Kanban
-│   ├── SPRINT_PLAN.md            ← Task breakdown, ownership, estimates, acceptance criteria
+│   ├── WORKFLOW.md               ← Branch, PR, review and merge flow
 │   ├── PR_TEMPLATE.md            ← Copy this for every PR (author side)
 │   └── CODE_REVIEW_GUIDE.md      ← How to review a PR (reviewer side)
 ├── architecture/
 │   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
-│   └── ROADMAP.md                ← Post-Sprint-1 roadmap (bot → web app migration)
+│   └── ROADMAP.md                ← Direction for a future web app; not scheduled work
 ├── operations/
 │   └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
 └── OKR.md                        ← The July–August 2026 cycle and its closing scores (Persian)
@@ -75,7 +71,6 @@ docs/
 
 ### Planned (not yet created — do not link to these until they exist)
 
-- `docs/process/METRICS.md` — weekly metrics tracking (lead time, deployment freq, etc.)
 - `docs/architecture/ADR-###-*.md` — Architecture Decision Records
 - `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams. Write these as Mermaid inside the Markdown, the way `DEALER_QUOTE_MODEL.md` does: a root `SoftwareArchitecture/` folder of PNGs was deleted for being unmaintainable and a year out of date. Should also cover the `OrderStatus` lifecycle, which that folder documented and nothing replaced.
 - `docs/operations/DEPLOYMENT.md`, `docs/operations/RUNBOOK.md`, `docs/operations/INFRASTRUCTURE.md`
@@ -106,50 +101,18 @@ When one of these is created, move its line into "Existing today" in the same PR
 ---
 
 ### [`WORKFLOW.md`](WORKFLOW.md) — **Development Process**
-**Purpose**: Day-to-day workflow for a two-person team using Lean & Kanban.
+**Purpose**: How work gets picked up, reviewed and merged, for a two-person team.
 
 **Covers**:
-- Daily standup (15 min, 3 questions)
-- WIP limits (max 2 per developer)
-- Kanban board columns (Backlog → Ready → Doing → Review → Testing → Done)
-- How to select tasks (pull from "Ready", prioritize by sprint plan)
-- PR review & merge process
-- What to do when blocked
-- Deployment to staging (manual process, then CI/CD)
-- Metrics tracking (lead time, cycle time, deployment frequency)
+- Where priorities live (GitHub issues, and nowhere else)
+- Branch, commit, PR, CI, review, squash-merge
+- The checklist to clear before requesting review
+- Which changes need a second reviewer
+- Deployment: manual, no staging branch
 
 **When to use**:
-- Every morning (review what you're working on)
-- Before pulling a task from backlog
-- During standup or when blocked
-- End of sprint for retrospective
-
----
-
-### [`SPRINT_PLAN.md`](SPRINT_PLAN.md) — **Sprint Breakdown & Task Details**
-**Purpose**: Detailed task decomposition for Sprint 1 (July 17–31).
-
-**Covers**:
-- Sprint goal (eliminate critical production blockers)
-- Immediate tasks (3 security/stability tasks, days 1–2)
-- Sprint 1 tasks (5 core tasks addressing critical findings)
-- Sprint 2 tasks (6 quality/architecture tasks)
-- Sprint 3 tasks (5 optimization/cleanup tasks)
-- For each task:
-  - Owner (Dev A or Dev B)
-  - Estimated effort (in days)
-  - What needs to be done
-  - Definition of Done checklist
-  - Acceptance Criteria
-  - Testing strategy
-  - Risk mitigation
-
-**When to use**:
-- Sprint kickoff (Monday morning of sprint start)
-- When selecting next task
-- For effort estimation
-- For code review (verify acceptance criteria met)
-- End of sprint (retrospective, compare estimates to actual)
+- Starting a piece of work
+- Before requesting review
 
 ---
 
@@ -224,14 +187,10 @@ and says which audit is most recent.
    - Second review for critical changes
    ↓
 6. Merge & Verify
-   - Squash-merge to staging
-   - Run smoke tests per DEPLOYMENT.md (coming)
-   - Close task in sprint plan
-   ↓
-7. Retrospective (Friday)
-   - Compare estimate vs actual
-   - Update METRICS.md
-   - Plan next sprint
+   - CI green, then squash-merge to main, delete the branch
+   - Verify against the running stack where it matters
+     (.claude/skills/run-tallaegg/driver.ps1 smoke)
+   - Close the issue
 ```
 
 ---
@@ -266,40 +225,14 @@ and says which audit is most recent.
 - [ ] Linked to audit finding or task
 - [ ] Pair-reviewed (if critical)
 
-### 5. WIP Limits (Daily Discipline)
-- Never work on more than 2 tasks simultaneously
-- If blocked: move to "Blocked", pull next task
-- If done early: pull next task, don't multitask
+### 5. One Thing at a Time
+- Finish or hand off before starting the next piece of work
+- If blocked for more than an hour, say so on the issue and pick up something else
 
 ### 6. Scope Discipline
 ✅ **DO**: Keep changes to the smallest scope that accomplishes the task
 ✅ **DO**: Flag unrelated issues you notice and let the task owner decide if they become work
 ❌ **DON'T**: Refactor, rename, or "clean up" code that wasn't part of the request
-
----
-
-## Start-of-Sprint Checklist (for Tech Lead / Sprint Planner)
-
-- [ ] Review SPRINT_PLAN.md tasks with team
-- [ ] Assign owners (Dev A / Dev B)
-- [ ] Verify acceptance criteria are clear
-- [ ] Identify blockers & dependencies
-- [ ] Set WIP limits and standup time
-- [ ] Create GitHub Issues linked to tasks
-- [ ] Set sprint end date & review meeting
-
----
-
-## End-of-Sprint Checklist (Retrospective)
-
-- [ ] How many tasks completed? (target: 80%+)
-- [ ] Any critical blockers?
-- [ ] Were estimates accurate?
-- [ ] What went well? (do more)
-- [ ] What was hard? (improve process)
-- [ ] Update METRICS.md with results
-- [ ] Plan next sprint
-- [ ] Celebrate wins! 🎉
 
 ---
 
@@ -314,11 +247,9 @@ A: See [`WORKFLOW.md`](WORKFLOW.md), section "When You're Blocked".
 **Q: I'm about to open a PR. What should I check?**  
 A: Copy [`PR_TEMPLATE.md`](PR_TEMPLATE.md), fill out all sections, verify checklist items.
 
-**Q: Why is security so important in TASK-001?**  
-A: See [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md), findings C-1, C-2, C-7, C-9.
-
-**Q: How do I estimate effort for a new task?**  
-A: Compare to similar tasks in [`SPRINT_PLAN.md`](SPRINT_PLAN.md); use past METRICS.md data.
+**Q: Why does this repo care so much about secrets?**  
+A: See [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md), findings C-1, C-2, C-7, C-9 — and note
+that everything they describe was rotated under #33 and is dead.
 
 **Q: What's the rollback plan if a deployment fails?**  
 A: See [`PR_TEMPLATE.md`](PR_TEMPLATE.md), section "Rollback Plan" (fill in per task).
@@ -328,9 +259,10 @@ A: See [`PR_TEMPLATE.md`](PR_TEMPLATE.md), section "Rollback Plan" (fill in per 
 ## Document Maintenance
 
 This index & all standards documents should be reviewed:
-- **Quarterly** or when major process changes occur
-- **During Sprint Retros** if standards inhibit velocity
-- **When Adding New Tools** (technologies, libraries, frameworks)
+- When a claim in one of them turns out to be false — fix it in the same PR that discovered it
+- When adding a tool or changing how the project is built, run or deployed
+- Anything a document asserts about the code should be verifiable from the code. If it is not,
+  it is a bug in the document.
 
 ---
 
@@ -348,7 +280,7 @@ This index & all standards documents should be reviewed:
 **Repository**: [MohKardan/TallaEgg](https://github.com/MohKardan/TallaEgg)
 
 > The three-sprint cycle this document was written around ran July 17 – August 28, 2026 and is
-> closed. Its scoring and retrospective are in [`docs/OKR.md`](../OKR.md); `SPRINT_PLAN.md` is
-> kept as the record of what was planned, not as current work. **Live priorities are GitHub
-> issues** — `gh issue list`. Treat any status, sprint or date claim in the process documents as
-> history unless an issue confirms it.
+> closed; its scoring and retrospective are in [`docs/OKR.md`](../OKR.md). `SPRINT_PLAN.md` was
+> deleted once every task in it was done. **Live priorities are GitHub issues** — `gh issue list`.
+> Treat any status, sprint or date claim in a process document as history unless an issue
+> confirms it.

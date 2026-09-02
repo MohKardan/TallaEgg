@@ -101,8 +101,10 @@ If you request a change, say *why* it matters, so the fix isn't cargo-culted.
 **Comment (neither)** when you only have questions or nits, and you're happy for someone else to
 make the merge call.
 
-> Never approve to be polite. In this repo review is the *only* quality gate — there is no CI and
-> no staging yet. If you approve it, you own it too.
+> Never approve to be polite. CI (`build-and-test`) catches a broken build and a failing test, and
+> nothing else — it cannot tell you the logic is wrong, the lock is in the wrong place, or the
+> money does not balance. Review is the only gate for any of that, and there is no staging to
+> catch what you miss. If you approve it, you own it too.
 
 ---
 

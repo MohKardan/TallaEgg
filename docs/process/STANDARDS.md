@@ -27,9 +27,8 @@ This document defines all standards and conventions for the TallaEgg project to 
 
 ### Solution Structure
 
-This reflects the repository **as it is today**, not an idealized target. Two things below are
-known tech debt flagged by the audit (see `audit/AUDIT_2026-07.md` M-1) and are slated for
-cleanup in TASK-010 — they are marked ⚠️:
+This reflects the repository **as it is today**, not an idealized target. The one item marked ⚠️
+is known tech debt.
 
 ```
 TallaEgg/
@@ -37,16 +36,19 @@ TallaEgg/
 │   ├── User/                         #   → Users.Api, Users.Application, Users.Core, Users.Infrastructure
 │   ├── Wallet/                       #   → Wallet.Api, Wallet.Application, Wallet.Core, Wallet.Infrastructure
 │   ├── Order/                        #   → Orders.Api, Orders.Application, Orders.Core, Orders.Infrastructure
-│   │   └── Orders/                   #   ⚠️ duplicate/legacy folder, not in .sln — remove (TASK-010)
 │   ├── Affiliate/                    #   → Affiliate.Api, Affiliate.Application, Affiliate.Core, Affiliate.Infrastructure
-│   └── TallaEgg/                     # Shared kernel + API gateway (TallaEgg.Api/.Application/.Core/.Infrastructure)
-├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/ (TallaEgg.TelegramBot + .Application/.Core/.Infrastructure)
+│   │                                 #     dormant: no migrations, nothing calls it
+│   └── TallaEgg/                     # Shared kernel + TallaEgg.Api, which maps no endpoints
+├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/
+│                                     #   → .Core (models), .Infrastructure (the runnable bot), .Simulator
 ├── tests/                            # → TallaEgg.AllServices.Tests — the solution's only test project, covers every service
+├── config/                           # appsettings.global.json — shared by every service, git-ignored
+├── scripts/                          # windows-services/ publish + install tooling
 ├── docs/
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
-│   ├── architecture/                 # Architecture documentation (ROADMAP.md)
+│   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), ROADMAP.md
 │   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
-│   └── process/                      # Development process standards (this file, INDEX, WORKFLOW, SPRINT_PLAN, PR_TEMPLATE)
+│   └── process/                      # This file, INDEX, WORKFLOW, PR_TEMPLATE, CODE_REVIEW_GUIDE
 └── TallaEgg.sln
 ```
 
@@ -76,7 +78,11 @@ placement at repo root is existing history, not a pattern to copy.
 - **Bugfix**: `fix/{description}` (e.g., `fix/null-reference-wallet`)
 - **Hotfix**: `hotfix/{description}` (e.g., `hotfix/secrets-rotation`)
 - **Refactor**: `refactor/{description}` (e.g., `refactor/di-cleanup`)
+- **Docs**: `docs/{description}` (e.g., `docs/correct-port-table`)
+- **Chore**: `chore/{description}` (e.g., `chore/remove-root-residue`)
 - **Release**: `release/{version}` (e.g., `release/v1.0.0`)
+
+This is the whole list — a prefix not on it is a mistake, not a judgement call.
 
 ---
 
@@ -328,10 +334,13 @@ Example (BAD):
 - StyleCop analyzers (via NuGet package)
 - SonarAnalyzer for C#
 
-### CI/CD *(target — not yet configured)*
-- GitHub Actions or Azure Pipelines
-- Automated: build, test, security scan
-- Manual approval before production deployment
+### CI
+- `.github/workflows/build-and-test.yml` runs `dotnet build` and `dotnet test TallaEgg.sln` on
+  every push and pull request. It is the `test` check on a PR and must be green before merge.
+- `.github/workflows/manual-test-run.yml` stands the whole stack up against a throwaway SQL
+  Server on demand (Actions → manual-test-run → Run workflow).
+- **Not configured**: automated security scanning, and any deploy step. Deployment is manual —
+  see [`../operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md).
 
 ---
 
@@ -352,5 +361,6 @@ New developers should:
 - [ ] Read `docs/process/WORKFLOW.md` for development flow
 - [ ] Clone repository and run `dotnet build`
 - [ ] Run all tests locally
-- [ ] Set up local development environment per `docs/operations/DEV_SETUP.md`
+- [ ] Set up the local environment per [`AGENT.md`](../../AGENT.md) — .NET 9 SDK, SQL Server
+      Express, and a `config/appsettings.global.json` copied from the example
 - [ ] Attend code review session to see standards in practice
