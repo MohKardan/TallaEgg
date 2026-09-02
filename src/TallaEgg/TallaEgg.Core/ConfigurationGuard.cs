@@ -52,4 +52,37 @@ public static class ConfigurationGuard
 
         return value;
     }
+
+    /// <summary>
+    /// Returns the named configuration value, or throws naming what is missing and where it belongs.
+    /// </summary>
+    /// <remarks>
+    /// The same reasoning as <see cref="RequireConnectionString"/>, applied to the settings a
+    /// service needs before it can talk to anything: the address of another service, for one.
+    /// A fallback literal there is worse than no value at all, because the service starts and
+    /// then dials a host nobody configured — issue #190 found
+    /// <c>GetValue&lt;string&gt;("WalletApiUrl") ?? "https://localhost:60932/"</c> pointing at a
+    /// port this system has never used, kept alive only by configuration always supplying the
+    /// real one.
+    /// </remarks>
+    /// <param name="configuration">Configuration the service was built with.</param>
+    /// <param name="key">Configuration key, e.g. <c>WalletApiUrl</c>.</param>
+    /// <exception cref="InvalidOperationException">The value is absent, empty, or whitespace.</exception>
+    public static string RequireValue(IConfiguration configuration, string key)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        var value = configuration[key];
+
+        // Whitespace counts as missing, for the same reason it does for a connection string.
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(
+                $"Configuration value '{key}' is missing. Add it under the service's section in " +
+                $"{SHARED_CONFIG_FILE_NAME}. The service will not start without it.");
+        }
+
+        return value;
+    }
 }
