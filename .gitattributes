@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts must keep LF endings: bash reads a CRLF shebang line literally and fails with
+# "bad interpreter", so a Windows checkout would break scripts/check-doc-paths.sh (issue #196).
+*.sh text eol=lf
