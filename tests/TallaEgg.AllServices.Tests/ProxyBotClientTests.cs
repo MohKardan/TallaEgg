@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using TallaEgg.TelegramBot;
+using TallaEgg.TelegramBot.Infrastructure;
 
 namespace TallaEgg.AllServices.Tests;
 

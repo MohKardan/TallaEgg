@@ -3,7 +3,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class TestBotToken
     {

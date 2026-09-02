@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TallaEgg.Core;
 
-namespace TallaEgg.TelegramBot;
+namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
 public class AffiliateApiClient : IAffiliateApiClient
 {

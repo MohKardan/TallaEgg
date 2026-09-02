@@ -6,7 +6,6 @@ using Microsoft.Extensions.Options;
 using TallaEgg.Core.Services;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.Infrastructure.Clients;
-using TallaEgg.TelegramBot;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;

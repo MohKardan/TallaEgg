@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class OfflineTestMode
     {

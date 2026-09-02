@@ -11,7 +11,6 @@ using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Core.Utilties;
-using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
 using TallaEgg.TelegramBot.Infrastructure.Handlers;
@@ -25,7 +24,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using static System.Net.Mime.MediaTypeNames;
 using static TallaEgg.TelegramBot.Infrastructure.Clients.OrderApiClient;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public partial class BotHandler : IBotHandler
     {
