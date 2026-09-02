@@ -698,7 +698,6 @@ chocolatey/
 !appsettings.Template.json
 # Keep important documentation
 !README.md
-!CHANGELOG.md
 !LICENSE
 !*.md
 

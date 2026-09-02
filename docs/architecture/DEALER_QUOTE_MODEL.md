@@ -213,17 +213,30 @@ flowchart TB
 
 ```json
 "Matching": {
-  "MarketMakerUserId": "ACE3A6E8-...",
-  "MarketModes": { "MAUA/IRT": "Dealer" }
+  "RequireMarketMakerCounterparty": true,
+  "MarketModes": {
+    "MAUA/IRT": "Dealer",
+    "SEKE_BAHAR/IRT": "Dealer",
+    "BTC/IRT": "Dealer"
+  }
 }
 ```
 
 - تنظیم مخصوص نماد بر تنظیم سراسری اولویت دارد
 - تنظیم قدیمی `RequireMarketMakerCounterparty` همچنان معتبر است و یعنی `Dealer`
 - بدون هیچ تنظیمی: `OrderBook` (رفتار تاریخی سیستم)
-- تغییر تنظیمات **نیاز به ری‌استارت ندارد**
-- `Dealer` بدون `MarketMakerUserId` یک **خطای پیکربندی** است: لاگ می‌شود و قاعده
-  اعمال نمی‌گردد — بی‌صدا نمی‌ماند
+- تغییر تنظیمات **نیاز به ری‌استارت ندارد** — `MarketModeProvider` هر بار کانفیگ را
+  دوباره می‌خواند
+
+**هیچ کلیدی طرف مقابل را نام نمی‌برد.** طرف مقابلِ هر معامله `quote.PublishedByUserId`
+است، یعنی همان کسی که مظنه را منتشر کرده
+([`QuoteFillService.cs:109`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L109)).
+نسخه‌های اولیهٔ این سند یک کلید `Matching:MarketMakerUserId` را لازم می‌دانستند؛ آن کلید
+امروز در هیچ کد تولیدی خوانده نمی‌شود.
+
+چکِ زمان راه‌اندازی هم عکسِ چیزی است که اینجا نوشته بود: `MarketModeStartupValidator`
+نمادی را گزارش می‌کند که **مظنهٔ فعال دارد ولی `Dealer` نیست** — چون در آن حالت مظنه
+هرگز استفاده نمی‌شود و هر پر شدنی رد می‌گردد. لاگ می‌کند و throw نمی‌کند.
 
 ---
 
@@ -250,14 +263,21 @@ flowchart TB
 
 | موضوع | جای پیگیری |
 |---|---|
-| ادمین سقف ندارد و موجودی‌اش منفی می‌رود | #61 — پایش موقعیت مارجین |
-| اعتبار مشتری (`CREDIT_`) هرگز مصرف نمی‌شود | #36 — مدل اعتبار |
+| ادمین سقف ندارد و موجودی‌اش منفی می‌رود | #61 و #124 — پایش موقعیت و هشدار |
+| مدل اعتبار: دفتر جدا به‌جای یک دفتر علامت‌دار | #36 — مدل اعتبار |
 | کارمزد و حساب کارمزد | #35 |
 | معاملات آتی واقعی (سررسید، قیمت مستقل) | خارج از دامنه — ابزار متفاوت، دفتر جدا |
 
 **مارجین یک بازار نیست، یک روش تأمین مالی است.** سفارش اعتباری و نقدی همان گرم را با
 همان قیمت معامله می‌کنند و باید در یک دفتر با هم تطبیق بخورند. به همین دلیل `MarketMode`
 فقط `Dealer` و `OrderBook` دارد و مقداری برای مارجین ندارد.
+
+> **به‌روزرسانی:** وقتی این سند نوشته شد، اعتبار مشتری هرگز مصرف نمی‌شد. از #77 به بعد
+> مصرف می‌شود: پیش از هر پر شدن، `ValidateCreditAndBalanceAsync` صدا زده می‌شود و اعتبار
+> **بین دو دارایی** حساب می‌شود — اعتبارِ ارز مظنه یک موقعیت در دارایی پایه را پشتیبانی
+> می‌کند (`creditQuote / price`) و برعکس. یعنی مشتری‌ای که فقط `CREDIT_MAUA` دارد
+> می‌تواند به‌درستی موجودی تومانی‌اش را منفی کند. آنچه در #36 باز مانده، نه «مصرف نشدن
+> اعتبار» بلکه بازطراحی خودِ مدل است: یک دفتر علامت‌دار به‌جای دارایی `CREDIT_` جدا.
 
 ---
 
@@ -269,7 +289,8 @@ flowchart TB
 | `Orders.Infrastructure/QuoteRepository.cs` | انتشار اتمی، خواندن مظنهٔ فعال |
 | `Orders.Application/Services/QuoteFillService.cs` | ساخت جفت سفارش، قفل، تطبیق فوری |
 | `Orders.Application/Services/MarketModeProvider.cs` | حالت بازار هر نماد |
+| `Orders.Application/Services/MarketModeStartupValidator.cs` | هشدار برای نمادی که مظنهٔ فعال دارد ولی `Dealer` نیست |
 | `TallaEgg.Core/Enums/Order/MarketMode.cs` | `Dealer` / `OrderBook` |
-| `Orders.Api/Program.cs` | سه endpoint مظنه |
+| `Orders.Api/Program.cs` | ۱۲ endpoint مظنه، مظنهٔ خودکار و نماد |
 | `TelegramBot/.../BotHandlerAdmin.cs` | انتشار مظنه به‌جای دو سفارش |
 | `TelegramBot/.../BotHandler.cs` | جریان مشتری بدون ورود قیمت |
