@@ -76,3 +76,25 @@ jobs:
           name: test-results
           path: test-results/
           retention-days: 14
+
+      # Five consecutive PRs (#189–#195) deleted text describing code that was already gone, and
+      # every one of them was verified by a hand-run grep that leaked; #196 moved that
+      # verification here. Needs no SDK and takes seconds.
+      #
+      # A step in this job rather than a sibling workflow: the main ruleset requires the check
+      # named `test`, so a second workflow would add a check nothing requires — green or red,
+      # nobody would be stopped by it.
+      #
+      # Last, with `if: always()`, rather than first. It is cheap enough to run anywhere, but a
+      # PR whose only fault is a stale link should still get its test results: running this ahead
+      # of the build would skip Restore/Build/Test and leave the author knowing nothing about
+      # whether their actual change works. `always()` keeps it a gate even when the tests failed.
+      #
+      # --self-test first: this check is 300 lines of hand-rolled Markdown parsing, and the whole
+      # premise of #196 is that verifying by hand leaks. So the parser has fixtures, and they run
+      # here rather than only on the author's machine.
+      - name: Check documents for dangling repository paths
+        if: always()
+        run: |
+          bash scripts/check-doc-paths.sh --self-test
+          bash scripts/check-doc-paths.sh
