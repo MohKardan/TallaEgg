@@ -102,7 +102,9 @@ public class Program
                         throw new InvalidOperationException("TelegramBotToken is not configured.");
                     }
 
-                    return ProxyBotClient.CreateWithProxy(options.TelegramBotToken);
+                    return ProxyBotClient.CreateWithProxy(
+                        options.TelegramBotToken,
+                        provider.GetRequiredService<ILogger<ProxyBotClient>>());
                 });
 
                 services.AddSingleton<OrderApiClient>(provider => new OrderApiClient(

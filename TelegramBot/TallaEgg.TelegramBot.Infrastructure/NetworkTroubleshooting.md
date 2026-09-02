@@ -22,10 +22,17 @@ for it. Every row gets it now, the exception fallback included: that row used to
 with it, because `TelegramBotHostedService` derives its polling-recovery gap from
 `_botClient.Timeout` (#199).
 
-### Reading the console output
+### Reading the line it logs
 
-One line is printed, and it means what it says. Until #199 two of the three did not, so output
-from a build older than that fix cannot be read this way.
+Exactly one line is logged, and it means what it says. Until #199 two of the three did not, so
+output from a build older than that fix cannot be read this way.
+
+It goes through `ILogger`, so it reaches the console during a local `dotnet run` **and**
+`logs/telegrambot-<date>.log`. The second half is the point on a server: the bot is installed with
+`sc.exe create` (#70) and a native Windows service has no console, so while these were
+`Console.WriteLine` they went nowhere on the one machine where a proxy problem is worth
+diagnosing. Everything else in this project still printing with `Console.WriteLine` — the startup
+diagnostics in particular — is still invisible there.
 
 - **`🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)`** — the handler has
   `UseProxy = false`, so nothing the bot sends is proxied: not the system proxy, not one
