@@ -22,10 +22,10 @@ for it. Every row gets it now, the exception fallback included: that row used to
 with it, because `TelegramBotHostedService` derives its polling-recovery gap from
 `_botClient.Timeout` (#199).
 
-### Reading the console output
+### Reading the line it logs
 
-One line is printed, and it means what it says. Until #199 two of the three did not, so output
-from a build older than that fix cannot be read this way.
+One line is logged, and it means what it says. Until #199 two of the four did not, so output from
+a build older than that fix cannot be read this way.
 
 - **`🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)`** — the handler has
   `UseProxy = false`, so nothing the bot sends is proxied: not the system proxy, not one
@@ -40,6 +40,32 @@ from a build older than that fix cannot be read this way.
   itself, or with null. Both mean no proxy. The first used to surface as
   `🔧 Using proxy: https://api.telegram.org/`, which says *no proxy* and reads as its opposite;
   the second took the proxy branch outright and printed `🔧 Using proxy: ` with nothing after it.
+- **`Could not resolve the system proxy; falling back to the default handler…`** — logged at
+  **Warning**, with the exception attached, and the only one of the four with no emoji. Reading the
+  system proxy threw. The client is built on the stock handler, which still consults
+  `HttpClient.DefaultProxy`, so this is not a bypass: treat it as "proxy state unknown".
+
+### Where the line goes
+
+Through `ILogger`, so both the console and Serilog's rolling file. That matters because the bot is
+installed with `sc.exe create` (#70) and a native Windows service has no console — while these
+were `Console.WriteLine` they went nowhere at all under the SCM.
+
+**Know which file, though.** The sink path in `Program.cs` is *relative*, and Serilog resolves it
+against the process's **working directory**, not the folder the binary sits in:
+
+| How it was started | Where `telegrambot-<date>.log` lands |
+|---|---|
+| `dotnet run --project …` | the project folder's `logs\` |
+| The published exe, launched from a shell | `logs\` under whatever that shell's directory was |
+| A service from `sc.exe create` | `C:\Windows\System32\logs\` — `sc.exe` sets no working directory |
+
+So on a server, look under the working directory of the service, not next to the exe.
+`docs/operations/WINDOWS_DEPLOYMENT.md` describes the log as `logs\telegrambot-.log` relative to
+the publish folder, which holds only when something set the working directory there.
+
+Everything else in this project still printing with `Console.WriteLine` — the startup diagnostics
+in particular — remains invisible under the service regardless.
 
 ## The failure this file exists for
 

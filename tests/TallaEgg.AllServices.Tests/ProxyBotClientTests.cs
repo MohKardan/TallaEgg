@@ -72,6 +72,24 @@ public class ProxyBotClientTests
         Assert.DoesNotContain("Using proxy", message);
     }
 
+    [Theory]
+    [InlineData(true, null, "🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)")]
+    [InlineData(false, "http://proxy.invalid:8080", "🔧 Using proxy: http://proxy.invalid:8080/")]
+    [InlineData(false, null, "🔧 No system proxy applies to api.telegram.org")]
+    public void ChooseConnection_EachPath_UsesExactlyTheWordingTheRunbookQuotes(
+        bool bypassProxy, string? proxyUri, string expected)
+    {
+        // NetworkTroubleshooting.md quotes these three lines and tells an operator which action
+        // each one calls for, so the wording is an interface rather than an implementation
+        // detail. Pinned exactly, not by substring: a reword should fail here and be made
+        // deliberately alongside the doc. The lesson of #199 is that these sentences get trusted.
+        var (handler, message) = ProxyBotClient.ChooseConnection(
+            bypassProxy, new StubProxy(proxyUri is null ? null : new Uri(proxyUri)));
+        handler?.Dispose();
+
+        Assert.Equal(expected, message);
+    }
+
     [Fact]
     public void ChooseConnection_ProxyApplies_UsesItAndNamesIt()
     {
