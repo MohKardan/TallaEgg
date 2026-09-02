@@ -61,9 +61,11 @@ dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/
 `Affiliate.Api` is not normally run — the affiliate feature is dormant. `TallaEgg.Api` registers a
 DbContext and CORS but maps no endpoints, so running it achieves nothing today.
 
-To run the whole stack somewhere other than a developer machine, use the `manual-test-run`
-workflow (Actions → manual-test-run → Run workflow). It stands everything up against a throwaway
-SQL Server and keeps it alive for a chosen number of minutes.
+To run the stack somewhere other than a developer machine, use the `manual-test-run` workflow
+(Actions → manual-test-run → Run workflow). It brings up Users, Wallet, Orders and the bot —
+not `Affiliate.Api` — against a throwaway SQL Server and keeps them alive for a chosen number of
+minutes, so a human can drive the bot over real Telegram. It asserts nothing, and it needs the
+`TELEGRAM_BOT_TOKEN` and `OWNER_TELEGRAM_ID` repository secrets.
 
 ## Architecture
 - **Clean Architecture** with Core/Application/Infrastructure layers

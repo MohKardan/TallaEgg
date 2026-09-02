@@ -161,24 +161,21 @@ and says which audit is most recent.
 
 ---
 
-## Task Flow: From Audit → Sprint → PR
+## Task Flow: From Audit Finding → Issue → PR
 
 ```
 1. Audit Finding (e.g., C-4: No Optimistic Concurrency)
    ↓
-2. Sprint Plan Task (e.g., TASK-004: Implement Transaction Atomicity)
-   - Owner: Dev A
-   - Acceptance Criteria: RowVersion added, tests pass, concurrency handled
+2. GitHub issue, labelled audit-finding
+   - Acceptance criteria stated on the issue
    ↓
-3. Daily Work
-   - Pull task into "Doing"
-   - Write code following STANDARDS.md
-   - Write tests following STANDARDS.md
-   - Update WORKFLOW.md metrics
+3. The work
+   - Branch per STANDARDS.md
+   - Code and tests following STANDARDS.md
    ↓
 4. PR Submission
    - Use PR_TEMPLATE.md
-   - Link to TASK-004 and finding C-4
+   - Link the issue and the finding code (C-4)
    - Checklist all items
    ↓
 5. Review
@@ -189,7 +186,7 @@ and says which audit is most recent.
 6. Merge & Verify
    - CI green, then squash-merge to main, delete the branch
    - Verify against the running stack where it matters
-     (.claude/skills/run-tallaegg/driver.ps1 smoke)
+     (driver.ps1 start, then driver.ps1 smoke)
    - Close the issue
 ```
 
@@ -212,8 +209,8 @@ and says which audit is most recent.
 
 ### 3. Branching & Commits
 ✅ **Branch**: `feat/wallet-atomicity`, `hotfix/secrets-rotate`, `fix/null-reference`  
-✅ **Commit**: `feat(wallet): implement optimistic concurrency — TASK-004`  
-✅ **PR Title**: `[Feat][Critical] Implement transaction atomicity — TASK-004`  
+✅ **Commit**: `feat(wallet): implement optimistic concurrency — issue #143`  
+✅ **PR Title**: `[Feat][Critical] Implement transaction atomicity — issue #143`  
 ❌ **DON'T**: Commit secrets, use unclear branch names, skip PR description
 
 ### 4. PR Checklist (Must-Do)
@@ -242,7 +239,7 @@ and says which audit is most recent.
 A: [`STANDARDS.md`](STANDARDS.md), section on code style, naming, or testing.
 
 **Q: My task is blocked. What do I do?**  
-A: See [`WORKFLOW.md`](WORKFLOW.md), section "When You're Blocked".
+A: Say so on the issue and pick up something else — see [`WORKFLOW.md`](WORKFLOW.md) → What to work on.
 
 **Q: I'm about to open a PR. What should I check?**  
 A: Copy [`PR_TEMPLATE.md`](PR_TEMPLATE.md), fill out all sections, verify checklist items.
@@ -281,6 +278,6 @@ This index & all standards documents should be reviewed:
 
 > The three-sprint cycle this document was written around ran July 17 – August 28, 2026 and is
 > closed; its scoring and retrospective are in [`docs/OKR.md`](../OKR.md). `SPRINT_PLAN.md` was
-> deleted once every task in it was done. **Live priorities are GitHub issues** — `gh issue list`.
+> deleted: its Sprint 1 tasks are all done, and the rest were superseded rather than worked. **Live priorities are GitHub issues** — `gh issue list`.
 > Treat any status, sprint or date claim in a process document as history unless an issue
 > confirms it.

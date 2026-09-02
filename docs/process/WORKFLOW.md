@@ -35,9 +35,11 @@ up something else — a blocked task sitting open is fine, a blocked task nobody
 3. **Open a PR** using [`PR_TEMPLATE.md`](PR_TEMPLATE.md). GitHub auto-loads the lean version;
    copy the Security and Deployment sections in for anything touching money, auth or schema.
 4. **CI must pass.** `.github/workflows/build-and-test.yml` runs `dotnet build` and
-   `dotnet test TallaEgg.sln` on every push and pull request.
-5. **Get a review.** `main` requires one approval, and pushing new commits dismisses existing
-   approvals, so re-request after changes.
+   `dotnet test TallaEgg.sln` on every pull request, and on pushes to `main`. It is the `test`
+   check, and the ruleset requires it.
+5. **Get a review.** The ruleset requires **zero** approvals — review happens because we choose
+   to, not because GitHub stops us. See [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) §6 for
+   what is and is not actually enforced.
 6. **Squash merge**, then delete the branch.
 
 ### Before requesting review
@@ -62,9 +64,14 @@ and documented in [`../operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_
 `publish-all.ps1` then `install-services.ps1`, which stops and recreates all four Windows
 services.
 
-To exercise the whole stack without deploying, use the `manual-test-run` workflow
-(Actions → manual-test-run → Run workflow). It stands everything up against a throwaway SQL
-Server for a chosen number of minutes.
+To exercise the change against a running system, `.claude/skills/run-tallaegg/driver.ps1 start`
+then `driver.ps1 smoke` — the smoke run asserts, and throws on errors or unsettled trades.
+`driver.ps1 stop` tears it down.
+
+The `manual-test-run` workflow (Actions → manual-test-run → Run workflow) is a different thing:
+it stands Users/Wallet/Orders and the bot up against a throwaway SQL Server so a **human** can
+drive it over real Telegram. It asserts nothing, and it needs the `TELEGRAM_BOT_TOKEN` and
+`OWNER_TELEGRAM_ID` repository secrets.
 
 ---
 
@@ -77,5 +84,6 @@ is in [`AGENT.md`](../../AGENT.md) and [`CLAUDE.md`](../../CLAUDE.md):
   dependency graph, so an API's `bin` can be stale.
 - **Never commit `config/appsettings.global.json`.** It holds live credentials and this repo is
   public.
-- **Some code that looks dead is dormant by design** — zero commission, the OrderBook matching
-  path, the quarantined stub behind its feature flag. `AGENT.md` lists them and why.
+- **Some code that looks dead is dormant by design.** `AGENT.md` → "Business rules that look like
+  bugs" lists four of them, including zero commission and a balance guard that is correctly
+  disabled. Check there before deleting anything as unused.
