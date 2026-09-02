@@ -14,7 +14,7 @@ Rules live in [`STANDARDS.md`](STANDARDS.md); they are not repeated here. This d
 Answer these first — reviewing without them wastes your time:
 
 - **What is this PR supposed to do?** If the description doesn't say, ask; don't guess.
-- **Which task / audit finding does it close?** (TASK-###, C-#, H-#)
+- **Which issue or audit finding does it close?** (`#N`, C-#, H-#)
 - **What's the blast radius?** Money, auth, or DB schema → treat as critical (see depth below).
 
 ---
@@ -101,13 +101,24 @@ If you request a change, say *why* it matters, so the fix isn't cargo-culted.
 **Comment (neither)** when you only have questions or nits, and you're happy for someone else to
 make the merge call.
 
-> Never approve to be polite. In this repo review is the *only* quality gate — there is no CI and
-> no staging yet. If you approve it, you own it too.
+> Never approve to be polite. CI (`build-and-test`) catches a broken build and a failing test, and
+> nothing else — it cannot tell you the logic is wrong, the lock is in the wrong place, or the
+> money does not balance. Review is the only gate for any of that, and there is no staging to
+> catch what you miss. If you approve it, you own it too.
 
 ---
 
 ## 6. After approval
 
-The author squash-merges (see `STANDARDS.md` → Git Workflow). Note that `main` requires **1 approval**
-and pushing new commits **dismisses existing approvals** — so re-review is needed if the author
-pushes after you approve.
+The author squash-merges (see `STANDARDS.md` → Git Workflow).
+
+**Know what is actually enforced, so you do not rely on a gate that is not there.** The `main`
+ruleset requires the `test` status check and **zero approvals**. It does not dismiss approvals on
+a new push, and the admin role bypasses every rule. So:
+
+- A PR can be merged with no review at all. Review happens because we choose to, not because
+  GitHub stops us.
+- An approval you gave still stands after the author pushes more commits. If a change lands after
+  you approved, nothing will ask you to look again — say so on the PR if you want to.
+
+If that is too loose, the fix is the ruleset, not this paragraph.

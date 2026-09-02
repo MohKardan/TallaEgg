@@ -27,9 +27,8 @@ This document defines all standards and conventions for the TallaEgg project to 
 
 ### Solution Structure
 
-This reflects the repository **as it is today**, not an idealized target. Two things below are
-known tech debt flagged by the audit (see `audit/AUDIT_2026-07.md` M-1) and are slated for
-cleanup in TASK-010 — they are marked ⚠️:
+This reflects the repository **as it is today**, not an idealized target. The one item marked ⚠️
+is known tech debt.
 
 ```
 TallaEgg/
@@ -37,16 +36,23 @@ TallaEgg/
 │   ├── User/                         #   → Users.Api, Users.Application, Users.Core, Users.Infrastructure
 │   ├── Wallet/                       #   → Wallet.Api, Wallet.Application, Wallet.Core, Wallet.Infrastructure
 │   ├── Order/                        #   → Orders.Api, Orders.Application, Orders.Core, Orders.Infrastructure
-│   │   └── Orders/                   #   ⚠️ duplicate/legacy folder, not in .sln — remove (TASK-010)
 │   ├── Affiliate/                    #   → Affiliate.Api, Affiliate.Application, Affiliate.Core, Affiliate.Infrastructure
-│   └── TallaEgg/                     # Shared kernel + API gateway (TallaEgg.Api/.Application/.Core/.Infrastructure)
-├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/ (TallaEgg.TelegramBot + .Application/.Core/.Infrastructure)
+│   │                                 #     Affiliate.Api is not deployed (no migrations); Affiliate.Core
+│   │                                 #     is a ProjectReference of Users.Core and cannot be removed
+│   └── TallaEgg/                     # Shared kernel + TallaEgg.Api, which maps no endpoints
+├── TelegramBot/                      # ⚠️ at repo ROOT, not under src/
+│                                     #   → .Core (models), .Infrastructure (the runnable bot), .Simulator
 ├── tests/                            # → TallaEgg.AllServices.Tests — the solution's only test project, covers every service
+├── config/                           # appsettings.global.json — shared by every service, git-ignored
+├── scripts/                          # windows-services/ publish, install, uninstall; one data migration
 ├── docs/
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
-│   ├── architecture/                 # Architecture documentation (ROADMAP.md)
+│   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), ROADMAP.md
 │   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
-│   └── process/                      # Development process standards (this file, INDEX, WORKFLOW, SPRINT_PLAN, PR_TEMPLATE)
+│   ├── process/                      # This file, INDEX, WORKFLOW, PR_TEMPLATE, CODE_REVIEW_GUIDE
+│   ├── pull-requests/                # Archived PR records — never edited
+│   ├── business/                     # Business proposal
+│   └── OKR.md                        # The July–August 2026 cycle and its closing scores
 └── TallaEgg.sln
 ```
 
@@ -76,7 +82,11 @@ placement at repo root is existing history, not a pattern to copy.
 - **Bugfix**: `fix/{description}` (e.g., `fix/null-reference-wallet`)
 - **Hotfix**: `hotfix/{description}` (e.g., `hotfix/secrets-rotation`)
 - **Refactor**: `refactor/{description}` (e.g., `refactor/di-cleanup`)
+- **Docs**: `docs/{description}` (e.g., `docs/correct-port-table`)
+- **Chore**: `chore/{description}` (e.g., `chore/remove-root-residue`)
 - **Release**: `release/{version}` (e.g., `release/v1.0.0`)
+
+This is the whole list — a prefix not on it is a mistake, not a judgement call.
 
 ---
 
@@ -95,11 +105,12 @@ placement at repo root is existing history, not a pattern to copy.
 
 ### Definition of Done (for each task)
 - [ ] Code compiles without warnings
-- [ ] All unit tests written and passing
+- [ ] All unit tests written and passing (`dotnet test TallaEgg.sln`)
 - [ ] Code follows naming conventions and formatting standards
 - [ ] Comments in English; no hardcoded secrets/tokens
 - [ ] Feature flag added (if feature is incomplete/risky)
-- [ ] Integration tests run on staging successfully
+- [ ] Exercised against the running stack where behaviour changed
+      (`driver.ps1 start` then `driver.ps1 smoke`)
 - [ ] PR created with descriptive title and linked issue
 - [ ] At least one peer review completed
 - [ ] For security/critical changes: second reviewer or pair-programming session
@@ -122,14 +133,14 @@ Follow Git branch naming conventions above.
 
 Example:
 ```
-feat(wallet): implement optimistic concurrency control — TASK-004
+feat(wallet): implement optimistic concurrency control — issue #143
 
 Added RowVersion timestamp to WalletEntity to detect and handle
 concurrent modifications. Implemented DbUpdateConcurrencyException
 handler with exponential backoff retry logic.
 
 Tested with concurrent transaction scenarios.
-Closes TASK-004
+Closes #143
 ```
 
 **Types**: feat, fix, refactor, docs, test, chore, hotfix
@@ -139,9 +150,9 @@ Closes TASK-004
 [Type][Priority] Subject — reference
 
 Examples:
-- [Hotfix][Critical] Rotate API keys and database secrets — TASK-001
-- [Feat] Implement transaction atomicity for wallet operations — TASK-004
-- [Refactor] Extract wallet clients to interfaces (DIP) — TASK-005
+- [Hotfix][Critical] Rotate API keys and database secrets — issue #33
+- [Feat] Implement transaction atomicity for wallet operations — issue #41
+- [Refactor] Extract wallet clients to interfaces (DIP) — issue #36
 ```
 
 #### PR Description Template
@@ -150,7 +161,7 @@ Examples:
 Brief summary of changes.
 
 ## Issue/Task Reference
-Closes TASK-###
+Closes #___  (`gh issue list` — issues are the only tracker)
 
 ## Changes Made
 - Bullet point for each significant change
@@ -158,7 +169,7 @@ Closes TASK-###
 
 ## Testing
 - [ ] Unit tests added/updated
-- [ ] Integration tests run on staging
+- [ ] Exercised against the running stack where behaviour changed
 - [ ] No secrets/tokens in diff
 
 ## Security Checklist (if applicable)
@@ -171,10 +182,9 @@ Closes TASK-###
 Steps to deploy or rollback if needed.
 ```
 
-#### WIP Limit & Kanban
-- **Status columns**: Backlog → Ready → Doing → Review → Testing → Done
-- **WIP Limit**: Maximum 2 tasks per developer in "Doing"
-- **Daily Standup**: 15 minutes, covering blockers and handoffs
+#### Work in progress
+- Finish or hand off one piece of work before starting the next.
+- Blocked for more than an hour? Say so on the issue and pick up something else.
 
 ---
 
@@ -275,7 +285,7 @@ Example (BAD):
 
 ### Testing Standards
 - Unit tests: fast, isolated, mock external dependencies
-- Integration tests: use in-memory database or Docker for staging
+- Integration tests: in-memory SQLite stands in for the database; test doubles are hand-written (no mocking library)
 - Test naming: `MethodName_Scenario_ExpectedResult` (e.g., `ApplyTradeAsync_InsufficientBalance_ThrowsException`)
 - Code coverage target: >80% for critical paths (financial operations)
 
@@ -303,9 +313,9 @@ Example (BAD):
 
 ### Branching Strategy
 - Main branch: `main` (production-ready, deployed)
-- Staging branch: `staging` (pre-production testing) — ⚠️ **not yet created**; today branches are cut from and merged to `main`. Create `staging` when the deployment pipeline is set up.
-- Feature/fix branches: created from `staging` once it exists (from `main` until then), merged back after review
-- Hotfixes: created from `main`, merged to both `main` and `staging`
+- **There is no `staging` branch.** Branches are cut from `main` and squash-merged back to it, and
+  `main` is what ships. Deployment is manual — see `../operations/WINDOWS_DEPLOYMENT.md`.
+- Feature/fix/hotfix branches: cut from `main`, merged back after CI is green and review is done
 
 ### Commit Guidelines
 - Atomic commits: each commit should be logically independent
@@ -328,19 +338,23 @@ Example (BAD):
 - StyleCop analyzers (via NuGet package)
 - SonarAnalyzer for C#
 
-### CI/CD *(target — not yet configured)*
-- GitHub Actions or Azure Pipelines
-- Automated: build, test, security scan
-- Manual approval before production deployment
+### CI
+- `.github/workflows/build-and-test.yml` runs `dotnet build` and `dotnet test TallaEgg.sln` on
+  every pull request, and on pushes to `main`. It is the `test` check the `main` ruleset requires.
+  The admin role bypasses every rule, so treat it as a gate you keep, not one that holds you.
+- `.github/workflows/manual-test-run.yml` stands Users/Wallet/Orders and the bot up against a
+  throwaway SQL Server so a human can drive it over real Telegram. It asserts nothing and needs
+  the `TELEGRAM_BOT_TOKEN` and `OWNER_TELEGRAM_ID` secrets.
+- **Not configured**: automated security scanning, and any deploy step. Deployment is manual —
+  see [`../operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md).
 
 ---
 
 ## 9. Documentation Maintenance
 
 This standards document should be reviewed and updated:
-- Quarterly or when major process changes occur
-- When adding new tools or technologies
-- During sprint retrospectives if standards inhibit productivity
+- When a claim here turns out to be false — fix it in the PR that discovered it
+- When adding a tool, or changing how the project is built, run or deployed
 
 ---
 
@@ -352,5 +366,7 @@ New developers should:
 - [ ] Read `docs/process/WORKFLOW.md` for development flow
 - [ ] Clone repository and run `dotnet build`
 - [ ] Run all tests locally
-- [ ] Set up local development environment per `docs/operations/DEV_SETUP.md`
+- [ ] Set up the local environment per [`README.md`](../../README.md) → Prerequisites and
+      Configuration: .NET 9 SDK, SQL Server Express, and a `config/appsettings.global.json`
+      copied from `config/appsettings.global.example.json`
 - [ ] Attend code review session to see standards in practice

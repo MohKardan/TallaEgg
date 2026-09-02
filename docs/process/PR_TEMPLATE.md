@@ -5,7 +5,7 @@
 > Deployment/Rollback sections below into the PR for critical, financial, or security changes.
 
 **Branch Name**: (e.g., `hotfix/secrets-rotation`, `feat/wallet-atomicity`)  
-**Linked Issue/Task**: TASK-### or Issue ###
+**Linked Issue**: #___ (`gh issue list`)
 
 ---
 
@@ -35,7 +35,6 @@ List each significant change. Use bullet points.
 - Added `[Timestamp] byte[] RowVersion` to `WalletEntity`
 - Implemented `DbUpdateConcurrencyException` handler with 3-retry limit, 100ms base delay
 - Added integration tests for concurrent wallet operations
-- Updated `SPRINT_PLAN.md` with task completion notes
 
 ---
 
@@ -48,27 +47,27 @@ List each significant change. Use bullet points.
 
 **Example**:
 ```
-dotnet test TallaEgg.Wallet.Tests --filter Category=Unit
-Tests: 25 passed, 0 failed
-Coverage: Wallet.Service → 92%
+dotnet test TallaEgg.sln
+Passed! - Failed: 0, Passed: 708, Skipped: 0, Total: 708
 ```
 
-### Integration Tests
-- [ ] Integration tests added (if applicable)
-- [ ] Tests run successfully on staging (`dotnet test --filter Category=Integration`)
-- [ ] Manual smoke test on staging (date/time: _____)
+`tests/TallaEgg.AllServices.Tests` is the solution's only test project and no test carries a
+`Category` trait, so run the whole solution — a `--filter Category=…` matches nothing.
+
+### End-to-end
+- [ ] Exercised against the running stack, not just unit tests — `driver.ps1 start`, then `driver.ps1 smoke`
+- [ ] Or driven by hand via the `manual-test-run` workflow (needs the repo's Telegram secrets; asserts nothing)
+- [ ] Date/time run: _____
 
 **Example**:
 ```
-Tested on staging at 2026-07-20 14:30 UTC:
-- Single trade: ✓ balance updated correctly
-- Concurrent trades (10 parallel): ✓ all succeeded, no data loss
-- Retry mechanism: ✓ recovers from transient failures
+driver.ps1 smoke --users 20 --quotes 20 --trades 50 --seed 7
+=== Done in 00:00:31.4. Registered 20 (18 approved), trades attempted 50, errors 0 ===
+Simulation completed with errors 0; 50 settlement(s) completed, no new failures.
 ```
 
 ### Environment
-- [ ] Tested locally on Windows/Mac/Linux (circle one)
-- [ ] Tested on staging environment
+- [ ] Tested locally (this project's native environment is Windows + SQL Server Express)
 - [ ] Feature flag working as expected (if applicable)
 
 ---
@@ -160,24 +159,24 @@ Reviewers should verify:
 
 **Format**:
 ```
-<type>(<scope>): <subject> — <task-ref>
+<type>(<scope>): <subject> — issue #N
 
 <body>
 
-Closes <issue>
+Closes #N
 ```
 
 **Example**:
 ```
-feat(wallet): implement optimistic concurrency control — TASK-004
+feat(wallet): implement optimistic concurrency control — issue #143
 
 Added [Timestamp] RowVersion to WalletEntity and Order to detect
 concurrent modifications. Implemented DbUpdateConcurrencyException
 handler with exponential backoff retry (max 3 attempts, 100ms base delay).
 
-Integration tests verify no Lost Update anomalies under concurrent load.
+Tests verify no Lost Update anomalies under concurrent load.
 
-Closes TASK-004
+Closes #143
 ```
 
 ---
@@ -185,9 +184,9 @@ Closes TASK-004
 ## Related Issues
 
 Link to related issues, PRs, or documentation:
-- Related to TASK-004 (Financial Integrity)
+- Related to #143 (wallet concurrency token)
 - Related to audit finding C-4 (Optimistic Concurrency)
-- Depends on TASK-001 (Secrets Rotation)
+- Depends on #33 (secrets rotation)
 
 ---
 
@@ -197,13 +196,8 @@ Paste relevant test output, deployment logs, or screenshots.
 
 **Example** (test output):
 ```
-Integration Test Results:
-- ApplyTradeAsync_SingleTrade_UpdatesBalance: PASS
-- ApplyTradeAsync_ConcurrentModification_RetriesSuccessfully: PASS
-- ApplyTradeAsync_RetryExhausted_RollsBack: PASS
-- ApplyTradeAsync_DuplicateReferenceId_Idempotent: PASS
-
-All 4 tests passed in 2.34 seconds.
+dotnet test TallaEgg.sln
+Passed! - Failed: 0, Passed: 708, Skipped: 0, Total: 708
 ```
 
 ---
@@ -222,4 +216,6 @@ All 4 tests passed in 2.34 seconds.
 ---
 
 **Merge Instructions**:
-After approval, squash and merge. Target `staging` once that branch and its CI/CD exist; until then, merge to `main` after review. (Auto-deploy via GitHub Actions is a planned target, not yet in place — see `WORKFLOW.md` → Deployment to Staging.)
+Squash and merge to `main` once the `test` check is green. There is no `staging` branch and no
+auto-deploy; deployment is manual, per [`../operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md).
+Delete the branch after merging.

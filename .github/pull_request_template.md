@@ -8,7 +8,7 @@ docs/process/PR_TEMPLATE.md — copy the relevant sections in for critical/secur
 <!-- 2–3 sentences: what changed and why. -->
 
 ## Linked Task / Finding
-Closes TASK-###  ·  Audit finding: C-# / H-# (if any)
+Closes #___  ·  Audit finding: C-# / H-# (if any)
 
 ## Type
 - [ ] Hotfix  - [ ] Feature  - [ ] Refactor  - [ ] Performance  - [ ] Docs  - [ ] Security
@@ -21,7 +21,7 @@ Closes TASK-###  ·  Audit finding: C-# / H-# (if any)
 - [ ] No secrets/tokens/credentials in the diff
 - [ ] Comments in English, explain the "why"
 - [ ] Follows naming conventions (STANDARDS.md)
-- [ ] Tests added/updated (unit + integration where applicable)
+- [ ] Tests added/updated in `tests/TallaEgg.AllServices.Tests` (the solution's only test project)
 - [ ] Docs updated if behavior/API changed
 - [ ] Peer reviewed (second reviewer for financial/security/critical changes)
 

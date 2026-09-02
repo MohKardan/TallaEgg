@@ -1,209 +1,89 @@
-# Development Workflow & Process Guide
+# Development Workflow
 
-## Purpose
-This document defines the daily workflow for a two-person development team working on TallaEgg, ensuring clarity, minimal coordination overhead, and adherence to Lean Software Development principles.
+How work gets picked up, reviewed and merged. Two developers, no ceremony beyond what earns its
+place.
 
----
-
-## Source of Truth
-**Primary Reference**: `docs/process/SPRINT_PLAN.md`
-- Contains detailed task assignments, sprint goals, and dependencies
-- Updated at sprint start and reviewed during retrospectives
-
-**Supporting References**:
-- `docs/audit/AUDIT_2026-07.md` — Why priorities are ordered as they are
-- `docs/architecture/ROADMAP.md` — High-level feature roadmap
-- `docs/audit/AUDIT_2026-07.html` — Detailed technical findings
+Rules for *writing* code are in [`STANDARDS.md`](STANDARDS.md). Rules for *reviewing* someone
+else's are in [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md). This file is only the flow between
+them.
 
 ---
 
-## Daily Workflow
+## What to work on
 
-### 1. Daily Standup (15 minutes)
-**When**: Start of workday  
-**Participants**: Dev A, Dev B
+**GitHub issues are the only source of priorities.** `gh issue list`. No document in this repo
+tracks live status, and any that appears to is out of date — that lesson is written up in
+[`docs/OKR.md`](../OKR.md) under "درس‌های دوره".
 
-Agenda:
-- What did I complete yesterday?
-- What am I working on today?
-- What blockers do I have?
-- Any handoffs or dependencies?
+Useful filters:
 
-**Output**: Update Kanban board (move cards to "Doing", note blockers in comments)
+```
+gh issue list --label audit-finding    # traceable to a numbered audit finding
+gh issue list --label critical         # production blockers
+```
 
-### 2. WIP (Work In Progress) Limits
-- **Maximum per developer**: 2 tasks in "Doing" column
-- **Rationale**: Minimizes context switching, ensures focus
-- If blocked: move to "Blocked" column, update comment with reason
-
-### 3. Kanban Board Columns
-1. **Backlog**: Tasks ready to start (dependencies met)
-2. **Ready**: Approved, clear acceptance criteria, ready for dev
-3. **Doing**: Currently being worked on (max 2 per person)
-4. **Review**: Awaiting code review from peer
-5. **Testing**: On staging/QA for validation
-6. **Done**: Merged, deployed, verified
-
-### 4. Task Selection (Pull Model)
-- Developers pull tasks from "Ready" column
-- Prioritize based on order in `SPRINT_PLAN.md`
-- Sprint priorities (3 sprints × 2 weeks; see `SPRINT_PLAN.md`):
-  - **Sprint 1**: Security & financial integrity (critical path)
-  - **Sprint 2**: Architecture & API quality
-  - **Sprint 3**: Performance, cleanup & documentation
+Take one thing at a time. If you are blocked for more than an hour, say so on the issue and pick
+up something else — a blocked task sitting open is fine, a blocked task nobody knows about is not.
 
 ---
 
-## Code Review & PR Process
+## Branch, commit, PR
 
-### PR Checklist (Definition of Done)
-Before opening PR, ensure:
-- [ ] Code compiles without warnings
-- [ ] All tests pass locally (`dotnet test`)
-- [ ] No secrets/tokens in code
-- [ ] Comments are in English
-- [ ] Follows naming conventions (see STANDARDS.md)
-- [ ] Feature flag added (if feature incomplete)
-- [ ] Commit message follows format
-- [ ] Updated relevant documentation
+1. **Branch** off `main`, named per [`STANDARDS.md`](STANDARDS.md) §2 — `feat/`, `fix/`,
+   `hotfix/`, `refactor/`, `docs/`, `chore/` or `release/`, plus a description.
+2. **Commit** in the format in `STANDARDS.md` §3, referencing the issue.
+3. **Open a PR** using [`PR_TEMPLATE.md`](PR_TEMPLATE.md). GitHub auto-loads the lean version;
+   copy the Security and Deployment sections in for anything touching money, auth or schema.
+4. **CI must pass.** `.github/workflows/build-and-test.yml` runs `dotnet build` and
+   `dotnet test TallaEgg.sln` on every pull request, and on pushes to `main`. It is the `test`
+   check, and the ruleset requires it.
+5. **Get a review.** The ruleset requires **zero** approvals — review happens because we choose
+   to, not because GitHub stops us. See [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) §6 for
+   what is and is not actually enforced.
+6. **Squash merge**, then delete the branch.
 
-### PR Title & Description
-Use template from `docs/process/STANDARDS.md`, section 3.
+### Before requesting review
 
-### Review Process
-1. Developer creates PR with description
-2. Assign peer as reviewer
-3. For critical changes: second reviewer required
-4. Address review comments
-5. Approver merges after passing CI
+- [ ] Builds with **zero warnings**; `dotnet test TallaEgg.sln` green
+- [ ] No secrets, tokens or credentials in the diff
+- [ ] Comments in English, explaining *why*
+- [ ] Documentation updated in the same PR if behaviour changed
+- [ ] The change is the smallest one that does the job — no uninvited refactors
 
-**Reviewers**: see [`CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) for how deep to review, the
-project-specific red flags to check, and when to approve vs request changes.
+### Changes that need a second reviewer
 
-### Critical Change Criteria
-- Changes to financial transactions
-- Security-related changes (secrets, TLS, authentication)
-- Breaking API changes
-- Database schema changes
-
-**For Critical Changes**: Use pair-programming or require 2 reviewers
+Money, authentication, secrets, TLS/CORS, or database schema. `CODE_REVIEW_GUIDE.md` §2 explains
+what a line-by-line review of those looks like.
 
 ---
 
-## Immediate Next Tasks (Sprint Start)
+## Deployment
 
-The task breakdown — owners, estimates, checklists, acceptance criteria — lives in the single
-source of truth, [`SPRINT_PLAN.md`](SPRINT_PLAN.md). It is **not** duplicated here, so the two
-can't drift. Live status (TODO / in progress / done) lives in branches and the board, not in any doc.
+There is no `staging` branch and no automated deploy; `main` is what ships. Deployment is manual
+and documented in [`../operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md) —
+`publish-all.ps1` then `install-services.ps1`, which stops and recreates all four Windows
+services.
 
-**Sprint 1 order**: TASK-001 (Rotate Secrets) → TASK-002 (Gate TLS / Restrict CORS) →
-TASK-003 (Quarantine Stubs) → TASK-004 (Wallet Atomicity) → TASK-005 (Matching DI / Lock order).
-Start each by opening its section in `SPRINT_PLAN.md`.
+To exercise the change against a running system, `.claude/skills/run-tallaegg/driver.ps1 start`
+then `driver.ps1 smoke` — the smoke run asserts, and throws on errors or unsettled trades.
+`driver.ps1 stop` tears it down.
 
----
-
-## Sprint Structure (3 Sprints × 2 Weeks)
-
-### Sprint 1 — Security & Financial Integrity
-- Immediate tasks (TASK-001..003) then TASK-004 (atomicity) + TASK-005 (matching DI / lock order)
-- Daily code review during standup
-- Integration tests for wallet/order flows
-
-### Sprint 2 — API & Architecture Quality
-- DIP client interfaces (TASK-006)
-- Global error middleware / ProblemDetails (TASK-007)
-- Financial integration test suite (TASK-008)
-
-### Sprint 3 — Performance, Cleanup & Documentation
-- Query optimization (TASK-009), dead-code removal (TASK-010)
-- Runbook & operational playbooks (TASK-011)
+The `manual-test-run` workflow (Actions → manual-test-run → Run workflow) is a different thing:
+it stands Users/Wallet/Orders and the bot up against a throwaway SQL Server so a **human** can
+drive it over real Telegram. It asserts nothing, and it needs the `TELEGRAM_BOT_TOKEN` and
+`OWNER_TELEGRAM_ID` repository secrets.
 
 ---
 
-## When You're Blocked
+## Conventions worth knowing
 
-1. **Log it**: Update task in Kanban ("Blocked" column)
-2. **Communicate**: Mention blocker in next standup
-3. **Escalate**: If blocked > 2 hours, escalate to Tech Lead
-4. **Switch context**: Pull next task from "Ready" if available
-5. **Document**: Leave detailed comment on Kanban card
+Not process, but the things that most often go wrong for someone new to this repo — the full list
+is in [`AGENT.md`](../../AGENT.md) and [`CLAUDE.md`](../../CLAUDE.md):
 
----
-
-## Deployment to Staging
-
-> ⚠️ **Target state — not yet set up.** There is currently no `staging` branch and no
-> CI/CD. Until these exist, treat this section as the intended process, not today's reality.
-> The concrete first step to make it real: create a `staging` branch and add
-> `.github/workflows/` for build + test.
-
-### Manual Deployment Process (target)
-1. PR merged to `staging` branch
-2. Run: `scripts\windows-services\publish-all.ps1` and `install-services.ps1` (see
-   [`docs/operations/WINDOWS_DEPLOYMENT.md`](../operations/WINDOWS_DEPLOYMENT.md) — this is the
-   real, verified production tooling from #70; a `publish-all.ps1` at the repo root and a
-   `publishes/` folder predated it and have been removed)
-3. Smoke test endpoints per `docs/operations/SMOKE_TEST.md` (planned)
-4. Run integration tests: `dotnet test --filter Category=Integration`
-
-### Automated CI/CD (Future)
-- Implement GitHub Actions to auto-deploy on merge to `staging`
-- Run integration tests post-deploy
-- Notify team on Slack/Teams
-
----
-
-## Metrics & Visibility
-
-Track and report weekly:
-- **Lead Time**: How long from "Ready" to "Done"
-- **Cycle Time**: How long from "Doing" to "Done"
-- **Deployment Frequency**: How many times deployed to staging/production per week
-- **Change Failure Rate**: % of deployments causing issues
-- **MTTR**: Mean time to recover from production incident
-
-**Visibility**: Add metrics to `docs/process/METRICS.md` (updated Fridays)
-
----
-
-## End-of-Sprint Retrospective
-
-**When**: Every Friday, 4 PM (30 minutes)
-
-**Agenda**:
-1. What went well?
-2. What could be improved?
-3. What blockers did we hit?
-4. Suggestions for next sprint
-
-**Output**: Update process documentation or adjust task estimates
-
----
-
-## Key Principles (Lean Software Development)
-
-1. **Eliminate waste**: Remove meetings, async communicate where possible
-2. **Amplify learning**: Pair-program on complex tasks, review code thoroughly
-3. **Deliver fast**: Small PRs (<200 LOC), frequent deployments
-4. **Empower team**: Decisions made at standup, not escalated unnecessarily
-5. **Build quality in**: Tests first, code review mandatory, runbooks kept current
-6. **Respect people**: Flexible schedules, async-first communication, celebrate wins
-
----
-
-## Tools & Access
-
-- **Version Control**: GitHub (TallaEgg organization)
-- **Issue Tracking**: GitHub Issues (linked to PRs)
-- **Communication**: Slack/Teams for async, standup via Zoom/Teams
-- **Documentation**: Markdown in `docs/` folder
-- **CI/CD**: GitHub Actions (or Azure Pipelines)
-- **Staging Environment**: Azure/AWS (details in `docs/operations/INFRASTRUCTURE.md`)
-
----
-
-## Questions?
-
-- Process questions → Refer to this document or ask Tech Lead
-- Technical questions → Refer to `docs/architecture/` or code comments
-- Task clarification → Refer to `SPRINT_PLAN.md` or card acceptance criteria
+- **Build the solution before running any service.** `dotnet test` only builds the test project's
+  dependency graph, so an API's `bin` can be stale.
+- **Never commit `config/appsettings.global.json`.** It holds live credentials and this repo is
+  public.
+- **Some code that looks dead is dormant by design.** `AGENT.md` → "Business rules that look like
+  bugs" lists four of them, including zero commission and a balance guard that is correctly
+  disabled. Check there before deleting anything as unused.
