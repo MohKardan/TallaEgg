@@ -1,81 +1,110 @@
-# Network Troubleshooting Guide
+# Network Troubleshooting — reaching Telegram
 
-## 🔍 **Current Issue: Network Connectivity**
+The bot reaches Telegram by long polling: it dials **out** to `https://api.telegram.org` and
+Telegram never dials in. Every connectivity problem here is outbound, so no inbound port or
+firewall rule is part of the fix. (`AGENT.md` explains why nothing listens on the bot's
+configured port.)
 
-The bot cannot connect to external services due to network/proxy issues.
+## What the bot actually does
 
-### **Symptoms:**
-- ❌ Cannot reach https://api.telegram.org
-- ❌ Cannot reach https://google.com
-- ❌ Cannot reach https://httpbin.org/get
-- 🔧 System proxy detected: `http://127.0.0.1:10808/`
+`ProxyBotClient.CreateWithProxy` takes one of four paths:
 
-### **Solutions:**
+| Condition | What you get | Timeout |
+|---|---|---|
+| `BOT_DIRECT_CONNECTION=1` | `HttpClient` with the **default** handler | 120 s |
+| A system proxy applies | `HttpClient` with `Proxy` set explicitly from `WebRequest.GetSystemWebProxy()` | 120 s |
+| No system proxy applies | `HttpClient` with the default handler | 120 s |
+| Anything above throws | Bare `TelegramBotClient(token)`, no `HttpClient` supplied | **100 s** |
 
-#### **1. Check Internet Connection**
+The 120 s matters because `getUpdates` is a long poll and the .NET default of 100 s is too tight
+for it. Note the last row: the exception fallback drops to that 100 s default, and
+`TelegramBotHostedService` derives its polling-recovery gap from `_botClient.Timeout`, so a
+silent fall onto that path shifts the down-alert threshold too.
+
+### Two things the console output will not tell you
+
+**`🔧 Using proxy: …` is printed unconditionally**, on line 29, *before* the check on line 31
+that decides whether a proxy is actually in play. When no proxy applies, `GetProxy` returns the
+destination itself and you get `🔧 Using proxy: https://api.telegram.org/` — which means *no
+proxy*. Do not read that line as evidence of one.
+
+**`BOT_DIRECT_CONNECTION=1` does not disable proxying.** It prints
+`🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)` and constructs
+`new HttpClient { Timeout = … }` — the default `HttpClientHandler`, which on Windows has
+`UseProxy = true` and `Proxy = null`, so it falls through to `HttpClient.DefaultProxy` and reads
+the same WinInet settings. Nothing sets `UseProxy = false`.
+
+What the flag really changes is *how* the proxy is resolved — `DefaultProxy` instead of an
+explicit `WebRequest.GetSystemWebProxy()` handler — which is sometimes enough to shake off a
+misbehaving handler, and sometimes not. **Treat it as worth trying, not as a guaranteed bypass.**
+A real bypass needs `new HttpClient(new HttpClientHandler { UseProxy = false })`; that gap is
+tracked as an issue, not fixed here.
+
+## The failure this file exists for
+
+**Symptom**: the bot starts, then dies on `getUpdates` with *"The response ended prematurely"*, or
+hangs and never receives an update.
+
+**Cause seen in practice**: the machine can reach Telegram directly — a TUN-mode VPN, say — while
+a system HTTP proxy is still configured. The proxy is fine for short requests and unstable on a
+long poll, so the connection drops mid-request.
+
+**First thing to try** (scoped to one process; leave it unset on the server, which relies on the
+proxy path):
+
 ```powershell
-# Test basic connectivity
-ping google.com
-ping 8.8.8.8
+dotnet build TallaEgg.sln
+$env:BOT_DIRECT_CONNECTION = "1"
+dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
 ```
 
-#### **2. Check Proxy Settings**
+The build is not optional — `dotnet run --no-build` against a stale `bin` runs code you have
+already changed, which here would mean running a binary that predates the flag and concluding it
+does not work.
+
+If the drops continue, the proxy is still in the path — see the note above — and the next step is
+to clear it machine-wide or disconnect the VPN.
+
+## When nothing connects at all
+
+Check that you can reach Telegram at all. `Invoke-WebRequest` **throws** on any non-2xx in
+Windows PowerShell 5.1, so a success and a failure both print red; use `curl.exe` and read the
+bare status code instead:
+
 ```powershell
-# View current proxy settings
-netsh winhttp show proxy
-
-# Reset proxy settings
-netsh winhttp reset proxy
-
-# Set no proxy for local development
-netsh winhttp set proxy proxy-server=""
+curl.exe -s -o NUL -w "%{http_code}`n" https://api.telegram.org/bot0:0/getMe
 ```
 
-#### **3. Check Firewall**
-- Ensure Windows Firewall allows .NET applications
-- Check if antivirus is blocking connections
+- **`401`** — you reached Telegram. It rejected an invalid token, which is the expected answer.
+  Connectivity is fine and the problem is elsewhere.
+- **A timeout, DNS failure, or `000`** — the real thing this file is about.
+- **`404`, an HTML body, or a redirect** — do **not** read this as success. A transparent proxy,
+  corporate blocker or captive portal answers that way for a host it is intercepting. Only the
+  `401`, with a body of `{"ok":false,"error_code":401,...}`, proves you are talking to Telegram.
 
-#### **4. VPN Issues**
-- If using VPN, try disconnecting temporarily
-- Check VPN proxy settings
+### Finding the proxy .NET is actually using
 
-#### **5. Corporate Network**
-- Contact IT department for proxy configuration
-- Request access to Telegram API endpoints
+**`netsh winhttp show proxy` is the wrong store.** `HttpClient` and
+`WebRequest.GetSystemWebProxy()` read **WinInet** (per-user Internet Settings); `netsh winhttp`
+reads WinHTTP. A machine whose VPN client set a local proxy typically reports *"Direct access (no
+proxy server)"* from `netsh winhttp` while .NET proxies every request. Read WinInet instead:
 
-### **Quick Fixes:**
-
-#### **Option A: Disable Proxy (Recommended for Local Development)**
 ```powershell
-netsh winhttp set proxy proxy-server=""
+Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings' |
+    Select-Object ProxyEnable, ProxyServer, AutoConfigURL
 ```
 
-#### **Option B: Configure Working Proxy**
-```powershell
-netsh winhttp set proxy proxy-server="your-proxy-server:port"
-```
+That is also the setting to clear — through the Windows proxy settings UI, or by setting
+`ProxyEnable` to `0` — if you want the machine off the proxy entirely. `netsh winhttp reset
+proxy` will not clear it.
 
-#### **Option C: Use Direct Connection**
-- Disconnect VPN if connected
-- Try connecting from a different network
+Beyond that: disconnect the VPN and retry (a split-tunnel VPN excluding `api.telegram.org` looks
+exactly like an outage), and confirm outbound HTTPS from `dotnet.exe` is not blocked by a
+firewall or antivirus.
 
-### **Test Commands:**
-```powershell
-# Test basic internet
-curl https://google.com
+## What is not the problem
 
-# Test Telegram API
-curl https://api.telegram.org
-
-# Test with PowerShell
-Invoke-WebRequest -Uri "https://api.telegram.org" -UseBasicParsing
-```
-
-### **Bot Status:**
-✅ **Bot Code**: Fully implemented and working
-✅ **Order Placement**: Complete with balance validation
-✅ **User Interface**: Persian language support
-✅ **Error Handling**: Comprehensive error handling
-❌ **Network**: Blocked by proxy/firewall
-
-**The bot is ready to work once network connectivity is resolved!**
+- **Inbound ports.** The bot runs as a plain generic host with no web server — see `AGENT.md`.
+  Opening a port fixes nothing.
+- **The bot token**, when the failure is a timeout rather than a `401`. A bad token is rejected
+  fast and clearly; a network problem hangs.

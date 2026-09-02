@@ -8,7 +8,7 @@ microservices (Users.Api, Wallet.Api, Orders.Api) and SQL Server, one database p
 There is no GUI to screenshot and no live Telegram connection available outside a real bot
 token — the agent path here is `.claude/skills/run-tallaegg/driver.ps1`, a thin wrapper that
 builds the solution, launches the three APIs, and drives them through
-**`TelegramBot.TallaEgg.TelegramBot.Simulator`** — a project the repo already ships, which
+**`TallaEgg.TelegramBot.Simulator`** (under `TelegramBot/`) — a project the repo already ships, which
 replays real bot conversations (registration, admin approval, quote publishing, quote-fill
 trades, menu navigation) through the real `IBotHandler` and the real APIs/database, faking
 only the Telegram transport itself. That is the interaction surface: not a browser, not a
@@ -224,7 +224,7 @@ outbound access to `api.telegram.org`, neither of which this driver path require
 
 ```powershell
 dotnet test tests/TallaEgg.AllServices.Tests/TallaEgg.AllServices.Tests.csproj --no-build
-# -> Passed! Failed: 0, Passed: 501, Skipped: 0, Total: 501
+# -> Passed! Failed: 0, Passed: 708, Skipped: 0, Total: 708
 ```
 
 Unit tests are a sanity check; `smoke` above is what actually proves the running system works.
