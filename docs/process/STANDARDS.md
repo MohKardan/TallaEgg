@@ -342,10 +342,13 @@ Example (BAD):
 - `.github/workflows/build-and-test.yml` runs `dotnet build` and `dotnet test TallaEgg.sln` on
   every pull request, and on pushes to `main`. It is the `test` check the `main` ruleset requires.
   The admin role bypasses every rule, so treat it as a gate you keep, not one that holds you.
-  Its first step is `scripts/check-doc-paths.sh`, which fails the build when a tracked text file
+  It also runs `scripts/check-doc-paths.sh`, which fails the build when a tracked text file
   contains a Markdown link to a repository path that does not exist. Run it locally the same way
-  — it needs no SDK. Archives under `docs/audit/`, `docs/pull-requests/` and `governance/` are
-  exempt; if you add another frozen archive, add its path to `EXCLUDED_GLOBS` in the script.
+  — it needs no SDK — and `scripts/check-doc-paths.sh --self-test` to exercise its parser.
+  Exempt as frozen archives: `docs/audit/AUDIT_*`, `docs/audit/METHODOLOGY_v*`,
+  `docs/pull-requests/*` and `governance/*`. Note `docs/audit/README.md` is *not* exempt — it is
+  a living index. If you add another frozen archive, add its path to `EXCLUDED_GLOBS` in the
+  script.
 - `.github/workflows/manual-test-run.yml` stands Users/Wallet/Orders and the bot up against a
   throwaway SQL Server so a human can drive it over real Telegram. It asserts nothing and needs
   the `TELEGRAM_BOT_TOKEN` and `OWNER_TELEGRAM_ID` secrets.
