@@ -24,12 +24,22 @@ namespace TallaEgg.TelegramBot
         /// <remarks>
         /// The report goes to the log rather than to <see cref="Console"/> because the bot is
         /// installed with <c>sc.exe create</c> (issue #70) and a native Windows service has no
-        /// console: on the server every one of these lines was written to a handle nobody holds.
+        /// console: under the SCM every one of these lines was written to a handle nobody holds.
         /// They are the lines that say whether the bot is proxying, which is the one thing worth
         /// knowing when Telegram is unreachable — and issue #199 was a whole class of damage done
-        /// by trusting one of them, so they need to be legible where the failure actually happens.
+        /// by trusting one of them, so they need to survive to somewhere readable.
         /// </remarks>
-        public static ITelegramBotClient CreateWithProxy(string token, ILogger logger)
+        public static ITelegramBotClient CreateWithProxy(string token, ILogger logger) =>
+            new TelegramBotClient(token, CreateHttpClient(ResolveHandler(logger)));
+
+        /// <summary>
+        /// Works out the handler and reports the choice. Separate from client construction so the
+        /// catch below covers only what its message blames: <see cref="TelegramBotClient"/>'s
+        /// constructor throws <see cref="ArgumentException"/> on a malformed token, and inside the
+        /// try that surfaced as a proxy warning followed by the same exception thrown again from
+        /// the fallback — a configuration typo reported as a network problem, twice.
+        /// </summary>
+        private static HttpClientHandler? ResolveHandler(ILogger logger)
         {
             // Local override: when the machine can reach Telegram directly (e.g. a TUN-mode VPN),
             // the system HTTP proxy can be unstable on long-poll (getUpdates) and drops the
@@ -44,25 +54,26 @@ namespace TallaEgg.TelegramBot
             {
                 var (directHandler, directMessage) = ChooseConnection(bypassProxy: true, systemProxy: null);
                 // One property rather than a template with holes: the sentence is the artefact
-                // here, worded so an operator can act on it, and it is asserted whole in tests.
+                // here, worded so an operator can act on it and quoted verbatim in
+                // NetworkTroubleshooting.md, so the tests pin it verbatim too.
                 logger.LogInformation("{TelegramConnection}", directMessage);
-                return new TelegramBotClient(token, CreateHttpClient(directHandler));
+                return directHandler;
             }
 
             try
             {
                 var (handler, message) = ChooseConnection(bypassProxy: false, WebRequest.GetSystemWebProxy());
                 logger.LogInformation("{TelegramConnection}", message);
-                return new TelegramBotClient(token, CreateHttpClient(handler));
+                return handler;
             }
             catch (Exception ex)
             {
                 // Warning, not Information: this path silently changes how the bot reaches
                 // Telegram. The exception is passed rather than just its Message so the file sink
-                // keeps the stack trace — on the server there is no console to re-run it in.
+                // keeps the stack trace — under the service there is no console to re-run it in.
                 logger.LogWarning(ex,
-                    "Could not configure the Telegram proxy; falling back to the default handler, which may still use the system proxy.");
-                return new TelegramBotClient(token, CreateHttpClient(null));
+                    "Could not resolve the system proxy; falling back to the default handler, which may still use the system proxy.");
+                return null;
             }
         }
 
