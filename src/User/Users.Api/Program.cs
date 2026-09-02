@@ -108,10 +108,15 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserMapper>();
 builder.Services.AddTallaEggErrorHandling();
 
-// HttpClient for calling the Wallet API.
+// HttpClient for calling the Wallet API. The address is read and parsed here rather than
+// inside the configure delegate, which would not run until the first client was created. A bad
+// address has to stop the service coming up: registration creates the default wallets through
+// this client and swallows what it throws (UserService.CreateDefaultWalletsAsync), so deferring
+// the failure means users registered with no wallets and nothing said about it.
+var walletApiBaseAddress = ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
 builder.Services.AddHttpClient("WalletAPI", client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration.GetValue<string>("WalletApiUrl") ?? "https://localhost:60932/");
+    client.BaseAddress = walletApiBaseAddress;
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
@@ -453,46 +458,6 @@ app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService 
 {
     var exists = await userService.UserExistsAsync(telegramId);
     return Results.Ok(new { exists = exists });
-})
-.WithTags("Users");
-
-// Creates the default wallets for an existing user.
-// userId: User id.
-// userService: User service.
-// Returns: Whether it succeeded.
-// 200: Default wallets created.
-// 400: Wallet creation failed.
-// 404: User not found.
-app.MapPost("/api/user/{userId}/create-default-wallets", async (Guid userId, UserService userService) =>
-{
-    var user = await userService.GetUserByIdAsync(userId);
-    if (user == null)
-    {
-        return Results.Json(
-            ApiResponse<object>.NotFound("کاربر مورد نظر یافت نشد."),
-            statusCode: 404
-        );
-    }
-
-    // Call the wallet endpoint.
-    using var httpClient = new HttpClient();
-    httpClient.BaseAddress = new Uri("https://localhost:7001/");
-    var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
-
-    if (response.IsSuccessStatusCode)
-    {
-        var content = await response.Content.ReadAsStringAsync();
-        return Results.Json(
-            ApiResponse<object?>.Ok(null, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند.")
-        );
-    }
-    else
-    {
-        return Results.Json(
-            ApiResponse<object>.Error("خطا در ایجاد کیف پول‌های پیش‌فرض."),
-            statusCode: 500
-        );
-    }
 })
 .WithTags("Users");
 

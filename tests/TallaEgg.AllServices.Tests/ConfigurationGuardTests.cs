@@ -4,7 +4,7 @@ using TallaEgg.Core;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// Connection strings must be present, not defaulted (issue #68).
+/// Required configuration must be present, not defaulted (issues #68 and #190).
 ///
 /// <para>
 /// All five services used to read the connection string with
@@ -12,6 +12,12 @@ namespace TallaEgg.AllServices.Tests;
 /// configuration file was missing the key, every service silently started against a local
 /// SQL Server instead of refusing to run — so the failure surfaced far from its cause,
 /// as an empty or wrong database rather than as a configuration error.
+/// </para>
+///
+/// <para>
+/// Service addresses were defaulted the same way: <c>Users.Api</c> fell back to a wallet URL
+/// on a port this system has never used, which issue #190 found only because nothing had ever
+/// exercised the missing-key path.
 /// </para>
 ///
 /// <para>
@@ -74,5 +80,90 @@ public class ConfigurationGuardTests
 
         Assert.Contains("OrdersDb", exception.Message, StringComparison.Ordinal);
         Assert.Contains("appsettings.global.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A correctly configured address comes back parsed, ready to be a BaseAddress.</summary>
+    [Fact]
+    public void RequireUri_WhenTheKeyIsPresent_ReturnsTheParsedUri()
+    {
+        var configuration = Configuration(("WalletApiUrl", "http://localhost:60933/"));
+
+        var uri = ConfigurationGuard.RequireUri(configuration, "WalletApiUrl");
+
+        Assert.Equal(new Uri("http://localhost:60933/"), uri);
+    }
+
+    /// <summary>
+    /// The case issue #190 found: Users.Api fell back to a hardcoded wallet address on a port
+    /// this system has never used, so a missing key would have started the service pointed at
+    /// nothing instead of refusing to run.
+    /// </summary>
+    [Fact]
+    public void RequireUri_WhenTheKeyIsAbsent_Throws()
+    {
+        var configuration = Configuration(("UsersApiUrl", "http://localhost:5136/"));
+
+        Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(configuration, "WalletApiUrl"));
+    }
+
+    /// <summary>A present-but-blank key is a half-finished edit, not a configured value.</summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RequireUri_WhenTheValueIsBlank_Throws(string value)
+    {
+        var configuration = Configuration(("WalletApiUrl", value));
+
+        Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(configuration, "WalletApiUrl"));
+    }
+
+    /// <summary>
+    /// Present but unusable is a configuration mistake too, and the reason this guard returns a
+    /// parsed <see cref="Uri"/> instead of the string. "localhost:60933" is the trap: it parses
+    /// as an absolute URI whose scheme is "localhost", so only a scheme check catches it, and
+    /// without one it would surface as a failed registration long after startup.
+    /// </summary>
+    [Theory]
+    [InlineData("60933")]
+    [InlineData("localhost:60933")]
+    [InlineData("/api/wallet")]
+    [InlineData("REPLACE_WITH_WALLET_URL")]
+    [InlineData("ftp://localhost:60933/")]
+    public void RequireUri_WhenTheValueIsNotAnAbsoluteHttpUrl_Throws(string value)
+    {
+        var configuration = Configuration(("WalletApiUrl", value));
+
+        Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(configuration, "WalletApiUrl"));
+    }
+
+    /// <summary>
+    /// The message has to be actionable on a server with no debugger attached: which key, which
+    /// section, and which file. The file defines WalletApiUrl in three sections with two
+    /// incompatible shapes, so naming the key alone would not be enough to act on.
+    /// </summary>
+    [Fact]
+    public void RequireUri_WhenTheKeyIsAbsent_TheMessageNamesTheKeyTheSectionAndTheFile()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(Configuration(), "WalletApiUrl"));
+
+        Assert.Contains("WalletApiUrl", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Services:", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("appsettings.global.json", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A rejected value has to appear in the message, or there is nothing to correct.</summary>
+    [Fact]
+    public void RequireUri_WhenTheValueIsNotAUrl_TheMessageQuotesTheValue()
+    {
+        var configuration = Configuration(("WalletApiUrl", "localhost:60933"));
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(configuration, "WalletApiUrl"));
+
+        Assert.Contains("localhost:60933", exception.Message, StringComparison.Ordinal);
     }
 }
