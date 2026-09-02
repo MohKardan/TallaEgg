@@ -9,7 +9,6 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TallaEgg.TelegramBot;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 

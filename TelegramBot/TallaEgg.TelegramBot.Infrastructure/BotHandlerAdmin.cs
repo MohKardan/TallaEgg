@@ -25,7 +25,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using static System.Net.Mime.MediaTypeNames;
 using static TallaEgg.TelegramBot.Infrastructure.Clients.OrderApiClient;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public partial class BotHandler : IBotHandler
     {

@@ -1,4 +1,4 @@
-﻿namespace TallaEgg.TelegramBot;
+﻿namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
 /// <summary>
 /// The Affiliate service as the Telegram bot uses it (issue #65).

@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
-using TallaEgg.TelegramBot;
 using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Conversations;
 using TallaEgg.TelegramBot.Infrastructure.Options;

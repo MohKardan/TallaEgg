@@ -2,7 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class NetworkTest
     {

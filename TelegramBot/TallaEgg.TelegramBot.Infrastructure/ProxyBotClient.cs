@@ -3,7 +3,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 
-namespace TallaEgg.TelegramBot
+namespace TallaEgg.TelegramBot.Infrastructure
 {
     public class ProxyBotClient
     {

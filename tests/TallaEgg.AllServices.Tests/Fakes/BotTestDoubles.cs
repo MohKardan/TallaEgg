@@ -7,7 +7,7 @@ using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Responses.Order;
 using TallaEgg.Core.Services;
 using TallaEgg.TelegramBot.Infrastructure.Services;
-using TallaEgg.TelegramBot;
+using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 
 namespace TallaEgg.AllServices.Tests.Fakes;
