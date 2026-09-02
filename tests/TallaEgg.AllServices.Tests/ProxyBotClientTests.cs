@@ -24,6 +24,14 @@ public class ProxyBotClientTests
 {
     private static readonly Uri TelegramApiRoot = new("https://api.telegram.org");
 
+    /// <summary>
+    /// A destination that refuses immediately, so a request that goes direct fails fast and one
+    /// that goes through the recording proxy is answered by the proxy without ever reaching here.
+    /// Port 1 rather than a released ephemeral port: the ephemeral range is what the OS hands out
+    /// next, so on a busy machine something can claim it between the probe and the request.
+    /// </summary>
+    private static readonly Uri Unreachable = new("http://127.0.0.1:1/");
+
     [Fact]
     public void ChooseConnection_BypassRequested_TurnsProxyingOff()
     {
@@ -122,7 +130,6 @@ public class ProxyBotClientTests
         // listener means UseProxy = false did not take effect. Loopback only — no outbound
         // traffic and no state shared with other tests.
         using var proxy = new RecordingProxy();
-        var destination = new Uri($"http://127.0.0.1:{ClosedPort()}/");
 
         var (bypassHandler, _) = ProxyBotClient.ChooseConnection(bypassProxy: true, systemProxy: null);
         Assert.NotNull(bypassHandler);
@@ -130,7 +137,12 @@ public class ProxyBotClientTests
 
         using (var direct = ProxyBotClient.CreateHttpClient(bypassHandler))
         {
-            await Assert.ThrowsAsync<HttpRequestException>(() => direct.GetStringAsync(destination));
+            // The client's own timeout is the long-poll 120 s, which is far too long to wait on
+            // should something ever answer at Unreachable. Cap it so an unexpected connection
+            // fails the test in seconds with a wrong exception type rather than stalling a build.
+            using var giveUp = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => direct.GetStringAsync(Unreachable, giveUp.Token));
         }
 
         Assert.Equal(0, proxy.RequestCount);
@@ -139,19 +151,9 @@ public class ProxyBotClientTests
         // count of zero above is evidence rather than a listener that never worked.
         using var proxyingHandler = new HttpClientHandler { Proxy = proxy.AsWebProxy(), UseProxy = true };
         using var proxied = ProxyBotClient.CreateHttpClient(proxyingHandler);
-        Assert.Equal(RecordingProxy.ResponseBody, await proxied.GetStringAsync(destination));
+        Assert.Equal(RecordingProxy.ResponseBody, await proxied.GetStringAsync(Unreachable));
         Assert.Equal(1, proxy.RequestCount);
-        Assert.Equal($"GET {destination} HTTP/1.1", proxy.LastRequestLine);
-    }
-
-    /// <summary>A port nothing listens on, so a direct attempt is refused rather than left hanging.</summary>
-    private static int ClosedPort()
-    {
-        var probe = new TcpListener(IPAddress.Loopback, 0);
-        probe.Start();
-        var port = ((IPEndPoint)probe.LocalEndpoint).Port;
-        probe.Stop();
-        return port;
+        Assert.Equal($"GET {Unreachable} HTTP/1.1", proxy.LastRequestLine);
     }
 
     private sealed class StubProxy : IWebProxy
@@ -214,18 +216,12 @@ public class ProxyBotClientTests
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                TcpClient client;
+                // The whole body, not just the accept: a client that disconnects mid-exchange
+                // would otherwise fault this task, and Dispose would rethrow that at teardown as
+                // an AggregateException on top of whatever the test was actually asserting.
                 try
                 {
-                    client = await _listener.AcceptTcpClientAsync(cancellationToken);
-                }
-                catch (Exception ex) when (ex is OperationCanceledException or SocketException or ObjectDisposedException)
-                {
-                    return;
-                }
-
-                using (client)
-                {
+                    using var client = await _listener.AcceptTcpClientAsync(cancellationToken);
                     Interlocked.Increment(ref _requestCount);
                     var stream = client.GetStream();
                     var buffer = new byte[1024];
@@ -236,6 +232,11 @@ public class ProxyBotClientTests
                     await stream.WriteAsync(Response, cancellationToken);
                     await stream.FlushAsync(cancellationToken);
                 }
+                catch (Exception ex) when (ex is OperationCanceledException or IOException
+                    or SocketException or ObjectDisposedException)
+                {
+                    return;
+                }
             }
         }
 
@@ -243,6 +244,7 @@ public class ProxyBotClientTests
         {
             _cts.Cancel();
             _listener.Stop();
+            // The loop swallows its own teardown exceptions, so this only ever waits.
             _accepting.Wait(TimeSpan.FromSeconds(5));
             _cts.Dispose();
         }
