@@ -26,10 +26,28 @@ contents.
 API's `bin` can still hold an older build. Always `dotnet build TallaEgg.sln` before
 `dotnet run --no-build`, or you will run code you have already changed.
 
+When a stale `bin`/`obj` needs clearing outright — after switching branches with different
+project layouts, say — **stop every running service first** (a live `dotnet run` holds its own
+DLLs open, and the delete fails partway leaving a half-emptied `bin`), then, **from the repo
+root**:
+
+```powershell
+Get-ChildItem -Path . -Recurse -Directory |
+    Where-Object { $_.Name -match '^(bin|obj)$' } |
+    Remove-Item -Recurse -Force -ErrorAction Stop
+```
+
+`-Path .` is not optional: without it the command takes whatever the current directory happens to
+be, and one level up that is every sibling repository on the machine.
+
 ### Starting the services
 
-There is no working script — `run.bat` is stale and its paths do not exist. Start each service in
-its own terminal:
+To bring the stack up in one command, use `.claude/skills/run-tallaegg/driver.ps1 start` — it
+builds the solution, launches Users/Wallet/Orders in the background and waits for all three to
+report healthy. On a server, `scripts/windows-services/install-services.ps1` installs and starts
+all four as Windows services (see `docs/operations/WINDOWS_DEPLOYMENT.md`).
+
+To run them in the foreground instead, one per terminal:
 
 ```
 dotnet build TallaEgg.sln
@@ -60,9 +78,13 @@ SQL Server and keeps it alive for a chosen number of minutes.
   holds the handlers; `Simulator` drives the real handlers without Telegram. The empty
   `TallaEgg.TelegramBot` and `TallaEgg.TelegramBot.Application` shells were deleted — neither
   contained a single source file.
-- **Database:** SQL Server, one database per service. The schema comes from EF Core migrations,
-  which each service applies at startup. `create_table.sql` at the repo root is an early artifact
-  describing a single table that no longer matches the model — it is not the schema.
+- **Database:** SQL Server, one database per service. **EF Core migrations are the schema** —
+  each service applies its own at startup, except `Affiliate.Api`, which calls `MigrateAsync()`
+  while shipping zero migration files and so fails every request with `Invalid object name
+  'Invitations'`. A hand-written `.sql` that *creates tables* is therefore a second source of
+  truth and always wrong; a `.sql` under `scripts/` that *migrates data* — like
+  `migrate-irr-to-irt.sql`, which relabels an asset without touching amounts — is a different
+  thing and belongs there.
 
 ## Business rules that look like bugs
 
