@@ -26,10 +26,16 @@ contents.
 API's `bin` can still hold an older build. Always `dotnet build TallaEgg.sln` before
 `dotnet run --no-build`, or you will run code you have already changed.
 
+When a stale `bin`/`obj` needs clearing outright — after switching branches with different
+project layouts, say — wipe them all and rebuild:
+
+```powershell
+Get-ChildItem -Recurse -Directory -Force | Where-Object { $_.Name -match '^(bin|obj)$' } | Remove-Item -Recurse -Force
+```
+
 ### Starting the services
 
-There is no working script — `run.bat` is stale and its paths do not exist. Start each service in
-its own terminal:
+There is no start-everything script. Start each service in its own terminal:
 
 ```
 dotnet build TallaEgg.sln
@@ -60,9 +66,9 @@ SQL Server and keeps it alive for a chosen number of minutes.
   holds the handlers; `Simulator` drives the real handlers without Telegram. The empty
   `TallaEgg.TelegramBot` and `TallaEgg.TelegramBot.Application` shells were deleted — neither
   contained a single source file.
-- **Database:** SQL Server, one database per service. The schema comes from EF Core migrations,
-  which each service applies at startup. `create_table.sql` at the repo root is an early artifact
-  describing a single table that no longer matches the model — it is not the schema.
+- **Database:** SQL Server, one database per service. **EF Core migrations are the schema** —
+  each service applies its own at startup. There is no hand-written DDL to keep in step, and a
+  `.sql` file that creates tables is not a second source of truth; treat one as a mistake.
 
 ## Business rules that look like bugs
 
