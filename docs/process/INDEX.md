@@ -1,6 +1,6 @@
 # TallaEgg Documentation Index — Master Guide
 
-**Last Updated**: July 17, 2026  
+**Last Updated**: September 2, 2026  
 **Language**: English (all documentation)  
 **Standards**: Software Engineering Best Practices + Lean Development
 
@@ -26,7 +26,7 @@ opening a PR.
 ### For Problem-Solving
 - **Why are we doing this?** → [`docs/audit/README.md`](../audit/README.md) — The audit archive: what each audit found, the score trend, and how the next one is run
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
-- **What's the architecture?** → [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed; `SoftwareArchitecture/` (repo root) for current component/class/ER/sequence diagrams
+- **What's the architecture?** → [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today, and [`AGENT.md`](../../AGENT.md) for services, ports and layout; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
 
 ### For Onboarding
 - **New to the team?** → Read in this order:
@@ -70,7 +70,7 @@ docs/
 
 - `docs/process/METRICS.md` — weekly metrics tracking (lead time, deployment freq, etc.)
 - `docs/architecture/ADR-###-*.md` — Architecture Decision Records
-- `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams (note: `SoftwareArchitecture/` at repo root already has component/class/ER/sequence/activity/state diagrams — check there first before creating a duplicate)
+- `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams. A `SoftwareArchitecture/` folder at the repo root used to hold these as PNGs; it was deleted because it described the pre-dealer-model order book and could not be updated (no diagram sources, only images). Write any replacement as Mermaid inside the Markdown, the way `DEALER_QUOTE_MODEL.md` does, so it stays reviewable in a diff.
 - `docs/operations/DEPLOYMENT.md`, `docs/operations/RUNBOOK.md`, `docs/operations/INFRASTRUCTURE.md`
 - `docs/design/API_CONTRACT.md`, `docs/design/DATABASE_SCHEMA.md`
 
@@ -327,19 +327,21 @@ This index & all standards documents should be reviewed:
 
 ---
 
-## Next Steps (Right Now)
+## Onboarding (start here)
 
-1. **Dev A & Dev B**: Read this index + `STANDARDS.md` (30 min)
-2. **Tech Lead**: Review `SPRINT_PLAN.md` for clarity (20 min)
-3. **Team**: Hold 30-min kickoff: confirm sprint goal, task assignments, blockers
-4. **Dev B**: Start TASK-001 (Rotate Secrets) — highest priority
-5. **Dev A**: Start TASK-004 (Financial Integrity) — atomicity focus
+1. Read this index + [`STANDARDS.md`](STANDARDS.md).
+2. Read [`AGENT.md`](../../AGENT.md) for build commands, services and the business rules that
+   look like bugs, and [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md)
+   for how trading works.
+3. Pick up work from GitHub issues — `gh issue list`. That, not any document here, is where
+   current priorities live.
 
 ---
 
-**Repository**: [MohKardan/TallaEgg](https://github.com/MohKardan/TallaEgg)  
-**Sprint Model**: 3 sprints × 2 weeks (~6 weeks total)  
-**Current Sprint**: Sprint 1 (July 17–31, 2026)  
-**Target Score**: 4.6 → 6.5/10 (60%+ production-ready) by end of Sprint 1
+**Repository**: [MohKardan/TallaEgg](https://github.com/MohKardan/TallaEgg)
 
-Good luck! 🚀
+> The three-sprint cycle this document was written around ran July 17 – August 28, 2026 and is
+> closed. Its scoring and retrospective are in [`docs/OKR.md`](../OKR.md); `SPRINT_PLAN.md` is
+> kept as the record of what was planned, not as current work. **Live priorities are GitHub
+> issues** — `gh issue list`. Treat any status, sprint or date claim in the process documents as
+> history unless an issue confirms it.

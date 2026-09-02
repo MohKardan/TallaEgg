@@ -20,7 +20,7 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 - Atomic trade settlement over a transactional outbox, idempotent on the trade id, with collateral locked before an order becomes matchable.
 - Wallet domain with deposits, withdrawals, balance locking, gold-denominated credit, transaction history, and default wallet provisioning.
 - RESTful minimal APIs for users, wallets, and orders returning a unified `ApiResponse<T>` envelope.
-- Telegram bot that consumes the platform APIs and exposes a small notification API for other services.
+- Telegram bot that consumes the platform APIs and drives the whole customer and operator experience over long polling.
 - Centralised configuration (`config/appsettings.global.json`), Serilog logging, and typed HTTP clients across services.
 - A matching engine for peer-to-peer order books remains in the codebase but **does not run for dealer symbols** — see [Trading model](#trading-model).
 
@@ -38,8 +38,7 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 | `config/appsettings.global.json` | Shared configuration consumed by every service — git-ignored ([#33](https://github.com/MohKardan/TallaEgg/issues/33)); copy it from `config/appsettings.global.example.json` |
 | `docs/` | Architecture, operations, process, OKRs, and the business proposal |
 | `governance/` | Charter, bylaws, meeting notes, and `P-XXXX` proposals |
-| `scripts/`, `publishes/` | Helper scripts and deployment artefacts |
-| `SoftwareArchitecture/` | Diagrams |
+| `scripts/` | Helper scripts and the Windows service publish/install tooling |
 
 ## Trading model
 
@@ -89,10 +88,12 @@ A symbol priced by a source neither nerkh.io nor brsapi.ir covers still needs a 
 
 Every service loads `config/appsettings.global.json`, then flattens the section under `Services:` matching its own assembly name. There is no per-service `appsettings.json` to maintain.
 
-> ⚠️ **This file used to be tracked in git and its old contents (a bot token and the shared API
-> key) are still readable in this public repo's history.** Treat both as compromised until they
-> are rotated — see [#33](https://github.com/MohKardan/TallaEgg/issues/33). The file itself is
-> now git-ignored; do not re-add it or any other secret to source control.
+> ⚠️ **This file used to be tracked in git, so an old bot token and the old shared API key are
+> still readable in this public repo's history.** Both were rotated under
+> [#33](https://github.com/MohKardan/TallaEgg/issues/33) and are dead — do not report them as a
+> live leak. The history is deliberately **not** rewritten; that decision and its reasoning are
+> recorded on [#105](https://github.com/MohKardan/TallaEgg/issues/105). The file itself is now
+> git-ignored; do not re-add it or any other secret to source control.
 
 Create your own copy from the template below.
 
@@ -148,7 +149,7 @@ Create your own copy from the template below.
 | `BotSettings:OwnerTelegramIds` | The only thing that lets anyone in on an empty database. A configured owner is approved and given the `Admin` role automatically when they register. Put **your own** Telegram id here. |
 | `BotSettings:DefaultReferralCode` | Must be `admin` — the code carried by the administrator row `Users.Api` seeds. Registration rejects any code that belongs to no user, so a mismatch here means **nobody can register at all**. |
 | `Matching:MarketModes` | Without a symbol set to `"Dealer"` (e.g. `"MAUA/IRT": "Dealer"`) it falls back to `OrderBook` and every quote fill for that symbol is refused. |
-| `TelegramBotToken` | Read from this file. `TELEGRAM_BOT_TOKEN` is only a fallback for the standalone notification API, **not** for the bot itself. |
+| `TelegramBotToken` | Read from this file, and only from this file. The bot does not fall back to a `TELEGRAM_BOT_TOKEN` environment variable, and refuses to start without this key. |
 
 ### Ports and bind addresses
 
@@ -168,7 +169,7 @@ Every `Urls` entry above is plain HTTP on loopback (`localhost`), on purpose —
 | Wallet.Api | 60933 | Balances, settlement |
 | Orders.Api | 5140 | Quotes, trades, matching |
 | Affiliate.Api | 60812 | Not deployed — see [Database Setup](#database-setup) |
-| TallaEgg.TelegramBot.Infrastructure | 57546 | Bot's own notification endpoint |
+| TallaEgg.TelegramBot.Infrastructure | 57546 | Configured, but nothing listens on it — the bot is a plain generic host with no web server, and reaches Telegram by long polling |
 | TallaEgg.Api | 5135 | Not deployed — legacy, nothing calls it |
 
 On a real server, confirm none of these show up in `netstat`/`ss` on a public interface — only on
@@ -252,7 +253,7 @@ dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/
 
 `Affiliate.Api` is not needed (see above). `src/TallaEgg/TallaEgg.Api` is a legacy orchestration API that nothing calls.
 
-Swagger UI is at `/api-docs` on each service — for example `http://localhost:5136/api-docs`. The bot host also exposes `/api/telegram/notifications/trade-match`.
+Swagger UI is at `/api-docs` on Users, Wallet and Orders — for example `http://localhost:5136/api-docs`. It is mapped **only when `ASPNETCORE_ENVIRONMENT=Development`**, so it does not exist on a deployed server; `dotnet run` sets that from `launchSettings.json`, so it is there by default locally. The bot exposes no HTTP endpoints at all.
 
 ## Production Deployment
 
