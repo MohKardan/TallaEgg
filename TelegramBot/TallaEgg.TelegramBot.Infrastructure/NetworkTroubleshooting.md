@@ -11,34 +11,35 @@ configured port.)
 
 | Condition | What you get | Timeout |
 |---|---|---|
-| `BOT_DIRECT_CONNECTION=1` | `HttpClient` with the **default** handler | 120 s |
+| `BOT_DIRECT_CONNECTION=1` | `HttpClient` on a handler with `UseProxy = false` | 120 s |
 | A system proxy applies | `HttpClient` with `Proxy` set explicitly from `WebRequest.GetSystemWebProxy()` | 120 s |
-| No system proxy applies | `HttpClient` with the default handler | 120 s |
-| Anything above throws | Bare `TelegramBotClient(token)`, no `HttpClient` supplied | **100 s** |
+| No system proxy applies | `HttpClient` on the stock handler | 120 s |
+| Anything above throws | `HttpClient` on the stock handler | 120 s |
 
 The 120 s matters because `getUpdates` is a long poll and the .NET default of 100 s is too tight
-for it. Note the last row: the exception fallback drops to that 100 s default, and
-`TelegramBotHostedService` derives its polling-recovery gap from `_botClient.Timeout`, so a
-silent fall onto that path shifts the down-alert threshold too.
+for it. Every row gets it now, the exception fallback included: that row used to supply no
+`HttpClient` at all and silently take the 100 s default, which moved the down-alert threshold
+with it, because `TelegramBotHostedService` derives its polling-recovery gap from
+`_botClient.Timeout` (#199).
 
-### Two things the console output will not tell you
+### Reading the console output
 
-**`🔧 Using proxy: …` is printed unconditionally**, on line 29, *before* the check on line 31
-that decides whether a proxy is actually in play. When no proxy applies, `GetProxy` returns the
-destination itself and you get `🔧 Using proxy: https://api.telegram.org/` — which means *no
-proxy*. Do not read that line as evidence of one.
+One line is printed, and it means what it says. Until #199 two of the three did not, so output
+from a build older than that fix cannot be read this way.
 
-**`BOT_DIRECT_CONNECTION=1` does not disable proxying.** It prints
-`🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)` and constructs
-`new HttpClient { Timeout = … }` — the default `HttpClientHandler`, which on Windows has
-`UseProxy = true` and `Proxy = null`, so it falls through to `HttpClient.DefaultProxy` and reads
-the same WinInet settings. Nothing sets `UseProxy = false`.
-
-What the flag really changes is *how* the proxy is resolved — `DefaultProxy` instead of an
-explicit `WebRequest.GetSystemWebProxy()` handler — which is sometimes enough to shake off a
-misbehaving handler, and sometimes not. **Treat it as worth trying, not as a guaranteed bypass.**
-A real bypass needs `new HttpClient(new HttpClientHandler { UseProxy = false })`; that gap is
-tracked as an issue, not fixed here.
+- **`🔗 Direct connection (proxy bypassed via BOT_DIRECT_CONNECTION=1)`** — the handler has
+  `UseProxy = false`, so nothing the bot sends is proxied: not the system proxy, not one
+  configured elsewhere in .NET. Before #199 this line printed over a stock handler, which on
+  Windows leaves `UseProxy = true` with a null `Proxy` and so falls through to
+  `HttpClient.DefaultProxy` — the same WinInet settings the proxy path reads. It proxied, and
+  said it did not.
+- **`🔧 Using proxy: <uri>`** — a system proxy applies to `api.telegram.org` and the client is
+  bound to it. Printed only in that case; it used to be printed unconditionally, *before* the
+  check that decides whether a proxy is in play.
+- **`🔧 No system proxy applies to api.telegram.org`** — `GetProxy` answered with the destination
+  itself, or with null. Both mean no proxy. The first used to surface as
+  `🔧 Using proxy: https://api.telegram.org/`, which says *no proxy* and reads as its opposite;
+  the second took the proxy branch outright and printed `🔧 Using proxy: ` with nothing after it.
 
 ## The failure this file exists for
 
@@ -62,8 +63,15 @@ The build is not optional — `dotnet run --no-build` against a stale `bin` runs
 already changed, which here would mean running a binary that predates the flag and concluding it
 does not work.
 
-If the drops continue, the proxy is still in the path — see the note above — and the next step is
-to clear it machine-wide or disconnect the VPN.
+Two outcomes, and they mean different things:
+
+- **The drops continue.** The proxy is not what was dropping them — with the flag set the bot's
+  client does not use one. Look at the VPN and the direct route instead. Note that the flag covers
+  the bot's Telegram client only; the startup diagnostics build their own `HttpClient`, and
+  everything else on the machine still follows the system proxy.
+- **The bot stops connecting entirely**, with `No connection could be made because the target machine
+  actively refused it. (api.telegram.org:443)` or a timeout. The machine cannot reach Telegram
+  directly after all, so the proxy was doing real work. Unset the flag; the fix is elsewhere.
 
 ## When nothing connects at all
 

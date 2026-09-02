@@ -11,6 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- ProxyBotClient.ChooseConnection and CreateHttpClient are internal so the connection
+         choice can be asserted directly; the ITelegramBotClient they end up inside exposes
+         neither its handler nor its timeout source (issue #199). -->
+    <InternalsVisibleTo Include="TallaEgg.AllServices.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="Telegram.Bot" Version="22.6.0" />
