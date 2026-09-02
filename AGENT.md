@@ -48,12 +48,13 @@ SQL Server and keeps it alive for a chosen number of minutes.
 
 ## Architecture
 - **Clean Architecture** with Core/Application/Infrastructure layers
-- **Services and their HTTP ports:** Users 5136, Orders 5140, Wallet 60933, Affiliate 60812,
-  TallaEgg.Api 5135. These are what the services actually call each other on, all plain HTTP on
-  loopback — no service binds an HTTPS address. The authority is
-  `config/appsettings.global.json`, not this list.
-  The bot has a `Urls` entry of its own (57546) but **nothing listens on it**: it is a plain
-  generic host with no web server, and it reaches Telegram by long polling.
+- **Services and their HTTP ports:** Users 5136, Orders 5140, Wallet 60933 are the three that are
+  deployed and that the bot actually calls. `Affiliate.Api` 60812 and `TallaEgg.Api` 5135 are
+  configured but not run (see above). All are plain HTTP on loopback — **no service binds an
+  HTTPS address.** The authority is `config/appsettings.global.json`, not this list.
+- **The bot has a `Urls` entry (57546) but nothing listens on it.** It is a plain generic host
+  with no web server and no mapped endpoints; it reaches Telegram by long polling, dialling out.
+  The key is inert configuration, not a port to open.
 - **There is no Matching service.** Matching is a library inside the Orders service.
 - **TelegramBot:** `Core` holds the shared models; `Infrastructure` is the runnable project and
   holds the handlers; `Simulator` drives the real handlers without Telegram. The empty
@@ -109,9 +110,11 @@ will not start is usually telling you exactly which key is missing.
   database.
 - **OwnerTelegramIds:** Telegram ids that are approved and made Admin automatically on first
   contact. Without at least one, a fresh deployment has no way to appoint its first administrator.
-Both referral settings are read from the file at startup and bound once into `BotHandler`, so
-changing either needs a restart. There is no runtime command to toggle them — a `/admin_referral_on`
-family was documented for years and has never existed in the code.
+
+`RequireReferralCode` and `DefaultReferralCode` are bound once into `BotHandler` at startup, so
+changing either needs a restart. **There is no runtime command to toggle them** — an
+`/admin_referral_on` / `_off` / `_status` family was documented here for a year and has never
+existed in the code.
 
 ## Code Style & Conventions
 - **Framework:** .NET 9.0 with C# nullable enabled

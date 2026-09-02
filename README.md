@@ -88,12 +88,15 @@ A symbol priced by a source neither nerkh.io nor brsapi.ir covers still needs a 
 
 Every service loads `config/appsettings.global.json`, then flattens the section under `Services:` matching its own assembly name. There is no per-service `appsettings.json` to maintain.
 
-> ⚠️ **This file used to be tracked in git, so an old bot token and the old shared API key are
-> still readable in this public repo's history.** Both were rotated under
-> [#33](https://github.com/MohKardan/TallaEgg/issues/33) and are dead — do not report them as a
-> live leak. The history is deliberately **not** rewritten; that decision and its reasoning are
-> recorded on [#105](https://github.com/MohKardan/TallaEgg/issues/105). The file itself is now
-> git-ignored; do not re-add it or any other secret to source control.
+> ⚠️ **Old bot tokens and the old shared API key are still readable in this repo** — in git
+> history, because this file used to be tracked, and in one tracked source file: the
+> `TelegramLoggerService` registration in `TallaEgg.TelegramBot.Infrastructure/Program.cs`, which
+> has no configuration key of its own. **Every one of them was rotated under
+> [#33](https://github.com/MohKardan/TallaEgg/issues/33) and is dead — do not report them as a
+> live leak.** Fresh readers rediscover them and raise an incident on every pass; it is a false
+> alarm each time. History is deliberately **not** rewritten — that decision and its reasoning
+> are on [#105](https://github.com/MohKardan/TallaEgg/issues/105). The config file itself is now
+> git-ignored; do not re-add it, or any new secret, to source control.
 
 Create your own copy from the template below.
 
@@ -149,7 +152,7 @@ Create your own copy from the template below.
 | `BotSettings:OwnerTelegramIds` | The only thing that lets anyone in on an empty database. A configured owner is approved and given the `Admin` role automatically when they register. Put **your own** Telegram id here. |
 | `BotSettings:DefaultReferralCode` | Must be `admin` — the code carried by the administrator row `Users.Api` seeds. Registration rejects any code that belongs to no user, so a mismatch here means **nobody can register at all**. |
 | `Matching:MarketModes` | Without a symbol set to `"Dealer"` (e.g. `"MAUA/IRT": "Dealer"`) it falls back to `OrderBook` and every quote fill for that symbol is refused. |
-| `TelegramBotToken` | Read from this file, and only from this file. The bot does not fall back to a `TELEGRAM_BOT_TOKEN` environment variable, and refuses to start without this key. |
+| `TelegramBotToken` | Normally read from this file, and the bot refuses to start without it. There is no `TELEGRAM_BOT_TOKEN` fallback — that name is not consulted. The key can still be overridden per-process, because the bot's configuration chain ends with environment variables and then the command line (#181), so `TelegramBotToken=...` in the environment or `--TelegramBotToken=...` on the command line both win over the file. |
 
 ### Ports and bind addresses
 

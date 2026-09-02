@@ -16,9 +16,12 @@ opening a PR.
 ## Quick Navigation
 
 ### For Daily Work
-1. **Start here**: [`docs/process/WORKFLOW.md`](WORKFLOW.md) — Daily standup, task selection, PR process
-2. **Sprint tasks**: [`docs/process/SPRINT_PLAN.md`](SPRINT_PLAN.md) — Detailed task breakdown, ownership, acceptance criteria
+1. **What to work on**: GitHub issues — `gh issue list`. That is where live priorities are; no document here tracks them.
+2. **How work flows**: [`docs/process/WORKFLOW.md`](WORKFLOW.md) — task selection, PR process, review
 3. **Code standards**: [`docs/process/STANDARDS.md`](STANDARDS.md) — Naming conventions, comments, PR checklist
+
+> [`SPRINT_PLAN.md`](SPRINT_PLAN.md) is **history**, not a task list. Its three sprints ran
+> July 17 – August 28, 2026 and are scored in [`docs/OKR.md`](../OKR.md).
 
 ### For Reviewing Someone Else's PR
 - **How do I review this?** → [`docs/process/CODE_REVIEW_GUIDE.md`](CODE_REVIEW_GUIDE.md) — review depth, TallaEgg-specific red flags, when to approve vs request changes
@@ -26,14 +29,16 @@ opening a PR.
 ### For Problem-Solving
 - **Why are we doing this?** → [`docs/audit/README.md`](../audit/README.md) — The audit archive: what each audit found, the score trend, and how the next one is run
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
-- **What's the architecture?** → [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today, and [`AGENT.md`](../../AGENT.md) for services, ports and layout; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
+- **What's the architecture?** → [`AGENT.md`](../../AGENT.md) for services, ports and layout; [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today — *that one is in Persian, under the §1 exception in [`STANDARDS.md`](STANDARDS.md); it has no English summary yet*; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
 
 ### For Onboarding
 - **New to the team?** → Read in this order:
   1. This file (you're reading it)
-  2. [`docs/process/STANDARDS.md`](STANDARDS.md)
-  3. [`docs/process/WORKFLOW.md`](WORKFLOW.md)
-  4. [`docs/process/SPRINT_PLAN.md`](SPRINT_PLAN.md)
+  2. [`docs/process/STANDARDS.md`](STANDARDS.md) — how to write code here
+  3. [`AGENT.md`](../../AGENT.md) — build commands, services, and the business rules that look like bugs
+  4. [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) — how trading actually works *(Persian)*
+  5. [`docs/process/WORKFLOW.md`](WORKFLOW.md) — how work flows
+  6. `gh issue list` — what to pick up
 
 ---
 
@@ -61,16 +66,18 @@ docs/
 │   ├── PR_TEMPLATE.md            ← Copy this for every PR (author side)
 │   └── CODE_REVIEW_GUIDE.md      ← How to review a PR (reviewer side)
 ├── architecture/
+│   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
 │   └── ROADMAP.md                ← Post-Sprint-1 roadmap (bot → web app migration)
-└── operations/
-    └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
+├── operations/
+│   └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
+└── OKR.md                        ← The July–August 2026 cycle and its closing scores (Persian)
 ```
 
 ### Planned (not yet created — do not link to these until they exist)
 
 - `docs/process/METRICS.md` — weekly metrics tracking (lead time, deployment freq, etc.)
 - `docs/architecture/ADR-###-*.md` — Architecture Decision Records
-- `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams. A `SoftwareArchitecture/` folder at the repo root used to hold these as PNGs; it was deleted because it described the pre-dealer-model order book and could not be updated (no diagram sources, only images). Write any replacement as Mermaid inside the Markdown, the way `DEALER_QUOTE_MODEL.md` does, so it stays reviewable in a diff.
+- `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams. Write these as Mermaid inside the Markdown, the way `DEALER_QUOTE_MODEL.md` does: a root `SoftwareArchitecture/` folder of PNGs was deleted for being unmaintainable and a year out of date. Should also cover the `OrderStatus` lifecycle, which that folder documented and nothing replaced.
 - `docs/operations/DEPLOYMENT.md`, `docs/operations/RUNBOOK.md`, `docs/operations/INFRASTRUCTURE.md`
 - `docs/design/API_CONTRACT.md`, `docs/design/DATABASE_SCHEMA.md`
 
