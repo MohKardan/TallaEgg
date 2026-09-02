@@ -108,13 +108,15 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<UserMapper>();
 builder.Services.AddTallaEggErrorHandling();
 
-// HttpClient for calling the Wallet API. The address is read here rather than inside the
-// configure delegate, which would not run until the first client was created: a missing key
-// has to stop the service coming up, not surface later as a failed registration.
-var walletApiUrl = ConfigurationGuard.RequireValue(builder.Configuration, "WalletApiUrl");
+// HttpClient for calling the Wallet API. The address is read and parsed here rather than
+// inside the configure delegate, which would not run until the first client was created. A bad
+// address has to stop the service coming up: registration creates the default wallets through
+// this client and swallows what it throws (UserService.CreateDefaultWalletsAsync), so deferring
+// the failure means users registered with no wallets and nothing said about it.
+var walletApiBaseAddress = ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
 builder.Services.AddHttpClient("WalletAPI", client =>
 {
-    client.BaseAddress = new Uri(walletApiUrl);
+    client.BaseAddress = walletApiBaseAddress;
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
