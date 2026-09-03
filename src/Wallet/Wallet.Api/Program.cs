@@ -301,12 +301,15 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 .WithTags("Transactions");
 
 // Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
+// POST, not GET: this creates rows, and GET is the verb every intermediary assumes it may
+// retry or prefetch freely. A repeat creates no duplicate rows — CreateWalletAsync keeps the
+// existing wallet — but the verb should still say what the call does. Issue #206.
 // userId: User id.
 // walletService: Wallet service.
 // Returns: The wallets that were created.
 // 200: Default wallets created.
 // 400: Wallet creation failed.
-app.MapGet("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
+app.MapPost("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     try
     {
