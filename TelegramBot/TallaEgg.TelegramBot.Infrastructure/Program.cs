@@ -36,6 +36,10 @@ public class Program
             .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
             .CreateLogger();
 
+        // Configuration guards throw before the host exists, and the bot runs as a Windows
+        // service with no console to print to — same as the five APIs (issue #205).
+        TallaEgg.Core.StartupLogging.ReportUnhandledExceptionsToLog();
+
         using var host = CreateHostBuilder(args).Build();
         await host.RunAsync();
     }

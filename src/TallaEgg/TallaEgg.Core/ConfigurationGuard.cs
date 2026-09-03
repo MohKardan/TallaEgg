@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 
 namespace TallaEgg.Core;
 
@@ -35,23 +35,10 @@ public static class ConfigurationGuard
     /// <param name="name">Connection string name, e.g. <c>OrdersDb</c>.</param>
     /// <exception cref="InvalidOperationException">The value is absent, empty, or whitespace.</exception>
     public static string RequireConnectionString(IConfiguration configuration, string name)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        var value = configuration.GetConnectionString(name);
-
-        // Whitespace counts as missing. A key present but blank is a half-finished edit, and
-        // letting it through only moves the failure to the first query.
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException(
-                $"Connection string '{name}' is missing. Add it under \"ConnectionStrings\" in " +
-                $"{SHARED_CONFIG_FILE_NAME}. The service will not start without it.");
-        }
-
-        return value;
-    }
+        => ReadNonBlank(configuration, name, static (c, n) => c.GetConnectionString(n))
+           ?? throw new InvalidOperationException(
+                  $"Connection string '{name}' is missing. Add it under \"ConnectionStrings\" in " +
+                  $"{SHARED_CONFIG_FILE_NAME}. The service will not start without it.");
 
     /// <summary>
     /// Returns the named configuration value as an absolute http(s) URI, or throws naming what
@@ -78,11 +65,31 @@ public static class ConfigurationGuard
     /// The value is absent, empty, whitespace, or not an absolute http(s) URI.
     /// </exception>
     public static Uri RequireUri(IConfiguration configuration, string key)
-    {
-        ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        => RequireAbsoluteHttpUri(ReadNonBlank(configuration, key, static (c, k) => c[k]), key);
 
-        var value = configuration[key];
+    /// <summary>
+    /// The same guard as <see cref="RequireUri"/>, for an address that has already been read out
+    /// of configuration by someone else.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="RequireUri"/> cannot serve every caller: the bot and the simulator bind their
+    /// section to a strongly typed options object and hand the resulting string to a constructor,
+    /// which never sees an <see cref="IConfiguration"/>. That constructor still has to reject a
+    /// missing or unusable address, and it has to reject it with the same words — an operator
+    /// reading a log should not have to know which of the two routes the value took.
+    ///
+    /// The value still comes from <c>Services:{ApplicationName}</c> in the shared file, so the
+    /// message names that section either way, and <paramref name="key"/> is the key it was read
+    /// from rather than the parameter it arrived in.
+    /// </remarks>
+    /// <param name="value">The configured value, or null if the key was absent.</param>
+    /// <param name="key">Configuration key the value came from, e.g. <c>WalletApiUrl</c>.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The value is absent, empty, whitespace, or not an absolute http(s) URI.
+    /// </exception>
+    public static Uri RequireAbsoluteHttpUri(string? value, string key)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         // Whitespace counts as missing, for the same reason it does for a connection string.
         if (string.IsNullOrWhiteSpace(value))
@@ -105,5 +112,23 @@ public static class ConfigurationGuard
         }
 
         return uri;
+    }
+
+    /// <summary>
+    /// The argument guards and the blank check that every reader above shares. Returns null when
+    /// the value is absent or blank, leaving the caller to phrase the failure — a connection
+    /// string and a service address live in different parts of the file and need different
+    /// instructions.
+    /// </summary>
+    private static string? ReadNonBlank(
+        IConfiguration configuration,
+        string key,
+        Func<IConfiguration, string, string?> read)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        var value = read(configuration, key);
+        return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 }

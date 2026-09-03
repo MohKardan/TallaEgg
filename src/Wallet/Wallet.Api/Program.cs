@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -24,6 +24,18 @@ var builder = WebApplication.CreateBuilder(args);
 // so this is always safe to include. Lets `sc.exe create` manage this process directly —
 // no third-party supervisor needed (issue #70).
 builder.Host.UseWindowsService();
+
+// Serilog before anything that can throw. This configuration reads nothing from the shared file
+// — the sinks are fixed here — so it can be installed ahead of the file being located, which is
+// what lets a configuration failure reach the rolling log rather than a console no Windows
+// service has (issue #205).
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+StartupLogging.ReportUnhandledExceptionsToLog();
 
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
@@ -71,17 +83,13 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKe
     builder.WebHost.UseUrls(urls);
 }
 
-// Serilog: log to rolling files and the console.
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
-    .CreateLogger();
+// SQL Server connection. Read here, not inside the options delegate below: that delegate does
+// not run until DbContextOptions<T> is first resolved, so a missing connection string failed
+// startup only because the migration block further down happens to resolve the context (#205).
+var walletConnectionString = ConfigurationGuard.RequireConnectionString(builder.Configuration, "WalletDb");
 
-builder.Host.UseSerilog();
-
-// SQL Server connection.
 builder.Services.AddDbContext<WalletDbContext>(options =>
-    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "WalletDb"),
+    options.UseSqlServer(walletConnectionString,
         b => b.MigrationsAssembly("Wallet.Api")));
 
 

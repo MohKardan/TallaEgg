@@ -23,7 +23,15 @@ public class OrderApiClient : IOrderApiClient
     public OrderApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<OrderApiClient> logger)
     {
         _httpClient = httpClient;
-        _baseUrl = configuration["OrderApiUrl"] ?? "http://localhost:5135/api";
+
+        // Guarded rather than defaulted: the old fallback pointed at 5135, which is TallaEgg.Api
+        // — a host that starts, binds and maps no routes. Orders are on 5140, so taking that
+        // branch meant talking to something that answers nothing, with nothing in the logs to
+        // say so (issue #205).
+        //
+        // TrimEnd because the paths below are concatenated, not resolved: Uri normalises an
+        // empty path to "/", which would otherwise produce "host//orders".
+        _baseUrl = ConfigurationGuard.RequireUri(configuration, "OrderApiUrl").ToString().TrimEnd('/');
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         var handler = new HttpClientHandler();

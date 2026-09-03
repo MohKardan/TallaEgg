@@ -30,6 +30,19 @@ var builder = WebApplication.CreateBuilder(args);
 // no third-party supervisor needed (issue #70).
 builder.Host.UseWindowsService();
 
+// Serilog before anything that can throw. This configuration reads nothing from the shared file
+// — the sinks are fixed here — so it can be installed ahead of the file being located, which is
+// what lets a configuration failure reach the rolling log rather than a console no Windows
+// service has (issue #205).
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
+    .WriteTo.Console()
+    .WriteTo.File("logs/orders-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+StartupLogging.ReportUnhandledExceptionsToLog();
+
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
 builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
@@ -76,9 +89,14 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKe
     builder.WebHost.UseUrls(urls);
 }
 
-// SQL Server connection.
+// SQL Server connection. Read here, not inside the options delegate below: that delegate does
+// not run until DbContextOptions<T> is first resolved, so a missing connection string failed
+// startup only because the migration block further down happens to resolve the context. Reorder
+// or guard that block and the same mistake would surface at the first request instead (#205).
+var ordersConnectionString = ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb");
+
 builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "OrdersDb"),
+    options.UseSqlServer(ordersConnectionString,
         b => b.MigrationsAssembly("Orders.Infrastructure"))
     .LogTo(Console.WriteLine, LogLevel.None)); // Disable all EF Core logging
 
@@ -111,22 +129,25 @@ builder.Services.AddScoped<ITradeRepository, TradeRepository>();
 builder.Services.AddScoped<OrderMatchingRepository>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<TradeService>();
+// UsersApiClient is scoped, so its constructor — which reads UsersApiUrl — would not run until
+// the first request. Reading the key here as well makes an absent one stop the service coming
+// up, which is where a configuration mistake belongs (issue #205).
+ConfigurationGuard.RequireUri(builder.Configuration, "UsersApiUrl");
 builder.Services.AddScoped<UsersApiClient>();
 
 
-// Add Wallet API Client
+// Add Wallet API Client. The address is read and parsed out here rather than inside the
+// configure delegate, which does not run until the first client is created (issue #205).
+var walletApiBaseAddress = ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
 builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>
 {
-    var walletApiUrl = builder.Configuration.GetValue<string>("WalletApiUrl") ?? "http://localhost:60933";
-    client.BaseAddress = new Uri(walletApiUrl);
+    client.BaseAddress = walletApiBaseAddress;
 });
 
 // CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
 builder.Services.AddTallaEggErrorHandling();
-
-builder.Services.AddScoped<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
 // Matching engine — a single instance (issue #53). The reasoning lives in
 // MatchingEngineRegistration, which the tests call too.
@@ -212,15 +233,6 @@ builder.Services.AddSwaggerGen(c =>
         c.IncludeXmlComments(xmlPath);
     }
 });
-
-// Serilog: rolling files, console, and an EF Core filter.
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", Serilog.Events.LogEventLevel.Warning)
-    .WriteTo.Console()
-    .WriteTo.File("logs/orders-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
-    .CreateLogger();
-
-builder.Host.UseSerilog();
 
 var app = builder.Build();
 
