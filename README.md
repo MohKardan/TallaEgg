@@ -289,7 +289,9 @@ CI runs `dotnet test TallaEgg.sln` rather than naming this project by path, so a
 
 ## Logging
 
-Each service writes to the console and to rolling files under its own `logs/` directory — for example `src/Order/Orders.Api/logs/orders-api-<date>.log`.
+Each service writes to the console and to a rolling file in a `logs/` directory **beside its own binary**, not in the directory it was launched from.
+
+Under `dotnet run` that is the build output — `src/Order/Orders.Api/bin/Debug/net9.0/logs/orders-api-<date>.log`. On a deployed machine it is the publish folder — `C:\TallaEgg\publish\Orders.Api\logs\orders-api-<date>.log`. See [`docs/operations/WINDOWS_DEPLOYMENT.md`](docs/operations/WINDOWS_DEPLOYMENT.md) for the deployment case, which was writing into `C:\Windows\System32\logs\` until [#211](https://github.com/MohKardan/TallaEgg/issues/211).
 
 ## Deployment
 

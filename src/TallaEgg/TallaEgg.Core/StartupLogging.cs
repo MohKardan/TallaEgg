@@ -8,6 +8,27 @@ namespace TallaEgg.Core;
 public static class StartupLogging
 {
     /// <summary>
+    /// Builds an absolute path to <paramref name="fileName"/> in a <c>logs</c> directory beside
+    /// the running binary, for a Serilog file sink.
+    /// </summary>
+    /// <remarks>
+    /// Serilog resolves a relative sink path against the process working directory. The four
+    /// deployed hosts are installed with <c>sc.exe create</c> (issue #70), which has no option to
+    /// set one, so the SCM hands every service <c>C:\Windows\System32</c> — and that is exactly
+    /// where all four logs were found on the first real deployment (issue #211).
+    ///
+    /// <para>
+    /// <c>UseWindowsService()</c> does not help here: it points <c>ContentRootPath</c> at
+    /// <see cref="AppContext.BaseDirectory"/> but leaves <c>Environment.CurrentDirectory</c>
+    /// alone. The sink is also configured before the host exists, so there is no
+    /// <c>IHostEnvironment</c> to read yet. <see cref="AppContext.BaseDirectory"/> is the one
+    /// anchor available at that point that does not depend on how the process was launched.
+    /// </para>
+    /// </remarks>
+    public static string LogFilePath(string fileName) =>
+        Path.Combine(AppContext.BaseDirectory, "logs", fileName);
+
+    /// <summary>
     /// Reports any exception that terminates the process through the configured Serilog sinks.
     /// </summary>
     /// <remarks>
@@ -32,8 +53,9 @@ public static class StartupLogging
     /// </para>
     ///
     /// <para>
-    /// The log path itself is still relative to the working directory, which <c>sc.exe</c> does
-    /// not set — tracked on issue #105.
+    /// The file it reaches is now the one the operator is told to look at: <see cref="LogFilePath"/>
+    /// anchors the sink beside the binary, so it no longer follows the working directory the SCM
+    /// picks (issue #211).
     /// </para>
     /// </remarks>
     public static void ReportUnhandledExceptionsToLog()

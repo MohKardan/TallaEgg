@@ -10,10 +10,21 @@
     server after a `git pull`).
 
 .NOTES
-    Requires config\appsettings.global.json to exist in this repo checkout at publish time —
-    Directory.Build.props copies it into each output folder automatically when present. Without
-    it, ResolveSharedConfigPath() falls back to walking up from <InstallRoot>\config\, which
-    install-services.ps1 checks for separately before creating any service.
+    Does NOT require config\appsettings.global.json in this repo checkout. Directory.Build.props
+    copies it into each output folder when present, but that copy lands at the output root and
+    ResolveSharedConfigPath() only ever looks inside a config\ subfolder of each ancestor — so it
+    is never the file that gets loaded. The single mechanism that works is the walk up from the
+    binary's own folder:
+
+        C:\TallaEgg\publish\<Service>\   <- where the walk starts (AppContext.BaseDirectory,
+                                            which UseWindowsService() sets ContentRootPath to)
+        C:\TallaEgg\publish\             <- checked for config\, absent
+        C:\TallaEgg\                     <- config\appsettings.global.json found here
+
+    So <InstallRoot>\config\appsettings.global.json is what every service reads, and
+    install-services.ps1 refuses to create a service until it exists. Before #212 the bot walked
+    up from the working directory instead, which the SCM sets to C:\Windows\System32 — it could
+    not start as a service at all.
 #>
 [CmdletBinding()]
 param(

@@ -25,7 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 // matches its siblings, where that is the whole point.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/tallaegg-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .WriteTo.File(StartupLogging.LogFilePath("tallaegg-api-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();
