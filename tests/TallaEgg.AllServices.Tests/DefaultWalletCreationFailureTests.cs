@@ -277,6 +277,33 @@ public class DefaultWalletCreationFailureTests
     }
 
     /// <summary>
+    /// The credential, from the calling side. Wallet.Api requires <c>X-API-Key</c> in Production
+    /// and registers no authentication at all in Development, so a sender that omits it passes
+    /// every local run, every simulator run and every test in this project, and 401s on every
+    /// registration once deployed — where lazy wallet creation then hides the result behind the
+    /// first deposit or trade (issue #209). It was missing for the life of the deployment.
+    ///
+    /// <para>
+    /// Asserted against the source for the same reason as the test above: the registration lives
+    /// in Users.Api's top-level statements, and composing it for real needs the shared
+    /// configuration file and a database. The header is matched inside the <c>"WalletAPI"</c>
+    /// registration rather than anywhere in the file, so moving it to a different client does not
+    /// keep this green, and the value has to be an identifier — a string literal here would be a
+    /// key checked into a public repository (issue #33).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void UsersApi_WalletApiNamedClient_SendsTheSharedApiKeyHeader()
+    {
+        var program = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(), "src", "User", "Users.Api", "Program.cs"));
+
+        Assert.Matches(
+            @"AddHttpClient\(\s*""WalletAPI""[\s\S]*?DefaultRequestHeaders\.Add\(\s*""X-API-Key"",\s*\w+\s*\)",
+            program);
+    }
+
+    /// <summary>
     /// Walks up from the test assembly to the directory holding <c>TallaEgg.sln</c>. The same
     /// anchor <c>ConfigurationPrecedenceTests</c> and <c>SolutionMembershipTests</c> use, and
     /// duplicated for the reason they duplicate it: sharing it would mean editing tests this
