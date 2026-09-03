@@ -134,6 +134,14 @@ builder.Services.AddHttpClient("WalletAPI", client =>
 {
     client.BaseAddress = walletApiBaseAddress;
     client.Timeout = TimeSpan.FromSeconds(30);
+
+    // Wallet.Api requires X-API-Key in Production, so without this every registration on a
+    // deployed system got 401 and created no wallets. It stayed hidden because Development
+    // registers no authentication at all, and because a missing wallet is created lazily on
+    // first write — the first deposit or trade produced the rows registration had failed to
+    // (issue #209). The typed clients set the same header in their constructors; a named
+    // client has no constructor to set it in, so it goes here.
+    client.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
 });
 
 // CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
