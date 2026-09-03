@@ -9,10 +9,10 @@ namespace TallaEgg.AllServices.Tests;
 /// <para>
 /// Both were relative to the process working directory, and <c>sc.exe create</c> has no option to
 /// set one, so the SCM handed every installed service <c>C:\Windows\System32</c>. The bot could
-/// not start at all, and all four services wrote their logs into a Windows system directory. The
-/// working directory is not something the deployment can influence; the content root and
-/// <c>AppContext.BaseDirectory</c> both point at the binary's own folder under
-/// <c>UseWindowsService()</c>, and are.
+/// not start at all, and all four services wrote their logs into a Windows system directory. A
+/// deployment cannot influence the working directory at all; it controls where the binary sits,
+/// which is what <see cref="AppContext.BaseDirectory"/> reports and what
+/// <c>UseWindowsService()</c> points the content root at.
 /// </para>
 ///
 /// <para>
@@ -38,6 +38,19 @@ public class ServiceHostPathAnchorTests
         "src/Order/Orders.Api/Program.cs",
         "src/Affiliate/Affiliate.Api/Program.cs",
         "src/TallaEgg/TallaEgg.Api/Program.cs",
+        "TelegramBot/TallaEgg.TelegramBot.Infrastructure/Program.cs",
+    ];
+
+    /// <summary>
+    /// The four hosts <c>install-services.ps1</c> actually installs. <c>Affiliate.Api</c> and
+    /// <c>TallaEgg.Api</c> are not among them and do not call <c>UseWindowsService()</c> — see
+    /// #69: nothing calls <c>TallaEgg.Api</c>, and <c>Affiliate.Api</c> ships no migrations.
+    /// </summary>
+    public static TheoryData<string> DeployedHostEntryPoints =>
+    [
+        "src/User/Users.Api/Program.cs",
+        "src/Wallet/Wallet.Api/Program.cs",
+        "src/Order/Orders.Api/Program.cs",
         "TelegramBot/TallaEgg.TelegramBot.Infrastructure/Program.cs",
     ];
 
@@ -99,6 +112,30 @@ public class ServiceHostPathAnchorTests
 
         Assert.Empty(workingDirectoryReads);
         Assert.Contains(lines, line => IsCode(line) && line.Contains("ContentRootPath", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Reading the content root is only half of it. <c>ContentRootPath</c> defaults to the working
+    /// directory; the one thing that moves it to the binary's folder is <c>UseWindowsService()</c>,
+    /// which does so only inside a real SCM session. Delete that call from a deployed host and
+    /// issue #212 comes straight back — the content root falls back to <c>C:\Windows\System32</c>,
+    /// the walk up finds no <c>config\</c>, and the host throws inside <c>HostBuilder.Build()</c>
+    /// — while every other assertion in this class stays green, because they only check what the
+    /// walk starts from.
+    ///
+    /// <para>
+    /// Blunt, like the rest of this file: it checks the call is written, not that it took effect.
+    /// Nothing here can check the latter, since it is a no-op outside a service session, which is
+    /// the whole difficulty with this class of bug.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DeployedHostEntryPoints))]
+    public void EveryDeployedHost_CallsUseWindowsServiceSoTheContentRootFollowsTheBinary(string relativePath)
+    {
+        Assert.Contains(
+            ReadLines(relativePath),
+            line => IsCode(line) && line.Contains("UseWindowsService()", StringComparison.Ordinal));
     }
 
     /// <summary>

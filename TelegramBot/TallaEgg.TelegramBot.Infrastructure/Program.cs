@@ -185,6 +185,17 @@ public class Program
     /// Under <c>dotnet run</c> the content root is the project folder, the same directory the
     /// working directory pointed at, so the development path is unchanged.
     /// </para>
+    ///
+    /// <para>
+    /// The Serilog sink next to this uses <see cref="AppContext.BaseDirectory"/> rather than the
+    /// content root, and the two differ in exactly one case: a *published* exe launched by hand
+    /// from some other directory, where the content root is still that shell's directory and this
+    /// walk can miss a config the sink would have found. Anchoring here on
+    /// <c>AppContext.BaseDirectory</c> too would cover that case, and is deliberately not done —
+    /// it would make the bot the one host of six resolving configuration differently, which is the
+    /// asymmetry issue #212 was about. If this is ever worth changing, change all six together.
+    /// The sink cannot use the content root regardless: it is configured before the host exists.
+    /// </para>
     /// </remarks>
     private static string ResolveSharedConfigPath(IHostEnvironment environment, string fileName)
     {
