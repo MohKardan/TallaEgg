@@ -39,7 +39,16 @@ public class BotHandlerRegistrationTests
     {
         var services = new ServiceCollection();
 
-        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection().Build());
+        // The real ports, because the clients now require a usable address rather than falling
+        // back to one (issue #205). Nothing here makes a request — the addresses are only parsed.
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["OrderApiUrl"] = "http://localhost:5140/api",
+                ["UsersApiUrl"] = "http://localhost:5136/api",
+                ["WalletApiUrl"] = "http://localhost:60933/api",
+            })
+            .Build());
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddLogging();
         services.AddHttpClient();

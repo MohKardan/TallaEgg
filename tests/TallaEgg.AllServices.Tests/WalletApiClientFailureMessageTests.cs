@@ -40,8 +40,13 @@ public class WalletApiClientFailureMessageTests
     }
 
     private static WalletApiClient ClientAnswering(HttpStatusCode status, string body) =>
-        new(new HttpClient(new CannedHandler(status, body)) { BaseAddress = new Uri("http://wallet.test/") },
-            new ConfigurationBuilder().Build(),
+        new(new HttpClient(new CannedHandler(status, body)),
+            // The constructor sets the base address from this key and now requires it to be
+            // there (issue #205). The canned handler answers whatever is asked, so the host is
+            // only ever a label.
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?> { ["WalletApiUrl"] = "http://wallet.test/api" })
+                .Build(),
             NullLogger<WalletApiClient>.Instance);
 
     private static WalletRequest AnyRequest() => new()

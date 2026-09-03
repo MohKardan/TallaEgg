@@ -20,7 +20,7 @@ public class WalletApiClient : IWalletApiClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<WalletApiClient> _logger;
-    private readonly string? _walletApiUrl;
+    private readonly Uri _walletApiUrl;
 
     /// <summary>
     /// Builds its own <see cref="HttpClient"/> for callers outside a DI container. The logger is
@@ -29,6 +29,11 @@ public class WalletApiClient : IWalletApiClient
     /// this class is unconditional and a null field would turn a successful lock into a
     /// <see cref="NullReferenceException"/>.
     /// </summary>
+    /// <param name="apiUrl">
+    /// The value of <c>WalletApiUrl</c> from this host's own configuration section. Guarded, not
+    /// defaulted: the bot and the simulator both reach this constructor through
+    /// <c>TelegramBotOptions</c>, where an absent key arrives as null (issue #205).
+    /// </param>
     public WalletApiClient(string? apiUrl, ILogger<WalletApiClient>? logger = null)
     {
         _logger = logger ?? NullLogger<WalletApiClient>.Instance;
@@ -40,18 +45,22 @@ public class WalletApiClient : IWalletApiClient
 #endif
         _httpClient = new HttpClient(handler);
 
-        _walletApiUrl = apiUrl ?? "http://localhost:60933/api";
-        _httpClient.BaseAddress = new Uri(_walletApiUrl);
+        _walletApiUrl = ConfigurationGuard.RequireAbsoluteHttpUri(apiUrl, "WalletApiUrl");
+        _httpClient.BaseAddress = _walletApiUrl;
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
     public WalletApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<WalletApiClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
-        _walletApiUrl = configuration["WalletApiUrl"] ?? "http://localhost:60933/api";
+
+        // Guarded rather than defaulted for the reason in ConfigurationGuard: the old fallback
+        // was the address this client actually used in Orders.Api, so a missing key started the
+        // service against a host nobody had configured (issue #205).
+        _walletApiUrl = ConfigurationGuard.RequireUri(configuration, "WalletApiUrl");
 
         // Configure HttpClient base address
-        _httpClient.BaseAddress = new Uri(_walletApiUrl);
+        _httpClient.BaseAddress = _walletApiUrl;
         _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }

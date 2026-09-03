@@ -166,4 +166,58 @@ public class ConfigurationGuardTests
 
         Assert.Contains("localhost:60933", exception.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The overload for a value that reached the caller by some other route — the bot and the
+    /// simulator bind their section to <c>TelegramBotOptions</c> and hand the string to a
+    /// constructor, which never sees an <see cref="IConfiguration"/> (issue #205).
+    /// </summary>
+    [Fact]
+    public void RequireAbsoluteHttpUri_WhenTheValueIsUsable_ReturnsTheParsedUri()
+    {
+        var uri = ConfigurationGuard.RequireAbsoluteHttpUri("http://localhost:60933/api", "WalletApiUrl");
+
+        Assert.Equal(new Uri("http://localhost:60933/api"), uri);
+    }
+
+    /// <summary>
+    /// An absent key arrives at that constructor as null. It has to be rejected there, or the
+    /// bot starts with a wallet client pointed at a compiled-in address.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RequireAbsoluteHttpUri_WhenTheValueIsMissingOrBlank_Throws(string? value)
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireAbsoluteHttpUri(value, "WalletApiUrl"));
+    }
+
+    /// <summary>Same rejection as the configuration overload — one implementation, one behaviour.</summary>
+    [Theory]
+    [InlineData("60933")]
+    [InlineData("localhost:60933")]
+    [InlineData("REPLACE_WITH_WALLET_URL")]
+    public void RequireAbsoluteHttpUri_WhenTheValueIsNotAnAbsoluteHttpUrl_Throws(string value)
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireAbsoluteHttpUri(value, "WalletApiUrl"));
+    }
+
+    /// <summary>
+    /// Both routes to the same guard have to produce the same words. An operator reading a log
+    /// line cannot be expected to know whether the value arrived through IConfiguration or
+    /// through a bound options object.
+    /// </summary>
+    [Fact]
+    public void RequireAbsoluteHttpUri_AndRequireUri_ReportAMissingValueIdentically()
+    {
+        var throughConfiguration = Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireUri(Configuration(), "WalletApiUrl"));
+        var throughTheString = Assert.Throws<InvalidOperationException>(
+            () => ConfigurationGuard.RequireAbsoluteHttpUri(null, "WalletApiUrl"));
+
+        Assert.Equal(throughConfiguration.Message, throughTheString.Message);
+    }
 }

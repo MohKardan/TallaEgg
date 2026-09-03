@@ -23,7 +23,19 @@ public class UsersApiClient : IUsersApiClient
     public UsersApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<UsersApiClient> logger)
     {
         _httpClient = httpClient;
-        _baseUrl = ResolveUsersApiBaseUrl(configuration) ?? "http://localhost:5001/api";
+
+        // Read from this host's own section and nowhere else. It used to fall through to a scan
+        // of every key in the merged configuration for anything ending in "UsersApiUrl", which
+        // meant Orders.Api — whose section defined no such key — was served by whichever other
+        // service's section the enumeration reached first. Two of them held incompatible shapes,
+        // one with an /api suffix and one without, so the address that worked was landed on
+        // rather than chosen (issue #205). Every caller now defines its own key.
+        //
+        // AbsoluteUri rather than ToString, which unescapes: a percent-escaped or non-ASCII
+        // host would come back decoded and be concatenated into a request against a different
+        // authority than was configured. TrimEnd because the paths below are concatenated, not
+        // resolved: Uri normalises an empty path to "/", which would produce "host//users/list".
+        _baseUrl = ConfigurationGuard.RequireUri(configuration, "UsersApiUrl").AbsoluteUri.TrimEnd('/');
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         var handler = new HttpClientHandler();
@@ -33,31 +45,6 @@ public class UsersApiClient : IUsersApiClient
 #endif
         _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
-    }
-
-    private static string? ResolveUsersApiBaseUrl(IConfiguration? configuration)
-    {
-        if (configuration is null)
-        {
-            return null;
-        }
-
-        var directValue = configuration["UsersApiUrl"];
-        if (!string.IsNullOrWhiteSpace(directValue))
-        {
-            return directValue;
-        }
-
-        foreach (var pair in configuration.AsEnumerable())
-        {
-            if (pair.Key?.EndsWith("UsersApiUrl", StringComparison.OrdinalIgnoreCase) == true &&
-                !string.IsNullOrWhiteSpace(pair.Value))
-            {
-                return pair.Value;
-            }
-        }
-
-        return null;
     }
 
     public async Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(

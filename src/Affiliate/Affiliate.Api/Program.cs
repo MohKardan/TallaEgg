@@ -14,6 +14,19 @@ using TallaEgg.Core.ErrorHandling;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Serilog before anything that can throw. This configuration reads nothing from the shared file
+// — the sinks are fixed here — so it can be installed ahead of the file being located, and a
+// configuration failure reaches the rolling log rather than only stderr (issue #205). This
+// service is not one of the four installed with sc.exe, so it does have a console; the ordering
+// matches its siblings, where that is the whole point.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File("logs/affiliate-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+StartupLogging.ReportUnhandledExceptionsToLog();
+
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
 builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
@@ -61,8 +74,13 @@ if (string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKe
 }
 
 // تنظیم اتصال به دیتابیس SQL Server
+// SQL Server connection. Read here, not inside the options delegate below: that delegate does
+// not run until DbContextOptions<T> is first resolved, so a missing connection string failed
+// startup only because the migration block further down happens to resolve the context (#205).
+var affiliateConnectionString = ConfigurationGuard.RequireConnectionString(builder.Configuration, "AffiliateDb");
+
 builder.Services.AddDbContext<AffiliateDbContext>(options =>
-    options.UseSqlServer(ConfigurationGuard.RequireConnectionString(builder.Configuration, "AffiliateDb"),
+    options.UseSqlServer(affiliateConnectionString,
         b => b.MigrationsAssembly("Affiliate.Api")));
 
 // فقط در production محافظت فعال شود
@@ -98,14 +116,6 @@ builder.Services.AddTallaEggCors(builder.Configuration);
 builder.Services.AddScoped<IAffiliateRepository, AffiliateRepository>();
 builder.Services.AddScoped<AffiliateService>();
 builder.Services.AddTallaEggErrorHandling();
-
-// پیکربندی Serilog برای لاگ‌نویسی روی فایل و کنسول
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .WriteTo.File("logs/affiliate-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
-    .CreateLogger();
-
-builder.Host.UseSerilog();
 
 var app = builder.Build();
 
