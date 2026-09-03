@@ -47,11 +47,22 @@ public class DefaultWalletCreationFailureTests
         }
     }
 
-    /// <summary>Hands out one client over the handler the test supplied, like the real named client.</summary>
+    /// <summary>
+    /// Hands out one client over the handler the test supplied, like the real named client, and
+    /// records the name it was asked for. The real factory answers an unregistered name with a
+    /// default client whose <c>BaseAddress</c> is null, and the broad catch in the method under
+    /// test would swallow the resulting <c>InvalidOperationException</c> into one Error line per
+    /// registration — so the name is a precondition worth asserting, not decoration.
+    /// </summary>
     private sealed class SingleClientFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) =>
-            new(handler, disposeHandler: false) { BaseAddress = new Uri("http://wallet.test/") };
+        public List<string> RequestedNames { get; } = [];
+
+        public HttpClient CreateClient(string name)
+        {
+            RequestedNames.Add(name);
+            return new(handler, disposeHandler: false) { BaseAddress = new Uri("http://wallet.test/") };
+        }
     }
 
     /// <summary>
@@ -152,8 +163,31 @@ public class DefaultWalletCreationFailureTests
         await service.RegisterUserAsync(AnyNewUser());
 
         var error = Assert.Single(logger.Entries, e => e.Level == LogLevel.Error);
-        Assert.Contains("400", error.Message);
+        // "HTTP 400", not "400": the message also interpolates a random Guid, and one in fifty
+        // of those contains "400" somewhere — an assertion that would go green on the wrong
+        // status code some of the time, which is worse than one that goes red some of the time.
+        Assert.Contains("HTTP 400", error.Message);
         Assert.Contains(reason, error.Message);
+    }
+
+    /// <summary>
+    /// The logged body is capped. An intermediary answering with a multi-kilobyte HTML error page
+    /// would otherwise be copied whole into the rolling log once per registration — and a
+    /// registration burst against a sick wallet service is the exact case this logging exists for,
+    /// so the unbounded version is at its worst precisely when it is most needed.
+    /// </summary>
+    [Fact]
+    public async Task RegisterUserAsync_WalletServiceReturnsAHugeBody_TruncatesItBeforeLogging()
+    {
+        var huge = new string('x', 20_000);
+        var handler = new RecordingHandler(_ => Answer(HttpStatusCode.BadGateway, huge));
+        var (service, _, logger) = ServiceOver(handler);
+
+        await service.RegisterUserAsync(AnyNewUser());
+
+        var error = Assert.Single(logger.Entries, e => e.Level == LogLevel.Error);
+        Assert.Contains("(truncated)", error.Message);
+        Assert.True(error.Message.Length < 1_000, $"message was {error.Message.Length} characters");
     }
 
     /// <summary>A refused wallet creation must not take the registration down with it either.</summary>
@@ -188,6 +222,25 @@ public class DefaultWalletCreationFailureTests
         Assert.Equal($"/api/wallet/create-default/{user.Id}", request.RequestUri?.AbsolutePath);
     }
 
+    /// <summary>
+    /// The call goes through the configured "WalletAPI" client. Nothing else pins that name, and
+    /// a rename on one side only would leave the real factory handing back a default client with
+    /// no <c>BaseAddress</c> — a failure the broad catch turns into an Error line per
+    /// registration and no wallets for anyone.
+    /// </summary>
+    [Fact]
+    public async Task RegisterUserAsync_CreatesDefaultWallets_ThroughTheConfiguredWalletClient()
+    {
+        var handler = new RecordingHandler(_ => Answer(HttpStatusCode.OK, "{\"success\":true}"));
+        var factory = new SingleClientFactory(handler);
+        var service = new UserService(
+            new OneUserRepository(), new UserMapper(), factory, new CapturingLogger<UserService>());
+
+        await service.RegisterUserAsync(AnyNewUser());
+
+        Assert.Equal("WalletAPI", Assert.Single(factory.RequestedNames));
+    }
+
     /// <summary>A wallet creation that works logs nothing at Error — otherwise the check is noise.</summary>
     [Fact]
     public async Task RegisterUserAsync_WalletServiceSucceeds_LogsNoError()
@@ -203,8 +256,15 @@ public class DefaultWalletCreationFailureTests
     /// <summary>
     /// The verb, from the serving side. The two halves have to agree and only one of them is
     /// covered by the client test above; standing Wallet.Api up for real needs the shared
-    /// configuration file and a database, so the mapping is asserted against its source. If the
-    /// route ever moves, this assertion is meant to be updated, not deleted.
+    /// configuration file and a database, which is why nothing covers its route table today, so
+    /// the mapping is asserted against its source instead.
+    ///
+    /// <para>
+    /// The patterns tolerate whitespace and line breaks so that reformatting the call does not
+    /// turn this red. They cannot survive the route being extracted to a constant or mapped
+    /// through <c>MapMethods</c> — if that happens this assertion is meant to be rewritten
+    /// against whatever expresses the verb then, not deleted.
+    /// </para>
     /// </summary>
     [Fact]
     public void WalletApi_MapsDefaultWalletCreation_AsPostNotGet()
@@ -212,8 +272,8 @@ public class DefaultWalletCreationFailureTests
         var program = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(), "src", "Wallet", "Wallet.Api", "Program.cs"));
 
-        Assert.Contains("app.MapPost(\"/api/wallet/create-default/{userId}\"", program);
-        Assert.DoesNotContain("app.MapGet(\"/api/wallet/create-default/{userId}\"", program);
+        Assert.Matches(@"app\.MapPost\(\s*""/api/wallet/create-default/\{userId\}""", program);
+        Assert.DoesNotMatch(@"app\.MapGet\(\s*""/api/wallet/create-default/\{userId\}""", program);
     }
 
     /// <summary>

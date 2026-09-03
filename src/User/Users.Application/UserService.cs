@@ -215,16 +215,16 @@ public class UserService
             using var httpClient = _httpClientFactory.CreateClient("WalletAPI");
             _logger.Log(LogLevel.Information,"درخواست برای ساخت کیف پول های پیش فرض" + " " + httpClient.BaseAddress + $"api/wallet/create-default/{userId}");
 
-            var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+            using var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
 
             if (!response.IsSuccessStatusCode)
             {
                 // A non-2xx never reaches the catch below — it is a completed request, not an
                 // exception — and it is the likelier of the two failures, so it needs its own
-                // Error entry. The body carries the wallet service's own reason for refusing.
-                var body = await response.Content.ReadAsStringAsync();
+                // Error entry. The body carries whatever reason the wallet service gave.
+                var body = Truncated(await response.Content.ReadAsStringAsync());
                 _logger.LogError(
-                    "Default wallet creation for user {UserId} was refused: HTTP {StatusCode}. Response: {ResponseBody}. Registration continues; this user has no wallets until one is created on first use.",
+                    "Default wallet creation for user {UserId} was refused: HTTP {StatusCode}. Response: {ResponseBody}. Registration continues; this user's default wallets may be missing or incomplete.",
                     userId, (int)response.StatusCode, body);
             }
         }
@@ -235,8 +235,20 @@ public class UserService
             // must not happen. The exception is logged, so its type is visible in the log
             // rather than flattened away here.
             _logger.LogError(ex,
-                "Default wallet creation for user {UserId} failed. Registration continues; this user has no wallets until one is created on first use.",
+                "Default wallet creation for user {UserId} failed. Registration continues; this user's default wallets may be missing or incomplete.",
                 userId);
         }
     }
+
+    /// <summary>
+    /// Caps a response body before it is logged. An intermediary answering with an HTML error
+    /// page would otherwise be copied whole into the rolling log once per registration, and a
+    /// registration burst is exactly when this logging fires.
+    /// </summary>
+    private static string Truncated(string body) =>
+        body.Length <= MaxLoggedResponseBody
+            ? body
+            : string.Concat(body.AsSpan(0, MaxLoggedResponseBody), "… (truncated)");
+
+    private const int MaxLoggedResponseBody = 500;
 }

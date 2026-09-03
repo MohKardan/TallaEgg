@@ -302,8 +302,8 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 
 // Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
 // POST, not GET: this creates rows, and GET is the verb every intermediary assumes it may
-// retry or prefetch freely. Idempotent — CreateWalletAsync returns the existing wallet — so a
-// repeat is harmless, but the verb should still say what the call does. Issue #206.
+// retry or prefetch freely. A repeat creates no duplicate rows — CreateWalletAsync keeps the
+// existing wallet — but the verb should still say what the call does. Issue #206.
 // userId: User id.
 // walletService: Wallet service.
 // Returns: The wallets that were created.
