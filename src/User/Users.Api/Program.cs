@@ -130,11 +130,37 @@ builder.Services.AddTallaEggErrorHandling();
 // this client and swallows what it throws (UserService.CreateDefaultWalletsAsync), so deferring
 // the failure means users registered with no wallets and nothing said about it.
 var walletApiBaseAddress = ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
+
+// Read here rather than inside the configure delegate below, for the reason the address is:
+// the delegate does not run until the first client is created, so a missing key would surface
+// one registration at a time inside the broad catch in UserService.CreateDefaultWalletsAsync
+// instead of stopping the service (issue #205). Production demands the real key — sending the
+// placeholder to a Wallet.Api that enforces the real one reproduces issue #209 exactly, with
+// the header present so the code reads as fixed. Outside Production the placeholder is right:
+// no service registers API-key authentication there, and requiring the variable would stop
+// every clone and CI job that has no reason to hold it.
+var walletApiKey = builder.Environment.IsProduction()
+    ? APIKeyConstant.RequireTallaEggApiKey()
+    : APIKeyConstant.TallaEggApiKey;
+
 builder.Services.AddHttpClient("WalletAPI", client =>
 {
     client.BaseAddress = walletApiBaseAddress;
     client.Timeout = TimeSpan.FromSeconds(30);
-});
+
+    // Wallet.Api requires X-API-Key in Production, so without this every registration on a
+    // deployed system got 401 and created no wallets. It stayed hidden because Development
+    // registers no authentication at all, and because a missing wallet is created lazily on
+    // first write — the first deposit or trade produced the rows registration had failed to
+    // (issue #209). The typed clients set the same header in their constructors; a named
+    // client has no constructor to set it in, so it goes here.
+    client.DefaultRequestHeaders.Add("X-API-Key", walletApiKey);
+})
+// The only key-bearing client in the solution built through IHttpClientFactory, whose logging
+// handlers write request headers at Trace and redact nothing by default. The other four are
+// raw HttpClients and never reach those handlers, so this is the one place the shared key
+// could be written to a log by lowering a level.
+.RedactLoggedHeaders(["X-API-Key"]);
 
 // CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
