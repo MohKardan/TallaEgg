@@ -32,6 +32,8 @@
     <ProjectReference Include="..\..\src\Wallet\Wallet.Infrastructure\Wallet.Infrastructure.csproj" />
     <!-- برای پین‌کردن رفتار MakeTradeAsync که پشت قرنطینهٔ C-8 است (issue #46). -->
     <ProjectReference Include="..\..\src\Wallet\Wallet.Application\Wallet.Application.csproj" />
+    <!-- UserService: the registration path that creates a user's default wallets (issue #206). -->
+    <ProjectReference Include="..\..\src\User\Users.Application\Users.Application.csproj" />
     <!-- OutboxMessage lives on the Orders side; its state machine is unit-tested here. -->
     <ProjectReference Include="..\..\src\Order\Orders.Core\Orders.Core.csproj" />
     <ProjectReference Include="..\..\src\Order\Orders.Infrastructure\Orders.Infrastructure.csproj" />

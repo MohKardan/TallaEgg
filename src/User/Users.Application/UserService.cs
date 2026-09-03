@@ -197,24 +197,46 @@ public class UserService
     /// <summary>
     /// Creates the default wallets for a new user.
     /// </summary>
+    /// <remarks>
+    /// A failure here deliberately does not fail the registration: a user should not be turned
+    /// away because Wallet.Api happens to be restarting. It does have to be recorded, though.
+    /// Until issue #206 it was not — failures went to <c>Console.WriteLine</c>, and under
+    /// <c>sc.exe</c> a Windows service has no console, so a registration burst during a
+    /// Wallet.Api restart committed users with no wallets and said so nowhere. These Error
+    /// entries are the only trace such a user leaves: a missing wallet is created lazily the
+    /// first time it is written to, so afterwards nothing in the wallet database distinguishes
+    /// them from anyone else.
+    /// </remarks>
     /// <param name="userId">User id.</param>
-    /// <returns>Whether it succeeded.</returns>
-    private async Task<bool> CreateDefaultWalletsAsync(Guid userId)
+    private async Task CreateDefaultWalletsAsync(Guid userId)
     {
         try
         {
             using var httpClient = _httpClientFactory.CreateClient("WalletAPI");
             _logger.Log(LogLevel.Information,"درخواست برای ساخت کیف پول های پیش فرض" + " " + httpClient.BaseAddress + $"api/wallet/create-default/{userId}");
-            
-            var response = await httpClient.GetAsync($"api/wallet/create-default/{userId}");
-            
-            return response.IsSuccessStatusCode;
+
+            var response = await httpClient.PostAsync($"api/wallet/create-default/{userId}", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // A non-2xx never reaches the catch below — it is a completed request, not an
+                // exception — and it is the likelier of the two failures, so it needs its own
+                // Error entry. The body carries the wallet service's own reason for refusing.
+                var body = await response.Content.ReadAsStringAsync();
+                _logger.LogError(
+                    "Default wallet creation for user {UserId} was refused: HTTP {StatusCode}. Response: {ResponseBody}. Registration continues; this user has no wallets until one is created on first use.",
+                    userId, (int)response.StatusCode, body);
+            }
         }
         catch (Exception ex)
         {
-            // Log the error but don't fail user creation
-            Console.WriteLine($"خطا در ایجاد کیف پول‌های پیش‌فرض برای کاربر {userId}: {ex.Message}");
-            return false;
+            // Stays broad on purpose: nothing is rethrown, so narrowing it would turn some
+            // failures into failed registrations, which is exactly what the remarks above say
+            // must not happen. The exception is logged, so its type is visible in the log
+            // rather than flattened away here.
+            _logger.LogError(ex,
+                "Default wallet creation for user {UserId} failed. Registration continues; this user has no wallets until one is created on first use.",
+                userId);
         }
     }
 }
