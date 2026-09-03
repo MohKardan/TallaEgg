@@ -35,7 +35,7 @@ builder.Host.UseWindowsService();
 // service has (issue #205).
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/users-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .WriteTo.File(StartupLogging.LogFilePath("users-api-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();

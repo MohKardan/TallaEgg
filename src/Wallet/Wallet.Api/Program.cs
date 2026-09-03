@@ -31,7 +31,7 @@ builder.Host.UseWindowsService();
 // service has (issue #205).
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/wallet-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .WriteTo.File(StartupLogging.LogFilePath("wallet-api-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
     .CreateLogger();
 
 builder.Host.UseSerilog();

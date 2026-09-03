@@ -51,18 +51,20 @@ Through `ILogger`, so both the console and Serilog's rolling file. That matters 
 installed with `sc.exe create` (#70) and a native Windows service has no console — while these
 were `Console.WriteLine` they went nowhere at all under the SCM.
 
-**Know which file, though.** The sink path in `Program.cs` is *relative*, and Serilog resolves it
-against the process's **working directory**, not the folder the binary sits in:
+**Know which file, though.** The sink path is absolute, built from `AppContext.BaseDirectory`, so
+the log always lands in a `logs\` folder beside the binary — never wherever the process happened
+to be started from:
 
 | How it was started | Where `telegrambot-<date>.log` lands |
 |---|---|
-| `dotnet run --project …` | the project folder's `logs\` |
-| The published exe, launched from a shell | `logs\` under whatever that shell's directory was |
-| A service from `sc.exe create` | `C:\Windows\System32\logs\` — `sc.exe` sets no working directory |
+| `dotnet run --project …` | `bin\Debug\net9.0\logs\` under the project — beside the DLL, not at the project root |
+| The published exe, launched from a shell | `logs\` beside the exe, whatever the shell's directory was |
+| A service from `sc.exe create` | `logs\` beside the exe — `<InstallRoot>\publish\Bot\logs\` |
 
-So on a server, look under the working directory of the service, not next to the exe.
-`docs/operations/WINDOWS_DEPLOYMENT.md` describes the log as `logs\telegrambot-.log` relative to
-the publish folder, which holds only when something set the working directory there.
+Until #211 the path was *relative*, and Serilog resolved it against the process's working
+directory. `sc.exe create` sets none, so the SCM's `C:\Windows\System32` is where all four
+services' logs were found on the first real deployment. That is the row that changed; the other
+two moved only as far as the binary's own folder.
 
 Everything else in this project still printing with `Console.WriteLine` — the startup diagnostics
 in particular — remains invisible under the service regardless.

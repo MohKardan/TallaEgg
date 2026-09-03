@@ -73,11 +73,25 @@ in `install-services.ps1` rather than assuming SCM ordering alone is sufficient.
 
 ## Logs
 
-Each service writes its own `logs\<service>-.log` (bot: `logs\telegrambot-.log`) via Serilog,
-rolling daily, independent of anything the SCM does. Retention is capped at 30 files
-(`retainedFileCountLimit: 30` — issue #70's log-rotation item); before that fix these grew
-without bound. `Get-Content -Wait` on the relevant file is the fastest way to watch a service
-live; nothing here writes to the Windows Event Log.
+Each service writes its own log via Serilog into a `logs\` folder **beside its own binary**,
+rolling daily, independent of anything the SCM does:
+
+```
+C:\TallaEgg\publish\Wallet.Api\logs\wallet-api-<date>.log
+C:\TallaEgg\publish\Users.Api\logs\users-api-<date>.log
+C:\TallaEgg\publish\Orders.Api\logs\orders-api-<date>.log
+C:\TallaEgg\publish\Bot\logs\telegrambot-<date>.log
+```
+
+Retention is capped at 30 files (`retainedFileCountLimit: 30` — issue #70's log-rotation item);
+before that fix these grew without bound. `Get-Content -Wait` on the relevant file is the fastest
+way to watch a service live; nothing here writes to the Windows Event Log.
+
+Until #211 the sink path was relative, and Serilog resolves a relative path against the process
+working directory. `sc.exe create` has no option to set one, so the SCM started every service in
+`C:\Windows\System32` and all four logs were written there. **On a machine deployed before that
+fix, that is where the older files still are** — the fix changes where new ones go, it does not
+move what is already written.
 
 ## Removing the services
 

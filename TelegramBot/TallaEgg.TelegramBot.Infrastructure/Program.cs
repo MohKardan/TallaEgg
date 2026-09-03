@@ -33,7 +33,7 @@ public class Program
         // exception left no trace once the console it printed to was gone (issue #99).
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
-            .WriteTo.File("logs/telegrambot-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+            .WriteTo.File(TallaEgg.Core.StartupLogging.LogFilePath("telegrambot-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
             .CreateLogger();
 
         // Configuration guards throw before the host exists, and the bot runs as a Windows
@@ -53,7 +53,7 @@ public class Program
             .UseSerilog()
             .ConfigureAppConfiguration((context, configBuilder) =>
             {
-                var sharedConfigPath = ResolveSharedConfigPath(SharedConfigFileName);
+                var sharedConfigPath = ResolveSharedConfigPath(context.HostingEnvironment, SharedConfigFileName);
                 configBuilder.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
 
                 var tempConfiguration = configBuilder.Build();
@@ -168,9 +168,38 @@ public class Program
 
             });
 
-    private static string ResolveSharedConfigPath(string fileName)
+    /// <summary>
+    /// Walks up from the content root looking for <c>config/<paramref name="fileName"/></c>.
+    /// </summary>
+    /// <remarks>
+    /// The anchor is the content root, not the working directory, which is what the five API
+    /// services have always used. The bot was the only host of the six reading
+    /// <c>Directory.GetCurrentDirectory()</c>, and that asymmetry was drift rather than a
+    /// decision: <c>UseWindowsService()</c> sets the content root to
+    /// <c>AppContext.BaseDirectory</c> but leaves the working directory alone, and
+    /// <c>sc.exe create</c> has no option to set one — so the SCM started the bot in
+    /// <c>C:\Windows\System32</c>, where the walk up never reaches the deployment's
+    /// <c>config\</c> folder. The bot could not start as a service at all (issue #212).
+    ///
+    /// <para>
+    /// Under <c>dotnet run</c> the content root is the project folder, the same directory the
+    /// working directory pointed at, so the development path is unchanged.
+    /// </para>
+    ///
+    /// <para>
+    /// The Serilog sink next to this uses <see cref="AppContext.BaseDirectory"/> rather than the
+    /// content root, and the two differ in exactly one case: a *published* exe launched by hand
+    /// from some other directory, where the content root is still that shell's directory and this
+    /// walk can miss a config the sink would have found. Anchoring here on
+    /// <c>AppContext.BaseDirectory</c> too would cover that case, and is deliberately not done —
+    /// it would make the bot the one host of six resolving configuration differently, which is the
+    /// asymmetry issue #212 was about. If this is ever worth changing, change all six together.
+    /// The sink cannot use the content root regardless: it is configured before the host exists.
+    /// </para>
+    /// </remarks>
+    private static string ResolveSharedConfigPath(IHostEnvironment environment, string fileName)
     {
-        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+        var current = new DirectoryInfo(environment.ContentRootPath);
         try
         {
             while (current is not null)
@@ -184,7 +213,7 @@ public class Program
                 current = current.Parent;
             }
 
-            var errorMsg = $"Shared configuration '{fileName}' not found relative to '{Directory.GetCurrentDirectory()}'.";
+            var errorMsg = $"Shared configuration '{fileName}' not found relative to '{environment.ContentRootPath}'.";
             Log.Error(errorMsg);
             throw new FileNotFoundException(errorMsg, fileName);
         }
