@@ -29,9 +29,11 @@ public class OrderApiClient : IOrderApiClient
         // branch meant talking to something that answers nothing, with nothing in the logs to
         // say so (issue #205).
         //
-        // TrimEnd because the paths below are concatenated, not resolved: Uri normalises an
-        // empty path to "/", which would otherwise produce "host//orders".
-        _baseUrl = ConfigurationGuard.RequireUri(configuration, "OrderApiUrl").ToString().TrimEnd('/');
+        // AbsoluteUri rather than ToString, which unescapes: a percent-escaped or non-ASCII
+        // host would come back decoded and be concatenated into a request against a different
+        // authority than was configured. TrimEnd because the paths below are concatenated, not
+        // resolved: Uri normalises an empty path to "/", which would produce "host//orders".
+        _baseUrl = ConfigurationGuard.RequireUri(configuration, "OrderApiUrl").AbsoluteUri.TrimEnd('/');
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         var handler = new HttpClientHandler();

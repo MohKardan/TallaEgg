@@ -1,4 +1,4 @@
-﻿using Serilog;
+using Serilog;
 
 namespace TallaEgg.Core;
 
@@ -17,12 +17,18 @@ public static class StartupLogging
     /// operator with no debugger attached.
     ///
     /// <para>
-    /// That operator could not read it. The services are installed with <c>sc.exe</c> and run
-    /// under <c>UseWindowsService()</c> (issue #70), and a Windows service has no console: an
-    /// exception escaping the top-level statements went to stderr and nowhere else — the same
-    /// class of problem issue #202 fixed for the proxy decision. Serilog is configured before
-    /// anything can throw, so a handler here puts the reason in the rolling file the operator
-    /// is told to look at (issue #205).
+    /// That operator could not read it. The four deployed hosts — Wallet, Users, Orders and the
+    /// bot — are installed with <c>sc.exe</c> and run under <c>UseWindowsService()</c> (issue
+    /// #70), and a Windows service has no console: an exception escaping the top-level
+    /// statements went to stderr and nowhere else — the same class of problem issue #202 fixed
+    /// for the proxy decision. Serilog is configured before anything can throw, so a handler
+    /// here puts the reason in the rolling file the operator is told to look at (issue #205).
+    ///
+    /// <para>
+    /// It reports through Serilog's static <see cref="Log"/>, which is what a guard throwing
+    /// before the host is built can reach. <c>UseSerilog()</c> only redirects the host's
+    /// <c>ILogger&lt;T&gt;</c>, and at that point there is no host.
+    /// </para>
     /// </para>
     ///
     /// <para>

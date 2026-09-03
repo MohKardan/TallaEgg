@@ -19,9 +19,10 @@ using System.IO;
 var builder = WebApplication.CreateBuilder(args);
 
 // Serilog before anything that can throw. This configuration reads nothing from the shared file
-// — the sinks are fixed here — so it can be installed ahead of the file being located, which is
-// what lets a configuration failure reach the rolling log rather than a console no Windows
-// service has (issue #205).
+// — the sinks are fixed here — so it can be installed ahead of the file being located, and a
+// configuration failure reaches the rolling log rather than only stderr (issue #205). This
+// service is not one of the four installed with sc.exe, so it does have a console; the ordering
+// matches its siblings, where that is the whole point.
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/tallaegg-api-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)

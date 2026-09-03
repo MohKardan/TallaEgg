@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using TallaEgg.Core;
 
 namespace TallaEgg.AllServices.Tests;

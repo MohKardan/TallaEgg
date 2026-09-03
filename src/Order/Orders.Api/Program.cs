@@ -136,13 +136,13 @@ ConfigurationGuard.RequireUri(builder.Configuration, "UsersApiUrl");
 builder.Services.AddScoped<UsersApiClient>();
 
 
-// Add Wallet API Client. The address is read and parsed out here rather than inside the
-// configure delegate, which does not run until the first client is created (issue #205).
-var walletApiBaseAddress = ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
-builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>(client =>
-{
-    client.BaseAddress = walletApiBaseAddress;
-});
+// Add Wallet API Client. No configure delegate: WalletApiClient's constructor reads
+// WalletApiUrl and assigns BaseAddress itself, so anything set here would be overwritten a
+// moment later — which is what made the old fallback on this line unreachable twice over.
+// The read below is what the delegate could not be: the typed client is transient, so its
+// constructor runs on first resolution, and only reading here fails a missing key at startup.
+ConfigurationGuard.RequireUri(builder.Configuration, "WalletApiUrl");
+builder.Services.AddHttpClient<TallaEgg.Infrastructure.Clients.IWalletApiClient, TallaEgg.Infrastructure.Clients.WalletApiClient>();
 
 // CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);

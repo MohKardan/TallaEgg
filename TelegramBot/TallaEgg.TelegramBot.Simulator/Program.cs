@@ -34,8 +34,9 @@ if (!serviceSection.Exists())
 // Some of the bot's own clients (OrderApiClient, UsersApiClient) read flat keys like
 // "OrderApiUrl" straight off IConfiguration rather than through TelegramBotOptions — the real
 // bot's Program.cs flattens Services:{ApplicationName}:* into root-level keys for exactly
-// this reason. Without this step those clients silently fall back to their compiled-in
-// defaults instead of the configured URLs.
+// this reason. Without this step those clients find no key at all and refuse to be built;
+// before issue #205 they were worse than that, falling back to compiled-in defaults so the
+// simulator ran against addresses nobody had configured.
 var prefix = $"Services:{BotApplicationName}:";
 var flattened = serviceSection.AsEnumerable(true)
     .Where(pair => pair.Value is not null)

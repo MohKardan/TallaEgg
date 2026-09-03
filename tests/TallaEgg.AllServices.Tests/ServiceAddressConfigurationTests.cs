@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;

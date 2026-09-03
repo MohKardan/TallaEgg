@@ -118,6 +118,7 @@ Create your own copy from the template below.
     },
     "Orders.Api": {
       "Urls": [ "http://localhost:5140" ],
+      "UsersApiUrl": "http://localhost:5136/api",
       "WalletApiUrl": "http://localhost:60933/api",
       "Matching": {
         "RequireMarketMakerCounterparty": true,

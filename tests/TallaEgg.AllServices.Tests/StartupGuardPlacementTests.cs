@@ -1,4 +1,4 @@
-﻿namespace TallaEgg.AllServices.Tests;
+namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
 /// Where the startup guards sit in each <c>Program.cs</c>, which is behaviour even though it
@@ -55,6 +55,13 @@ public class StartupGuardPlacementTests
     /// These files are top-level statements, so a guard that runs during startup is written at
     /// column zero. Indentation means it sits inside a lambda — a configure delegate — and runs
     /// whenever the container gets around to it.
+    ///
+    /// <para>
+    /// The rule is deliberately blunt: it cannot tell a lambda body from an ordinary nested
+    /// block, so a guard legitimately placed inside, say, an <c>if (IsProduction())</c> block
+    /// would trip it too. When that day comes, either hoist the read above the block or relax
+    /// this rule on purpose — do not quietly indent around it.
+    /// </para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ServiceEntryPoints))]
@@ -83,17 +90,25 @@ public class StartupGuardPlacementTests
     /// an operator with no debugger attached — and under <c>sc.exe</c> that operator has no
     /// console to read it in. Serilog has to be installed before the first guard can throw, or
     /// the one line that says what is wrong reaches nothing.
+    ///
+    /// <para>
+    /// It is the <c>Log.Logger</c> assignment that is anchored on, not <c>UseSerilog()</c>.
+    /// <see cref="StartupLogging.ReportUnhandledExceptionsToLog"/> writes through Serilog's
+    /// static logger; <c>UseSerilog()</c> only redirects <c>ILogger&lt;T&gt;</c> resolved from
+    /// the host, which does not exist yet when a guard throws. Anchoring on the wrong one would
+    /// leave this test green while a startup failure went to <c>SilentLogger</c>.
+    /// </para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ServiceEntryPoints))]
-    public void Serilog_IsInstalledBeforeTheFirstGuardCanThrow(string relativePath)
+    public void TheStaticSerilogLogger_IsAssignedBeforeTheFirstGuardCanThrow(string relativePath)
     {
         var lines = ReadLines(relativePath);
 
-        var serilog = Array.FindIndex(lines, line =>
-            line.Contains("builder.Host.UseSerilog()", StringComparison.Ordinal));
+        var loggerAssigned = Array.FindIndex(lines, line =>
+            line.Contains("Log.Logger = new LoggerConfiguration()", StringComparison.Ordinal));
         var firstGuard = Array.FindIndex(lines, IsGuardCall);
 
-        Assert.InRange(serilog, 0, firstGuard - 1);
+        Assert.InRange(loggerAssigned, 0, firstGuard - 1);
     }
 }
