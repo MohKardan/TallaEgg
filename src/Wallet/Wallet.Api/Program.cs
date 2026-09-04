@@ -331,22 +331,17 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
 // POST, not GET: this creates rows, and GET is the verb every intermediary assumes it may
 // retry or prefetch freely. A repeat creates no duplicate rows — CreateWalletAsync keeps the
 // existing wallet — but the verb should still say what the call does. Issue #206.
+// Nothing on this path throws BusinessRuleException, so the catch that used to sit here could
+// never run and its "400" documented a status the endpoint cannot return. A failure now reaches
+// GlobalExceptionHandler, which logs it with its own type and a trace id. Issue #210.
 // userId: User id.
 // walletService: Wallet service.
-// Returns: The wallets that were created.
+// Returns: The user's default wallets, created or already existing.
 // 200: Default wallets created.
-// 400: Wallet creation failed.
 app.MapPost("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
-    try
-    {
-        var wallets = await walletService.CreateDefaultWalletsAsync(userId);
-        return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند"));
-    }
-    catch (BusinessRuleException ex)
-    {
-        return Results.BadRequest(ApiResponse<IEnumerable<WalletDTO>>.Fail(ex.Message));
-    }
+    var wallets = await walletService.CreateDefaultWalletsAsync(userId);
+    return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند"));
 })
 .WithTags("Wallets");
 
