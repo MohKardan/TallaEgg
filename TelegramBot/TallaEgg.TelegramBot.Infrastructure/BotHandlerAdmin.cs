@@ -436,7 +436,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// changed. It is not the only source — Users exposes
         /// <c>GET /api/user/getUserIdByPhoneNumber/{phone}</c>, and the audit line below records it
         /// — so this saves a round trip at the point of use, and removing it would cost no more
-        /// than that.
+        /// than that. It is sent as an HTML <c>code</c> entity, which is what makes it copyable
+        /// without the surrounding bidi isolate being copied with it.
         /// </para>
         /// </summary>
         private async Task HandleChangeRoleCommandAsync(long chatId, string msgText, UserDto actor)
@@ -500,12 +501,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 return;
             }
 
+            // The id is not passed through PersianFormat.Ltr: the template puts the isolate outside
+            // the <code> entity, so what a tap-to-copy yields is a Guid that parses.
             await _messenger.SendAsync(chatId,
                 string.Format(BotMsgs.MsgAdminRoleChanged,
                     PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                     UserRoleNames.Display(previousRole),
                     UserRoleNames.Display(newRole),
-                    PersianFormat.Ltr(target.Id.ToString())));
+                    target.Id.ToString()),
+                parseMode: ParseMode.Html);
 
             // A privilege change is worth an audit line even though nothing reads it yet; when
             // someone asks later how an account became an operator, this is the only record.

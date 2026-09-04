@@ -448,7 +448,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "نقش فعلی: {1}";
 
         /// <summary>
-        /// Role-change confirmation shown to the admin.
+        /// Role-change confirmation shown to the admin. Sent with <c>ParseMode.Html</c>.
         /// {0} = phone number; {1} = previous role; {2} = new role; {3} = user id.
         ///
         /// The user id is shown deliberately. Every user-scoped endpoint in Wallet and Orders is keyed
@@ -457,13 +457,21 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// account they just changed. It is obtainable elsewhere — Users exposes
         /// <c>GET /api/user/getUserIdByPhoneNumber/{phone}</c>, and the role change is logged with it
         /// — so this line saves a round trip rather than being the only source.
+        ///
+        /// It is a <c>code</c> entity so Telegram offers tap-to-copy, and copies the bare Guid. The
+        /// bidi isolate is deliberately <b>outside</b> that entity: within it, U+2066 and U+2069
+        /// would be copied along with the id, and every endpoint above would then reject it as a
+        /// malformed Guid — with nothing visible in the pasted text to explain why.
         /// </summary>
         public const string MsgAdminRoleChanged = "✅ سطح دسترسی تغییر کرد.\n\n" +
                                                    "👤 کاربر: {0}\n" +
                                                    "🔻 نقش پیشین: {1}\n" +
                                                    "🔺 نقش تازه: {2}\n" +
                                                    "➖➖➖\n" +
-                                                   "🆔 شناسهٔ کاربر:\n{3}";
+                                                   "🆔 شناسهٔ کاربر:\n" +
+                                                   TallaEgg.Core.Utilties.PersianFormat.Lri +
+                                                   "<code>{3}</code>" +
+                                                   TallaEgg.Core.Utilties.PersianFormat.Pdi;
 
         // ── User approval and rejection messages (admin) ────────────────────────────
 
