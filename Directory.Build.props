@@ -5,7 +5,7 @@
          AssemblyVersion, FileVersion and InformationalVersion from this — none of them should
          set AssemblyVersion itself. Bump the third number for a bug fix, the second for a new
          capability that does not break an existing contract, the first for one that does. -->
-    <VersionPrefix>1.1.0</VersionPrefix>
+    <VersionPrefix>1.2.0</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup>

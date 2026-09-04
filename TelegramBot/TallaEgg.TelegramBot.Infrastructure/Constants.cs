@@ -916,6 +916,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         private static readonly Dictionary<string, string[]> Notes = new()
         {
+            ["1.2.0"] = new[]
+            {
+                "ساخت مطمئن‌تر کیف‌پول‌ها هنگام ثبت‌نام",
+                "رفع چند خطای داخلی در ارتباط میان سرویس‌ها",
+            },
             ["1.1.0"] = new[]
             {
                 "امکان معامله سکه تمام بهار آزادی و بیت‌کوین، علاوه بر طلای آبشده",
