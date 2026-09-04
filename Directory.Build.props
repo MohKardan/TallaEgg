@@ -1,6 +1,14 @@
 ﻿<Project>
 
   <PropertyGroup>
+    <!-- Single source of truth for the product version (issue #217). Every project inherits
+         AssemblyVersion, FileVersion and InformationalVersion from this — none of them should
+         set AssemblyVersion itself. Bump the third number for a bug fix, the second for a new
+         capability that does not break an existing contract, the first for one that does. -->
+    <VersionPrefix>1.1.0</VersionPrefix>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <!-- The count reached 168 because no single commit ever added a hundred warnings; they
          arrived one file at a time. It is at zero now, and TreatWarningsAsErrors is what keeps it
          there: the next one fails a build instead of joining a list nobody reads.

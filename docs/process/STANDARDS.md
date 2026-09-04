@@ -377,3 +377,44 @@ New developers should:
       Configuration: .NET 9 SDK, SQL Server Express, and a `config/appsettings.global.json`
       copied from `config/appsettings.global.example.json`
 - [ ] Attend code review session to see standards in practice
+
+---
+
+## 11. Versioning & Releases
+
+### Where the version lives
+The product version is one `<VersionPrefix>` in the root `Directory.Build.props`, inherited by
+every project. No individual `.csproj` sets `AssemblyVersion`, `FileVersion` or
+`InformationalVersion` — MSBuild derives all three from `VersionPrefix`, so a release is a
+one-line change in one file. Before #217, five projects each hardcoded
+`<AssemblyVersion>1.0.0</AssemblyVersion>` by hand, none of them was ever bumped, and the
+deployed release tags reached `v1.0.3` while every built assembly still reported `1.0.0`.
+
+### What the numbers mean
+`MAJOR.MINOR.PATCH`, standard semver:
+- **PATCH** — a bug fix; no behavior change a caller would notice.
+- **MINOR** — a new capability, or a behavior change that does not break an existing integration.
+- **MAJOR** — reserved for a change that breaks a contract something else depends on. This
+  platform has no external consumer yet — it is a bot and its own backend — so MAJOR has not
+  been used and should stay rare.
+
+### Tag convention
+Release tags are `vX.Y.Z` — an annotated tag matching `VersionPrefix`, created **on `main` after
+merge**, never on a feature branch. This matches `v1`, `v1.0.1` and `v1.0.2`. One release,
+`1.0.3` (2025-10-07), was tagged without the `v`; a second tag, `v1.0.3`, was then cut the same
+day on a later commit (after two more PRs merged) with the prefix restored, but the version
+number was never bumped to reflect that those PRs had landed. That was an inconsistency, not a
+second convention — the old tag is not renamed or deleted (history is not rewritten, see #105),
+but every tag from here on uses the `v` prefix and moves in step with `VersionPrefix`.
+
+### Cutting a release
+1. Bump `VersionPrefix` in `Directory.Build.props`, in the PR that earns the bump, under the same
+   rules as any other change (branch, review, CI green).
+2. After that PR merges to `main`, tag `main` at the merge commit:
+   `git tag -a vX.Y.Z -m "..."`, `git push origin vX.Y.Z`.
+3. Verify the built assemblies actually carry the tagged version before publishing anything —
+   build, then read the metadata of at least one built DLL (`AssemblyName.GetAssemblyName(...)`
+   or `FileVersionInfo.GetVersionInfo(...)`). Do not assume the bump worked.
+4. `gh release create vX.Y.Z --notes-file <file>`. There is no release pipeline (section 8), so
+   this is manual and deliberate — publishing a release is external, user-visible communication,
+   not a byproduct of tagging.
