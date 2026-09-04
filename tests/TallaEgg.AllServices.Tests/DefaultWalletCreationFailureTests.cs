@@ -89,7 +89,6 @@ public class DefaultWalletCreationFailureTests
         public Task<User?> GetByIdAsync(Guid id) => throw new NotSupportedException();
         public Task<User?> UpdateUserRoleAsync(Guid id, UserRole role) => throw new NotSupportedException();
         public Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role) => throw new NotSupportedException();
-        public Task<Affiliate.Core.Invitation?> GetInvitationByCodeAsync(string invitationCode) => throw new NotSupportedException();
         public Task<Guid?> GetUserIdByInvitationCodeAsync(string invitationCode) => throw new NotSupportedException();
         public Task<Guid?> GetUserIdByPhonenumberAsync(string phoneNumber) => throw new NotSupportedException();
     }

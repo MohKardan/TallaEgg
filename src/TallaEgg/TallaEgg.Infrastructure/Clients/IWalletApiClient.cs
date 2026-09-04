@@ -39,11 +39,6 @@ public interface IWalletApiClient
     /// Releases locked balance when an order is cancelled.
     /// </summary>
     Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount);
-    /// <summary>
-    /// Increase balance for order placement
-    /// Increases a balance.
-    /// </summary>
-    Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount);
 
     /// <summary>
     /// Validate if user has sufficient balance for order

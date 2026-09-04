@@ -1,5 +1,4 @@
-﻿using Affiliate.Core;
-using Microsoft.Extensions.Http;
+﻿using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
@@ -135,24 +134,6 @@ public class UserService
         }
 
         return null;
-    }
-
-    public async Task<(bool isValid, string message, Invitation? invitation)> ValidateInvitationCodeAsync(string invitationCode)
-    {
-        if (string.IsNullOrWhiteSpace(invitationCode))
-            return (false, "کد دعوت وارد نشده است.", null);
-
-        var invitation = await _userRepository.GetInvitationByCodeAsync(invitationCode);
-        if (invitation == null)
-            return (false, "کد دعوت نامعتبر است.", null);
-
-        if (invitation.ExpiresAt.HasValue && invitation.ExpiresAt.Value < DateTime.UtcNow)
-            return (false, "کد دعوت منقضی شده است.", null);
-
-        if (invitation.MaxUses > 0 && invitation.UsedCount >= invitation.MaxUses)
-            return (false, "کد دعوت به حداکثر تعداد استفاده رسیده است.", null);
-
-        return (true, "کد دعوت معتبر است.", invitation);
     }
 
     public async Task<User> RegisterUserAsync(User user)
