@@ -60,7 +60,7 @@ public class FailedWalletInsertResidueTests : IDisposable
     /// the first time the context under test is about to save. That is the window the pre-check in
     /// <c>CreateWalletAsync</c> cannot close: it has already run and found nothing.
     /// </summary>
-    private Action CompetitorWinsOnce(Guid userId, string asset, Action? onRun = null)
+    private Action CompetitorWinsOnce(Guid userId, string asset, Action<WalletEntity>? onRun = null)
     {
         var ran = false;
 
@@ -69,11 +69,13 @@ public class FailedWalletInsertResidueTests : IDisposable
             if (ran) return;
             ran = true;
 
+            var theirs = WalletEntity.Create(userId, asset);
+
             using var competitor = NewContext();
-            competitor.Wallets.Add(WalletEntity.Create(userId, asset));
+            competitor.Wallets.Add(theirs);
             competitor.SaveChanges();
 
-            onRun?.Invoke();
+            onRun?.Invoke(theirs);
         };
     }
 
@@ -90,7 +92,7 @@ public class FailedWalletInsertResidueTests : IDisposable
         var competitorRan = false;
 
         await using var context = new CollidingContext(Options());
-        context.BeforeSave = CompetitorWinsOnce(userId, CurrenciesConstant.Toman, () => competitorRan = true);
+        context.BeforeSave = CompetitorWinsOnce(userId, CurrenciesConstant.Toman, _ => competitorRan = true);
 
         var reported = (await NewService(context).CreateDefaultWalletsAsync(userId)).ToList();
 
@@ -139,20 +141,32 @@ public class FailedWalletInsertResidueTests : IDisposable
     /// missing wallet lazily and then writes to it through the very same context, so a lost race
     /// on the create took the collateral lock down with it — a refused trade rather than a
     /// half-seeded account.
+    ///
+    /// <para>
+    /// The lock is asserted against the winner's <b>row id</b>, not just against the balances. A
+    /// run in which no collision happened would create the wallet here and lock exactly the same
+    /// 10, so balances alone would leave this test green with nothing racing — and green is
+    /// precisely the wrong answer for a test whose whole subject is what a lost race leaves
+    /// behind.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task LockBalanceAsync_LosesTheRaceCreatingTheWallet_StillLocksAgainstTheStoredRow()
     {
         var userId = Guid.NewGuid();
+        WalletEntity? winner = null;
 
         await using var context = new CollidingContext(Options());
-        context.BeforeSave = CompetitorWinsOnce(userId, CurrenciesConstant.Toman);
+        context.BeforeSave = CompetitorWinsOnce(userId, CurrenciesConstant.Toman, w => winner = w);
 
         await NewRepository(context).LockBalanceAsync(userId, CurrenciesConstant.Toman, 10m);
+
+        Assert.NotNull(winner);
 
         await using var verify = NewContext();
         var stored = await verify.Wallets.SingleAsync(w => w.UserId == userId);
 
+        Assert.Equal(winner.Id, stored.Id);
         Assert.Equal(10m, stored.LockedBalance);
         Assert.Equal(-10m, stored.Balance);
     }
