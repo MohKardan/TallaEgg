@@ -451,9 +451,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// Role-change confirmation shown to the admin.
         /// {0} = phone number; {1} = previous role; {2} = new role; {3} = user id.
         ///
-        /// The user id is shown deliberately: <c>Matching:MarketMakerUserId</c> in configuration has
-        /// to be exactly this id, and against a fresh database that value is not knowable in advance.
-        /// Without this line it would have to be queried straight out of the database.
+        /// The user id is shown deliberately. Every user-scoped endpoint in Wallet and Orders is keyed
+        /// by this internal Guid — balance, transactions, orders, trades, positions — and none of them
+        /// accepts a phone number. This is the only message in the bot that surfaces it, so without
+        /// this line an operator looking into an account has to query the database for it first.
         /// </summary>
         public const string MsgAdminRoleChanged = "✅ سطح دسترسی تغییر کرد.\n\n" +
                                                    "👤 کاربر: {0}\n" +

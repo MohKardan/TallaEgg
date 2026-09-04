@@ -106,8 +106,7 @@ public class QuoteFillBalanceCheckTests : IDisposable
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Matching:MarketModes:" + Symbol] = "Dealer",
-                ["Matching:MarketMakerUserId"] = _marketMakerId.ToString()
+                ["Matching:MarketModes:" + Symbol] = "Dealer"
             })
             .Build();
 

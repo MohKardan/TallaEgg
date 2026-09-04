@@ -117,13 +117,12 @@ public class AdminRoleCommandTests
     }
 
     /// <summary>
-    /// The confirmation must carry the target's id. <c>Matching:MarketMakerUserId</c> names one
-    /// specific row, and on a database created from empty that id is generated at registration —
-    /// nobody can know it in advance. Without this line the deployment step "point the config at
-    /// the dealer" needs a database query.
+    /// The confirmation must carry the target's id. It is the internal Guid every user-scoped
+    /// Wallet and Orders endpoint is keyed by, and no other message the bot sends shows it, so
+    /// dropping it leaves a database query as the only way for an operator to get hold of it.
     /// </summary>
     [Fact]
-    public async Task TheConfirmationCarriesTheUserIdNeededByTheDealerConfiguration()
+    public async Task TheConfirmationCarriesTheUserIdTheBackendEndpointsAreKeyedBy()
     {
         var handler = Build(UserRole.Admin);
 

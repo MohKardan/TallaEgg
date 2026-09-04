@@ -430,12 +430,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </para>
         ///
         /// <para>
-        /// <b>The user id is echoed back on success.</b> It is not decoration:
-        /// <c>Matching:MarketMakerUserId</c> is a configuration value naming a specific row, and
-        /// on a new database that row does not exist yet with any predictable id. Whoever is made
-        /// the dealer has an id that was generated when they registered, and it has to be copied
-        /// into the configuration by hand. Printing it here is the difference between one message
-        /// and a database query.
+        /// <b>The user id is echoed back on success.</b> It is not decoration: Wallet and Orders key
+        /// every user-scoped endpoint by this internal Guid and neither of them accepts a phone
+        /// number, while no other message the bot sends shows it. Printing it here is the difference
+        /// between one message and a database query the next time the account has to be looked at.
         /// </para>
         /// </summary>
         private async Task HandleChangeRoleCommandAsync(long chatId, string msgText, UserDto actor)

@@ -382,7 +382,7 @@ public class FirstRunBootstrapTests
         Assert.Equal(UserRole.Admin, Assert.Single(_usersApi.RoleChanges).NewRole);
         Assert.Equal(UserStatus.Approved, Assert.Single(_usersApi.StatusChanges).NewStatus);
 
-        // And the id needed by Matching:MarketMakerUserId came back in the reply.
+        // And the id the Wallet and Orders endpoints are keyed by came back in the reply.
         Assert.Contains(_messenger.Texts, t => t.Contains(CustomerId.ToString()));
     }
 }
