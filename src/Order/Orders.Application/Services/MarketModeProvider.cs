@@ -5,7 +5,7 @@ using TallaEgg.Core.Enums.Order;
 namespace Orders.Application.Services;
 
 /// <summary>
-/// Reports which market mode a symbol runs in, and who its market maker is.
+/// Reports which market mode a symbol runs in.
 ///
 /// <para>
 /// <b>Why configuration and not a table:</b> this value changes rarely — when a symbol gains real

@@ -430,12 +430,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </para>
         ///
         /// <para>
-        /// <b>The user id is echoed back on success.</b> It is not decoration:
-        /// <c>Matching:MarketMakerUserId</c> is a configuration value naming a specific row, and
-        /// on a new database that row does not exist yet with any predictable id. Whoever is made
-        /// the dealer has an id that was generated when they registered, and it has to be copied
-        /// into the configuration by hand. Printing it here is the difference between one message
-        /// and a database query.
+        /// <b>The user id is echoed back on success.</b> It is not decoration: Wallet and Orders key
+        /// every user-scoped endpoint by this internal Guid and neither of them accepts a phone
+        /// number, so it is the identifier an operator needs to inspect the account they just
+        /// changed. It is not the only source — Users exposes
+        /// <c>GET /api/user/getUserIdByPhoneNumber/{phone}</c>, and the audit line below records it
+        /// — so this saves a round trip at the point of use, and removing it would cost no more
+        /// than that. It is sent as an HTML <c>code</c> entity, which is what makes it copyable
+        /// without the surrounding bidi isolate being copied with it.
         /// </para>
         /// </summary>
         private async Task HandleChangeRoleCommandAsync(long chatId, string msgText, UserDto actor)
@@ -499,12 +501,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 return;
             }
 
+            // The id is not passed through PersianFormat.Ltr: the template puts the isolate outside
+            // the <code> entity, so what a tap-to-copy yields is a Guid that parses.
             await _messenger.SendAsync(chatId,
                 string.Format(BotMsgs.MsgAdminRoleChanged,
                     PersianFormat.Ltr(PersianFormat.ToPersianDigits(phone)),
                     UserRoleNames.Display(previousRole),
                     UserRoleNames.Display(newRole),
-                    PersianFormat.Ltr(target.Id.ToString())));
+                    target.Id.ToString()),
+                parseMode: ParseMode.Html);
 
             // A privilege change is worth an audit line even though nothing reads it yet; when
             // someone asks later how an account became an operator, this is the only record.

@@ -5,6 +5,8 @@ using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Conversations;
 using Telegram.Bot.Types;
 using TallaEgg.AllServices.Tests.Fakes;
+using TallaEgg.Core.Utilties;
+using Telegram.Bot.Types.Enums;
 using User = Telegram.Bot.Types.User;
 
 namespace TallaEgg.AllServices.Tests;
@@ -117,19 +119,43 @@ public class AdminRoleCommandTests
     }
 
     /// <summary>
-    /// The confirmation must carry the target's id. <c>Matching:MarketMakerUserId</c> names one
-    /// specific row, and on a database created from empty that id is generated at registration —
-    /// nobody can know it in advance. Without this line the deployment step "point the config at
-    /// the dealer" needs a database query.
+    /// The confirmation must carry the target's id: it is the internal Guid every user-scoped
+    /// Wallet and Orders endpoint is keyed by, and having it in the reply saves the operator a
+    /// separate lookup at the moment they are most likely to want it.
     /// </summary>
     [Fact]
-    public async Task TheConfirmationCarriesTheUserIdNeededByTheDealerConfiguration()
+    public async Task TheConfirmationCarriesTheUserIdTheBackendEndpointsAreKeyedBy()
     {
         var handler = Build(UserRole.Admin);
 
         await SayAsync(handler, $"ن {TargetPhone} مدیر");
 
         Assert.Contains(_messenger.Texts, t => t.Contains(TargetId.ToString()));
+    }
+
+    /// <summary>
+    /// The id has to survive a copy out of Telegram. It sits inside a <c>code</c> entity, with
+    /// the bidi isolate outside it — put the isolate inside and a tap-to-copy hands the operator
+    /// U+2066 and U+2069 around the Guid, which every endpoint rejects with a 400 that nothing
+    /// in the pasted text explains.
+    /// </summary>
+    [Fact]
+    public async Task TheUserIdIsCopyableRatherThanWrappedInBidiControls()
+    {
+        var handler = Build(UserRole.Admin);
+
+        await SayAsync(handler, $"ن {TargetPhone} مدیر");
+
+        var confirmation = Assert.Single(
+            _messenger.Sent, m => m.Text.Contains(TargetId.ToString()));
+
+        // Ordinal on purpose. The default comparison is culture-sensitive, and ICU treats the
+        // bidi isolates as ignorable — so a culture-sensitive search for Lri + the id matches
+        // the id on its own and the assertion below would pass however the template is written.
+        Assert.Contains($"<code>{TargetId}</code>", confirmation.Text, StringComparison.Ordinal);
+        Assert.Equal(ParseMode.Html, confirmation.ParseMode);
+        Assert.DoesNotContain(PersianFormat.Lri + TargetId.ToString(), confirmation.Text,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

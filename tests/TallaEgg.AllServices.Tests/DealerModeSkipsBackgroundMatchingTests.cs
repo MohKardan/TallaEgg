@@ -125,8 +125,7 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
         var (buyId, _) = SeedMatchablePair();
 
         using var provider = BuildProvider(
-            ("Matching:MarketModes:" + Symbol, "Dealer"),
-            ("Matching:MarketMakerUserId", _sellerId.ToString()));
+            ("Matching:MarketModes:" + Symbol, "Dealer"));
 
         var engine = provider.GetRequiredService<MatchingEngineService>();
 
@@ -142,8 +141,7 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
         SeedMatchablePair();
 
         using var provider = BuildProvider(
-            ("Matching:MarketModes:" + Symbol, "Dealer"),
-            ("Matching:MarketMakerUserId", _sellerId.ToString()));
+            ("Matching:MarketModes:" + Symbol, "Dealer"));
 
         var engine = provider.GetRequiredService<MatchingEngineService>();
 
@@ -193,8 +191,7 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
 
         var log = new CapturingLoggerProvider();
         using var provider = BuildProvider(log,
-            ("Matching:MarketModes:" + Symbol, "Dealer"),
-            ("Matching:MarketMakerUserId", _sellerId.ToString()));
+            ("Matching:MarketModes:" + Symbol, "Dealer"));
 
         await provider.GetRequiredService<MatchingEngineService>().ProcessOrderForMatchingAsync(buyId);
 

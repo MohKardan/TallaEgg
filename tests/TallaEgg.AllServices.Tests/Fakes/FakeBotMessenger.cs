@@ -17,7 +17,7 @@ namespace TallaEgg.AllServices.Tests.Fakes;
 /// </summary>
 public sealed class FakeBotMessenger : IBotMessenger
 {
-    public sealed record SentMessage(long ChatId, string Text, ReplyMarkup? ReplyMarkup);
+    public sealed record SentMessage(long ChatId, string Text, ReplyMarkup? ReplyMarkup, ParseMode ParseMode);
 
     public List<SentMessage> Sent { get; } = [];
     public List<string> AnsweredCallbackIds { get; } = [];
@@ -38,7 +38,7 @@ public sealed class FakeBotMessenger : IBotMessenger
         ParseMode parseMode = ParseMode.None,
         CancellationToken cancellationToken = default)
     {
-        Sent.Add(new SentMessage(chatId, text, replyMarkup));
+        Sent.Add(new SentMessage(chatId, text, replyMarkup, parseMode));
         return Task.FromResult(_nextMessageId++);
     }
 
