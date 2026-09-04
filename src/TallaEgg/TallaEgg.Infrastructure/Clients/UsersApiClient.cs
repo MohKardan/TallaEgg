@@ -22,7 +22,18 @@ public class UsersApiClient : IUsersApiClient
 
     public UsersApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<UsersApiClient> logger)
     {
-        _httpClient = httpClient;
+        // The injected client, and no other. This assignment used to be undone twenty lines
+        // below by `_httpClient = new HttpClient(handler)`, so every instance abandoned the
+        // factory's client — and with it the pooled, periodically rotated handler — for a
+        // private connection pool that nothing disposed. Orders.Api registers this client
+        // Scoped, so that was one abandoned pool per inbound request (issue #214).
+        //
+        // The handler that replaced it carried exactly one setting: a Debug-only callback
+        // accepting any server certificate, added when local inter-service calls were expected
+        // over self-signed HTTPS. No service in this system binds an HTTPS address, so it had
+        // nothing left to accept, and a Release build compiled it out and left a handler
+        // configured precisely like the one the factory supplies.
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
         // Read from this host's own section and nowhere else. It used to fall through to a scan
         // of every key in the merged configuration for anything ending in "UsersApiUrl", which
@@ -38,12 +49,6 @@ public class UsersApiClient : IUsersApiClient
         _baseUrl = ConfigurationGuard.RequireUri(configuration, "UsersApiUrl").AbsoluteUri.TrimEnd('/');
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        var handler = new HttpClientHandler();
-#if DEBUG
-        // DEV ONLY: accept self-signed certs for local inter-service calls.
-        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
-#endif
-        _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
 

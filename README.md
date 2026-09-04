@@ -188,7 +188,7 @@ shared key sent via the `X-API-Key` header (`TallaEgg.Core.APIKeyConstant`). It 
 - **Development**: none of the four services enforce this — API-key authentication is only wired
   up when `ASPNETCORE_ENVIRONMENT=Production`. Leave the variable unset locally.
 - **Production**: set `TALLAEGG_API_KEY` before starting any service; each one throws at startup
-  if it is missing.
+  — before it binds its port — if it is missing.
 
 > **`ASPNETCORE_ENVIRONMENT` must be set explicitly on a server.** Locally `dotnet run` always
 > reports `Development` because of `launchSettings.json` — that file is not used by a published
