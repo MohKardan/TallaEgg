@@ -282,7 +282,7 @@ app.MapGet("/version", () => Results.Ok(ApiResponse<BuildVersionDto>.Ok(BuildVer
 
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
 {
-    // RegisterUserAsync throws a plain Exception with a user-facing message when the invitation
+    // RegisterUserAsync throws BusinessRuleException with a user-facing message when the invitation
     // code is invalid — that message is the point, not boilerplate, so it stays local. See #88.
     try
     {
@@ -306,13 +306,15 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
     "with «کد دعوت معتبر نیست.». The new user starts Pending with the RegularUser role and is given " +
     "an invitation code of their own. Default wallets are requested from Wallet.Api as part of " +
     "this call, and a failure there is logged without failing the registration — so a 'registered' " +
-    "user may briefly have no wallet rows. Note that both outcomes answer 200: read the `success` " +
-    "field rather than the status code.")
+    "user may briefly have no wallet rows. A refused invitation code answers 200 with " +
+    "success=false rather than 400, so read the `success` field rather than the status code. " +
+    "Re-registering a Telegram id that already exists is a third case again: the unique index " +
+    "rejects it as a DbUpdateException the endpoint does not catch, so it answers 500.")
 .WithTags("Users");
 
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
-    // UpdateUserPhoneAsync throws InvalidOperationException with a user-facing "not found" message — a
+    // UpdateUserPhoneAsync throws BusinessRuleException with a user-facing "not found" message — a
     // message, not boilerplate, so it stays local. See #88.
     try
     {
@@ -396,13 +398,14 @@ app.MapGet("/api/users/list", async (
 .WithSummary("Search and page through users")
 .WithDescription(
     "Newest first. `q` is a substring match over first name, last name and phone number; omit it " +
-    "to list everyone. `pageNumber` defaults to 1 and `pageSize` to 10, clamped to between 1 and " +
-    "100 — a larger page size is silently reduced rather than refused.")
+    "to list everyone. `pageSize` defaults to 10 and is clamped to between 1 and 100, so a larger " +
+    "page is silently reduced rather than refused. `pageNumber` defaults to 1 but is not validated " +
+    "at all: 0 or a negative value becomes a negative SQL OFFSET and answers 500.")
 .WithTags("Users");
 
 app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
-    // UpdateUserStatusAsync throws InvalidOperationException with a user-facing "not found" message — a
+    // UpdateUserStatusAsync throws BusinessRuleException with a user-facing "not found" message — a
     // message, not boilerplate, so it stays local. See #88.
     try
     {
@@ -431,8 +434,9 @@ app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string
 .WithDescription(
     "Every user carries an invitation code of their own, and this returns the id of the user whose " +
     "code this is — the referrer recorded against a new registration. A code nobody holds answers " +
-    "200 with a null body rather than 404, and the id is returned bare rather than in the " +
-    "ApiResponse envelope.")
+    "200 with an empty body — not 404, and not the literal null — so a caller deserializing into a " +
+    "non-nullable Guid gets a parse error on the ordinary miss. The id is returned bare rather " +
+    "than in the ApiResponse envelope.")
 .WithTags("Invitations");
 
 app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phonenumber, UserService userService) =>
@@ -443,8 +447,9 @@ app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phone
 .WithSummary("Resolve a phone number to a user id")
 .WithDescription(
     "Matches the stored phone number exactly, as /api/userByPhone does. A number nobody has " +
-    "answers 200 with a null body rather than 404, and the id is returned bare rather than in the " +
-    "ApiResponse envelope.")
+    "answers 200 with an empty body — not 404, and not the literal null — with the same parse " +
+    "hazard for callers as the invitation-code lookup above. The id is returned bare rather than " +
+    "in the ApiResponse envelope.")
 .WithTags("Users");
 
 app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
@@ -474,10 +479,12 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
 })
 .WithSummary("List every user holding a given role")
 .WithDescription(
-    "The role name is parsed case-insensitively from the path; a name that matches no role answers " +
-    "400 with «نقش نامعتبر است.». Unlike the single-user lookups, this returns the stored user " +
-    "records themselves rather than the trimmed UserDto, so the response carries fields those " +
-    "endpoints leave out.")
+    "The role name is parsed case-insensitively from the path. A name that matches no role answers " +
+    "400 with «نقش نامعتبر است.», but a numeric string does not: Enum.TryParse accepts any integer, " +
+    "so /by-role/42 answers 200 with an empty list rather than refusing the input. Unlike the " +
+    "single-user lookups, this returns the stored user records themselves rather than the trimmed " +
+    "UserDto — including each user's own InvitationCode, which is the credential registration " +
+    "consumes to attribute a new account to a referrer. Treat the response as sensitive.")
 .WithTags("Users");
 
 app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>

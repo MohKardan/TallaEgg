@@ -227,8 +227,11 @@ app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService w
 .WithSummary("List every wallet a user holds")
 .WithDescription(
     "One row per asset, ordered by asset code, with the CREDIT_<ASSET> credit ledgers among them. " +
-    "Wallets are created on first write, so an asset the user has never been credited or traded " +
-    "simply has no row here — an empty list is a valid answer for a brand-new user.")
+    "A normally registered user has at least the three rows create-default seeds (IRT, MAUA, " +
+    "CREDIT_MAUA); every other asset's wallet appears only once something writes to it. An empty " +
+    "list is therefore not a normal answer for a registered user — it means the create-default " +
+    "call during registration did not land, which Users.Api logs but does not treat as a failed " +
+    "registration.")
 .WithTags("Balances");
 
 app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService walletService) =>
@@ -297,10 +300,12 @@ app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletServ
     "Moves the amount out of Balance and into LockedBalance. It deliberately enforces no " +
     "sufficiency rule, and must not: customers trade on credit and are expected to go negative " +
     "down to a ceiling held in a separate CREDIT_<ASSET> wallet row, which a single-asset write " +
-    "cannot see, so that check belongs in the caller that can read both rows. Only the amount " +
-    "itself is validated — it has to be positive, or a negative one would mint money by running " +
-    "the arithmetic backwards. Takes no reference and is therefore not idempotent; a repeat locks " +
-    "again. Retries internally when it loses an optimistic-concurrency race.")
+    "cannot see, so that check belongs in the caller that can read both rows. What it does check " +
+    "is the asset — an unrecognised code answers 400 with «کیف پول پیدا نشد», while a known one " +
+    "with no wallet yet has that wallet created here — and the amount, which has to be positive, " +
+    "since a negative one would mint money by running the arithmetic backwards. Takes no reference " +
+    "and is therefore not idempotent; a repeat locks again. Retries internally when it loses an " +
+    "optimistic-concurrency race.")
 .WithTags("Locks");
 
 app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletService walletService) =>
@@ -320,8 +325,10 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
     "Returns the amount from LockedBalance to Balance when an order is cancelled or ends. Unlike " +
     "lockBalance, this one is guarded against the stored LockedBalance: releasing more than is " +
     "locked would raise Balance while driving LockedBalance negative — money from nothing — so it " +
-    "is refused with 400 naming both figures (issue #52). Takes no reference and is not " +
-    "idempotent: a repeat releases the amount again if that much is still locked.")
+    "is refused with 400 naming both figures (issue #52). A negative amount is refused earlier and " +
+    "less gracefully, as an unhandled ArgumentOutOfRangeException that surfaces as 500 rather than " +
+    "400. Takes no reference and is not idempotent: a repeat releases the amount again if that " +
+    "much is still locked.")
 .WithTags("Locks");
 
 app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService walletService, ILogger<Program> logger) =>
@@ -365,16 +372,19 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);
     return Results.Ok(transactions);
 })
-.WithSummary("List a user's wallet transactions")
+.WithSummary("List a user's wallet transactions — currently always empty")
 .WithDescription(
-    "Every transaction across the user's wallets, newest first, optionally narrowed to one asset " +
-    "with the `asset` query parameter. Answers with the bare list rather than the ApiResponse " +
+    "Reads the legacy WalletTransactions table, which no code writes to any more: deposits, " +
+    "withdrawals, locks, unlocks and settlement all record their history in the Transactions " +
+    "table instead. This endpoint therefore answers an empty list for every user, however much " +
+    "they have traded — verified by depositing and reading it back. Do not build on it until that " +
+    "is repaired; it is described here as it behaves rather than as its name suggests. Takes an " +
+    "optional `asset` query parameter and answers with the bare list rather than the ApiResponse " +
     "envelope the other endpoints use.")
 .WithTags("Transactions");
 
 // POST, not GET: this creates rows, and GET is the verb every intermediary assumes it may
-// retry or prefetch freely. A repeat creates no duplicate rows — CreateWalletAsync keeps the
-// existing wallet — but the verb should still say what the call does. Issue #206.
+// retry or prefetch freely. Issue #206.
 // Nothing on this path throws BusinessRuleException, so the catch that used to sit here could
 // never run and its "400" documented a status the endpoint cannot return. A failure now reaches
 // GlobalExceptionHandler, which logs it with its own type and a trace id. Issue #210.
