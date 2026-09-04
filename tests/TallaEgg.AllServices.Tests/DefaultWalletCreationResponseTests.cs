@@ -57,11 +57,18 @@ public class DefaultWalletCreationResponseTests : IDisposable
         new(repository, new WalletMapper(), NullLogger<WalletService>.Instance);
 
     /// <summary>
-    /// The defect itself. A second call for a user whose MAUA wallet already holds funds must
-    /// describe the stored row, not the discarded one it tried to insert.
+    /// The defect itself. A second call for a user whose wallets already hold funds must describe
+    /// the stored rows, not the discarded ones it tried to insert.
+    ///
+    /// <para>
+    /// All three wallets carry a distinct non-zero balance on purpose. The method maps its three
+    /// wallets in three separate statements, so funding only one would leave the other two
+    /// asserted at the zero the bug produced — reverting either of those mappings would keep
+    /// every test in this class green.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task CreateDefaultWalletsAsync_UserAlreadyHasAFundedWallet_ReportsTheStoredRow()
+    public async Task CreateDefaultWalletsAsync_UserAlreadyHasFundedWallets_ReportsTheStoredRows()
     {
         using var context = NewContext();
         var repository = NewRepository(context);
@@ -69,46 +76,34 @@ public class DefaultWalletCreationResponseTests : IDisposable
         var userId = Guid.NewGuid();
 
         await service.CreateDefaultWalletsAsync(userId);
+        await service.DepositAsync(userId, CurrenciesConstant.Toman, 5_000m);
         await service.DepositAsync(userId, CurrenciesConstant.Maua, 100m);
+        await service.DepositAsync(userId, CurrenciesConstant.Credit_MAUA, 250m);
         await repository.LockBalanceAsync(userId, CurrenciesConstant.Maua, 40m);
-
-        var second = await service.CreateDefaultWalletsAsync(userId);
-
-        using var verify = NewContext();
-        var stored = await verify.Wallets.SingleAsync(
-            w => w.UserId == userId && w.Asset == CurrenciesConstant.Maua);
-
-        var reported = Assert.Single(second, w => w.Asset == CurrenciesConstant.Maua);
-        Assert.Equal(60m, reported.Balance);
-        Assert.Equal(40m, reported.LockedBalance);
-
-        // What identifies the row, in the absence of an id on the DTO: a freshly built
-        // WalletEntity carries DateTime.UtcNow, never the stored row's timestamp.
-        Assert.Equal(stored.UpdatedAt, reported.UpdatedAt);
-    }
-
-    /// <summary>
-    /// The other two default wallets are untouched by the deposit, so their stored balance is
-    /// zero either way. Asserted so the test above cannot pass on a service that reports the
-    /// deposit against every wallet it returns.
-    /// </summary>
-    [Fact]
-    public async Task CreateDefaultWalletsAsync_CalledTwice_ReportsAllThreeDefaultWallets()
-    {
-        using var context = NewContext();
-        var service = NewService(NewRepository(context));
-        var userId = Guid.NewGuid();
-
-        await service.CreateDefaultWalletsAsync(userId);
-        await service.DepositAsync(userId, CurrenciesConstant.Maua, 100m);
 
         var second = (await service.CreateDefaultWalletsAsync(userId)).ToList();
 
         Assert.Equal(
             new[] { CurrenciesConstant.Toman, CurrenciesConstant.Maua, CurrenciesConstant.Credit_MAUA },
             second.Select(w => w.Asset));
-        Assert.Equal(0m, Assert.Single(second, w => w.Asset == CurrenciesConstant.Toman).Balance);
-        Assert.Equal(0m, Assert.Single(second, w => w.Asset == CurrenciesConstant.Credit_MAUA).Balance);
+
+        var toman = Assert.Single(second, w => w.Asset == CurrenciesConstant.Toman);
+        Assert.Equal(5_000m, toman.Balance);
+
+        var maua = Assert.Single(second, w => w.Asset == CurrenciesConstant.Maua);
+        Assert.Equal(60m, maua.Balance);
+        Assert.Equal(40m, maua.LockedBalance);
+
+        var creditMaua = Assert.Single(second, w => w.Asset == CurrenciesConstant.Credit_MAUA);
+        Assert.Equal(250m, creditMaua.Balance);
+
+        // What identifies the rows, in the absence of an id on the DTO: a freshly built
+        // WalletEntity carries DateTime.UtcNow, never the stored row's timestamp.
+        using var verify = NewContext();
+        var stored = await verify.Wallets.Where(w => w.UserId == userId).ToListAsync();
+        Assert.Equal(
+            stored.Select(w => w.UpdatedAt).OrderBy(t => t),
+            second.Select(w => w.UpdatedAt).OrderBy(t => t));
     }
 
     /// <summary>
@@ -171,8 +166,70 @@ public class DefaultWalletCreationResponseTests : IDisposable
         Assert.Null(thrown.InnerException);
     }
 
+    /// <summary>
+    /// The three wallets are created through three separate <c>SaveChangesAsync</c> calls with no
+    /// transaction around them, so a failure on the second leaves the first committed. That is
+    /// deliberate and was decided on issue #210: a partial set self-heals exactly as an empty one
+    /// does, because every write path creates a missing wallet on demand
+    /// (<c>WalletLazyCreationTests</c>), while the empty set a rollback would leave is strictly
+    /// worse for the one surface that does not self-heal — the pure read
+    /// <c>GetBalanceAsync</c>.
+    ///
+    /// <para>
+    /// Pinned rather than left implicit so that adding a transaction here is a deliberate
+    /// reversal of that decision instead of an accident.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task CreateDefaultWalletsAsync_RepositoryFailsOnTheSecondWallet_LeavesTheFirstCommitted()
+    {
+        using var context = NewContext();
+        var service = NewService(new FailsOnTheSecondCreateRepository(NewRepository(context)));
+        var userId = Guid.NewGuid();
+
+        await Assert.ThrowsAsync<StorageUnavailableException>(
+            () => service.CreateDefaultWalletsAsync(userId));
+
+        using var verify = NewContext();
+        var stored = await verify.Wallets.Where(w => w.UserId == userId).ToListAsync();
+
+        Assert.Equal(CurrenciesConstant.Toman, Assert.Single(stored).Asset);
+    }
+
     /// <summary>Stands in for a database that is refusing writes.</summary>
     private sealed class StorageUnavailableException(string message) : Exception(message);
+
+    /// <summary>
+    /// Writes the first wallet for real and then refuses, which is the partial-creation state the
+    /// test above is about. Only <c>CreateWalletAsync</c> is forwarded; nothing else on this path
+    /// is called.
+    /// </summary>
+    private sealed class FailsOnTheSecondCreateRepository(IWalletRepository inner) : IWalletRepository
+    {
+        private int _calls;
+
+        public Task<WalletEntity> CreateWalletAsync(WalletEntity wallet) =>
+            ++_calls == 1
+                ? inner.CreateWalletAsync(wallet)
+                : throw new StorageUnavailableException("the storage layer is unavailable");
+
+        public Task<WalletEntity?> GetWalletAsync(Guid userId, string asset) => throw new NotImplementedException();
+        public Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId) => throw new NotImplementedException();
+        public Task<WalletEntity> UpdateWalletAsync(WalletEntity wallet, Transaction? transaction = null) => throw new NotImplementedException();
+        public Task<WalletEntity> LockBalanceAsync(Guid userId, string asset, decimal amount) => throw new NotImplementedException();
+        public Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount) => throw new NotImplementedException();
+        public Task<Transaction> CreateTransactionAsync(Transaction transaction) => throw new NotImplementedException();
+        public Task<Transaction?> FindTransactionByReferenceAsync(Guid walletId, string referenceId) => throw new NotImplementedException();
+        public Task<Transaction> ApplyWithIdempotencyAsync(WalletEntity wallet, Transaction transaction) => throw new NotImplementedException();
+        public Task<WalletTransaction?> GetTransactionAsync(Guid transactionId) => throw new NotImplementedException();
+        public Task<IEnumerable<WalletTransaction>> GetUserTransactionsAsync(Guid userId, string? asset = null) => throw new NotImplementedException();
+        public Task<IEnumerable<WalletTransaction>> GetTransactionsByReferenceAsync(string referenceId) => throw new NotImplementedException();
+        public Task<WalletTransaction> UpdateTransactionAsync(WalletTransaction transaction) => throw new NotImplementedException();
+        public Task<(bool Success, string Message)> SettleTradeAsync(
+            Guid tradeId, Guid buyerUserId, Guid sellerUserId,
+            string symbol, decimal quantity, decimal quoteQuantity,
+            decimal feeBuyer, decimal feeSeller) => throw new NotImplementedException();
+    }
 
     /// <summary>
     /// Fails the one call <c>CreateDefaultWalletsAsync</c> makes. Every other member throws
