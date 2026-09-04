@@ -1,4 +1,5 @@
 using Serilog;
+using System.Reflection;
 
 namespace TallaEgg.Core;
 
@@ -69,5 +70,30 @@ public static class StartupLogging
             // The process is going down either way; flush before it does.
             Log.CloseAndFlush();
         };
+    }
+
+    /// <summary>
+    /// Records which build this process is, as the first thing it logs (issue #218).
+    /// </summary>
+    /// <remarks>
+    /// Placed beside the two calls above and for their reason: it has to run before anything can
+    /// throw. A configuration guard failing at boot is exactly when "which build is on the
+    /// server?" is worth asking, and by then there is no host and no <c>ILogger&lt;T&gt;</c> to
+    /// ask it through — only Serilog's static <see cref="Log"/>, which is already configured.
+    ///
+    /// <para>
+    /// The three deployed APIs also answer this over HTTP at <c>GET /version</c>. That needs a
+    /// service that came up; this line is for one that did not.
+    /// </para>
+    /// </remarks>
+    public static void LogBuildVersion()
+    {
+        var build = BuildVersion.Current;
+
+        Log.Information(
+            "Starting {Assembly}, version {Version}, built from commit {CommitHash}.",
+            Assembly.GetEntryAssembly()?.GetName().Name ?? "unknown assembly",
+            build.Version,
+            build.CommitHash ?? "unknown");
     }
 }

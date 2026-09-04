@@ -57,6 +57,31 @@ neither belongs in a deployment. Decision recorded on
 `install-services.ps1` stops and recreates each service, so re-running it is the redeploy step —
 there's no separate update path to remember.
 
+## Which build is running (issue #218)
+
+Each service reports its own version and the commit it was built from, so a redeploy can be
+confirmed without a file-properties dialog over RDP:
+
+- **In the log**, as the first line each service writes at startup — the only answer available
+  for a service that crashes before it can serve anything:
+  ```
+  [08:21:31 INF] Starting Users.Api, version 1.1.0, built from commit ff95e00a327536efa53e2af247b661ba9be5f744.
+  ```
+- **Over HTTP**, from the three APIs. `GET /version` carries no exemption from the Production
+  authorization policy, so it needs the API key like every other endpoint:
+  ```powershell
+  Invoke-RestMethod http://localhost:<port>/version -Headers @{ 'X-API-Key' = $env:TALLAEGG_API_KEY }
+  # -> data.version 1.1.0, data.commitHash ff95e00a327536efa53e2af247b661ba9be5f744
+  ```
+  Ports are in the README's Ports and bind addresses section. The bot serves nothing, so its
+  log line is the whole of its answer.
+
+The hash names the commit checked out **on the machine that ran `publish-all.ps1`**, and says
+nothing about the server. `commitHash` is `null` when that build could not see a `.git`
+directory — publishing from a source archive rather than a checkout looks like this.
+Uncommitted changes on the build machine do not move it either: it is the last commit, not the
+working tree.
+
 ## Start order — what's covered and what isn't
 
 `Orders.Api` and `Users.Api` call `Wallet.Api` on startup paths, and all three run
