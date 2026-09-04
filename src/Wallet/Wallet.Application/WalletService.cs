@@ -238,45 +238,44 @@ public class WalletService : IWalletService
     /// Every other asset's wallet is created lazily on first deposit — see IncreaseBalanceAsync.
     /// </summary>
     /// <param name="userId">User id.</param>
-    /// <returns>The wallets that were created.</returns>
+    /// <returns>
+    /// The user's default wallets: the rows just created, or the rows that already existed.
+    /// </returns>
     public async Task<IEnumerable<WalletDTO>> CreateDefaultWalletsAsync(Guid userId)
     {
         var wallets = new List<WalletDTO>();
 
-        try
-        {
-            var irrWallet = WalletEntity.Create
-            (
-                 userId,
-                 CurrenciesConstant.Toman
-            );
-            var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
-            wallets.Add(_walletMapper.MapRequired(irrWallet));
+        // Map the row the repository returns, not the entity handed to it. CreateWalletAsync
+        // returns the *existing* row when the user already has that wallet and discards the new
+        // entity, whose Balance is 0 by construction, so mapping the argument reports an empty
+        // wallet for one that holds funds. Issue #210.
+        var irrWallet = WalletEntity.Create
+        (
+             userId,
+             CurrenciesConstant.Toman
+        );
+        var irrResult = await _walletRepository.CreateWalletAsync(irrWallet);
+        wallets.Add(_walletMapper.MapRequired(irrResult));
 
 
-            var mauaWallet = WalletEntity.Create
-            (
-                 userId,
-                 CurrenciesConstant.Maua
-            );
-            var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
-            wallets.Add(_walletMapper.MapRequired(mauaWallet));
+        var mauaWallet = WalletEntity.Create
+        (
+             userId,
+             CurrenciesConstant.Maua
+        );
+        var mauaResult = await _walletRepository.CreateWalletAsync(mauaWallet);
+        wallets.Add(_walletMapper.MapRequired(mauaResult));
 
 
-            var creditMauaWallet = WalletEntity.Create
-            (
-                 userId,
-                 CurrenciesConstant.Credit_MAUA
-            );
-            var creditMauaResult = await _walletRepository.CreateWalletAsync(creditMauaWallet);
-            wallets.Add(_walletMapper.MapRequired(creditMauaWallet));
+        var creditMauaWallet = WalletEntity.Create
+        (
+             userId,
+             CurrenciesConstant.Credit_MAUA
+        );
+        var creditMauaResult = await _walletRepository.CreateWalletAsync(creditMauaWallet);
+        wallets.Add(_walletMapper.MapRequired(creditMauaResult));
 
-            return wallets;
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException("خطا در ایجاد کیف پول‌های پیش‌فرض", ex);
-        }
+        return wallets;
     }
 
     public Task<(bool Success, string Message)> SettleTradeAsync(
