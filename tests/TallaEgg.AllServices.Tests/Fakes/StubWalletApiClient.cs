@@ -30,9 +30,6 @@ public class StubWalletApiClient : IWalletApiClient
     public virtual Task<(bool Success, string Message)> UnlockBalanceAsync(Guid userId, string asset, decimal amount) =>
         throw new NotSupportedException(nameof(UnlockBalanceAsync));
 
-    public virtual Task<(bool Success, string Message)> IncreaseBalanceAsync(Guid userId, string asset, decimal amount) =>
-        throw new NotSupportedException(nameof(IncreaseBalanceAsync));
-
     public virtual Task<(bool Success, string Message, bool HasSufficientBalance)> ValidateBalanceAsync(
         Guid userId, string asset, decimal amount) =>
         throw new NotSupportedException(nameof(ValidateBalanceAsync));

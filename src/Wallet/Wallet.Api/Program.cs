@@ -192,6 +192,10 @@ if (app.Environment.IsDevelopment())
 // endpoint. The commit hash names an exact line of a public repository, and the operator asking
 // the question already holds the key.
 app.MapGet("/version", () => Results.Ok(ApiResponse<BuildVersionDto>.Ok(BuildVersion.Current)))
+   .WithSummary("Report the running build")
+   .WithDescription(
+        "Returns the version and commit hash stamped into the running assembly. In Production the " +
+        "global fallback policy applies, so this needs the same X-API-Key as every other endpoint.")
    .WithTags("Diagnostics");
 
 // Wallet management endpoints
@@ -207,6 +211,12 @@ app.MapGet("/api/wallet/balance/{userId}/{asset}", async (Guid userId, string as
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
 })
+.WithSummary("Get one asset's balance for a user")
+.WithDescription(
+    "Reads a single wallet row, matching the asset code case-insensitively. Unlike the deposit, " +
+    "lock and settlement paths, this one does not create a missing wallet: an asset the user has " +
+    "never held answers 400 with «کیف پول پیدا نشد». Pass a credit ledger code such as CREDIT_MAUA " +
+    "to read a credit ceiling rather than a balance.")
 .WithTags("Balances");
 
 app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService walletService) =>
@@ -214,6 +224,11 @@ app.MapGet("/api/wallet/balances/{userId}", async (Guid userId, IWalletService w
     var wallets = await walletService.GetUserWalletsAsync(userId);
     return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "لیست کیف پول های کاربر"));
 })
+.WithSummary("List every wallet a user holds")
+.WithDescription(
+    "One row per asset, ordered by asset code, with the CREDIT_<ASSET> credit ledgers among them. " +
+    "Wallets are created on first write, so an asset the user has never been credited or traded " +
+    "simply has no row here — an empty list is a valid answer for a brand-new user.")
 .WithTags("Balances");
 
 app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService walletService) =>
@@ -228,8 +243,16 @@ app.MapPost("/api/wallet/deposit", async (WalletRequest request, IWalletService 
     {
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
-  
+
 })
+.WithSummary("Credit a user's wallet")
+.WithDescription(
+    "Adds to the balance and records a Deposit transaction. Idempotent on ReferenceId (issue #157): " +
+    "a reference already applied to that wallet moves nothing, returns the transaction the first " +
+    "call produced and reports WasAlreadyApplied, so an admin top-up re-sent after a lost reply " +
+    "cannot credit twice. A request without a ReferenceId is never deduplicated. The wallet is " +
+    "created on first deposit when the asset is one the platform knows; an unrecognised asset code " +
+    "answers 400 with «کیف پول وجود ندارد».")
 .WithTags("Transactions");
 
 app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletService walletService) =>
@@ -244,8 +267,15 @@ app.MapPost("/api/wallet/withdrawal", async (WalletRequest request, IWalletServi
     {
         return Results.BadRequest(ApiResponse<WalletBallanceDTO>.Fail(ex.Message));
     }
-  
+
 })
+.WithSummary("Debit a user's wallet")
+.WithDescription(
+    "Subtracts from the balance and records a Withdraw transaction, under the same ReferenceId " +
+    "idempotency contract as deposit — the repeat is checked before the balance is touched, so a " +
+    "re-sent deduction reports the original success rather than «مقدار کسر از حساب بیشتر از حد مجاز است». " +
+    "This path will not take a balance below zero. That is unrelated to the credit ceiling, which " +
+    "governs trading rather than admin deductions.")
 .WithTags("Transactions");
 
 app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletService walletService) =>
@@ -260,8 +290,17 @@ app.MapPost("/api/wallet/lockBalance", async (WalletRequest request, IWalletServ
     {
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
-  
+
 })
+.WithSummary("Reserve funds against an open order")
+.WithDescription(
+    "Moves the amount out of Balance and into LockedBalance. It deliberately enforces no " +
+    "sufficiency rule, and must not: customers trade on credit and are expected to go negative " +
+    "down to a ceiling held in a separate CREDIT_<ASSET> wallet row, which a single-asset write " +
+    "cannot see, so that check belongs in the caller that can read both rows. Only the amount " +
+    "itself is validated — it has to be positive, or a negative one would mint money by running " +
+    "the arithmetic backwards. Takes no reference and is therefore not idempotent; a repeat locks " +
+    "again. Retries internally when it loses an optimistic-concurrency race.")
 .WithTags("Locks");
 
 app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletService walletService) =>
@@ -276,25 +315,15 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
         return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
     }
 })
+.WithSummary("Release funds reserved against an order")
+.WithDescription(
+    "Returns the amount from LockedBalance to Balance when an order is cancelled or ends. Unlike " +
+    "lockBalance, this one is guarded against the stored LockedBalance: releasing more than is " +
+    "locked would raise Balance while driving LockedBalance negative — money from nothing — so it " +
+    "is refused with 400 naming both figures (issue #52). Takes no reference and is not " +
+    "idempotent: a repeat releases the amount again if that much is still locked.")
 .WithTags("Locks");
 
-app.MapPost("/api/wallet/increaseBalance", async (WalletRequest request, IWalletService walletService) =>
-{
-    try
-    {
-        var result = await walletService.IncreaseBalanceAsync(request.UserId, request.Asset, request.Amount);
-        return Results.Ok(ApiResponse<(WalletEntity, Transaction, bool)>.Ok(result, "عملیات با موفقیت انجام شد"));
-    }
-    catch (BusinessRuleException ex)
-    {
-        return Results.BadRequest(ApiResponse<WalletDTO>.Fail(ex.Message));
-    }
-})
-.WithTags("Transactions");
-
-// Trade settlement — called by the Orders outbox processor after a match.
-// Atomically consumes both sides' locked collateral, credits each side, and records
-// a Transaction per leg. Idempotent on the trade id, so retries are safe.
 app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService walletService, ILogger<Program> logger) =>
 {
     try
@@ -318,6 +347,17 @@ app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService w
         return Results.BadRequest(ApiResponse<string>.Fail(ex.Message));
     }
 })
+.WithSummary("Settle a matched trade")
+.WithDescription(
+    "Called by the Orders outbox once a match is recorded. In one database transaction it consumes " +
+    "both sides' locked collateral, credits each side, and writes four Transaction rows and one " +
+    "TradeSettlement row. Exactly-once is guaranteed by the TradeSettlements primary key rather " +
+    "than by the order the code runs in, so outbox redelivery is safe: an already-settled trade " +
+    "answers success and moves nothing. Consuming locked collateral does not return it to Balance, " +
+    "which is what lets a credit-backed position stay legitimately negative. It refuses a " +
+    "self-trade, refuses a non-zero fee — fees are 0.00 by design and a collected fee is credited " +
+    "to no account (issue #35) — and refuses to settle unless both sides' collateral is actually " +
+    "locked.")
 .WithTags("Transactions");
 
 app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asset, IWalletService walletService) =>
@@ -325,24 +365,32 @@ app.MapGet("/api/wallet/transactions/{userId}", async (Guid userId, string? asse
     var transactions = await walletService.GetUserTransactionsAsync(userId, asset);
     return Results.Ok(transactions);
 })
+.WithSummary("List a user's wallet transactions")
+.WithDescription(
+    "Every transaction across the user's wallets, newest first, optionally narrowed to one asset " +
+    "with the `asset` query parameter. Answers with the bare list rather than the ApiResponse " +
+    "envelope the other endpoints use.")
 .WithTags("Transactions");
 
-// Creates the wallets a new user starts with: Toman, gold, and the gold credit ledger.
 // POST, not GET: this creates rows, and GET is the verb every intermediary assumes it may
 // retry or prefetch freely. A repeat creates no duplicate rows — CreateWalletAsync keeps the
 // existing wallet — but the verb should still say what the call does. Issue #206.
 // Nothing on this path throws BusinessRuleException, so the catch that used to sit here could
 // never run and its "400" documented a status the endpoint cannot return. A failure now reaches
 // GlobalExceptionHandler, which logs it with its own type and a trace id. Issue #210.
-// userId: User id.
-// walletService: Wallet service.
-// Returns: The user's default wallets, created or already existing.
-// 200: Default wallets created.
 app.MapPost("/api/wallet/create-default/{userId}", async (Guid userId, IWalletService walletService) =>
 {
     var wallets = await walletService.CreateDefaultWalletsAsync(userId);
     return Results.Ok(ApiResponse<IEnumerable<WalletDTO>>.Ok(wallets, "کیف پول‌های پیش‌فرض با موفقیت ایجاد شدند"));
 })
+.WithSummary("Create a new user's default wallets")
+.WithDescription(
+    "Creates the three wallets a registration starts from: Toman (IRT), melted gold (MAUA) and the " +
+    "gold credit ledger (CREDIT_MAUA). Every other asset's wallet — the other assets' CREDIT_ " +
+    "ledgers included — is created lazily on first write instead, so this is not a full account " +
+    "set-up. Safe to repeat: a wallet that already exists is returned as it stands, neither " +
+    "duplicated nor reset. Called by Users.Api during registration, where a failure here is logged " +
+    "but does not fail the registration.")
 .WithTags("Wallets");
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)

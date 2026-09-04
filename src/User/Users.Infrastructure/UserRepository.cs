@@ -1,5 +1,4 @@
-﻿using Affiliate.Core;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
@@ -132,9 +131,4 @@ public class UserRepository : IUserRepository
             .Select(u => (Guid?)u.Id)
             .FirstOrDefaultAsync();
     }
-
-    Task<Invitation?> IUserRepository.GetInvitationByCodeAsync(string invitationCode)
-    {
-        throw new NotImplementedException();
-    }
-} 
+}

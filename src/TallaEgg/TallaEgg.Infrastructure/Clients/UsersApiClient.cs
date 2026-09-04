@@ -110,55 +110,6 @@ public class UsersApiClient : IUsersApiClient
             return ApiResponse<PagedResult<UserDto>>.Fail("خطای غیرمنتظره");
         }
     }
-    public async Task<(bool isValid, string message)> ValidateInvitationCodeAsync(string invitationCode)
-    {
-        try
-        {
-            var request = new { InvitationCode = invitationCode };
-            var json = System.Text.Json.JsonSerializer.Serialize(request);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            using var response = await _httpClient.PostAsync($"{_baseUrl}/user/validate-invitation", content);
-            var payload = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Users API returned {StatusCode} while validating invitation code {InvitationCode}. Payload: {Payload}",
-                    (int)response.StatusCode, invitationCode, payload);
-
-                return (false, $"خطا در اعتبارسنجی کد دعوت: {payload}");
-            }
-
-            var result = System.Text.Json.JsonSerializer.Deserialize<ValidateInvitationResponse>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (result is null)
-            {
-                _logger.LogError("Users API returned invalid payload while validating invitation code {InvitationCode}. Payload: {Payload}", invitationCode, payload);
-                return (false, "پاسخ نامعتبر از سرویس کاربران دریافت شد.");
-            }
-
-            return (result.IsValid, result.Message ?? "بررسی کد دعوت انجام شد.");
-        }
-        catch (TaskCanceledException ex)
-        {
-            _logger.LogError(ex, "Users API request timed out while validating invitation code {InvitationCode}", invitationCode);
-            return (false, "پاسخ‌گویی سرویس کاربران زمان‌بر شد");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Users API communication error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, "خطای ارتباط با سرویس کاربران");
-        }
-        catch (System.Text.Json.JsonException ex)
-        {
-            _logger.LogError(ex, "Users API returned invalid JSON while validating invitation code {InvitationCode}", invitationCode);
-            return (false, "ساختار پاسخ سرویس کاربران نامعتبر است");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error while validating invitation code {InvitationCode}", invitationCode);
-            return (false, "خطای غیرمنتظره");
-        }
-    }
     public async Task<(bool success, string message, Guid? userId)> RegisterUserAsync(long telegramId, string invitationCode, string? username, string? firstName, string? lastName)
     {
         var request = new RegisterUserRequest
@@ -650,12 +601,6 @@ public class UsersApiClient : IUsersApiClient
         }
     }
 
-
-    private class ValidateInvitationResponse
-    {
-        public bool IsValid { get; set; }
-        public string Message { get; set; } = "";
-    }
 
     private class RegisterUserResponse
     {

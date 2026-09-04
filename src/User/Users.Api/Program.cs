@@ -272,16 +272,14 @@ if (app.Environment.IsDevelopment())
 // endpoint. The commit hash names an exact line of a public repository, and the operator asking
 // the question already holds the key.
 app.MapGet("/version", () => Results.Ok(ApiResponse<BuildVersionDto>.Ok(BuildVersion.Current)))
+   .WithSummary("Report the running build")
+   .WithDescription(
+        "Returns the version and commit hash stamped into the running assembly. In Production the " +
+        "global fallback policy applies, so this needs the same X-API-Key as every other endpoint.")
    .WithTags("Diagnostics");
 
 
 
-// Registers a new user in the system
-// request: User registration request containing Telegram ID, invitation code, and user details
-// userService: User service for business logic
-// Returns: Registered user details with success status
-// 200: User registered successfully
-// 400: Invalid request data or validation error
 app.MapPost("/api/user/register", async (RegisterUserRequest request, UserService userService) =>
 {
     // RegisterUserAsync throws a plain Exception with a user-facing message when the invitation
@@ -302,15 +300,16 @@ app.MapPost("/api/user/register", async (RegisterUserRequest request, UserServic
         return ApiResponse<UserDto>.Fail(ex.Message);
     }
 })
+.WithSummary("Register a Telegram user")
+.WithDescription(
+    "Requires an invitation code that some existing user already holds; an unknown code is refused " +
+    "with «کد دعوت معتبر نیست.». The new user starts Pending with the RegularUser role and is given " +
+    "an invitation code of their own. Default wallets are requested from Wallet.Api as part of " +
+    "this call, and a failure there is logged without failing the registration — so a 'registered' " +
+    "user may briefly have no wallet rows. Note that both outcomes answer 200: read the `success` " +
+    "field rather than the status code.")
 .WithTags("Users");
 
-// Updates the phone number for an existing user
-// request: Phone update request containing Telegram ID and new phone number
-// userService: User service for business logic
-// Returns: Updated user details with success status
-// 200: Phone number updated successfully
-// 400: Invalid request data or validation error
-// 404: User not found
 app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserService userService) =>
 {
     // UpdateUserPhoneAsync throws InvalidOperationException with a user-facing "not found" message — a
@@ -325,14 +324,12 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
 })
+.WithSummary("Set a user's phone number")
+.WithDescription(
+    "Identifies the user by Telegram id and overwrites the stored phone number, with no format " +
+    "check and no uniqueness check. An unknown Telegram id answers 400 with «کاربر یافت نشد.».")
 .WithTags("Users");
 
-// Retrieves user information by Telegram ID
-// telegramId: Telegram ID of the user
-// userService: User service for business logic
-// Returns: User details if found
-// 200: User found and returned successfully
-// 404: User not found
 app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userService) =>
 {
     var user = await userService.GetUserByTelegramIdAsync(telegramId);
@@ -341,14 +338,12 @@ app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userSer
 
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
 })
+.WithSummary("Get a user by Telegram id")
+.WithDescription(
+    "The lookup the bot uses on nearly every message. A user who does not exist answers 400, not " +
+    "404 — use /api/user/exists/{telegramId} if the distinction matters to the caller.")
 .WithTags("Users");
 
-// Returns a user by id.
-// userId: User id.
-// userService: User service.
-// Returns: The user, if found.
-// 200: User found.
-// 404: User not found.
 app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userService) =>
 {
     var user = await userService.GetUserByIdAsync(userId);
@@ -365,14 +360,12 @@ app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userServ
         ApiResponse<UserDto>.Ok(user, "اطلاعات کاربر با موفقیت دریافت شد.")
     );
 })
+.WithSummary("Get a user by internal id")
+.WithDescription(
+    "The same record as the Telegram-id lookup, keyed on the platform's own user id — the id the " +
+    "Wallet and Orders services store. Unlike that lookup, a missing user here answers 404.")
 .WithTags("Users");
 
-// Retrieves user information by phone number
-// phone: phone of the user
-// userService: User service for business logic
-// Returns: User details if found
-// 200: User found and returned successfully
-// 404: User not found
 app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userService) =>
 {
     var user = await userService.GetUserByPhoneNumberAsync(phone);
@@ -381,6 +374,10 @@ app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userServ
 
     return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
 })
+.WithSummary("Get a user by phone number")
+.WithDescription(
+    "Matches the stored phone number exactly — no normalisation of country code or leading zero, " +
+    "so the caller has to send it in the form registration stored. A miss answers 400, not 404.")
 .WithTags("Users");
 
 
@@ -396,15 +393,13 @@ app.MapGet("/api/users/list", async (
     var users = await userService.GetUsersAsync(q, page, size);
     return Results.Ok(ApiResponse<PagedResult<UserDto>>.Ok(users, "کاربران دریافت شد"));
 })
+.WithSummary("Search and page through users")
+.WithDescription(
+    "Newest first. `q` is a substring match over first name, last name and phone number; omit it " +
+    "to list everyone. `pageNumber` defaults to 1 and `pageSize` to 10, clamped to between 1 and " +
+    "100 — a larger page size is silently reduced rather than refused.")
 .WithTags("Users");
 
-// Updates the status of an existing user
-// request: Status update request containing Telegram ID and new status
-// userService: User service for business logic
-// Returns: Success status with confirmation message
-// 200: User status updated successfully
-// 400: Invalid request data or validation error
-// 404: User not found
 app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserService userService) =>
 {
     // UpdateUserStatusAsync throws InvalidOperationException with a user-facing "not found" message — a
@@ -419,20 +414,25 @@ app.MapPut("/api/user/status", async (UpdateUserStatusRequest request, UserServi
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
     }
 })
+.WithSummary("Change a user's status")
+.WithDescription(
+    "Moves the user identified by Telegram id between Pending, Approved, Rejected, Suspended and " +
+    "Blocked. This is the approval gate an administrator drives from the bot. No transition is " +
+    "forbidden — any status can be set from any other. An unknown Telegram id answers 400 with " +
+    "«کاربر یافت نشد.».")
 .WithTags("Users");
 
-// Gets user ID by invitation code
-// invitationCode: Invitation code to lookup
-// userService: User service for business logic
-// Returns: User ID associated with the invitation code
-// 200: User ID found and returned
-// 400: Invalid invitation code or error occurred
-// 404: Invitation code not found
 app.MapGet("/api/user/getUserIdByInvitationCode/{invitationCode}", async (string invitationCode, UserService userService) =>
 {
     var userId = await userService.GetUserIdByInvitationCode(invitationCode);
     return Results.Ok(userId);
 })
+.WithSummary("Resolve an invitation code to the user who owns it")
+.WithDescription(
+    "Every user carries an invitation code of their own, and this returns the id of the user whose " +
+    "code this is — the referrer recorded against a new registration. A code nobody holds answers " +
+    "200 with a null body rather than 404, and the id is returned bare rather than in the " +
+    "ApiResponse envelope.")
 .WithTags("Invitations");
 
 app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phonenumber, UserService userService) =>
@@ -440,41 +440,13 @@ app.MapGet("/api/user/getUserIdByPhoneNumber/{phonenumber}", async (string phone
     var userId = await userService.GetUserIdByPhoneNumber(phonenumber);
     return Results.Ok(userId);
 })
+.WithSummary("Resolve a phone number to a user id")
+.WithDescription(
+    "Matches the stored phone number exactly, as /api/userByPhone does. A number nobody has " +
+    "answers 200 with a null body rather than 404, and the id is returned bare rather than in the " +
+    "ApiResponse envelope.")
 .WithTags("Users");
 
-// Validates an invitation code
-// request: Invitation validation request containing the code to validate
-// userService: User service for business logic
-// Returns: Validation result with success status and message
-// 200: Invitation code validated successfully
-// 400: Invalid invitation code or error occurred
-app.MapPost("/api/user/validate-invitation", async (ValidateInvitationRequest request, UserService userService) =>
-{
-    var result = await userService.ValidateInvitationCodeAsync(request.InvitationCode);
-    return Results.Ok(new { isValid = result.isValid, message = result.message });
-})
-.WithTags("Invitations");
-
-// Registers a new user with invitation code
-// request: User registration request with invitation code
-// userService: User service for business logic
-// Returns: Registered user details with success status
-// 200: User registered successfully with invitation
-// 400: Invalid request data or validation error
-app.MapPost("/api/user/register-with-invitation", async (RegisterUserWithInvitationRequest request, UserService userService) =>
-{
-    var user = await userService.RegisterUserAsync(request.User);
-    return Results.Ok(new { success = true, userId = user.Id });
-})
-.WithTags("Invitations");
-
-// Updates the role of an existing user
-// request: Role update request containing user ID and new role
-// userService: User service for business logic
-// Returns: Success status with confirmation message
-// 200: User role updated successfully
-// 400: Invalid request data or validation error
-// 404: User not found
 app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserService userService) =>
 {
     var user = await userService.UpdateUserRoleAsync(request.UserId, request.NewRole);
@@ -483,14 +455,15 @@ app.MapPost("/api/user/update-role", async (UpdateUserRoleRequest request, UserS
 
     return Results.Ok(new { success = true, message = "نقش کاربر با موفقیت به‌روزرسانی شد." });
 })
+.WithSummary("Change a user's role")
+.WithDescription(
+    "Sets the role on the user with the given internal id — note the id, not the Telegram id every " +
+    "other user command takes. No transition is forbidden and the caller's own role is not " +
+    "considered here; in Production the X-API-Key is the only thing standing in front of this. " +
+    "Answers 404 for an unknown user, and returns a bare {success, message} object rather than the " +
+    "ApiResponse envelope.")
 .WithTags("Users");
 
-// Gets all users by role
-// role: Role to filter users by
-// userService: User service for business logic
-// Returns: List of users with the specified role
-// 200: Users found and returned successfully
-// 400: Invalid role or error occurred
 app.MapGet("/api/users/by-role/{role}", async (string role, UserService userService) =>
 {
     if (!Enum.TryParse<UserRole>(role, true, out var userRole))
@@ -499,19 +472,23 @@ app.MapGet("/api/users/by-role/{role}", async (string role, UserService userServ
     var users = await userService.GetUsersByRoleAsync(userRole);
     return Results.Ok(users);
 })
+.WithSummary("List every user holding a given role")
+.WithDescription(
+    "The role name is parsed case-insensitively from the path; a name that matches no role answers " +
+    "400 with «نقش نامعتبر است.». Unlike the single-user lookups, this returns the stored user " +
+    "records themselves rather than the trimmed UserDto, so the response carries fields those " +
+    "endpoints leave out.")
 .WithTags("Users");
 
-// Checks if a user exists by Telegram ID
-// telegramId: Telegram ID to check
-// userService: User service for business logic
-// Returns: Boolean indicating if user exists
-// 200: User existence check completed
-// 400: Error occurred during check
 app.MapGet("/api/user/exists/{telegramId}", async (long telegramId, UserService userService) =>
 {
     var exists = await userService.UserExistsAsync(telegramId);
     return Results.Ok(new { exists = exists });
 })
+.WithSummary("Check whether a Telegram id is registered")
+.WithDescription(
+    "Answers 200 with {exists: true|false} either way — an unregistered id is a normal answer " +
+    "here, not an error, which is what distinguishes this from the by-Telegram-id lookup.")
 .WithTags("Users");
 
 static string ResolveSharedConfigPath(Microsoft.Extensions.Hosting.IHostEnvironment environment, string fileName)
@@ -545,16 +522,6 @@ app.Run();
 
 
 
-
-/// <summary>
-/// Request model for validating invitation codes
-/// </summary>
-public record ValidateInvitationRequest(string InvitationCode);
-
-/// <summary>
-/// Request model for registering users with invitation codes
-/// </summary>
-public record RegisterUserWithInvitationRequest(User User);
 
 /// <summary>
 /// Request model for updating user roles
