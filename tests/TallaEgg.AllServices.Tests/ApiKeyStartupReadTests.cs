@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -37,6 +38,15 @@ public class ApiKeyStartupReadTests
     public static TheoryData<string> ServiceEntryPoints => [.. AuthenticatingServices];
 
     private const string GuardCall = "APIKeyConstant.RequireTallaEggApiKey()";
+    private const string SchemeOptions = "ApiKeyAuthenticationSchemeOptions";
+
+    /// <summary>The scheme's key, assigned from a bare local rather than an expression.</summary>
+    private static readonly Regex ApiKeyAssignment =
+        new(@"^\s*options\.ApiKey\s*=\s*(?<local>[A-Za-z_][A-Za-z0-9_]*)\s*;\s*$", RegexOptions.Compiled);
+
+    /// <summary>That local, read from the guard at startup.</summary>
+    private static Regex GuardedLocal(string name) =>
+        new($@"^\s*var\s+{Regex.Escape(name)}\s*=\s*APIKeyConstant\.RequireTallaEggApiKey\(\)\s*;\s*$");
 
     private static string[] ReadLines(string relativePath)
     {
@@ -51,7 +61,23 @@ public class ApiKeyStartupReadTests
     }
 
     /// <summary>
-    /// The mechanism the two rules below exist to protect against, demonstrated rather than
+    /// The <c>AddScheme</c> call's line range: from the call to the <c>});</c> that closes both
+    /// it and the delegate it is passed.
+    /// </summary>
+    private static (int Start, int End) AddSchemeCall(string[] lines, string relativePath)
+    {
+        var start = Array.FindIndex(lines, line =>
+            line.Contains($".AddScheme<{SchemeOptions}", StringComparison.Ordinal));
+        Assert.True(start >= 0, $"{relativePath} registers no {SchemeOptions} scheme.");
+
+        var end = Array.FindIndex(lines, start, line => line.Trim() == "});");
+        Assert.True(end >= start, $"{relativePath}: could not find the end of the AddScheme call.");
+
+        return (start, end);
+    }
+
+    /// <summary>
+    /// The mechanism the source rules below exist to protect against, demonstrated rather than
     /// asserted from the shape of the source: an <c>AddScheme</c> configure delegate does not
     /// run when the container is built. Nothing about registering it, or about resolving the
     /// provider, forces the read — only asking for the options does.
@@ -99,19 +125,10 @@ public class ApiKeyStartupReadTests
     public void TheApiKeyIsNotRead_InsideTheAddSchemeConfigureDelegate(string relativePath)
     {
         var lines = ReadLines(relativePath);
+        var (start, end) = AddSchemeCall(lines, relativePath);
 
-        var delegateStart = Array.FindIndex(lines, line =>
-            line.Contains(".AddScheme<ApiKeyAuthenticationSchemeOptions", StringComparison.Ordinal));
-        Assert.InRange(delegateStart, 0, lines.Length - 1);
-
-        // The delegate is the argument of that call, so it ends where the call does: the first
-        // line closing both, written "});" on its own.
-        var delegateEnd = Array.FindIndex(lines, delegateStart, line =>
-            line.Trim() == "});");
-        Assert.InRange(delegateEnd, delegateStart, lines.Length - 1);
-
-        var inside = lines[delegateStart..(delegateEnd + 1)]
-            .Select((line, offset) => (Line: line, Number: delegateStart + offset + 1))
+        var inside = lines[start..(end + 1)]
+            .Select((line, offset) => (Line: line, Number: start + offset + 1))
             .Where(entry => entry.Line.Contains(GuardCall, StringComparison.Ordinal))
             .Select(entry => $"{relativePath}:{entry.Number}: {entry.Line.Trim()}")
             .ToList();
@@ -120,15 +137,71 @@ public class ApiKeyStartupReadTests
     }
 
     /// <summary>
-    /// And the read still happens. Deleting it would satisfy the rule above while putting the
-    /// Production hole — a service authenticating against the local-dev placeholder — back.
+    /// The key the scheme ends up holding is the one the guard returned, read before the
+    /// registration that consumes it.
+    ///
+    /// <para>
+    /// Asserting only that the file mentions the guard somewhere is not enough, and was not:
+    /// <c>Users.Api</c> calls it a second time further down, for the API key its outgoing wallet
+    /// client sends. That call satisfied a whole-file search on its own, so the Production auth
+    /// read could have been swapped for <c>APIKeyConstant.TallaEggApiKey</c> — the local-dev
+    /// placeholder, which is exactly the hole the guard exists to close — with every test still
+    /// green.
+    /// </para>
+    ///
+    /// <para>
+    /// So this follows the value instead: the delegate must assign a bare local, and that local
+    /// must have been assigned from the guard above the <c>AddScheme</c> call. An expression in
+    /// the assignment fails the first half; a different source for the local fails the second.
+    /// </para>
     /// </summary>
     [Theory]
     [MemberData(nameof(ServiceEntryPoints))]
-    public void EveryAuthenticatingService_StillRequiresTheKey(string relativePath)
+    public void TheSchemesKey_ComesFromTheGuardReadAboveTheRegistration(string relativePath)
     {
-        Assert.Contains(ReadLines(relativePath), line =>
-            line.Contains(GuardCall, StringComparison.Ordinal)
-            && !line.TrimStart().StartsWith("//", StringComparison.Ordinal));
+        var lines = ReadLines(relativePath);
+        var (start, end) = AddSchemeCall(lines, relativePath);
+
+        var assignment = lines[start..(end + 1)]
+            .Select(line => ApiKeyAssignment.Match(line))
+            .FirstOrDefault(match => match.Success);
+
+        Assert.True(assignment is not null,
+            $"{relativePath}: the AddScheme delegate does not assign options.ApiKey from a local. " +
+            "It has to, or the value cannot have been read at startup.");
+
+        var local = assignment!.Groups["local"].Value;
+        var guarded = GuardedLocal(local);
+
+        var readAt = Array.FindIndex(lines, 0, start, line => guarded.IsMatch(line));
+        Assert.True(readAt >= 0,
+            $"{relativePath}: options.ApiKey is assigned from '{local}', but no " +
+            $"'var {local} = {GuardCall};' appears above the AddScheme call.");
+    }
+
+    /// <summary>
+    /// One place configures the scheme's options, and it is the delegate the rules above check.
+    ///
+    /// <para>
+    /// Without this, the read could be moved into a
+    /// <c>PostConfigure&lt;ApiKeyAuthenticationSchemeOptions&gt;</c> further down the file and be
+    /// exactly as lazy as before — a different options configuration action, run at the same
+    /// moment, out of reach of a rule that only looks between <c>AddScheme</c> and its closing
+    /// brace.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ServiceEntryPoints))]
+    public void TheSchemesOptions_AreConfiguredInExactlyOnePlace(string relativePath)
+    {
+        var configuring = ReadLines(relativePath)
+            .Select((line, index) => (Line: line, Number: index + 1))
+            .Where(entry => entry.Line.Contains(SchemeOptions, StringComparison.Ordinal)
+                            && !entry.Line.TrimStart().StartsWith("//", StringComparison.Ordinal))
+            .Select(entry => $"{relativePath}:{entry.Number}: {entry.Line.Trim()}")
+            .ToList();
+
+        var registration = Assert.Single(configuring);
+        Assert.Contains($".AddScheme<{SchemeOptions}", registration, StringComparison.Ordinal);
     }
 }

@@ -24,9 +24,12 @@ public class UsersApiClient : IUsersApiClient
     {
         // The injected client, and no other. This assignment used to be undone twenty lines
         // below by `_httpClient = new HttpClient(handler)`, so every instance abandoned the
-        // factory's client — and with it the pooled, periodically rotated handler — for a
-        // private connection pool that nothing disposed. Orders.Api registers this client
-        // Scoped, so that was one abandoned pool per inbound request (issue #214).
+        // factory's client for a private connection pool that nothing disposed. Orders.Api
+        // registers this client Scoped, so that was one such pool per inbound request, and the
+        // one place in this system where the factory's handler rotation was being bypassed —
+        // the bot and the simulator hold the client as a singleton, which pins the handler for
+        // the life of the process either way, so there the cost was one leaked pool and the
+        // loss of the factory's shared handler, not the rotation (issue #214).
         //
         // The handler that replaced it carried exactly one setting: a Debug-only callback
         // accepting any server certificate, added when local inter-service calls were expected
