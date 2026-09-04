@@ -41,6 +41,9 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 StartupLogging.ReportUnhandledExceptionsToLog();
 
+// Answers "which build is this?" from the log even when the service never finishes starting (issue #218).
+StartupLogging.LogBuildVersion();
+
 const string sharedConfigFileName = "appsettings.global.json";
 var sharedConfigPath = ResolveSharedConfigPath(builder.Environment, sharedConfigFileName);
 builder.Configuration.AddJsonFile(sharedConfigPath, optional: false, reloadOnChange: true);
@@ -254,6 +257,14 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = "api-docs";
     });
 }
+
+// Which build this service is running (issue #218) — the question a deployment leaves behind,
+// answered without RDP and a file-properties dialog. Deliberately not AllowAnonymous: the
+// Production fallback policy applies, so the caller needs the same X-API-Key as every other
+// endpoint. The commit hash names an exact line of a public repository, and the operator asking
+// the question already holds the key.
+app.MapGet("/version", () => Results.Ok(ApiResponse<BuildVersionDto>.Ok(BuildVersion.Current)))
+   .WithTags("Diagnostics");
 
 
 

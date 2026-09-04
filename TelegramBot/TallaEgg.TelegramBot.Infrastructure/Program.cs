@@ -40,6 +40,9 @@ public class Program
         // service with no console to print to — same as the five APIs (issue #205).
         TallaEgg.Core.StartupLogging.ReportUnhandledExceptionsToLog();
 
+        // Answers "which build is this?" from the log even when the service never finishes starting (issue #218).
+        TallaEgg.Core.StartupLogging.LogBuildVersion();
+
         using var host = CreateHostBuilder(args).Build();
         await host.RunAsync();
     }

@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- BuildVersion.Parse is internal so the informational-version split can be tested
+         against real build strings without fabricating an assembly (issue #218). -->
+    <InternalsVisibleTo Include="TallaEgg.AllServices.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
