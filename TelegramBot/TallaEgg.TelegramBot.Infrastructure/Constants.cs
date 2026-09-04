@@ -899,18 +899,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
     /// A summary of each version's notable changes, for the update message.
     /// The key must match IVersionService.GetCurrentVersion exactly, for example "1.1.0".
     /// A version with no entry here sends the update message without a changelog.
-    /// Add an entry here whenever AssemblyVersion is raised.
+    /// Add an entry here whenever VersionPrefix (Directory.Build.props) is raised.
     /// </summary>
     public static class ReleaseNotes
     {
         private static readonly Dictionary<string, string[]> Notes = new()
         {
-            // Example:
-            // ["1.1.0"] = new[]
-            // {
-            //     "ثبت خودکار معاملات و به‌روزرسانی موجودی",
-            //     "نمایش تاریخچه معاملات در منوی حسابداری",
-            // },
+            ["1.1.0"] = new[]
+            {
+                "امکان معامله سکه تمام بهار آزادی و بیت‌کوین، علاوه بر طلای آبشده",
+                "نمایش صحیح‌تر تاریخچه معاملات (نوع خرید/فروش و تاریخ)",
+                "پایداری بیشتر در ثبت و تسویه معاملات",
+            },
         };
 
         /// <summary>
