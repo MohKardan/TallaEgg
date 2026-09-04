@@ -432,8 +432,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// <para>
         /// <b>The user id is echoed back on success.</b> It is not decoration: Wallet and Orders key
         /// every user-scoped endpoint by this internal Guid and neither of them accepts a phone
-        /// number, while no other message the bot sends shows it. Printing it here is the difference
-        /// between one message and a database query the next time the account has to be looked at.
+        /// number, so it is the identifier an operator needs to inspect the account they just
+        /// changed. It is not the only source — Users exposes
+        /// <c>GET /api/user/getUserIdByPhoneNumber/{phone}</c>, and the audit line below records it
+        /// — so this saves a round trip at the point of use, and removing it would cost no more
+        /// than that.
         /// </para>
         /// </summary>
         private async Task HandleChangeRoleCommandAsync(long chatId, string msgText, UserDto actor)

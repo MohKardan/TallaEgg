@@ -117,9 +117,9 @@ public class AdminRoleCommandTests
     }
 
     /// <summary>
-    /// The confirmation must carry the target's id. It is the internal Guid every user-scoped
-    /// Wallet and Orders endpoint is keyed by, and no other message the bot sends shows it, so
-    /// dropping it leaves a database query as the only way for an operator to get hold of it.
+    /// The confirmation must carry the target's id: it is the internal Guid every user-scoped
+    /// Wallet and Orders endpoint is keyed by, and having it in the reply saves the operator a
+    /// separate lookup at the moment they are most likely to want it.
     /// </summary>
     [Fact]
     public async Task TheConfirmationCarriesTheUserIdTheBackendEndpointsAreKeyedBy()

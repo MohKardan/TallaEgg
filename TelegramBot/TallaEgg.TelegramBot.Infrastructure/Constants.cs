@@ -453,8 +453,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         ///
         /// The user id is shown deliberately. Every user-scoped endpoint in Wallet and Orders is keyed
         /// by this internal Guid — balance, transactions, orders, trades, positions — and none of them
-        /// accepts a phone number. This is the only message in the bot that surfaces it, so without
-        /// this line an operator looking into an account has to query the database for it first.
+        /// accepts a phone number, so it is what an operator needs next if they want to look at the
+        /// account they just changed. It is obtainable elsewhere — Users exposes
+        /// <c>GET /api/user/getUserIdByPhoneNumber/{phone}</c>, and the role change is logged with it
+        /// — so this line saves a round trip rather than being the only source.
         /// </summary>
         public const string MsgAdminRoleChanged = "✅ سطح دسترسی تغییر کرد.\n\n" +
                                                    "👤 کاربر: {0}\n" +
