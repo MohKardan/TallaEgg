@@ -102,10 +102,18 @@ builder.Services.AddDbContext<UsersDbContext>(options =>
 // Protection is only wired up in Production.
 if (builder.Environment.IsProduction())
 {
+    // Read here, not inside the AddScheme delegate below: that delegate is an options
+    // configuration action, so it does not run when the host is built but the first time
+    // IOptionsMonitor<ApiKeyAuthenticationSchemeOptions>.Get is called — inside
+    // AuthenticationHandler<T>.InitializeAsync, on a request. An unset TALLAEGG_API_KEY
+    // therefore let the service start, bind its port and look healthy under sc.exe while
+    // answering 500 to every request, one environment variable away from working (issue #214).
+    var apiKey = APIKeyConstant.RequireTallaEggApiKey();
+
     builder.Services.AddAuthentication("ApiKey")
         .AddScheme<ApiKeyAuthenticationSchemeOptions, ApiKeyAuthenticationHandler>("ApiKey", options =>
         {
-            options.ApiKey = APIKeyConstant.RequireTallaEggApiKey();
+            options.ApiKey = apiKey;
         });
 
     // Global authorization policy, Production only.

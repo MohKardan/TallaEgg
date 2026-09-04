@@ -22,7 +22,20 @@ public class OrderApiClient : IOrderApiClient
 
     public OrderApiClient(HttpClient httpClient, IConfiguration configuration, ILogger<OrderApiClient> logger)
     {
-        _httpClient = httpClient;
+        // The injected client, and no other. This assignment used to be undone twenty lines
+        // below by `_httpClient = new HttpClient(handler)`, so every instance abandoned the
+        // factory's client for a private connection pool that nothing disposed (issue #214).
+        // Both hosts that build this client register it as a singleton, so the cost was one
+        // leaked pool for the life of the process rather than the per-request leak #214 found
+        // in Orders.Api. A singleton pins the factory's handler too, so what is recovered here
+        // is the shared handler and the factory's pipeline, not its rotation.
+        //
+        // The handler that replaced it carried exactly one setting: a Debug-only callback
+        // accepting any server certificate, added when local inter-service calls were expected
+        // over self-signed HTTPS. No service in this system binds an HTTPS address, so it had
+        // nothing left to accept, and a Release build compiled it out and left a handler
+        // configured precisely like the one the factory supplies.
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
         // Guarded rather than defaulted: the old fallback pointed at 5135, which is TallaEgg.Api
         // — a host that starts, binds and maps no routes. Orders are on 5140, so taking that
@@ -36,12 +49,6 @@ public class OrderApiClient : IOrderApiClient
         _baseUrl = ConfigurationGuard.RequireUri(configuration, "OrderApiUrl").AbsoluteUri.TrimEnd('/');
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        var handler = new HttpClientHandler();
-#if DEBUG
-        // DEV ONLY: accept self-signed certs for local inter-service calls.
-        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
-#endif
-        _httpClient = new HttpClient(handler);
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", APIKeyConstant.TallaEggApiKey);
     }
 
