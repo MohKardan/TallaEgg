@@ -65,6 +65,14 @@ public class WalletRepository : IWalletRepository
             _logger.LogWarning("Duplicate wallet creation attempted for user {UserId}, asset {Asset}. Returning existing wallet.",
                 wallet.UserId, wallet.Asset);
 
+            // Detach before re-reading. EF only calls AcceptAllChanges when SaveChangesAsync
+            // succeeds, so the rejected insert is still Added on this context — which is scoped
+            // per request and shared by every caller on it. Left behind, it is flushed again by
+            // the next SaveChangesAsync, fails on the same unique index, and rolls that whole
+            // batch back: the caller loses the row it was actually saving, and gets a duplicate
+            // error for an insert it never made (issue #223).
+            _context.Entry(wallet).State = EntityState.Detached;
+
             // Lost the race — return the wallet the other caller created.
             var existingWallet = await GetWalletAsync(wallet.UserId, wallet.Asset);
             if (existingWallet != null)
@@ -76,6 +84,11 @@ public class WalletRepository : IWalletRepository
         {
             _logger.LogError(ex, "Error creating wallet for user {UserId}, asset {Asset}",
                 wallet.UserId, wallet.Asset);
+
+            // Same reasoning as above, for every other way the insert can fail. This one is a
+            // no-op when the pre-check threw before the entity was ever added — Entry() on an
+            // untracked entity reports Detached already.
+            _context.Entry(wallet).State = EntityState.Detached;
             throw;
         }
     }
