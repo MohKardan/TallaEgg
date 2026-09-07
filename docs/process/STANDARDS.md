@@ -77,6 +77,26 @@ placement at repo root is existing history, not a pattern to copy.
 - **Test files**: `{ClassName}Tests.cs` (e.g., `WalletServiceTests.cs`)
 - **Project folders**: PascalCase matching project name
 
+#### JSON Wire Format
+
+**Every API answers in the ASP.NET Core default camelCase.** Do not set `PropertyNamingPolicy` in
+any service. Do not use `[JsonPropertyName]` — or Newtonsoft's `[JsonProperty]`, which this
+repository is equally able to reach for — on a shared DTO unless an external contract requires that
+exact spelling, and record the reason in a comment when you do. **One value gets one wire name** —
+no alias properties, and never two names for the same field.
+
+This paragraph exists because its absence was the root cause of two defects. Neither #229 (one
+service serving PascalCase because it set the naming policy to `null`) nor #235 (`OrderDto`
+presenting two values as four crossed fields, so the accepted quantity depended on the order of
+the keys in the request body) contradicted a rule — there was no rule to contradict, and both
+stayed invisible because every internal consumer reads case-insensitively. They get expensive at
+the same moment: when a browser client ships against the published schema.
+
+`tests/TallaEgg.AllServices.Tests/JsonNamingPolicyConsistencyTests.cs` enforces the first two
+sentences and holds the allowlist for the third; the two behavioral guards in
+`RequestDtoWireContractTests.cs` enforce the last. Adding a name to that allowlist is a contract
+decision, not a formatting one.
+
 #### Branch Names (Git)
 - **Feature**: `feat/{description}` (e.g., `feat/add-wallet-transaction`)
 - **Bugfix**: `fix/{description}` (e.g., `fix/null-reference-wallet`)

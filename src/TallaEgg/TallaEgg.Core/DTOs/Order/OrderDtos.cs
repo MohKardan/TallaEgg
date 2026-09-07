@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using TallaEgg.Core.Enums.Order;
 
@@ -29,50 +27,47 @@ namespace TallaEgg.Core.DTOs.Order
     /// Unified order creation request for all order types
     /// A single order-creation request covering every order type.
     /// </summary>
+    /// <remarks>
+    /// One value, one wire name (issue #235). This class used to carry the repository's only four
+    /// <c>[JsonPropertyName]</c> attributes and all four were crossed: <c>Asset</c> serialized as
+    /// <c>"symbol"</c> while an alias called <c>Symbol</c> serialized as <c>"asset"</c>, and the
+    /// same for <c>Amount</c>/<c>Quantity</c>. Two values reached the wire as four fields, and on
+    /// the way in the last key won, so the accepted quantity depended on the order of the keys in
+    /// the request body.
+    ///
+    /// The aliases went with the attributes rather than surviving them: kept as plain properties
+    /// they would have produced the same four fields again under camelCase names, which is the
+    /// defect, not a smaller version of it. <c>Asset</c> and <c>Amount</c> are the survivors
+    /// because this endpoint's own response uses those names (<see cref="OrderHistoryDto"/>), so
+    /// request and response now agree.
+    ///
+    /// The DataAnnotations went too. Minimal APIs do not execute them — nothing in this repository
+    /// calls <c>Validator.TryValidateObject</c> or registers a validation filter — so they enforced
+    /// nothing while making the generated schema advertise constraints the server does not apply.
+    /// Orders.Api validates this request by hand instead.
+    /// </remarks>
     public class OrderDto
     {
         /// <summary>
         /// User id.
         /// </summary>
-        [Required(ErrorMessage = "شناسه کاربر الزامی است")]
         public Guid Id { get; set; }
 
-        [JsonPropertyName("symbol")]
+        /// <summary>
+        /// Asset symbol, as a trading pair — for example <c>MAUA/IRT</c>.
+        /// </summary>
         public string Asset { get; set; } = "";
         /// <summary>
-        /// Asset symbol.
-        /// alias
+        /// Order quantity, in the base asset.
         /// </summary>
-        [Required(ErrorMessage = "نماد دارایی الزامی است")]
-        [StringLength(20, ErrorMessage = "نماد دارایی نمی‌تواند بیش از 20 کاراکتر باشد")]
-        [JsonPropertyName("asset")]
-        public string Symbol
-        {
-            get => Asset;
-            set => Asset = value;
-        }
-
-        /// <summary>
-        /// Order quantity.
-        /// alias
-        /// </summary>
-        [Required(ErrorMessage = "مقدار سفارش الزامی است")]
-        [Range(0.00000001, double.MaxValue, ErrorMessage = "مقدار سفارش باید بزرگتر از صفر باشد")]
-        [JsonPropertyName("Amount")]
-        public decimal Quantity
-        {
-            get => Amount;
-            set => Amount = value;
-        }
-        [JsonPropertyName("quantity")]
         public decimal Amount { get; set; }
+
         /// <summary>
         /// Price. Required for limit orders, optional for market orders.
         /// </summary>
         public decimal Price { get; set; }
         public Guid UserId { get; set; }
 
-        [Required(ErrorMessage = "سمت سفارش یا جهت سفارش (خرید یا فروش(")]
         public OrderSide Side { get; set; }
         public OrderType Type { get; set; }
         public OrderStatus Status { get; set; }

@@ -629,11 +629,12 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
 {
     try
     {
-        // Validate request
-        if (string.IsNullOrWhiteSpace(request.Symbol))
+        // Validate request. Minimal APIs do not run DataAnnotations, so these hand-written checks
+        // are the only validation this endpoint has — see the remarks on OrderDto (issue #235).
+        if (string.IsNullOrWhiteSpace(request.Asset))
             return Results.BadRequest(new { success = false, message = "نماد معاملاتی الزامی است" });
         
-        if (request.Quantity <= 0)
+        if (request.Amount <= 0)
             return Results.BadRequest(new { success = false, message = "مقدار سفارش باید بیشتر از صفر باشد" });
         
         if (request.Price <= 0)
