@@ -137,26 +137,59 @@ three APIs.
 `Orders.Api` and `Users.Api` call `Wallet.Api` on startup paths, so `Wallet.Api` starts first and
 the bot starts last.
 
-### What neither ordering buys
+### What neither ordering buys, and what waits it out anyway
 
 *Running* means the dependency's process started and reported ready. Nothing more. For SQL Server
 it does **not** mean the instance is accepting connections yet; for an API it does not mean its own
-migration or first outbound call has finished.
+migration has finished.
 
-**Do not expect the services to ride that out.** No `DbContext` here configures
-`EnableRetryOnFailure`, so the first failed connection throws straight out of `MigrateAsync()` and
-the process dies before the host ever starts. And restart-on-crash does not rescue the ones behind
-it: the `sc.exe failure` actions run when a service's own process terminates, so a service the SCM
-never launched — because its declared dependency failed — takes no recovery action at all and
-simply stays `Stopped`. That is why one service dying at boot took all four down in #228, and it is
-still how it would fail if the database is `Running` but not yet answering.
+So the dependency narrows the window, it does not close it. What closes it is the services waiting
+for their database instead of trusting Windows' start order, and since
+[#230](https://github.com/MohKardan/TallaEgg/issues/230) they do.
 
-So the dependency narrows the window, it does not close it. Closing it means the services waiting
-for their database instead of trusting Windows' start order, which is application code and is
-tracked separately in [#230](https://github.com/MohKardan/TallaEgg/issues/230). Note the trap
-recorded there: retrying around `MigrateAsync()` where it currently stands would make this *worse*,
-because that code runs before the host connects to the SCM and a longer wait there is a longer
-start timeout, not a recovery.
+Until then they could not. `Wallet.Api`, `Users.Api` and `Orders.Api` each ran `MigrateAsync()`
+between `builder.Build()` and `app.Run()`, and `WindowsServiceLifetime` does not connect to the SCM
+dispatcher until `app.Run()` — so every second spent migrating was a second the SCM counted against
+its 45-second start timeout with nothing connected yet. No `DbContext` here configures
+`EnableRetryOnFailure`, so a database that was not answering did not fail fast either: the call
+blocked, the process was killed, and the service never reported anything. Restart-on-crash did not
+rescue the ones behind it, and still does not — the `sc.exe failure` actions run when a service's
+own process terminates, so a service the SCM never launched, because its declared dependency
+failed, takes no recovery action at all and simply stays `Stopped`.
+
+### How a service waits for its database now (issue #230)
+
+Each of the three APIs registers its migration as a hosted service instead, so the host starts and
+the service reports `Running` within a second or two whether or not the database is up. What
+follows is visible in the service's own log under `C:\TallaEgg\publish\<Service>\logs\`:
+
+- **The database is up.** One line, and the service is serving:
+  ```
+  [18:53:20 INF] Application started. Press Ctrl+C to shut down.
+  [18:53:21 INF] Database migration succeeded on attempt 1 of 10. The service is now answering requests.
+  ```
+- **The database arrives late.** Each attempt is logged and the backoff doubles from five seconds
+  to a minute. No restart is needed — the same process recovers:
+  ```
+  [18:53:35 WRN] Database migration attempt 1 of 10 failed. Retrying in 5s; requests are answered 503 until it succeeds.
+  [18:53:55 WRN] Database migration attempt 2 of 10 failed. Retrying in 10s; requests are answered 503 until it succeeds.
+  [18:54:40 INF] Database migration succeeded on attempt 4 of 10. The service is now answering requests.
+  ```
+- **The database never comes.** After ten attempts — roughly six minutes of waiting plus each
+  attempt's own connection timeout — the service logs the last exception at `Fatal` and **stops
+  itself** rather than staying `Running` and useless. Expect it in `Get-Service` as `Stopped`, with
+  this in its log:
+  ```
+  [FTL] Database migration failed on all 10 attempts. The service cannot serve a request without
+        its schema, so it is stopping rather than staying up and answering 503 forever.
+  ```
+
+**While the migration has not succeeded, every request is answered `503 Service Unavailable`** with
+a Persian message saying the service is still starting. `GET /version` is the one exception, so
+"which build is this?" still has an answer while a service is degraded. A `503` from these services
+during the first minute after a boot is the expected shape of a slow database, not a fault.
+
+The bot is unchanged: it opens no database of its own.
 
 ### Applying this to a machine installed before #228
 

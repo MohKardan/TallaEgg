@@ -107,7 +107,8 @@ public class OutboxBatchResilienceTests : IDisposable
         var processor = new OutboxProcessorService(
             _provider.GetRequiredService<IServiceScopeFactory>(),
             new InstanceIdentity("batch-resilience-tests"),
-            NullLogger<OutboxProcessorService>.Instance);
+            NullLogger<OutboxProcessorService>.Instance,
+            MigratedDatabase.Readiness());
 
         // Must not throw — the loop absorbs the persistence failure.
         await processor.ProcessDueMessagesAsync(CancellationToken.None);

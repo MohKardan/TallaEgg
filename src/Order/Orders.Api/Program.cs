@@ -19,6 +19,7 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Responses.Order;
+using TallaEgg.Core.Startup;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using CancelActiveOrdersResponseDto = TallaEgg.Core.DTOs.Order.CancelActiveOrdersResponseDto;
@@ -261,30 +262,50 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// --- Migrations and startup validation ---
+// Registered to run from a hosted service once the host has started, rather than between
+// Build() and Run() where it used to sit: under UseWindowsService() nothing is connected to the
+// SCM until Run(), so a database that was not answering yet blocked here until the SCM killed
+// the process (issue #230).
+builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToken) =>
+{
+    var context = services.GetRequiredService<OrdersDbContext>();
+    await context.Database.MigrateAsync(cancellationToken);
+
+    // A symbol with an active quote but not in dealer mode means the admin's published price and
+    // the configuration disagree. Logged only; it does not stop the service (issue #73).
+    //
+    // It reads the database, so it has to run after the migration — but it is a check, not a
+    // precondition. Letting it throw out of here would count against the migration's retry budget
+    // and hold every request at 503 over a configuration report, which is the opposite of what
+    // #73 decided. Hence its own catch.
+    try
+    {
+        var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
+        await marketModeValidator.ValidateAsync();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "The market-mode startup check could not run. The service is unaffected (issue #73).");
+    }
+});
+
 var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- Migrations and initial seed ---
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<OrdersDbContext>();
-    await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
+// Requests are refused with 503 until the migration above has succeeded, so this service never
+// answers against a schema it has not migrated (issue #230).
+app.UseDatabaseReadinessGate();
 
-    // Says who this instance is before anything it writes to the database carries that name
-    // (issue #160). Running a second Orders.Api is supported now, but it is rarely intended here:
-    // this line and the follower warnings from the background loops are what make it visible
-    // instead of leaving the constraint in a code comment nobody deploying will read.
-    Log.Information("Orders.Api instance identity is {InstanceId}. Background loops coordinate through the ServiceLeases table.",
-        services.GetRequiredService<InstanceIdentity>().Value);
-
-    // A symbol with an active quote but not in dealer mode means the admin's published price and
-    // the configuration disagree. Logged only; it does not stop the service (issue #73).
-    var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
-    await marketModeValidator.ValidateAsync();
-}
-
+// Says who this instance is before anything it writes to the database carries that name
+// (issue #160). Running a second Orders.Api is supported now, but it is rarely intended here:
+// this line and the follower warnings from the background loops are what make it visible
+// instead of leaving the constraint in a code comment nobody deploying will read. It reads a
+// singleton and touches no database, so it stays out of the retrying migration above and is
+// logged here, ahead of every loop that could write (issue #230).
+Log.Information("Orders.Api instance identity is {InstanceId}. Background loops coordinate through the ServiceLeases table.",
+    app.Services.GetRequiredService<InstanceIdentity>().Value);
 
 // Authentication and authorization, Production only.
 if (app.Environment.IsProduction())

@@ -13,6 +13,7 @@ using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Requests.Trade;
 using TallaEgg.Core.Requests.Wallet;
+using TallaEgg.Core.Startup;
 using Wallet.Application;
 using Wallet.Application.Mappers;
 using Wallet.Core;
@@ -150,17 +151,24 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// --- Migrations ---
+// Registered to run from a hosted service once the host has started, rather than between
+// Build() and Run() where it used to sit: under UseWindowsService() nothing is connected to the
+// SCM until Run(), so a database that was not answering yet blocked here until the SCM killed
+// the process (issue #230).
+builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToken) =>
+{
+    var context = services.GetRequiredService<WalletDbContext>();
+    await context.Database.MigrateAsync(cancellationToken);
+});
+
 var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- Migrations and initial seed ---
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<WalletDbContext>();
-    await context.Database.MigrateAsync();
-}
+// Requests are refused with 503 until the migration above has succeeded, so this service never
+// answers against a schema it has not migrated (issue #230).
+app.UseDatabaseReadinessGate();
 
 // Authentication and authorization, Production only.
 if (app.Environment.IsProduction())

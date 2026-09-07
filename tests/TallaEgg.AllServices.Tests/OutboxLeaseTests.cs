@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -90,7 +90,8 @@ public class OutboxLeaseTests : IDisposable
     private OutboxProcessorService ProcessorFor(string instance) => new(
         _provider.GetRequiredService<IServiceScopeFactory>(),
         new InstanceIdentity(instance),
-        NullLogger<OutboxProcessorService>.Instance);
+        NullLogger<OutboxProcessorService>.Instance,
+        MigratedDatabase.Readiness());
 
     private static string PayloadFor(Guid tradeId) =>
         System.Text.Json.JsonSerializer.Serialize(new TradeDto

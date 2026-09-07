@@ -1,6 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TallaEgg.Core.Startup;
 using Orders.Core;
 using TallaEgg.Core;
 using TallaEgg.Core.ErrorHandling;
@@ -39,16 +40,19 @@ public class AutoQuotePublisherService : BackgroundService
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AutoQuotePublisherService> _logger;
+    private readonly DatabaseReadiness _readiness;
     private readonly LeaderGate _leaderGate;
 
     public AutoQuotePublisherService(
         IServiceScopeFactory scopeFactory,
         ILogger<AutoQuotePublisherService> logger,
-        ILeaderLease leaderLease)
+        ILeaderLease leaderLease,
+        DatabaseReadiness readiness)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
         _leaderGate = new LeaderGate(ServiceLeaseRoles.AutoQuotePublisher, LeaseDuration, leaderLease, logger);
+        _readiness = readiness;
     }
 
     /// <summary>internal so a test can ask the gate directly, without driving the loop's timing.</summary>
@@ -70,6 +74,14 @@ public class AutoQuotePublisherService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("AutoQuotePublisherService started (poll every {Minutes}m).", PollInterval.TotalMinutes);
+        // Nothing below may touch the database before the migration has applied it. Since #230 the
+        // migration runs alongside the host instead of ahead of it, and the readiness gate only
+        // covers HTTP — a loop reaches the database without a request.
+        if (!await _readiness.WaitUntilReadyAsync(stoppingToken))
+        {
+            return;
+        }
+
 
         while (!stoppingToken.IsCancellationRequested)
         {

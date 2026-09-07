@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orders.Application.Services;
+using TallaEgg.Core.Startup;
 
 namespace Orders.Application;
 
@@ -28,6 +30,10 @@ public static class MatchingEngineRegistration
     /// </summary>
     public static IServiceCollection AddMatchingEngine(this IServiceCollection services)
     {
+        // The loop waits for the migration before it sweeps the order book (issue #230).
+        // TryAdd so this composes with AddDatabaseMigrationAtStartup in either order.
+        services.TryAddSingleton<DatabaseReadiness>();
+
         services.AddSingleton<MatchingEngineService>();
         services.AddSingleton<IMatchingEngine>(sp => sp.GetRequiredService<MatchingEngineService>());
         services.AddHostedService(sp => sp.GetRequiredService<MatchingEngineService>());
