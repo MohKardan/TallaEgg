@@ -97,6 +97,42 @@ sentences and holds the allowlist for the third; the two behavioral guards in
 `RequestDtoWireContractTests.cs` enforce the last. Adding a name to that allowlist is a contract
 decision, not a formatting one.
 
+#### Trading-pair vocabulary: two spellings, and which one a new endpoint takes
+
+A trading pair is spelled `asset` in some schemas and `symbol` in others, and its quantity is
+`amount` or `quantity` along exactly the same line. This is real and pre-existing, not a mistake
+waiting to be tidied:
+
+| | `asset` / `amount` | `symbol` / `quantity` |
+|---|---|---|
+| **request bodies** | `OrderDto`, `WalletRequest` | `AcceptQuoteRequest`, `PublishQuoteRequest`, `TradeDto` |
+| **responses** | `OrderHistoryDto` | `BestPricesDto`, `TradeDto`, `TradeHistoryDto`, `PositionDto` |
+
+`TradeDto` is on both rows: it is the body Orders posts to `/api/wallet/changeBalance` and part of
+what `POST /api/orders` returns.
+
+The two order-entry paths sit on opposite sides of it: `POST /api/orders` takes `asset`/`amount`,
+`POST /api/quotes/accept` takes `symbol`/`quantity`. A client that places orders has to know both
+and pick per endpoint.
+
+**A new endpoint takes the spelling its own response already uses.** Where nothing constrains it —
+a genuinely new pair of request and response — use `symbol`/`quantity`, the larger group. That
+order matters and is not the same as "follow the majority": #235 kept `OrderDto` on `asset`/`amount`
+precisely because `OrderHistoryDto` is the response of that very endpoint, and a client works one
+endpoint at a time, so a request and response that disagree cost it more than a platform-wide
+majority it can look up once. Applying the majority rule first would reintroduce the mismatch that
+issue refused to create.
+
+**Unifying the two is not a rename**, which is why the split is written down rather than removed
+(issue #237). `TradeDto` is also the outbox payload: it is serialized into `OutboxMessages.Payload`
+with a bare `JsonSerializer` and read back case-sensitively, so renaming its properties silently
+turns every payload not yet settled into a settlement for an empty symbol and zero quantity.
+Changing it means a data migration over the stored payloads, plus a lockstep deployment of Orders
+and Wallet — `asset` versus `symbol` is a different name, not a different case, so the
+case-insensitive binding that makes ordinary DTO renames survive a mixed deployment does not bridge
+it. Worth doing only before a browser client (#97) ships against the current shape, and only as its
+own piece of work.
+
 #### Branch Names (Git)
 - **Feature**: `feat/{description}` (e.g., `feat/add-wallet-transaction`)
 - **Bugfix**: `fix/{description}` (e.g., `fix/null-reference-wallet`)

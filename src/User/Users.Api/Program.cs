@@ -22,6 +22,7 @@ using Users.Application;
 using Users.Application.Mappers;
 using Users.Core;
 using Users.Infrastructure;
+using TallaEgg.Core.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -257,7 +258,11 @@ app.UseTallaEggCors();
 // bought for nothing.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    // Swashbuckle stamps `additionalProperties: false` on every object schema and no service
+    // enforces it; an absent `additionalProperties` means "allowed" in OpenAPI 3, which is what
+    // these services actually do. Why, at length, on the helper (issue #237).
+    app.UseSwagger(options =>
+        options.PreSerializeFilters.Add((document, _) => document.AllowUndeclaredMembers()));
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Users API v1");
