@@ -21,8 +21,22 @@
     The shared inter-service API key (see README's "Shared API key" section). Required — every
     service throws at startup in Production if this is missing, by design (issue #33).
 
+.PARAMETER SqlServiceName
+    Name of the local SQL Server service the three APIs migrate against, added to their SCM
+    dependency list so they cannot start before the database (issue #228). Defaults to SQL Server
+    Express's own default instance service. Pass an empty string when the database is not a
+    service on this machine.
+
 .EXAMPLE
     .\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString)
+
+.EXAMPLE
+    Against a named instance. Any service name containing a $ must be in SINGLE quotes: in a
+    double-quoted PowerShell string, $TALLAEGG below is read as an undefined variable and the
+    dependency silently becomes "MSSQL". A default instance ("MSSQLSERVER") has no $ and is not
+    affected, but single quotes are harmless there and worth the habit.
+
+    .\install-services.ps1 -TallaEggApiKey (Read-Host -AsSecureString) -SqlServiceName 'MSSQL$TALLAEGG'
 
 .NOTES
     Run as Administrator. Re-running is safe: existing services are stopped and deleted first,
@@ -33,7 +47,11 @@ param(
     [string]$InstallRoot = "C:\TallaEgg",
 
     [Parameter(Mandatory = $true)]
-    [Security.SecureString]$TallaEggApiKey
+    [Security.SecureString]$TallaEggApiKey,
+
+    # Single-quoted on purpose: in a double-quoted string PowerShell reads $SQLEXPRESS as an
+    # undefined variable and silently hands sc.exe the name "MSSQL".
+    [string]$SqlServiceName = 'MSSQL$SQLEXPRESS'
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,18 +65,59 @@ if (-not (Test-Path $configPath)) {
     throw "Missing $configPath. Create it from config\appsettings.global.example.json with production values before installing services."
 }
 
+# Resolve the database dependency before anything is created, and before the API key is
+# decrypted below — sc.exe accepts a dependency on a service that cannot start and only fails at
+# start time, as a bare error 1075 or 1058 on the next boot, with nobody watching.
+$sqlDependency = @()
+if ($SqlServiceName) {
+    # Get-Service -Name matches wildcards, so a value like 'MSSQL*' would satisfy a bare existence
+    # test and then be written verbatim as a dependency on a service literally named "MSSQL*".
+    # Require an exact name.
+    $sqlService = Get-Service -Name $SqlServiceName -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq $SqlServiceName }
+    if (-not $sqlService) {
+        throw ("No Windows service named exactly '$SqlServiceName' on this machine. " +
+               "List the local SQL Server services with: Get-Service -Name 'MSSQL*' " +
+               "then pass one of the names it prints as -SqlServiceName " +
+               "(a wildcard is not a service name), " +
+               "or pass -SqlServiceName '' if the database is not hosted on this machine.")
+    }
+    # A disabled instance still resolves. Depending on one would stop all three APIs from ever
+    # starting, which is a worse outage than the one this dependency exists to fix. SQL Express
+    # gets installed and disabled by other products, so this is not hypothetical.
+    if ($sqlService.StartType -eq 'Disabled') {
+        throw ("The '$SqlServiceName' service is disabled, so nothing that depends on it can " +
+               "start. Enable it, or pass the instance the connection strings actually use as " +
+               "-SqlServiceName, or -SqlServiceName '' if the database is not hosted here.")
+    }
+    $sqlDependency = @($SqlServiceName)
+}
+
 $plainApiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($TallaEggApiKey))
 
-# Order matters for the -DependsOn column: Orders.Api and Users.Api call Wallet.Api on startup
-# paths, and all three run MigrateAsync() as the first thing they do. sc.exe's service
-# dependency only guarantees the dependency reached "Running" before this one starts — not that
-# its own startup work (migration, first HTTP call) has finished — so this absorbs most of the
-# ordering risk the issue calls out, not all of it. See the runbook for the residual case.
+# Two orderings decide whether this deployment survives a reboot, and only the second was
+# declared before issue #228.
+#
+# Against the database: Wallet.Api, Users.Api and Orders.Api each run MigrateAsync() before they
+# report Running, and SQL Server Express installs itself as *delayed* auto-start, roughly two
+# minutes after boot. Ordinary auto-start services therefore ran first, blocked in MigrateAsync()
+# against a database that was not listening, and the SCM killed them at its 45-second start
+# timeout. Naming the SQL service here fixes the order: an auto-start service is allowed to depend
+# on a delayed auto-start one, and the SCM then has to start the delayed service at boot instead
+# of after the delay (SERVICE_DELAYED_AUTO_START_INFO, Remarks).
+#
+# Against each other: Orders.Api and Users.Api call Wallet.Api on startup paths, so Wallet.Api
+# goes first and the bot, which opens no database of its own, goes last.
+#
+# Neither ordering waits for readiness. "Running" means the dependency's process started and
+# reported ready — for SQL Server, not that the instance accepts connections yet; for an API, not
+# that its own migration or first HTTP call has finished. This narrows the window rather than
+# closing it. See the runbook for the residual case.
 $services = @(
-    @{ Name = "TallaEggWalletApi"; Publish = "Wallet.Api";  Exe = "Wallet.Api.exe";                          DependsOn = @() }
-    @{ Name = "TallaEggUsersApi";  Publish = "Users.Api";   Exe = "Users.Api.exe";                           DependsOn = @("TallaEggWalletApi") }
-    @{ Name = "TallaEggOrdersApi"; Publish = "Orders.Api";  Exe = "Orders.Api.exe";                          DependsOn = @("TallaEggWalletApi") }
+    @{ Name = "TallaEggWalletApi"; Publish = "Wallet.Api";  Exe = "Wallet.Api.exe";                          DependsOn = $sqlDependency }
+    @{ Name = "TallaEggUsersApi";  Publish = "Users.Api";   Exe = "Users.Api.exe";                           DependsOn = $sqlDependency + @("TallaEggWalletApi") }
+    @{ Name = "TallaEggOrdersApi"; Publish = "Orders.Api";  Exe = "Orders.Api.exe";                          DependsOn = $sqlDependency + @("TallaEggWalletApi") }
     @{ Name = "TallaEggBot";       Publish = "Bot";         Exe = "TallaEgg.TelegramBot.Infrastructure.exe"; DependsOn = @("TallaEggWalletApi", "TallaEggUsersApi", "TallaEggOrdersApi") }
 )
 
@@ -88,7 +147,14 @@ foreach ($svc in $services) {
 
     if ($svc.DependsOn.Count -gt 0) {
         $dependString = ($svc.DependsOn -join "/") + "/"
-        sc.exe config $svc.Name depend= $dependString | Out-Null
+        # $ErrorActionPreference does not cover a native exit code, and this one write is the
+        # whole of issue #228's fix: swallowing a failure here means rebooting straight back into
+        # the outage while the script reports success.
+        $configOutput = sc.exe config $svc.Name depend= $dependString
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Could not set the dependency list for $($svc.Name) " +
+                   "(sc.exe exit $LASTEXITCODE): $configOutput")
+        }
     }
 
     # Native services have no ASPNETCORE_ENVIRONMENT/TALLAEGG_API_KEY unless set here — sc.exe
