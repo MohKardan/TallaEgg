@@ -213,11 +213,20 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
 builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
 
-// Configure JSON serialization
+// Read request bodies case-insensitively, but write responses in the ASP.NET Core default
+// camelCase — the same shape Wallet.Api and Users.Api produce, neither of which configures
+// anything here. Until #229 this block also set PropertyNamingPolicy = null, which made this one
+// service answer in PascalCase; every caller happened to deserialize case-insensitively, so the
+// divergence stayed invisible. Do not set PropertyNamingPolicy again: a browser client (#97)
+// cannot absorb a per-service wire format for free, and changing it once a client ships is a
+// breaking change.
+//
+// This configures the HTTP pipeline only. The outbox settlement payload is written and read by
+// bare JsonSerializer calls that use JsonSerializerOptions.Default, so it stays PascalCase on
+// both ends and is unaffected by anything set here.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
-    options.SerializerOptions.PropertyNamingPolicy = null;
 });
 
 // Add Swagger/OpenAPI support
