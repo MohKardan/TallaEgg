@@ -21,8 +21,20 @@
     The shared inter-service API key (see README's "Shared API key" section). Required — every
     service throws at startup in Production if this is missing, by design (issue #33).
 
+.PARAMETER SqlServiceName
+    Name of the local SQL Server service the three APIs migrate against, added to their SCM
+    dependency list so they cannot start before the database (issue #228). Defaults to SQL Server
+    Express's own default instance service. Pass an empty string when the database is not a
+    service on this machine.
+
 .EXAMPLE
     .\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString)
+
+.EXAMPLE
+    Against a full SQL Server instance rather than Express. Quote the name in single quotes, or
+    PowerShell expands anything after the $ as a variable:
+
+    .\install-services.ps1 -TallaEggApiKey (Read-Host -AsSecureString) -SqlServiceName 'MSSQLSERVER'
 
 .NOTES
     Run as Administrator. Re-running is safe: existing services are stopped and deleted first,
@@ -33,7 +45,11 @@ param(
     [string]$InstallRoot = "C:\TallaEgg",
 
     [Parameter(Mandatory = $true)]
-    [Security.SecureString]$TallaEggApiKey
+    [Security.SecureString]$TallaEggApiKey,
+
+    # Single-quoted on purpose: in a double-quoted string PowerShell reads $SQLEXPRESS as an
+    # undefined variable and silently hands sc.exe the name "MSSQL".
+    [string]$SqlServiceName = 'MSSQL$SQLEXPRESS'
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,15 +66,41 @@ if (-not (Test-Path $configPath)) {
 $plainApiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($TallaEggApiKey))
 
-# Order matters for the -DependsOn column: Orders.Api and Users.Api call Wallet.Api on startup
-# paths, and all three run MigrateAsync() as the first thing they do. sc.exe's service
-# dependency only guarantees the dependency reached "Running" before this one starts — not that
-# its own startup work (migration, first HTTP call) has finished — so this absorbs most of the
-# ordering risk the issue calls out, not all of it. See the runbook for the residual case.
+# sc.exe accepts a dependency on a service that does not exist and only fails at start time, with
+# a bare "error 1075" on the next boot. Resolve the name now, while there is someone to read it.
+$sqlDependency = @()
+if ($SqlServiceName) {
+    if (-not (Get-Service -Name $SqlServiceName -ErrorAction SilentlyContinue)) {
+        throw ("No Windows service named '$SqlServiceName' on this machine. " +
+               "List the local SQL Server services with: Get-Service -Name 'MSSQL*' " +
+               "and pass the right one as -SqlServiceName, " +
+               "or pass -SqlServiceName '' if the database is not hosted here.")
+    }
+    $sqlDependency = @($SqlServiceName)
+}
+
+# Two orderings decide whether this deployment survives a reboot, and only the second was
+# declared before issue #228.
+#
+# Against the database: Wallet.Api, Users.Api and Orders.Api each run MigrateAsync() before they
+# report Running, and SQL Server Express installs itself as *delayed* auto-start, roughly two
+# minutes after boot. Ordinary auto-start services therefore ran first, blocked in MigrateAsync()
+# against a database that was not listening, and the SCM killed them at its 45-second start
+# timeout. Naming the SQL service here fixes the order: an auto-start service is allowed to depend
+# on a delayed auto-start one, and the SCM then has to start the delayed service at boot instead
+# of after the delay (SERVICE_DELAYED_AUTO_START_INFO, Remarks).
+#
+# Against each other: Orders.Api and Users.Api call Wallet.Api on startup paths, so Wallet.Api
+# goes first and the bot, which opens no database of its own, goes last.
+#
+# Neither ordering waits for readiness. "Running" means the dependency's process started and
+# reported ready — for SQL Server, not that the instance accepts connections yet; for an API, not
+# that its own migration or first HTTP call has finished. This narrows the window rather than
+# closing it. See the runbook for the residual case.
 $services = @(
-    @{ Name = "TallaEggWalletApi"; Publish = "Wallet.Api";  Exe = "Wallet.Api.exe";                          DependsOn = @() }
-    @{ Name = "TallaEggUsersApi";  Publish = "Users.Api";   Exe = "Users.Api.exe";                           DependsOn = @("TallaEggWalletApi") }
-    @{ Name = "TallaEggOrdersApi"; Publish = "Orders.Api";  Exe = "Orders.Api.exe";                          DependsOn = @("TallaEggWalletApi") }
+    @{ Name = "TallaEggWalletApi"; Publish = "Wallet.Api";  Exe = "Wallet.Api.exe";                          DependsOn = $sqlDependency }
+    @{ Name = "TallaEggUsersApi";  Publish = "Users.Api";   Exe = "Users.Api.exe";                           DependsOn = $sqlDependency + @("TallaEggWalletApi") }
+    @{ Name = "TallaEggOrdersApi"; Publish = "Orders.Api";  Exe = "Orders.Api.exe";                          DependsOn = $sqlDependency + @("TallaEggWalletApi") }
     @{ Name = "TallaEggBot";       Publish = "Bot";         Exe = "TallaEgg.TelegramBot.Infrastructure.exe"; DependsOn = @("TallaEggWalletApi", "TallaEggUsersApi", "TallaEggOrdersApi") }
 )
 

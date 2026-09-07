@@ -47,6 +47,14 @@ neither belongs in a deployment. Decision recorded on
    flag for this, so there is no other native way to hand a Windows service its own environment
    variables.
 
+   The three APIs are also made dependent on the local SQL Server service, so Windows cannot start
+   them before the database (see Start order below). The default is SQL Server Express's
+   `MSSQL$SQLEXPRESS`; for any other instance pass `-SqlServiceName`, **in single quotes** — in a
+   double-quoted PowerShell string everything after the `$` is read as a variable name and the
+   dependency silently becomes `MSSQL`. Pass `-SqlServiceName ''` if the database is not a service
+   on this machine. The script fails up front if the name does not resolve, rather than leaving a
+   service that cannot start.
+
 ## Redeploying a new version
 
 ```powershell
@@ -84,17 +92,85 @@ working tree.
 
 ## Start order — what's covered and what isn't
 
-`Orders.Api` and `Users.Api` call `Wallet.Api` on startup paths, and all three run
-`Database.MigrateAsync()` as the first thing they do. The service dependency graph
-(`Wallet.Api` before `Users.Api`/`Orders.Api`, all three before the bot) makes Windows wait for
-each dependency to reach the *Running* state first, which absorbs most of the simultaneous-boot
-noise the issue warns about.
+Two orderings decide whether this deployment comes back after a reboot. Before
+[#228](https://github.com/MohKardan/TallaEgg/issues/228) only the second one was declared, and the
+first is the one that mattered.
 
-What it does **not** guarantee: "Running" means the process started, not that its own migration
-or first outbound call has finished. A dependent service can still log a handful of connection
-retries in the first few seconds after boot. That's expected — restart-on-crash absorbs it — but
-if it's ever not just noise, tighten this with an explicit `Start-Sleep` between dependency tiers
-in `install-services.ps1` rather than assuming SCM ordering alone is sufficient.
+### Against the database
+
+`Wallet.Api`, `Users.Api` and `Orders.Api` each run `Database.MigrateAsync()` before their host
+starts, so none of them can get anywhere before SQL Server is up. **SQL Server Express installs
+itself as *delayed* auto-start** — its own default, roughly two minutes after boot. The four
+TallaEgg services were ordinary auto-start and declared no dependency on it, so at every
+unattended boot they ran first, blocked in `MigrateAsync()` against a database that was not
+listening, and the SCM killed `Wallet.Api` at its 45-second start timeout. The other three then
+failed on the dependency they declare on `Wallet.Api`, and nothing was running until a person
+logged in. That is #228, and it made every reboot an outage.
+
+`install-services.ps1` now names the SQL Server service in the dependency list of all three APIs
+(`-SqlServiceName`, default `MSSQL$SQLEXPRESS`). Windows permits an auto-start service to depend
+on a delayed auto-start one, and the SCM then has to start the delayed service at boot rather than
+after the delay — so declaring the dependency both orders the start *and* pulls SQL Server forward
+into the boot-time pass. From
+[SERVICE_DELAYED_AUTO_START_INFO](https://learn.microsoft.com/en-us/windows/win32/api/winsvc/ns-winsvc-service_delayed_auto_start_info),
+Remarks:
+
+> An auto-start service can depend on a delayed auto-start service, but this is not generally
+> desirable as the SCM must start the dependent delayed auto-start service at boot.
+
+"Not generally desirable" there is about boot-time performance, which is the trade this machine
+wants: it exists to run these four services, and two minutes of downtime per reboot buys nothing.
+
+The bot is not given the dependency — it opens no database of its own, and it already waits on all
+three APIs.
+
+### Against each other
+
+`Orders.Api` and `Users.Api` call `Wallet.Api` on startup paths, so `Wallet.Api` starts first and
+the bot starts last.
+
+### What neither ordering buys
+
+*Running* means the dependency's process started and reported ready. Nothing more. For SQL Server
+it does **not** mean the instance is accepting connections yet; for an API it does not mean its own
+migration or first outbound call has finished. A dependent can still log a handful of connection
+retries in the first seconds after boot — that's expected, and restart-on-crash absorbs it.
+
+So the dependency narrows the window, it does not close it. Closing it means the services waiting
+for their database instead of trusting Windows' start order, which is application code and is
+tracked separately in [#230](https://github.com/MohKardan/TallaEgg/issues/230). Note the trap
+recorded there: retrying around `MigrateAsync()` where it currently stands would make this *worse*,
+because that code runs before the host connects to the SCM and a longer wait there is a longer
+start timeout, not a recovery.
+
+### Applying this to a machine installed before #228
+
+`install-services.ps1` only writes the dependency list when it creates a service, so an existing
+install keeps whatever it was given at install time. Either re-run the installer (it stops,
+deletes and recreates all four — the redeploy step above), or, with no downtime at all, set the
+three dependency lists directly from an elevated PowerShell session:
+
+```powershell
+sc.exe config TallaEggWalletApi depend= 'MSSQL$SQLEXPRESS/'
+sc.exe config TallaEggUsersApi  depend= 'MSSQL$SQLEXPRESS/TallaEggWalletApi/'
+sc.exe config TallaEggOrdersApi depend= 'MSSQL$SQLEXPRESS/TallaEggWalletApi/'
+```
+
+Three things to get right:
+
+- **The single quotes are mandatory.** Unquoted or double-quoted, PowerShell expands
+  `$SQLEXPRESS` as an undefined variable, sc.exe receives `MSSQL/`, and the services then fail to
+  start with error 1075 (dependent service does not exist) — a worse outage than the one being
+  fixed.
+- **`depend=` replaces the whole list**, it does not append. That is why `TallaEggWalletApi` is
+  repeated in the second and third lines.
+- **The space after `depend=` is part of sc.exe's syntax**, not a typo.
+
+`TallaEggBot` is unchanged: it opens no database and already depends on all three APIs.
+
+Nothing needs restarting for this to take effect — a dependency list is read when a service is
+next started, and the point of the change is what happens at the next boot. Confirm it landed with
+`sc.exe qc TallaEggWalletApi`, which should list `DEPENDENCIES : MSSQL$SQLEXPRESS`.
 
 ## Logs
 
