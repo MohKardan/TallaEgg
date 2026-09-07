@@ -45,14 +45,15 @@ namespace TallaEgg.Core.DTOs.Order
     /// calls <c>Validator.TryValidateObject</c> or registers a validation filter — so they enforced
     /// nothing while making the generated schema advertise constraints the server does not apply.
     /// Orders.Api validates this request by hand instead.
+    ///
+    /// An <c>Id</c> property went the same way (issue #237). It was a request field nothing read —
+    /// an order's id is assigned by the server — documented as "User id." four lines above the
+    /// separate <see cref="UserId"/>, so a client following it could reasonably have sent the user's
+    /// id as <c>id</c> and left the order's user empty. Removing it costs no caller anything: the
+    /// bot never set it, and a body that still carries <c>id</c> is accepted with the member ignored.
     /// </remarks>
     public class OrderDto
     {
-        /// <summary>
-        /// User id.
-        /// </summary>
-        public Guid Id { get; set; }
-
         /// <summary>
         /// Asset symbol, as a trading pair — for example <c>MAUA/IRT</c>.
         /// </summary>

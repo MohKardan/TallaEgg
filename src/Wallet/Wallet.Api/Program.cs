@@ -186,7 +186,25 @@ app.UseTallaEggCors();
 // bought for nothing.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
+    // Swashbuckle stamps `additionalProperties: false` on every object schema it generates and
+    // offers no option to turn that off, but no service enforces it: System.Text.Json ignores
+    // unknown members and nothing sets JsonUnmappedMemberHandling.Disallow. That leniency is
+    // deliberate and load-bearing — it is what lets an un-updated bot keep talking to a post-#235
+    // API — so the schema is what is wrong here, not the server. Clearing the flag omits the
+    // keyword, and an absent `additionalProperties` means "allowed" in OpenAPI 3, which is what
+    // these services actually do. Issue #237.
+    app.UseSwagger(options => options.PreSerializeFilters.Add((document, _) =>
+    {
+        foreach (var schema in document.Components.Schemas.Values)
+        {
+            // A schema that names a type for its extra members is describing a dictionary, which
+            // is a real statement about the payload. Only the blanket flag is cleared.
+            if (schema.AdditionalProperties is null)
+            {
+                schema.AdditionalPropertiesAllowed = true;
+            }
+        }
+    }));
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "TallaEgg Wallet API v1");
