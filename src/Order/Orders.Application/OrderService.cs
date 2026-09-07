@@ -63,7 +63,7 @@ public class OrderService
         try
         {
             _logger.LogInformation("Creating unified order for user {UserId} with symbol {Symbol}, side {Side}, type {Type}",
-                request.UserId, request.Symbol, request.Side, request.Type);
+                request.UserId, request.Asset, request.Side, request.Type);
 
             // 1. Validate authorization
             var canCreateOrder = true;
@@ -79,7 +79,7 @@ public class OrderService
             // 3. Validate user balance before creating order
             var userId = request.UserId;
             var assetToCheck = request.Side == TallaEgg.Core.Enums.Order.OrderSide.Buy
-                ? request.Symbol.Split('/')[1] : request.Symbol.Split('/')[0];
+                ? request.Asset.Split('/')[1] : request.Asset.Split('/')[0];
 
             // The price is rounded to the column's precision before anything else uses it.
             //
@@ -96,16 +96,16 @@ public class OrderService
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
 
-            ValidateTradingLimits(request.Symbol, request.Quantity, request.Price);
+            ValidateTradingLimits(request.Asset, request.Amount, request.Price);
 
-            var (_, amountToCheck) = ComputeCollateral(request.Symbol, orderSide, request.Quantity, request.Price);
+            var (_, amountToCheck) = ComputeCollateral(request.Asset, orderSide, request.Amount, request.Price);
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
                 userId, amountToCheck, assetToCheck);
 
             
             var validateCreditAndBalance =
-                await _walletApiClient.ValidateCreditAndBalanceAsync(request.UserId, request.Symbol, request.Quantity, request.Price);
+                await _walletApiClient.ValidateCreditAndBalanceAsync(request.UserId, request.Asset, request.Amount, request.Price);
 
             var hasSufficientBalance = request.Side == OrderSide.Buy
                 ? validateCreditAndBalance.HasSufficientCreditAndBalanceQuote : validateCreditAndBalance.HasSufficientCreditAndBalanceBase;
@@ -139,8 +139,8 @@ public class OrderService
 
             // Limit orders start as Makers
             var limitCommand = new CreateOrderCommand(
-                request.Symbol,
-                request.Quantity,
+                request.Asset,
+                request.Amount,
                 request.Price,
                 userId,
                 orderSide,
