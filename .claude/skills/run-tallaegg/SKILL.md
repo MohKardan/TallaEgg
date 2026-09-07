@@ -198,7 +198,7 @@ it. Confirmed via:
 
 ```powershell
 Invoke-RestMethod http://localhost:5140/api/orders/MAUA/IRT/best-prices
-# -> {"Success":true,"Message":"...","Data":{"Symbol":"MAUA/IRT","BestBidPrice":...,"BestAskPrice":...}}
+# -> {"success":true,"message":"...","data":{"symbol":"MAUA/IRT","bestBidPrice":...,"bestAskPrice":...}}
 ```
 
 ## Direct invocation (no bot layer)
@@ -209,7 +209,7 @@ that, skip the Simulator and hit the running API directly — the three Swagger 
 
 ```powershell
 Invoke-RestMethod http://localhost:5140/api/symbols/active
-# -> {"Success":true,"Message":null,"Data":["MAUA/IRT","SEKE_BAHAR/IRT","BTC/IRT"]}
+# -> {"success":true,"message":null,"data":["MAUA/IRT","SEKE_BAHAR/IRT","BTC/IRT"]}
 ```
 
 ## Run (human path)
