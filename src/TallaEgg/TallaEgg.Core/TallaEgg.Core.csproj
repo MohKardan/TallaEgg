@@ -17,6 +17,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The OpenAPI object model only, not Swashbuckle: Users.Api pins Swashbuckle 7.0.0
+         while Orders and Wallet are on 9.0.3, so a Swashbuckle reference here would reach
+         Users.Api as a downgrade (NU1605). 1.6.22 is the version its 7.0.0 already
+         resolves. See Swagger/SwaggerSchemaConventions.cs (issue #237). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="1.6.22" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />

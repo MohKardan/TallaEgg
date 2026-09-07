@@ -103,9 +103,13 @@ A trading pair is spelled `asset` in some schemas and `symbol` in others, and it
 `amount` or `quantity` along exactly the same line. This is real and pre-existing, not a mistake
 waiting to be tidied:
 
-| `asset` / `amount` | `symbol` / `quantity` |
-|---|---|
-| `OrderDto`, `OrderHistoryDto`, `WalletRequest` | `AcceptQuoteRequest`, `BestPricesDto`, `PublishQuoteRequest`, `TradeDto`, `TradeHistoryDto`, `PositionDto` |
+| | `asset` / `amount` | `symbol` / `quantity` |
+|---|---|---|
+| **request bodies** | `OrderDto`, `WalletRequest` | `AcceptQuoteRequest`, `PublishQuoteRequest`, `TradeDto` |
+| **responses** | `OrderHistoryDto` | `BestPricesDto`, `TradeDto`, `TradeHistoryDto`, `PositionDto` |
+
+`TradeDto` is on both rows: it is the body Orders posts to `/api/wallet/changeBalance` and part of
+what `POST /api/orders` returns.
 
 The two order-entry paths sit on opposite sides of it: `POST /api/orders` takes `asset`/`amount`,
 `POST /api/quotes/accept` takes `symbol`/`quantity`. A client that places orders has to know both

@@ -47,10 +47,11 @@ namespace TallaEgg.Core.DTOs.Order
     /// Orders.Api validates this request by hand instead.
     ///
     /// An <c>Id</c> property went the same way (issue #237). It was a request field nothing read —
-    /// an order's id is assigned by the server — documented as "User id." four lines above the
-    /// separate <see cref="UserId"/>, so a client following it could reasonably have sent the user's
-    /// id as <c>id</c> and left the order's user empty. Removing it costs no caller anything: the
-    /// bot never set it, and a body that still carries <c>id</c> is accepted with the member ignored.
+    /// an order's id is assigned by the server — and it was documented as "User id." while a
+    /// separate <see cref="UserId"/> sat a few properties further down the same class, so a client
+    /// following that comment could reasonably have sent the user's id as <c>id</c> and left the
+    /// order's user empty. Removing it costs no caller anything: the bot never set it, and a body
+    /// that still carries <c>id</c> is accepted with the member ignored.
     /// </remarks>
     public class OrderDto
     {
