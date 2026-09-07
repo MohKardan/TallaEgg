@@ -64,7 +64,7 @@ public class ClientRequestWireContractTests
         ("src/Order/Orders.Infrastructure/OrderMatchingRepository.cs",
             "writes OutboxMessages.Payload, which OutboxProcessorService reads back case-sensitively"),
         ("src/TallaEgg/TallaEgg.Core/Services/TelegramLoggerService.cs",
-            "posts to Telegram, an external contract that does not take this platform's casing"),
+            "posts to a third-party notification relay, whose field names it does not get to choose"),
         ("src/Order/Orders.Api/Program.cs",
             "formats a response DTO into a log line"),
         ("src/Order/Orders.Application/OrderService.cs",
