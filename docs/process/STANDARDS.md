@@ -97,6 +97,21 @@ sentences and holds the allowlist for the third; the two behavioral guards in
 `RequestDtoWireContractTests.cs` enforce the last. Adding a name to that allowlist is a contract
 decision, not a formatting one.
 
+**Every client asks for that shape as well.** A request body is serialized with
+`ApiJson.RequestOptions` (System.Text.Json) or `ApiJson.NewtonsoftRequestSettings` (Newtonsoft),
+named at the call site — never with whatever a serializer does when it is handed no options, which
+is the member name as declared in C# in both libraries. Fifteen of the twenty-two outbound bodies
+were in exactly that state until #241, accepted only because the receiving side binds
+case-insensitively; the seven that were not were anonymous objects built from local variables,
+right by coincidence and one promotion to a named DTO away from joining the rest.
+`ClientRequestWireContractTests.cs` enforces both halves — that every call site names the options,
+and that a typed body goes out under the names its endpoint's schema declares.
+
+**Do not tighten `PropertyNameCaseInsensitive` on its own.** It is what lets a service read a body
+whose casing does not match its schema, and both the clients above and the mixed deployments of
+#235 rest on it. It becomes safe to remove only once every writer is known to send the published
+casing — never before, and never in the same change that makes them.
+
 #### Trading-pair vocabulary: two spellings, and which one a new endpoint takes
 
 A trading pair is spelled `asset` in some schemas and `symbol` in others, and its quantity is
