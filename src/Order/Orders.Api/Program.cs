@@ -213,17 +213,24 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
 builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
 
-// Read request bodies case-insensitively, but write responses in the ASP.NET Core default
-// camelCase — the same shape Wallet.Api and Users.Api produce, neither of which configures
-// anything here. Until #229 this block also set PropertyNamingPolicy = null, which made this one
-// service answer in PascalCase; every caller happened to deserialize case-insensitively, so the
-// divergence stayed invisible. Do not set PropertyNamingPolicy again: a browser client (#97)
+// Leave PropertyNamingPolicy alone. The ASP.NET Core default is camelCase, which is what
+// Wallet.Api and Users.Api produce by configuring nothing at all. Until #229 this block set it
+// to null, and the result was not a second consistent shape but an inconsistent one: responses
+// built from ApiResponse<T> went out PascalCase, while the hand-written anonymous responses
+// below (new { success = ..., message = ... }) stayed lowercase, so a single endpoint could
+// answer {"Success":...} on 200 and {"success":...} on 400. Every caller deserializes
+// case-insensitively, so none of it was visible. Do not set it again: a browser client (#97)
 // cannot absorb a per-service wire format for free, and changing it once a client ships is a
 // breaking change.
 //
+// PropertyNameCaseInsensitive restates a default rather than establishing one — Http.Json's
+// options are built from JsonSerializerDefaults.Web, which already sets it. It is kept as an
+// explicit statement that lenient request reading is intended here, not an accident of the
+// default that a future edit could drop without noticing.
+//
 // This configures the HTTP pipeline only. The outbox settlement payload is written and read by
-// bare JsonSerializer calls that use JsonSerializerOptions.Default, so it stays PascalCase on
-// both ends and is unaffected by anything set here.
+// bare JsonSerializer calls, which bind JsonSerializerOptions.Default — case-sensitive, no
+// naming policy — so it is PascalCase on both ends and nothing set here reaches it.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNameCaseInsensitive = true;
