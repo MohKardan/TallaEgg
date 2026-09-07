@@ -31,10 +31,12 @@
     .\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString)
 
 .EXAMPLE
-    Against a full SQL Server instance rather than Express. Quote the name in single quotes, or
-    PowerShell expands anything after the $ as a variable:
+    Against a named instance. Any service name containing a $ must be in SINGLE quotes: in a
+    double-quoted PowerShell string, $TALLAEGG below is read as an undefined variable and the
+    dependency silently becomes "MSSQL". A default instance ("MSSQLSERVER") has no $ and is not
+    affected, but single quotes are harmless there and worth the habit.
 
-    .\install-services.ps1 -TallaEggApiKey (Read-Host -AsSecureString) -SqlServiceName 'MSSQLSERVER'
+    .\install-services.ps1 -TallaEggApiKey (Read-Host -AsSecureString) -SqlServiceName 'MSSQL$TALLAEGG'
 
 .NOTES
     Run as Administrator. Re-running is safe: existing services are stopped and deleted first,
@@ -63,21 +65,36 @@ if (-not (Test-Path $configPath)) {
     throw "Missing $configPath. Create it from config\appsettings.global.example.json with production values before installing services."
 }
 
-$plainApiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-    [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($TallaEggApiKey))
-
-# sc.exe accepts a dependency on a service that does not exist and only fails at start time, with
-# a bare "error 1075" on the next boot. Resolve the name now, while there is someone to read it.
+# Resolve the database dependency before anything is created, and before the API key is
+# decrypted below — sc.exe accepts a dependency on a service that cannot start and only fails at
+# start time, as a bare error 1075 or 1058 on the next boot, with nobody watching.
 $sqlDependency = @()
 if ($SqlServiceName) {
-    if (-not (Get-Service -Name $SqlServiceName -ErrorAction SilentlyContinue)) {
-        throw ("No Windows service named '$SqlServiceName' on this machine. " +
+    # Get-Service -Name matches wildcards, so a value like 'MSSQL*' would satisfy a bare existence
+    # test and then be written verbatim as a dependency on a service literally named "MSSQL*".
+    # Require an exact name.
+    $sqlService = Get-Service -Name $SqlServiceName -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -eq $SqlServiceName }
+    if (-not $sqlService) {
+        throw ("No Windows service named exactly '$SqlServiceName' on this machine. " +
                "List the local SQL Server services with: Get-Service -Name 'MSSQL*' " +
-               "and pass the right one as -SqlServiceName, " +
-               "or pass -SqlServiceName '' if the database is not hosted here.")
+               "then pass one of the names it prints as -SqlServiceName " +
+               "(a wildcard is not a service name), " +
+               "or pass -SqlServiceName '' if the database is not hosted on this machine.")
+    }
+    # A disabled instance still resolves. Depending on one would stop all three APIs from ever
+    # starting, which is a worse outage than the one this dependency exists to fix. SQL Express
+    # gets installed and disabled by other products, so this is not hypothetical.
+    if ($sqlService.StartType -eq 'Disabled') {
+        throw ("The '$SqlServiceName' service is disabled, so nothing that depends on it can " +
+               "start. Enable it, or pass the instance the connection strings actually use as " +
+               "-SqlServiceName, or -SqlServiceName '' if the database is not hosted here.")
     }
     $sqlDependency = @($SqlServiceName)
 }
+
+$plainApiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+    [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($TallaEggApiKey))
 
 # Two orderings decide whether this deployment survives a reboot, and only the second was
 # declared before issue #228.
@@ -130,7 +147,14 @@ foreach ($svc in $services) {
 
     if ($svc.DependsOn.Count -gt 0) {
         $dependString = ($svc.DependsOn -join "/") + "/"
-        sc.exe config $svc.Name depend= $dependString | Out-Null
+        # $ErrorActionPreference does not cover a native exit code, and this one write is the
+        # whole of issue #228's fix: swallowing a failure here means rebooting straight back into
+        # the outage while the script reports success.
+        $configOutput = sc.exe config $svc.Name depend= $dependString
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Could not set the dependency list for $($svc.Name) " +
+                   "(sc.exe exit $LASTEXITCODE): $configOutput")
+        }
     }
 
     # Native services have no ASPNETCORE_ENVIRONMENT/TALLAEGG_API_KEY unless set here — sc.exe
