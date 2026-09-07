@@ -113,7 +113,9 @@ $plainApiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
 # Neither ordering waits for readiness. "Running" means the dependency's process started and
 # reported ready — for SQL Server, not that the instance accepts connections yet; for an API, not
 # that its own migration or first HTTP call has finished. This narrows the window rather than
-# closing it. See the runbook for the residual case.
+# closing it. What covers the remainder is application code, not this file: since issue #230 the
+# three APIs migrate from a hosted service after their host has started, so they report Running
+# promptly and retry a database that is not answering yet. See the runbook.
 $services = @(
     @{ Name = "TallaEggWalletApi"; Publish = "Wallet.Api";  Exe = "Wallet.Api.exe";                          DependsOn = $sqlDependency }
     @{ Name = "TallaEggUsersApi";  Publish = "Users.Api";   Exe = "Users.Api.exe";                           DependsOn = $sqlDependency + @("TallaEggWalletApi") }

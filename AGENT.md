@@ -88,6 +88,14 @@ minutes, so a human can drive the bot over real Telegram. It asserts nothing, an
   truth and always wrong; a `.sql` under `scripts/` that *migrates data* — like
   `migrate-irr-to-irt.sql`, which relabels an asset without touching amounts — is a different
   thing and belongs there.
+- **Migration runs *after* the host starts, not before it (issue #230).** Users, Wallet and Orders
+  register it through `AddDatabaseMigrationAtStartup` in `TallaEgg.Core.Startup`, which retries a
+  database that is not answering yet and gives up loudly after ten attempts. Until it succeeds
+  every request is answered `503` by `UseDatabaseReadinessGate()`, `GET /version` excepted. Putting
+  a migration back between `builder.Build()` and `app.Run()` reopens the outage in #228: under
+  `UseWindowsService()` nothing is connected to the SCM until `app.Run()`, so time spent there is
+  time the SCM counts against its 45-second start timeout. Wrapping the old call site in a retry
+  loop makes it worse, not better.
 
 ## Business rules that look like bugs
 

@@ -16,6 +16,7 @@ using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Requests.User;
+using TallaEgg.Core.Startup;
 using Users.Api;
 using Users.Application;
 using Users.Application.Mappers;
@@ -191,55 +192,53 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
+// --- Migrations and initial seed ---
+// Registered to run from a hosted service once the host has started, rather than between
+// Build() and Run() where it used to sit: under UseWindowsService() nothing is connected to the
+// SCM until Run(), so a database that was not answering yet blocked here until the SCM killed
+// the process (issue #230). The retry loop there logs every failed attempt with its exception,
+// which is what the try/catch here used to do before rethrowing.
+builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToken) =>
+{
+    var context = services.GetRequiredService<UsersDbContext>();
+
+    await context.Database.MigrateAsync(cancellationToken);
+
+    var adminId = TallaEgg.Core.BootstrapConstant.RootAdminUserId;
+    var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Id == adminId, cancellationToken);
+
+    if (existingAdmin == null)
+    {
+        User user = new User()
+        {
+            Id = adminId,
+            FirstName = "مدیر",
+            LastName = "کل",
+            // Shared with the bot's fallback referral code. Registration rejects any code
+            // that belongs to no user, so on an empty database this row's code is the only
+            // one that can ever work — and the two sides had drifted apart.
+            InvitationCode = TallaEgg.Core.BootstrapConstant.RootInvitationCode,
+            IsActive = true,
+            CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
+            Role = UserRole.SuperAdmin
+        };
+        context.Users.Add(user);
+        await context.SaveChangesAsync(cancellationToken);
+        Log.Information("Root administrator seeded.");
+    }
+    else
+    {
+        Log.Information("Root administrator already exists; nothing seeded.");
+    }
+});
+
 var app = builder.Build();
 
 app.UseTallaEggErrorHandling();
 
-// --- Migrations and initial seed ---
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<UsersDbContext>();
-    try
-    {
-        await context.Database.MigrateAsync(); // اجرای مایگریشن‌ها
-
-        var adminId = TallaEgg.Core.BootstrapConstant.RootAdminUserId;
-        var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Id == adminId);
-
-        if (existingAdmin == null)
-        {
-            User user = new User()
-            {
-                Id = adminId,
-                FirstName = "مدیر",
-                LastName = "کل",
-                // Shared with the bot's fallback referral code. Registration rejects any code
-                // that belongs to no user, so on an empty database this row's code is the only
-                // one that can ever work — and the two sides had drifted apart.
-                InvitationCode = TallaEgg.Core.BootstrapConstant.RootInvitationCode,
-                IsActive = true,
-                CreatedAt = DateTime.Parse("2025-08-04T08:43:43.1234567Z"),
-                Role = UserRole.SuperAdmin
-            };
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
-            Log.Information("مدیر کل با موفقیت ایجاد شد.");
-        }
-        else
-        {
-            Log.Information("مدیر کل قبلاً وجود دارد. برنامه بدون خطا اجرا می‌شود.");
-        }
-    }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "خطا در مایگریشن یا سیید اولیه مدیر کل");
-        throw;
-    }
-}
-
-
-
+// Requests are refused with 503 until the migration above has succeeded, so this service never
+// answers against a schema it has not migrated (issue #230).
+app.UseDatabaseReadinessGate();
 
 
 // Authentication and authorization, Production only.
