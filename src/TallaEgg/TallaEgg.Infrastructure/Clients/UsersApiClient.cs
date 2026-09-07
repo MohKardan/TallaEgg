@@ -9,6 +9,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
+using TallaEgg.Core.Json;
 using TallaEgg.Core.Requests.User;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
@@ -121,7 +122,7 @@ public class UsersApiClient : IUsersApiClient
             LastName = lastName
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -268,7 +269,7 @@ public class UsersApiClient : IUsersApiClient
             PhoneNumber = phoneNumber
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -321,7 +322,7 @@ public class UsersApiClient : IUsersApiClient
             NewStatus = newStatus
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -383,7 +384,8 @@ public class UsersApiClient : IUsersApiClient
     /// </summary>
     public async Task<(bool success, string message)> UpdateRoleAsync(Guid userId, TallaEgg.Core.Enums.User.UserRole newRole)
     {
-        var json = JsonConvert.SerializeObject(new { UserId = userId, NewRole = newRole });
+        var request = new { UserId = userId, NewRole = newRole };
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try

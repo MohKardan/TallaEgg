@@ -10,6 +10,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.Json;
 using TallaEgg.Core.Requests.Order;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -417,7 +418,7 @@ public class OrderApiClient : IOrderApiClient
 
     public async Task<(bool success, string message)> SubmitOrderAsync(OrderDto order)
     {
-        var json = System.Text.Json.JsonSerializer.Serialize(order);
+        var json = System.Text.Json.JsonSerializer.Serialize(order, ApiJson.RequestOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
         try
         {
@@ -445,7 +446,9 @@ public class OrderApiClient : IOrderApiClient
         {
             var payload = new { symbol, buyPrice, sellPrice, publishedByUserId };
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(payload, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/quotes", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -512,7 +515,9 @@ public class OrderApiClient : IOrderApiClient
         try
         {
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(new { adminUserId }), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(new { adminUserId }, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/quotes/pending/{pendingQuoteId}/{action}", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -557,7 +562,9 @@ public class OrderApiClient : IOrderApiClient
         {
             var payload = new { spreadPercent, updatedByUserId };
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(payload, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/autoquote-settings/{symbol}/spread", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -580,7 +587,9 @@ public class OrderApiClient : IOrderApiClient
         {
             var payload = new { isEnabled, updatedByUserId };
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(payload, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/autoquote-settings/{symbol}/enabled", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -623,7 +632,9 @@ public class OrderApiClient : IOrderApiClient
         {
             var payload = new { isActive, updatedByUserId };
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(payload, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/symbols/{symbol}/active", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -711,7 +722,9 @@ public class OrderApiClient : IOrderApiClient
         {
             var payload = new { userId, symbol, side, quantity };
             var content = new StringContent(
-                System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+                System.Text.Json.JsonSerializer.Serialize(payload, ApiJson.RequestOptions),
+                Encoding.UTF8,
+                "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/quotes/accept", content);
             var body = await response.Content.ReadAsStringAsync();
@@ -805,7 +818,7 @@ public class OrderApiClient : IOrderApiClient
         try
         {
             var requestBody = new { reason };
-            var json = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            var json = System.Text.Json.JsonSerializer.Serialize(requestBody, ApiJson.RequestOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/orders/user/{userId}/cancel-active", content);
@@ -835,7 +848,7 @@ public class OrderApiClient : IOrderApiClient
     {
         try
         {
-            var json = System.Text.Json.JsonSerializer.Serialize(request);
+            var json = System.Text.Json.JsonSerializer.Serialize(request, ApiJson.RequestOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"{_baseUrl}/orders/market/notify-matching", content);

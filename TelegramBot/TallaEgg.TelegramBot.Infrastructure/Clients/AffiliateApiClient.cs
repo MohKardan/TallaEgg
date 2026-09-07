@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using TallaEgg.Core;
+using TallaEgg.Core.Json;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
@@ -30,7 +31,7 @@ public class AffiliateApiClient : IAffiliateApiClient
     public async Task<(bool success, string message)> ValidateInvitationAsync(string invitationCode)
     {
         var request = new { InvitationCode = invitationCode };
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -83,7 +84,7 @@ public class AffiliateApiClient : IAffiliateApiClient
             UsedByUserId = usedByUserId
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -145,7 +146,7 @@ public class AffiliateApiClient : IAffiliateApiClient
             MaxUses = maxUses
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try
@@ -179,7 +180,7 @@ public class AffiliateApiClient : IAffiliateApiClient
             PhoneNumber = phoneNumber
         };
 
-        var json = JsonConvert.SerializeObject(request);
+        var json = JsonConvert.SerializeObject(request, ApiJson.NewtonsoftRequestSettings);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try

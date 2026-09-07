@@ -7,6 +7,7 @@ using TallaEgg.Core;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
+using TallaEgg.Core.Json;
 using TallaEgg.Core.Requests.Wallet;
 using TallaEgg.Core.Responses.Order;
 
@@ -83,7 +84,7 @@ public class WalletApiClient : IWalletApiClient
                 Amount = amount
             };
 
-            var json = JsonSerializer.Serialize(request);
+            var json = JsonSerializer.Serialize(request, ApiJson.RequestOptions);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync("api/wallet/lockBalance", stringContent);
@@ -149,7 +150,7 @@ public class WalletApiClient : IWalletApiClient
                 Amount = amount
             };
 
-            var json = JsonSerializer.Serialize(request);
+            var json = JsonSerializer.Serialize(request, ApiJson.RequestOptions);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             // Assuming there's an unlock endpoint - if not, we might need to implement it
@@ -485,7 +486,7 @@ public class WalletApiClient : IWalletApiClient
         try
         {
 
-            var json = JsonSerializer.Serialize(request);
+            var json = JsonSerializer.Serialize(request, ApiJson.RequestOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"api/wallet/deposit", content);
@@ -518,7 +519,7 @@ public class WalletApiClient : IWalletApiClient
         try
         {
 
-            var json = JsonSerializer.Serialize(request);
+            var json = JsonSerializer.Serialize(request, ApiJson.RequestOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync($"api/wallet/withdrawal", content);
@@ -556,7 +557,7 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            var json = JsonSerializer.Serialize(trade);
+            var json = JsonSerializer.Serialize(trade, ApiJson.RequestOptions);
             var stringContent = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _httpClient.PostAsync("api/wallet/changeBalance", stringContent);
