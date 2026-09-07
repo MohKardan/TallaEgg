@@ -80,9 +80,10 @@ placement at repo root is existing history, not a pattern to copy.
 #### JSON Wire Format
 
 **Every API answers in the ASP.NET Core default camelCase.** Do not set `PropertyNamingPolicy` in
-any service. Do not use `[JsonPropertyName]` on a shared DTO unless an external contract requires
-that exact spelling, and record the reason in a comment when you do. **One value gets one wire
-name** — no alias properties, and never two names for the same field.
+any service. Do not use `[JsonPropertyName]` — or Newtonsoft's `[JsonProperty]`, which this
+repository is equally able to reach for — on a shared DTO unless an external contract requires that
+exact spelling, and record the reason in a comment when you do. **One value gets one wire name** —
+no alias properties, and never two names for the same field.
 
 This paragraph exists because its absence was the root cause of two defects. Neither #229 (one
 service serving PascalCase because it set the naming policy to `null`) nor #235 (`OrderDto`

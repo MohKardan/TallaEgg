@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -197,6 +197,9 @@ public class RequestDtoWireContractTests
     /// <remarks>
     /// A name that disturbs nothing is the other half of the same rule — it is written out but
     /// cannot be read back in, so the schema advertises a field the server ignores.
+    ///
+    /// Only members a sentinel can be built for are probed; a collection or nested object is out of
+    /// scope here, as <see cref="SentinelJson"/> says. None of the twelve DTOs has one today.
     /// </remarks>
     [Theory]
     [MemberData(nameof(RequestDtos))]
@@ -210,6 +213,13 @@ public class RequestDtoWireContractTests
         var untouched = JsonSerializer.Deserialize("{}", type, options);
         Assert.NotNull(untouched);
 
+        // Compared as JSON, not with Equals: Equals(object, object) is reference equality for
+        // anything that does not override it, so a property holding an inline-initialised list
+        // would read as "moved" on every probe. Every probe then looks like it changes something,
+        // and the inert-name assertion below retires itself without saying so.
+        string Rendered(PropertyInfo property, object instance) =>
+            JsonSerializer.Serialize(property.GetValue(instance), property.PropertyType, options);
+
         var governs = new Dictionary<string, string>(StringComparer.Ordinal);
         var inert = new List<string>();
 
@@ -219,7 +229,7 @@ public class RequestDtoWireContractTests
             Assert.NotNull(probed);
 
             var moved = properties
-                .Where(p => !Equals(p.GetValue(probed), p.GetValue(untouched)))
+                .Where(p => !string.Equals(Rendered(p, probed), Rendered(p, untouched), StringComparison.Ordinal))
                 .Select(p => p.Name)
                 .OrderBy(name => name, StringComparer.Ordinal)
                 .ToList();

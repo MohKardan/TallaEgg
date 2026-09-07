@@ -33,21 +33,23 @@ public class JsonNamingPolicyConsistencyTests
     ];
 
     /// <summary>
-    /// Where a <c>[JsonPropertyName]</c> can reach the wire. That is a wider question than where
-    /// the naming policy is wired: an attribute travels with the type, so it matters wherever a
-    /// serialized type is <em>declared</em>, not only where a host is configured. The bot declares
-    /// request and response types of its own (<c>NotifyMatchingEngineRequest</c>,
-    /// <c>InvitationDto</c>), so its two project trees are swept alongside the APIs and the shared
-    /// kernel that holds most DTOs.
+    /// Where a pinned wire name can reach the wire, which is every line of C# the product ships.
     /// </summary>
+    /// <remarks>
+    /// Deliberately two whole trees rather than a list of projects. Where the naming policy is
+    /// wired is a question about hosts, so <see cref="JsonWiringRoots"/> names the three that serve
+    /// HTTP; an attribute instead travels with the type, so it matters wherever a serialized type
+    /// is <em>declared</em> — and they are declared all over. <c>TallaEgg.Infrastructure/Clients</c>
+    /// declares <c>RegisterUserResponse</c> and <c>UpdateRoleResponse</c>, the bot declares
+    /// <c>NotifyMatchingEngineRequest</c> and <c>InvitationDto</c>, and the Application layers
+    /// declare more. Enumerating the projects that hold one today would leave this guard passing
+    /// vacuously the first time somebody declares a DTO somewhere new, which is the failure mode a
+    /// guard like this is most prone to.
+    /// </remarks>
     public static TheoryData<string> SerializedTypeRoots =>
     [
-        "src/User/Users.Api",
-        "src/Wallet/Wallet.Api",
-        "src/Order/Orders.Api",
-        "src/TallaEgg/TallaEgg.Core",
-        "TelegramBot/TallaEgg.TelegramBot.Core",
-        "TelegramBot/TallaEgg.TelegramBot.Infrastructure",
+        "src",
+        "TelegramBot",
     ];
 
     /// <summary>
@@ -61,6 +63,22 @@ public class JsonNamingPolicyConsistencyTests
     /// until one exists this list has nothing to hold.
     /// </remarks>
     private static readonly string[] AllowedPropertyNameOverrides = [];
+
+    /// <summary>
+    /// Both spellings of "pin this field's wire name", one token: <c>JsonProperty</c> is a prefix
+    /// of <c>JsonPropertyName</c>, so it matches System.Text.Json's attribute and Newtonsoft's
+    /// alike.
+    /// </summary>
+    /// <remarks>
+    /// Newtonsoft is not hypothetical here. <c>TallaEgg.Core</c> references it, and
+    /// <c>UsersApiClient</c> and <c>AffiliateApiClient</c> serialize real request bodies with
+    /// <c>JsonConvert.SerializeObject</c> — so a <c>[JsonProperty("…")]</c> would reproduce #235
+    /// exactly, in a library the System.Text.Json guards cannot see.
+    /// </remarks>
+    private static readonly string[] WireNamePins =
+    [
+        "JsonProperty",
+    ];
 
     /// <summary>
     /// Every way an ASP.NET Core host can move its responses off the default camelCase.
@@ -151,30 +169,39 @@ public class JsonNamingPolicyConsistencyTests
 
     /// <summary>
     /// The other half of the same rule. Leaving the naming policy alone settles the shape of a
-    /// whole service; <c>[JsonPropertyName]</c> then reopens it one field at a time, and it beats
-    /// the policy in both directions — which is why #229's fix left #235's four crossed names
+    /// whole service; a pinned wire name then reopens it one field at a time, and the pin beats the
+    /// policy in both directions — which is why #229's fix left #235's four crossed names
     /// byte-for-byte unchanged and could never have caught them.
     /// </summary>
     /// <remarks>
     /// The attribute has a legitimate use, so this is a gate rather than a ban: a name listed in
     /// <see cref="AllowedPropertyNameOverrides"/> passes. Putting one there is the reviewed,
     /// deliberate act that the four names #235 removed never went through.
+    ///
+    /// The allowlist is matched against the attribute's own argument rather than anywhere on the
+    /// line, so allowlisting <c>"symbol"</c> cannot quietly exempt some other property that merely
+    /// mentions it. What a text scan still cannot tell you is whether the allowed name collides
+    /// with a value another property already carries — that is #235's actual defect, and
+    /// <see cref="RequestDtoWireContractTests"/> is what checks it, by behaviour.
     /// </remarks>
     [Theory]
     [MemberData(nameof(SerializedTypeRoots))]
     public void WireNameOverrides_OnAnySerializedType_AreAbsentOrAllowlisted(string relativeRoot)
     {
-        var offenders = ScanForTokens(relativeRoot, "JsonPropertyName")
+        var offenders = ScanForTokens(relativeRoot, WireNamePins)
             .Where(hit => !AllowedPropertyNameOverrides.Any(
-                allowed => hit.Contains($"\"{allowed}\"", StringComparison.Ordinal)))
+                allowed => WireNamePins.Any(
+                    pin => hit.Contains($"{pin}(\"{allowed}\")", StringComparison.Ordinal)
+                        || hit.Contains($"{pin}Name(\"{allowed}\")", StringComparison.Ordinal))))
             .ToList();
 
         Assert.True(
             offenders.Count == 0,
-            "A [JsonPropertyName] pins a wire name against the platform's camelCase default, which "
-                + "is how #235 happened. Remove it, or — if an external contract genuinely requires "
-                + "that exact spelling — add the name to AllowedPropertyNameOverrides together with "
-                + "the reason, having checked that no other property already carries the same value:"
+            "A [JsonPropertyName] or [JsonProperty] pins a wire name against the platform's "
+                + "camelCase default, which is how #235 happened. Remove it, or — if an external "
+                + "contract genuinely requires that exact spelling — add the name to "
+                + "AllowedPropertyNameOverrides together with the reason, having checked that no "
+                + "other property already carries the same value:"
                 + Environment.NewLine
                 + string.Join(Environment.NewLine, offenders));
     }
