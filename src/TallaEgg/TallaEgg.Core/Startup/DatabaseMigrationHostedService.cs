@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -49,8 +50,16 @@ public sealed class DatabaseMigrationHostedService : BackgroundService
     private const int MAX_ATTEMPTS = 10;
 
     /// <summary>
-    /// Exit code when the migration is abandoned, so this is distinguishable from a clean stop.
+    /// Process exit code when the migration is abandoned.
     /// </summary>
+    /// <remarks>
+    /// This is the <i>process</i> exit code, which is what a console run, CI, or any supervisor
+    /// reading it sees. Under <c>UseWindowsService()</c> the SCM reports what
+    /// <c>ServiceBase.ExitCode</c> holds, which is a different value and not reachable from here
+    /// without taking a Windows-only dependency into the shared kernel — so do not assume the
+    /// <c>sc.exe failure</c> restart actions fire on this. The <c>Fatal</c> log line below and the
+    /// service reaching <c>Stopped</c> are the signal that is guaranteed either way.
+    /// </remarks>
     private const int MIGRATION_FAILED_EXIT_CODE = 1;
 
     private static readonly TimeSpan FirstRetryDelay = TimeSpan.FromSeconds(5);
@@ -185,7 +194,9 @@ public static class DatabaseMigrationRegistration
         this IServiceCollection services,
         DatabaseMigrationStep migrate)
     {
-        services.AddSingleton<DatabaseReadiness>();
+        // TryAdd, because anything that depends on readiness registers it the same way — see
+        // MatchingEngineRegistration. Whichever runs first, there is one flag per service.
+        services.TryAddSingleton<DatabaseReadiness>();
         services.AddSingleton(migrate);
         services.AddHostedService<DatabaseMigrationHostedService>();
 

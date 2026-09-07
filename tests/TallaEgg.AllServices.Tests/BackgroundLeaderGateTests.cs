@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -103,7 +103,8 @@ public class BackgroundLeaderGateTests : IDisposable
         var publisher = new AutoQuotePublisherService(
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<AutoQuotePublisherService>.Instance,
-            new AlwaysLeaderLease());
+            new AlwaysLeaderLease(),
+            MigratedDatabase.Readiness());
 
         Assert.True(await publisher.TryLeadAsync());
     }
@@ -115,7 +116,8 @@ public class BackgroundLeaderGateTests : IDisposable
         var publisher = new AutoQuotePublisherService(
             provider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<AutoQuotePublisherService>.Instance,
-            new HeldElsewhereLease());
+            new HeldElsewhereLease(),
+            MigratedDatabase.Readiness());
 
         Assert.False(await publisher.TryLeadAsync());
     }

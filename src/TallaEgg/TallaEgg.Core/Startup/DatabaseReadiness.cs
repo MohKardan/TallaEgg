@@ -11,6 +11,8 @@ namespace TallaEgg.Core.Startup;
 /// </remarks>
 public sealed class DatabaseReadiness
 {
+    private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
     private volatile bool _isReady;
 
     /// <summary>
@@ -21,5 +23,36 @@ public sealed class DatabaseReadiness
     /// <summary>
     /// Records that the migration succeeded, which opens the readiness gate.
     /// </summary>
-    public void MarkReady() => _isReady = true;
+    public void MarkReady()
+    {
+        // The flag first, so a loop woken by the task below never observes a stale false.
+        _isReady = true;
+        _ready.TrySetResult();
+    }
+
+    /// <summary>
+    /// Waits for the migration to succeed. Returns <c>false</c> instead of throwing when the host
+    /// shuts down first, so a caller in a <c>BackgroundService</c> can simply stop.
+    /// </summary>
+    /// <remarks>
+    /// For in-process work that the readiness gate cannot cover: the gate turns away HTTP
+    /// requests, but a background loop reaches the database without one. Since the migration runs
+    /// alongside the host rather than ahead of it (issue #230), a loop that queried straight away
+    /// could read a schema mid-migration — and an exception escaping a <c>BackgroundService</c>
+    /// stops the whole host under the default
+    /// <c>BackgroundServiceExceptionBehavior.StopHost</c>, which is the outage this issue exists
+    /// to remove.
+    /// </remarks>
+    public async Task<bool> WaitUntilReadyAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _ready.Task.WaitAsync(cancellationToken);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+    }
 }

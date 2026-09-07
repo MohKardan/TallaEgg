@@ -274,8 +274,20 @@ builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToke
 
     // A symbol with an active quote but not in dealer mode means the admin's published price and
     // the configuration disagree. Logged only; it does not stop the service (issue #73).
-    var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
-    await marketModeValidator.ValidateAsync();
+    //
+    // It reads the database, so it has to run after the migration — but it is a check, not a
+    // precondition. Letting it throw out of here would count against the migration's retry budget
+    // and hold every request at 503 over a configuration report, which is the opposite of what
+    // #73 decided. Hence its own catch.
+    try
+    {
+        var marketModeValidator = services.GetRequiredService<Orders.Application.Services.MarketModeStartupValidator>();
+        await marketModeValidator.ValidateAsync();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "The market-mode startup check could not run. The service is unaffected (issue #73).");
+    }
 });
 
 var app = builder.Build();

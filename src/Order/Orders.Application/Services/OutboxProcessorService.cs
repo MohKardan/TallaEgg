@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 using Orders.Infrastructure;
+using TallaEgg.Core.Startup;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Infrastructure.Clients;
 
@@ -27,6 +28,7 @@ public class OutboxProcessorService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly InstanceIdentity _identity;
     private readonly ILogger<OutboxProcessorService> _logger;
+    private readonly DatabaseReadiness _readiness;
 
     private readonly TimeSpan _pollInterval = TimeSpan.FromSeconds(5);
     private const int BatchSize = 20;
@@ -43,16 +45,26 @@ public class OutboxProcessorService : BackgroundService
     public OutboxProcessorService(
         IServiceScopeFactory scopeFactory,
         InstanceIdentity identity,
-        ILogger<OutboxProcessorService> logger)
+        ILogger<OutboxProcessorService> logger,
+        DatabaseReadiness readiness)
     {
         _scopeFactory = scopeFactory;
         _identity = identity;
         _logger = logger;
+        _readiness = readiness;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("OutboxProcessorService started (poll every {Seconds}s).", _pollInterval.TotalSeconds);
+        // Nothing below may touch the database before the migration has applied it. Since #230 the
+        // migration runs alongside the host instead of ahead of it, and the readiness gate only
+        // covers HTTP — a loop reaches the database without a request.
+        if (!await _readiness.WaitUntilReadyAsync(stoppingToken))
+        {
+            return;
+        }
+
 
         while (!stoppingToken.IsCancellationRequested)
         {

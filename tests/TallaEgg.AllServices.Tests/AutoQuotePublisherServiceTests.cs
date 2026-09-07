@@ -75,7 +75,7 @@ public class AutoQuotePublisherServiceTests : IDisposable
     // These tests drive PublishIfDueAsync directly, so the leader gate never runs; the lease is
     // stubbed to "yes" purely to satisfy the constructor.
     private AutoQuotePublisherService NewService() => new(
-        _provider.GetRequiredService<IServiceScopeFactory>(), _logger, new AlwaysLeaderLease());
+        _provider.GetRequiredService<IServiceScopeFactory>(), _logger, new AlwaysLeaderLease(), MigratedDatabase.Readiness());
 
     private AutoQuotePublisherService? _service;
 

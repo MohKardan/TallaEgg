@@ -98,7 +98,8 @@ public class OutboxDueSelectionTests : IDisposable
         var processor = new OutboxProcessorService(
             _provider.GetRequiredService<IServiceScopeFactory>(),
             new InstanceIdentity("due-selection-tests"),
-            NullLogger<OutboxProcessorService>.Instance);
+            NullLogger<OutboxProcessorService>.Instance,
+            MigratedDatabase.Readiness());
 
         await processor.ProcessDueMessagesAsync(CancellationToken.None);
     }

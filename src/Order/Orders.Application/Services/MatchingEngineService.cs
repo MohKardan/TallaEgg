@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TallaEgg.Core.Startup;
 using Orders.Application;
 using Orders.Core;
 using Orders.Infrastructure;
@@ -26,6 +27,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly ILogger<MatchingEngineService> _logger;
+    private readonly DatabaseReadiness _readiness;
     private readonly IServiceProvider _serviceProvider;
     private readonly TimeSpan _processingInterval = TimeSpan.FromSeconds(1);
     private readonly SemaphoreSlim _processingSemaphore = new(1, 1); // Prevent concurrent processing
@@ -63,7 +65,8 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         ILogger<MatchingEngineService> logger,
         IServiceProvider serviceProvider,
         IConfiguration configuration,
-        ILeaderLease leaderLease)
+        ILeaderLease leaderLease,
+        DatabaseReadiness readiness)
     {
         _scopeFactory = scopeFactory;
 
@@ -71,6 +74,7 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
         _serviceProvider = serviceProvider;
 
         _leaderGate = new LeaderGate(ServiceLeaseRoles.MatchingEngine, LeaseDuration, leaderLease, logger);
+        _readiness = readiness;
     }
 
     /// <summary>internal so a test can ask the gate directly, without driving the loop's timing.</summary>
@@ -80,6 +84,14 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     {
         _logger.LogInformation("🚀 Matching Engine Service is starting...");
         _isRunning = true;
+        // Nothing below may touch the database before the migration has applied it. Since #230 the
+        // migration runs alongside the host instead of ahead of it, and the readiness gate only
+        // covers HTTP — a loop reaches the database without a request.
+        if (!await _readiness.WaitUntilReadyAsync(stoppingToken))
+        {
+            return;
+        }
+
 
         try
         {
