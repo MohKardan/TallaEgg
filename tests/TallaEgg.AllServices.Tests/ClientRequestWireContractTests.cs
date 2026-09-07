@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using Newtonsoft.Json;
 using TallaEgg.Core.DTOs.Order;
@@ -30,22 +29,46 @@ namespace TallaEgg.AllServices.Tests;
 public class ClientRequestWireContractTests
 {
     /// <summary>
-    /// The two directories holding hand-written HTTP clients — the pair issue #241 measured.
+    /// Every line of C# the product ships, not the two <c>Clients/</c> directories issue #241
+    /// measured.
     /// </summary>
     /// <remarks>
-    /// Deliberately these two and not every serialize call in the solution. What this guard is
-    /// about is a body crossing the wire to an endpoint with a published schema, and outside these
-    /// directories the same call means something else. <c>OrderMatchingRepository</c> serializes a
-    /// <see cref="TradeDto"/> into <c>OutboxMessages.Payload</c> with a bare serializer, and
-    /// <c>OutboxProcessorService</c> reads it back case-<em>sensitively</em>; that pair has no
-    /// schema and no tolerance, and moving one side of it to camelCase would turn every payload
-    /// written before the deployment and not yet settled into a settlement for an empty symbol and
-    /// zero quantity. It is left exactly as it is, which <c>STANDARDS.md</c> §2 already requires.
+    /// Sweeping the whole trees and gating the exceptions, the same way
+    /// <see cref="JsonNamingPolicyConsistencyTests"/> does and for the reason it gives: a list of
+    /// the places that hold one today goes quiet the first time somebody puts one somewhere new,
+    /// and passing vacuously after a refactor is the failure a guard like this is most prone to.
+    /// The four clients live in two directories now; nothing stops a fifth being written beside the
+    /// service it calls, and that one would reintroduce #241 with this test still green.
     /// </remarks>
-    public static TheoryData<string> ClientRoots =>
+    public static TheoryData<string> ScanRoots =>
     [
-        "src/TallaEgg/TallaEgg.Infrastructure/Clients",
-        "TelegramBot/TallaEgg.TelegramBot.Infrastructure/Clients",
+        "src",
+        "TelegramBot",
+    ];
+
+    /// <summary>
+    /// Files that serialize JSON for something other than a request body one of these APIs binds.
+    /// Adding one is a statement about what the file does, not a formatting decision.
+    /// </summary>
+    /// <remarks>
+    /// The first is the one that matters. <c>OrderMatchingRepository</c> writes a
+    /// <see cref="TradeDto"/> into <c>OutboxMessages.Payload</c> with a bare serializer, and
+    /// <c>OutboxProcessorService</c> reads it back case-<em>sensitively</em> — that pair has no
+    /// schema between it and no tolerance either, so moving one side to camelCase would turn every
+    /// payload written before the deployment and not yet settled into a settlement for an empty
+    /// symbol and zero quantity. <c>STANDARDS.md</c> §2 already says so; this keeps the guard from
+    /// being the thing that argues otherwise.
+    /// </remarks>
+    private static readonly (string Path, string Why)[] NotRequestBodies =
+    [
+        ("src/Order/Orders.Infrastructure/OrderMatchingRepository.cs",
+            "writes OutboxMessages.Payload, which OutboxProcessorService reads back case-sensitively"),
+        ("src/TallaEgg/TallaEgg.Core/Services/TelegramLoggerService.cs",
+            "posts to Telegram, an external contract that does not take this platform's casing"),
+        ("src/Order/Orders.Api/Program.cs",
+            "formats a response DTO into a log line"),
+        ("src/Order/Orders.Application/OrderService.cs",
+            "formats a list of orders into a log line"),
     ];
 
     /// <summary>
@@ -136,8 +159,8 @@ public class ClientRequestWireContractTests
     /// serialize with <c>JsonSerializerDefaults.Web</c> already, which is the shape this asks for.
     /// </remarks>
     [Theory]
-    [MemberData(nameof(ClientRoots))]
-    public void RequestSerialization_InEveryTypedClient_NamesTheSharedOptions(string relativeRoot)
+    [MemberData(nameof(ScanRoots))]
+    public void RequestSerialization_AnywhereInTheProduct_NamesTheSharedOptions(string relativeRoot)
     {
         var root = Path.Combine(RepoRoot(), relativeRoot);
         Assert.True(Directory.Exists(root), $"{relativeRoot} does not exist; update the root list.");
@@ -147,6 +170,19 @@ public class ClientRequestWireContractTests
 
         foreach (var file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
         {
+            // Build output carries copies of source-generated and referenced code.
+            if (file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                || file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var relative = Path.GetRelativePath(RepoRoot(), file).Replace(Path.DirectorySeparatorChar, '/');
+            if (NotRequestBodies.Any(exempt => exempt.Path.Equals(relative, StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
             var lines = File.ReadAllLines(file);
             for (var index = 0; index < lines.Length; index++)
             {
@@ -162,23 +198,43 @@ public class ClientRequestWireContractTests
                     continue;
                 }
 
-                offenders.Add($"{Path.GetRelativePath(RepoRoot(), file)}:{index + 1}: {line.Trim()}");
+                offenders.Add($"{relative}:{index + 1}: {line.Trim()}");
             }
         }
 
-        // Guards the guard: a renamed directory, or a serialize call spelled some new way, would
-        // otherwise leave this sweeping nothing and reporting success.
+        // Guards the guard: a serialize call spelled some new way, or an exemption widened until it
+        // covers everything, would otherwise leave this sweeping nothing and reporting success.
         Assert.True(
             calls > 0,
             $"No serialize call found under {relativeRoot}; this guard has stopped looking at anything.");
 
         Assert.True(
             offenders.Count == 0,
-            "A client serializes a request body without saying what casing to write it in, which is "
-                + "#241. Pass ApiJson.RequestOptions (System.Text.Json) or "
-                + "ApiJson.NewtonsoftRequestSettings (Newtonsoft) on the same line as the call:"
+            "JSON is serialized without saying what casing to write it in, which is #241. If this is "
+                + "a request body one of our APIs binds, pass ApiJson.RequestOptions "
+                + "(System.Text.Json) or ApiJson.NewtonsoftRequestSettings (Newtonsoft) on the same "
+                + "line as the call. If it is not — a log line, a stored payload, an external "
+                + "contract — add the file to NotRequestBodies with the reason:"
                 + Environment.NewLine
                 + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
+    /// An exemption that no longer names a real file is an exemption nobody is reading, and it
+    /// would silently widen the moment that path came back for some other reason.
+    /// </summary>
+    [Fact]
+    public void NotRequestBodies_EveryExemptFile_StillExists()
+    {
+        var missing = NotRequestBodies
+            .Where(exempt => !File.Exists(Path.Combine(RepoRoot(), exempt.Path)))
+            .Select(exempt => $"  {exempt.Path} — exempt because it {exempt.Why}")
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            "NotRequestBodies exempts a file that is not there any more; drop the entry:"
+                + Environment.NewLine + string.Join(Environment.NewLine, missing));
     }
 
     /// <summary>
@@ -213,11 +269,11 @@ public class ClientRequestWireContractTests
             ? JsonConvert.SerializeObject(probe, ApiJson.NewtonsoftRequestSettings)
             : System.Text.Json.JsonSerializer.Serialize(probe, type, ApiJson.RequestOptions));
 
-        // Every public readable property reaches the wire, so a name missing from one side is
-        // reported as a difference rather than passing because both sides happened to omit it.
-        Assert.Equal(
-            type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Count(p => p.CanRead),
-            declared.Count);
+        // Only that the schema side has something to compare against, so a type that serialized to
+        // "{}" could not pass by writing nothing. Not an exact property count: a member both sides
+        // agree to leave off the wire — a [JsonIgnore], an indexer — is a consistent contract, and
+        // failing on it would report a wire mismatch that is not one.
+        Assert.NotEmpty(declared);
 
         var unpublished = written.Except(declared, StringComparer.Ordinal).ToList();
         var unwritten = declared.Except(written, StringComparer.Ordinal).ToList();

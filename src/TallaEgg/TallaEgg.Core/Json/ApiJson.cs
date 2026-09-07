@@ -31,10 +31,13 @@ namespace TallaEgg.Core.Json;
 /// <b>Nothing here is a deserialization setting.</b> The read side is #233's, and the clients'
 /// existing <c>PropertyNameCaseInsensitive</c> reads are untouched.
 ///
-/// Both members are shared, process-wide instances and must be treated as read-only.
-/// <see cref="RequestOptions"/> enforces that for itself — <see cref="JsonSerializerOptions"/>
-/// throws once it is frozen — while <see cref="JsonSerializerSettings"/> has no equivalent, so
-/// mutating <see cref="NewtonsoftRequestSettings"/> would reach every caller in the process.
+/// <b>Neither member can be reshaped by one of its callers.</b> That matters more here than it
+/// looks: these objects are reached from every request path in the platform, so a single line
+/// setting some unrelated option on one of them would change what every other caller puts on the
+/// wire. <see cref="RequestOptions"/> is frozen, and <see cref="JsonSerializerOptions"/> throws on
+/// a write once it is. <see cref="JsonSerializerSettings"/> has no equivalent, so
+/// <see cref="NewtonsoftRequestSettings"/> hands out a fresh instance instead — see the note there
+/// for why that costs nothing.
 /// </remarks>
 public static class ApiJson
 {
@@ -63,10 +66,26 @@ public static class ApiJson
     /// body carries a dictionary today, and that is a reason the difference is cheap to get right
     /// now, not a reason to leave it wrong.
     ///
-    /// The resolver is held on this single instance because a contract resolver caches the
-    /// contracts it builds; a fresh one per call would throw that cache away.
+    /// A new <see cref="JsonSerializerSettings"/> every time, over one shared resolver. The
+    /// settings object is what a caller could mutate and there is no way to freeze it, so nobody
+    /// gets a reference anyone else is holding; the resolver is what caches the contracts it
+    /// builds, and keeping that one static is what makes the fresh settings object free. Newtonsoft
+    /// builds a serializer from the settings on every <c>SerializeObject</c> call regardless, so
+    /// this adds one small allocation to an operation that is about to make an HTTP request.
     /// </remarks>
-    public static JsonSerializerSettings NewtonsoftRequestSettings { get; } = BuildNewtonsoftRequestSettings();
+    public static JsonSerializerSettings NewtonsoftRequestSettings => new()
+    {
+        ContractResolver = CamelCaseResolver,
+    };
+
+    /// <summary>
+    /// Shared because a contract resolver caches the contracts it builds, and safe to share because
+    /// it is never handed to a caller — only read through <see cref="NewtonsoftRequestSettings"/>.
+    /// </summary>
+    private static readonly IContractResolver CamelCaseResolver = new DefaultContractResolver
+    {
+        NamingStrategy = new CamelCaseNamingStrategy(),
+    };
 
     private static JsonSerializerOptions BuildRequestOptions()
     {
@@ -77,12 +96,4 @@ public static class ApiJson
         options.MakeReadOnly(populateMissingResolver: true);
         return options;
     }
-
-    private static JsonSerializerSettings BuildNewtonsoftRequestSettings() => new()
-    {
-        ContractResolver = new DefaultContractResolver
-        {
-            NamingStrategy = new CamelCaseNamingStrategy(),
-        },
-    };
 }
