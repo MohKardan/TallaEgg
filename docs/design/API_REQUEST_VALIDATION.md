@@ -243,7 +243,7 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 | | `asset` contains a `/` — **no check** ([`OrderService.cs:82`](../../src/Order/Orders.Application/OrderService.cs#L82)) | — | **400, opaque** — §3 |
 | | per-symbol `MinQuantity` / `MaxQuantity` ([`OrderService.cs:230,235`](../../src/Order/Orders.Application/OrderService.cs#L230)) | state | 400 |
 | | `quantity * price >= MinNotional` ([`OrderService.cs:242`](../../src/Order/Orders.Application/OrderService.cs#L242)) | cross-field | 400 |
-| | credit + balance across both assets ([`OrderService.cs:120,127`](../../src/Order/Orders.Application/OrderService.cs#L120)) — **skipped entirely when the user's role is `Admin`** ([`:118`](../../src/Order/Orders.Application/OrderService.cs#L118)) | state | 400, or no check at all |
+| | credit + balance across both assets ([`OrderService.cs:120,127`](../../src/Order/Orders.Application/OrderService.cs#L120)) — **skipped entirely when the user's role is `Admin`**, deliberately ([`:118`](../../src/Order/Orders.Application/OrderService.cs#L118)) | state | 400, or no check at all |
 | | the order factories re-check asset/amount/price/userId ([`Order.cs:38-47`](../../src/Order/Orders.Core/Order.cs#L38-L47), in `CreateMakerOrder`; `CreateLimitOrder` at [`:72-82`](../../src/Order/Orders.Core/Order.cs#L72-L82)) | shape | 500. The first three are pre-checked above; `userId` is not, so `Guid.Empty` reaches here unless the balance check refuses it first |
 | `POST /api/quotes` | `symbol` non-blank ([`Quote.cs:64`](../../src/Order/Orders.Core/Quote.cs#L64)) — a **null** symbol faults earlier, §3 | shape | 400 |
 | | `buyPrice > 0`, `sellPrice > 0` ([`Quote.cs:67,70`](../../src/Order/Orders.Core/Quote.cs#L67)) | shape | 400 |
@@ -279,6 +279,14 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 ¹ `Guid.Empty` on a non-nullable `Guid`. `[Required]` can never fail on one, so this is not in fact
 expressible as a stock DataAnnotation — the trap PR #236 named when it deleted `[Required]` from
 `OrderDto.Id` and `OrderDto.Side`.
+
+**The `Admin` bypass on `POST /api/orders` is intended, not a defect.** An administrator placing an
+order with no funds and no credit is a business rule, confirmed with the product owner on
+17 Shahrivar 1405 (2026-09-08), and it is listed among the rules that look like bugs in
+[`AGENT.md`](../../AGENT.md). It is recorded here because a client cannot see it from the schema —
+the same request refused for one account succeeds for another — not as something to fix. Note it is
+not the dealer mechanism: a quote fill creates the market maker's side through
+`CreateLockedAndConfirmedOrderForQuoteAsync`, which never reaches this check.
 
 ## 6. Endpoints that answer 404, not 400
 

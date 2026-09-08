@@ -120,6 +120,16 @@ is one. Confirmed with the product owner on 6 Shahrivar 1405.
   `A` lives in a separate wallet row keyed `CREDIT_A`, so a single-asset entity cannot evaluate
   the invariant. The check belongs where both rows are visible. The commented-out guard in that
   method is wrong code, correctly disabled.
+- **The `Admin` role skips the balance and credit check on `POST /api/orders`, deliberately.**
+  `OrderService.CreateOrderAsync` wraps both refusals — the check itself failing, and the balance
+  being insufficient — in `if (!isadmin)`, where `isadmin` is `user?.Role == UserRole.Admin`
+  (`OrderService.cs:118-131`). An administrator can therefore place an order of any size with no
+  funds and no credit, and that is intended. Confirmed with the product owner on 17 Shahrivar 1405
+  (2026-09-08). Two things to know before touching it: the role is `Admin` specifically, not
+  `SuperAdmin`, so this is not the shop ledger exemption it looks like; and it is **not** what lets
+  the market maker take the other side of a quote fill — that path runs through
+  `CreateLockedAndConfirmedOrderForQuoteAsync`, which never reaches this check at all. So removing
+  the bypass would not break dealer trading, and it is still not to be removed.
 
 ## Configuration
 
