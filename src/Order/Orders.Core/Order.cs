@@ -116,6 +116,11 @@ public class Order
             Price = price,
             UserId = userId,
             Side = OrderSide.Buy, // Default to Buy for now
+            // Set here rather than left at the enum default, which would have this factory produce
+            // an order recording Market despite its name. It has no callers — issue #250 files it
+            // with the other unreferenced declarations rather than deleting it here — but the
+            // setter is private now, so a future caller would have no way to correct it.
+            Type = OrderType.Limit,
             Status = OrderStatus.Pending,
             TradingType = TradingType.Spot, // Default to Spot for now
             Role = OrderRole.Maker,

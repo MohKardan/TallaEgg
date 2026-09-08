@@ -97,8 +97,12 @@ namespace TallaEgg.Core.DTOs.Order
         ///
         /// <para>
         /// Refusing the types the endpoint cannot honour would be a behaviour change and is filed
-        /// separately. Note that the bot reaches this endpoint only on its fallback path, and sends
-        /// <c>Market</c> when it does.
+        /// separately. Before writing that refusal, note what the bot actually sends: it reaches
+        /// this endpoint only when no quote is active, and the value it posts is whichever button
+        /// started the conversation. Today that is <c>Market</c> in practice, because the only
+        /// order-entry button on the customer's menu is the quote one — but the <c>Limit</c> button
+        /// is commented out of the keyboard rather than removed from the handler, so a replayed or
+        /// forwarded button label still posts <c>Limit</c>.
         /// </para>
         /// </summary>
         public OrderType Type { get; set; }
