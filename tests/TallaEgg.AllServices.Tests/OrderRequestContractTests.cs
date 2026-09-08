@@ -23,10 +23,11 @@ public class OrderRequestContractTests
     /// formatting decision.
     /// </summary>
     /// <remarks>
-    /// <c>Type</c> is on the list on the weakest grounds of the eight: <c>CreateOrderAsync</c>
-    /// reads it into a log line and never branches on it, and no code under <c>src/Order/</c>
-    /// mentions <c>OrderType</c> at all. It is here because it is read, not because it decides
-    /// anything.
+    /// <c>Type</c> was on this list on the weakest grounds of the eight: it was read into a log
+    /// line and never branched on, and no code under <c>src/Order/</c> mentioned <c>OrderType</c>
+    /// at all. It now decides what the order records (issue #250) — which is still not the same as
+    /// deciding how the order executes, since this endpoint builds the same resting order whatever
+    /// it is sent. See <see cref="OrderDto.Type"/>.
     /// </remarks>
     private static readonly string[] MembersTheEndpointReads =
     [

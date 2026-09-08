@@ -154,15 +154,26 @@ public class QuoteFillService
 
         // Both orders are created at the same price and quantity, so the match is always complete
         // and nothing is left resting in the book.
+        //
+        // They differ in order type, and that is the model rather than an inconsistency. The
+        // customer took a price somebody else had already published, so their side is a market
+        // order; the dealer named that price when they published the quote, so theirs is a limit
+        // order. Recording both as Market — which is what happened until issue #250, since nothing
+        // assigned the column at all — loses the only thing the two sides disagree about.
+        //
+        // This is also the whole of "we have no peer-to-peer trading yet": the dealer is the only
+        // participant who can name a price, so a customer's order can only ever be a market order.
+        // When peer-to-peer opens, the customer's side stops being a constant and starts coming
+        // from the request.
         var customerOrder = await CreateSideAsync(customerUserId, symbol, customerSide, quantity, price,
-            $"پذیرش مظنه {quote.Id}");
+            OrderType.Market, $"پذیرش مظنه {quote.Id}");
 
         if (customerOrder is null)
             return (false, "ثبت سفارش شما انجام نشد.", null);
 
         var adminSide = customerSide == OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy;
         var adminOrder = await CreateSideAsync(marketMakerUserId, symbol, adminSide, quantity, price,
-            $"طرف مقابل مظنه {quote.Id}");
+            OrderType.Limit, $"طرف مقابل مظنه {quote.Id}");
 
         if (adminOrder is null)
         {
@@ -204,12 +215,13 @@ public class QuoteFillService
     /// confirmed — but not matched. Matching happens once, for both orders together.
     /// </summary>
     private async Task<Order?> CreateSideAsync(
-        Guid userId, string symbol, OrderSide side, decimal quantity, decimal price, string notes)
+        Guid userId, string symbol, OrderSide side, decimal quantity, decimal price,
+        OrderType orderType, string notes)
     {
         try
         {
             var command = new CreateOrderCommand(
-                symbol, quantity, price, userId, side, TradingType.Spot, notes);
+                symbol, quantity, price, userId, side, orderType, TradingType.Spot, notes);
 
             return await _orderService.CreateLockedAndConfirmedOrderForQuoteAsync(command);
         }

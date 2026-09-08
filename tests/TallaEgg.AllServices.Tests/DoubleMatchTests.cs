@@ -59,7 +59,7 @@ public class DoubleMatchTests : IDisposable
 
     private Order AddOrder(Guid userId, OrderSide side, decimal amount)
     {
-        var order = Order.CreateMakerOrder(Symbol, amount, Price, userId, side, TradingType.Spot);
+        var order = Order.CreateMakerOrder(Symbol, amount, Price, userId, side, OrderType.Limit, TradingType.Spot);
         order.Confirm();
         _context.Orders.Add(order);
         _context.SaveChanges();

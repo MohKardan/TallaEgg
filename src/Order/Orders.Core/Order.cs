@@ -15,7 +15,25 @@ public class Order
     /// Order side: buy or sell.
     /// </summary>
     public OrderSide Side { get; private set; }
-    public OrderType Type { get; set; }
+
+    /// <summary>
+    /// How the order was placed: the price was named (<see cref="OrderType.Limit"/>) or taken
+    /// (<see cref="OrderType.Market"/>).
+    ///
+    /// <para>
+    /// The two sides of one quote fill disagree on this, and that is the model rather than a
+    /// rounding of it: the dealer published the price, so their side is a limit order, while the
+    /// customer took the price that was already there, so theirs is a market order. One trade, one
+    /// price, two order types.
+    /// </para>
+    ///
+    /// <para>
+    /// Assigned by the factory, like every other value here. It used to carry a public setter and
+    /// no caller, so every order ever written held the enum default — <c>Market</c> — including the
+    /// dealer's half of every fill (issue #250). Rows written before this fix still hold it.
+    /// </para>
+    /// </summary>
+    public OrderType Type { get; private set; }
     public OrderStatus Status { get; private set; }
     public TradingType TradingType { get; private set; }
     public OrderRole Role { get; private set; }
@@ -25,12 +43,19 @@ public class Order
     // Set on a taker order to point at the maker order it filled against.
     public Guid? ParentOrderId { get; private set; }
 
+    /// <param name="orderType">
+    /// How the price was arrived at — see <see cref="Type"/>. Required rather than defaulted: a
+    /// default is what let every order in the database claim to be a market order (issue #250), and
+    /// the answer differs between the two sides of a single fill, so no default can be right for
+    /// both.
+    /// </param>
     public static Order CreateMakerOrder(
-        string asset, 
-        decimal amount, 
-        decimal price, 
-        Guid userId, 
+        string asset,
+        decimal amount,
+        decimal price,
+        Guid userId,
         OrderSide type,
+        OrderType orderType,
         TradingType tradingType,
         string? notes = null)
     {
@@ -55,6 +80,7 @@ public class Order
             Price = price,
             UserId = userId,
             Side = type,
+            Type = orderType,
             Status = OrderStatus.Pending,
             TradingType = tradingType,
             Role = OrderRole.Maker,

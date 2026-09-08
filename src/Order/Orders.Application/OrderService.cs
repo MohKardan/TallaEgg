@@ -137,13 +137,22 @@ public class OrderService
             List<TradeDto> executedTrades = new();
 
 
-            // Limit orders start as Makers
+            // Every order from this endpoint starts as a Maker: it rests in the book until
+            // something matches it.
+            //
+            // request.Type is recorded rather than acted on. This endpoint builds the same resting
+            // order whatever it is sent, so a Market or StopLimit here is not honoured — but it was
+            // previously read into a log line and discarded, leaving the column a constant zero and
+            // nothing to measure a future refusal against (issue #250). Recording the caller's
+            // intent is not the same as promising to execute it, and refusing the types this
+            // endpoint cannot honour is a behaviour change filed separately.
             var limitCommand = new CreateOrderCommand(
                 request.Asset,
                 request.Amount,
                 request.Price,
                 userId,
                 orderSide,
+                request.Type,
                 tradingType,
                 request.Notes
             );
@@ -274,6 +283,7 @@ public class OrderService
             command.Price,
             command.UserId,
             command.Type,
+            command.OrderType,
             command.TradingType,
             command.Notes
         );

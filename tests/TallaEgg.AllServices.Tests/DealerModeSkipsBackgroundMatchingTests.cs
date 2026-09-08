@@ -95,8 +95,8 @@ public class DealerModeSkipsBackgroundMatchingTests : IDisposable
     {
         using var db = NewContext();
 
-        var buy = Order.CreateMakerOrder(Symbol, Quantity, Price, _buyerId, OrderSide.Buy, TradingType.Spot);
-        var sell = Order.CreateMakerOrder(Symbol, Quantity, Price, _sellerId, OrderSide.Sell, TradingType.Spot);
+        var buy = Order.CreateMakerOrder(Symbol, Quantity, Price, _buyerId, OrderSide.Buy, OrderType.Limit, TradingType.Spot);
+        var sell = Order.CreateMakerOrder(Symbol, Quantity, Price, _sellerId, OrderSide.Sell, OrderType.Limit, TradingType.Spot);
         buy.Confirm();
         sell.Confirm();
 
