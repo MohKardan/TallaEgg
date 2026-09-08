@@ -152,6 +152,15 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
     /// </para>
     ///
     /// <para>
+    /// <b>One transaction</b>, because the capture is only valid until the trades are deleted.
+    /// If the counterparty delete failed on its own — a deadlock against the matching sweep,
+    /// say — the trades would already be gone and the orders they identified would be
+    /// unrecoverable, creating exactly the permanent orphans this fix exists to remove. The
+    /// delete-by-owner it replaced had no such window, because <c>UserId</c> stays true however
+    /// far the batch got.
+    /// </para>
+    ///
+    /// <para>
     /// Maker and taker are matched alongside buy and sell because each of the four is its own
     /// foreign key, so any of them can hold an order in place.
     /// </para>
@@ -164,6 +173,8 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
     /// </summary>
     internal const string OrderDataDeleteSql =
         """
+        SET XACT_ABORT ON;
+
         DECLARE @Sim TABLE (Id uniqueidentifier PRIMARY KEY);
         INSERT INTO @Sim (Id)
         SELECT DISTINCT CAST(value AS uniqueidentifier) FROM STRING_SPLIT(@Ids, ',');
@@ -178,13 +189,20 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
         WHERE t.BuyerUserId IN (SELECT Id FROM @Sim)
            OR t.SellerUserId IN (SELECT Id FROM @Sim);
 
+        DECLARE @DeletedOwners TABLE (UserId uniqueidentifier);
+
+        BEGIN TRANSACTION;
+
         DELETE FROM Trades
         WHERE BuyerUserId IN (SELECT Id FROM @Sim)
            OR SellerUserId IN (SELECT Id FROM @Sim);
         DECLARE @TradesDeleted int = @@ROWCOUNT;
 
         DELETE FROM Orders
+        OUTPUT deleted.UserId INTO @DeletedOwners
         WHERE Id IN (SELECT Id FROM @Counterparty)
+          AND Status = 'Completed'
+          AND RemainingAmount = 0
           AND NOT EXISTS (
               SELECT 1 FROM Trades t
               WHERE t.BuyOrderId = Orders.Id OR t.SellOrderId = Orders.Id
@@ -194,7 +212,12 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
         DELETE FROM Orders WHERE UserId IN (SELECT Id FROM @Sim);
         DECLARE @OrdersDeleted int = @@ROWCOUNT;
 
-        SELECT @TradesDeleted, @CounterpartyDeleted, @OrdersDeleted;
+        COMMIT TRANSACTION;
+
+        DECLARE @RealAccountsDeleted int =
+            (SELECT COUNT(*) FROM @DeletedOwners WHERE UserId NOT IN (SELECT Id FROM @Sim));
+
+        SELECT @TradesDeleted, @CounterpartyDeleted, @OrdersDeleted, @RealAccountsDeleted;
         """;
 
     /// <summary>
@@ -221,14 +244,17 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
     ///
     /// <para>
     /// This is a deliberate narrowing of the <c>TelegramId &lt; 0</c> guard described on the
-    /// class, and the only one: an order belonging to a real account is deleted solely because a
-    /// simulated user was the counterparty of a trade it was part of. It does not reopen the
-    /// incident that guard exists to prevent — that was a filter which selected real
-    /// <em>users</em> wholesale, deleting an account, its wallets and its history. Nothing here
-    /// widens which users are selected, and the <c>NOT EXISTS</c> keeps any order still
-    /// referenced by a surviving trade, so a real order filled against both a simulated and a
-    /// real user keeps the history that is genuinely its own. Without that clause the delete
-    /// does not merely over-reach, it fails outright on FK_Trades_Orders_SellOrderId.
+    /// class, and it is kept as narrow as the defect: an order on a real account is deleted only
+    /// when a simulated user was the counterparty of a trade it was part of, <b>and</b> that
+    /// trade consumed it entirely. Two clauses hold that line. <c>NOT EXISTS</c> keeps any order
+    /// a surviving trade still references, so one filled against both a simulated and a real
+    /// user stays — without it the delete does not merely over-reach, it fails outright on
+    /// FK_Trades_Orders_SellOrderId. <c>Completed</c> with <c>RemainingAmount = 0</c> keeps a
+    /// real user's resting order that a simulated user only partially filled: that order existed
+    /// before the run and is not the run's to delete, and removing it would strand its
+    /// <c>LockedBalance</c> in a real wallet with no order left to reconcile against. What is
+    /// deleted is only an order that exists solely because of a trade being deleted — which is
+    /// what the dealer's side of a quote fill is.
     /// </para>
     /// </summary>
     private async Task DeleteOrderDataAsync(List<Guid> userIds, CancellationToken ct)
@@ -248,8 +274,16 @@ public sealed class DataReset(string usersDbConnectionString, string walletDbCon
         await reader.ReadAsync(ct);
 
         logger.LogInformation("Reset: deleted {Count} Trades rows.", reader.GetInt32(0));
-        logger.LogInformation("Reset: deleted {Count} counterparty Orders rows.", reader.GetInt32(1));
-        logger.LogInformation("Reset: deleted {Count} Orders rows.", reader.GetInt32(2));
+
+        // Both sides of a deleted trade come out through the capture, so this count mixes the
+        // simulated user's own order with the counterparty's. The second number is the one that
+        // matters when reading a run: it is how far outside TelegramId < 0 this reset reached.
+        logger.LogInformation(
+            "Reset: deleted {Count} Orders rows through those trades, {RealCount} of them on a real account.",
+            reader.GetInt32(1), reader.GetInt32(3));
+
+        logger.LogInformation("Reset: deleted {Count} further Orders rows owned by a simulated user.",
+            reader.GetInt32(2));
     }
 
     private Task WaitForOutboxToDrainAsync(CancellationToken ct) =>
