@@ -52,6 +52,16 @@ namespace TallaEgg.Core.DTOs.Order
     /// following that comment could reasonably have sent the user's id as <c>id</c> and left the
     /// order's user empty. Removing it costs no caller anything: the bot never set it, and a body
     /// that still carries <c>id</c> is accepted with the member ignored.
+    ///
+    /// Five more went the same way (issue #240): <c>Status</c>, <c>Role</c>, <c>CreatedAt</c>,
+    /// <c>UpdatedAt</c> and <c>ParentOrderId</c>. All five were bound, published in the schema and
+    /// discarded — the status and timestamps belong to the entity, the role is computed from the
+    /// matching result, and the parent is set by the matching engine when a taker is linked to a
+    /// maker. <c>Status</c> and <c>Role</c> were the reason the set was worth removing rather than
+    /// documenting: they name real trading concepts, so a client reading the schema could
+    /// reasonably believe <c>role</c> chose whether to post as maker or taker. Measured against the
+    /// running service, <c>{"role": 1, "status": 3, "parentOrderId": "…"}</c> returned <c>200</c>
+    /// and a plain maker order at the entity's own status, with no error and no warning.
     /// </remarks>
     public class OrderDto
     {
@@ -65,20 +75,16 @@ namespace TallaEgg.Core.DTOs.Order
         public decimal Amount { get; set; }
 
         /// <summary>
-        /// Price. Required for limit orders, optional for market orders.
+        /// Price, required on every order. The endpoint refuses a body without one, whatever
+        /// <see cref="Type"/> says (issue #240).
         /// </summary>
         public decimal Price { get; set; }
         public Guid UserId { get; set; }
 
         public OrderSide Side { get; set; }
         public OrderType Type { get; set; }
-        public OrderStatus Status { get; set; }
         public TradingType TradingType { get; set; }
-        public OrderRole Role { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime? UpdatedAt { get; set; }
         public string? Notes { get; set; }
-        public Guid? ParentOrderId { get; set; } // برای Taker orders که به Maker order متصل می‌شوند
     }
     public class BestPricesDto
     {

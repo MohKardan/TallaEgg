@@ -684,7 +684,10 @@ app.MapPost("/api/orders", async (TallaEgg.Core.DTOs.Order.OrderDto request, Ord
 .WithDescription("Creates a limit or market order, determining the maker/taker role automatically.")
 .WithTags("Orders")
 .Produces<ApiResponse<CreateOrderResponse>>(200)
-.ProducesValidationProblem(400);
+// Not ProducesValidationProblem: nothing here returns a ProblemDetails body. All three refusals
+// above and both catch blocks answer in the ApiResponse envelope, and the member carrying the
+// reason is `message` (issue #240).
+.Produces<ApiResponse<CreateOrderResponse>>(400);
 
 // Returns an order by id.
 // orderId: Order id.
