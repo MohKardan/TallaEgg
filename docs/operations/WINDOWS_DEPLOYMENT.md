@@ -70,25 +70,52 @@ Windows runner and attaches one zip per service to it. The runner builds from a 
 so `/version` reports a commit hash rather than `null` — a source zip downloaded onto the server
 has no `.git` for the SDK to read.
 
-```powershell
-# Stop first: unzipping over a running service hits locked files.
-'TallaEggBot', 'TallaEggOrdersApi', 'TallaEggUsersApi', 'TallaEggWalletApi' |
-    ForEach-Object { sc.exe stop $_ }
+**Stop bot-first, start bot-last.** The bot is declared dependent on the three APIs, so the SCM
+refuses to stop an API while the bot is running: `sc.exe` returns error 1051 and, if you are not
+reading its output, the API simply stays up and the replacement silently overwrites nothing.
+Alphabetical order is not dependency order — getting that wrong is what left the bot stopped and
+the three APIs still running on the first attempt at the v1.3.0 deployment.
 
+```powershell
 $tag = 'v1.3.0'
-foreach ($service in 'Wallet.Api', 'Users.Api', 'Orders.Api', 'Bot') {
-    $zip = "$env:TEMP\$service-$tag.zip"
-    Invoke-WebRequest -OutFile $zip `
-        "https://github.com/MohKardan/TallaEgg/releases/download/$tag/$service-$tag.zip"
-    Expand-Archive $zip -DestinationPath "C:\TallaEgg\publish\$service" -Force
+$order = @(   # dependency order: starting reads down, stopping reads up
+    @{ Folder = 'Wallet.Api'; Service = 'TallaEggWalletApi' }
+    @{ Folder = 'Users.Api';  Service = 'TallaEggUsersApi' }
+    @{ Folder = 'Orders.Api'; Service = 'TallaEggOrdersApi' }
+    @{ Folder = 'Bot';        Service = 'TallaEggBot' }
+)
+
+# Download everything before stopping anything, so a network failure costs no downtime.
+foreach ($s in $order) {
+    Invoke-WebRequest -UseBasicParsing -OutFile "$env:TEMP\$($s.Folder)-$tag.zip" `
+        "https://github.com/MohKardan/TallaEgg/releases/download/$tag/$($s.Folder)-$tag.zip"
 }
 
-.\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString "TallaEgg API key")
+foreach ($s in $order[3..0]) { sc.exe stop $s.Service }    # bot first
+# Wait for all four to report Stopped before continuing: a running process holds its own DLLs.
+
+foreach ($s in $order) {
+    $live = "C:\TallaEgg\publish\$($s.Folder)"
+    Remove-Item "$live.bak" -Recurse -Force -ErrorAction SilentlyContinue
+    Rename-Item $live "$live.bak"                          # the old build, kept to roll back to
+    Expand-Archive "$env:TEMP\$($s.Folder)-$tag.zip" -DestinationPath $live
+}
+
+foreach ($s in $order) { sc.exe start $s.Service }         # bot last
 ```
 
+Expanding into a fresh folder rather than over the old one is what stops a file deleted between
+releases from lingering; the renamed `.bak` beside it is the rollback — swap the two folders back
+and restart.
+
+**`install-services.ps1` does not need to run for this.** It exists to create or reconfigure the
+services, and a redeploy does neither: stopping a service, replacing its files and starting it
+again is what picks up new binaries. Run it when a service definition changes — a new dependency,
+a different `InstallRoot`, a rotated API key — which is also the only time the key is needed.
+
 The shared configuration lives at `C:\TallaEgg\config\appsettings.global.json`, one level above
-`publish\`, so unzipping over the service folders never touches it. That separation is the reason
-the layout is shaped this way.
+`publish\`, so replacing the service folders never touches it. That separation is the reason the
+layout is shaped this way.
 
 The workflow refuses to package an `appsettings.global.json`, so a release asset never carries
 credentials, and it fails rather than attaching anything if the built assemblies do not report
