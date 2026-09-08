@@ -52,7 +52,7 @@ public class AtomicMatchRoleTests : IDisposable
 
     private Order AddOrder(Guid userId, OrderSide side, DateTime createdAt)
     {
-        var order = Order.CreateMakerOrder(Symbol, Quantity, Price, userId, side, TradingType.Spot);
+        var order = Order.CreateMakerOrder(Symbol, Quantity, Price, userId, side, OrderType.Limit, TradingType.Spot);
         // Force the timestamp so which side is the resting (maker) order is deterministic.
         typeof(Order).GetProperty(nameof(Order.CreatedAt))!
             .SetValue(order, createdAt);

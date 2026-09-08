@@ -82,6 +82,29 @@ namespace TallaEgg.Core.DTOs.Order
         public Guid UserId { get; set; }
 
         public OrderSide Side { get; set; }
+
+        /// <summary>
+        /// How the caller means the price to be arrived at. <b>Recorded, not honoured</b>: this
+        /// endpoint builds the same resting order whatever it is sent, so <c>Market</c>,
+        /// <c>StopLimit</c> and <c>Oco</c> are all stored as asked and then treated alike.
+        ///
+        /// <para>
+        /// It was previously read into a log line and discarded, so <c>Order.Type</c> held the enum
+        /// default on every row ever written (issue #250). It stays on the request rather than
+        /// being removed with #240's five: ordinary customers cannot name a price today — only the
+        /// dealer publishes quotes — and this becomes their choice when peer-to-peer trading opens.
+        /// </para>
+        ///
+        /// <para>
+        /// Refusing the types the endpoint cannot honour would be a behaviour change and is filed
+        /// separately. Before writing that refusal, note what the bot actually sends: it reaches
+        /// this endpoint only when no quote is active, and the value it posts is whichever button
+        /// started the conversation. Today that is <c>Market</c> in practice, because the only
+        /// order-entry button on the customer's menu is the quote one — but the <c>Limit</c> button
+        /// is commented out of the keyboard rather than removed from the handler, so a replayed or
+        /// forwarded button label still posts <c>Limit</c>.
+        /// </para>
+        /// </summary>
         public OrderType Type { get; set; }
         public TradingType TradingType { get; set; }
         public string? Notes { get; set; }

@@ -51,7 +51,7 @@ public class PositionServiceTests : IDisposable
 
     private Order SeedOrder(Guid userId, OrderSide side, decimal qty, decimal price, string symbol)
     {
-        var order = Order.CreateMakerOrder(symbol, qty, price, userId, side, TradingType.Spot);
+        var order = Order.CreateMakerOrder(symbol, qty, price, userId, side, OrderType.Limit, TradingType.Spot);
         order.Confirm();
         _context.Orders.Add(order);
         _context.SaveChanges();

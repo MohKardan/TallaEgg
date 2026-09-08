@@ -46,7 +46,7 @@ public class PendingOrderNotMatchableTests : IDisposable
     /// <summary>Creates an order in the desired state. Without a confirm it stays Pending.</summary>
     private Order AddOrder(OrderSide side, bool confirm)
     {
-        var order = Order.CreateMakerOrder(Symbol, 10m, 20_000_000m, Guid.NewGuid(), side, TradingType.Spot);
+        var order = Order.CreateMakerOrder(Symbol, 10m, 20_000_000m, Guid.NewGuid(), side, OrderType.Limit, TradingType.Spot);
         if (confirm) order.Confirm();
         _context.Orders.Add(order);
         _context.SaveChanges();

@@ -48,7 +48,7 @@ public class MatchFailureRecoveryTests : IDisposable
 
     private Order AddOrder(OrdersDbContext context, Guid userId, OrderSide side, decimal amount)
     {
-        var order = Order.CreateMakerOrder(Symbol, amount, Price, userId, side, TradingType.Spot);
+        var order = Order.CreateMakerOrder(Symbol, amount, Price, userId, side, OrderType.Limit, TradingType.Spot);
         order.Confirm();
         context.Orders.Add(order);
         context.SaveChanges();

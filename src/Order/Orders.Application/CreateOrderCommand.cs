@@ -21,21 +21,35 @@ public record CreateOrderCommand
     [Required]
     public Guid UserId { get; init; }
     
+    /// <summary>
+    /// The side — buy or sell. Named <c>Type</c> for historical reasons; the order <i>type</i> is
+    /// <see cref="OrderType"/> below. The same misnomer sits on <c>OrderHistoryDto.Type</c>, where
+    /// it reaches the wire and so costs more to correct; issue #250 records both and deliberately
+    /// renames neither here.
+    /// </summary>
     [Required]
     public OrderSide Type { get; init; }
-    
+
+    /// <summary>
+    /// How the price was arrived at — named, or taken. See <see cref="Order.Type"/> for why the two
+    /// sides of one quote fill hold different values.
+    /// </summary>
+    [Required]
+    public OrderType OrderType { get; init; }
+
     [Required]
     public TradingType TradingType { get; init; }
-    
+
     [StringLength(500)]
     public string? Notes { get; init; }
 
     public CreateOrderCommand(
-        string asset, 
-        decimal amount, 
-        decimal price, 
-        Guid userId, 
+        string asset,
+        decimal amount,
+        decimal price,
+        Guid userId,
         OrderSide type,
+        OrderType orderType,
         TradingType tradingType,
         string? notes = null)
     {
@@ -44,6 +58,7 @@ public record CreateOrderCommand
         Price = price;
         UserId = userId;
         Type = type;
+        OrderType = orderType;
         TradingType = tradingType;
         Notes = notes;
     }
