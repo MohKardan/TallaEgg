@@ -38,6 +38,12 @@ marked required. **No request-body property is required in any service.**
 Scale: 51 paths, 39 object schemas, 195 properties. 24 writable endpoints — 4 in Users, 6 in
 Wallet, 14 in Orders — taking 14 distinct request-body schemas between them, with 65 properties.
 
+Those counts are the header's snapshot and predate #240, which is the one thing in this document
+measured later: it took five properties off `OrderDto` and one object schema
+(`HttpValidationProblemDetails`) out of Orders, so a re-measure today finds five fewer request-body
+properties than the figures above. They are left as measured rather than adjusted by arithmetic,
+because §9's method is what produced them and re-running it is what should replace them.
+
 ### No schema describes a validation error, and that is now true everywhere
 
 `POST /api/orders` used to carry `.ProducesValidationProblem(400)` — the only one in the repository
@@ -55,11 +61,12 @@ matching the `200` on the line above and what the endpoint returns. `HttpValidat
 is gone from the Orders document, and no schema in any service now describes a validation error at
 all — which is the honest state, since none of them produces one.
 
-Two of the three hand-written refusals send `{ success, message }` with no `data` member, so they
-are that envelope minus a property rather than that envelope exactly. Nothing in any schema is
-`required` (above), so the document permits it, and every reader of these bodies treats a missing
-`data` as null. The bare anonymous object is the same shape by coincidence rather than by
-construction, which is worth knowing but is a separate concern from what the schema claims.
+All three hand-written refusals send `{ success, message }` with no `data` member, so they are that
+envelope minus a property rather than that envelope exactly; the endpoint's two `catch` blocks are
+the ones that build a real `ApiResponse<T>`. Nothing in any schema is `required` (above), so the
+document permits both, and every reader of these bodies treats a missing `data` as null. The bare
+anonymous object is the same shape by coincidence rather than by construction, which is worth
+knowing but is a separate concern from what the schema claims.
 
 ## 2. What a schema-valid body actually gets
 

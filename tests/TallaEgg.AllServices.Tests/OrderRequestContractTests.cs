@@ -41,28 +41,40 @@ public class OrderRequestContractTests
     ];
 
     /// <summary>
-    /// Every way a deployed API can publish <c>HttpValidationProblemDetails</c> as a response
-    /// shape. <c>ProducesValidationProblem</c> is the metadata; <c>Results.ValidationProblem</c>
-    /// and <c>Results.Problem</c> are the two ways a handler could start genuinely returning one,
-    /// at which point the metadata would stop being a lie and this guard would need revisiting
-    /// rather than satisfying.
+    /// Publishing a <c>ProblemDetails</c> response shape, in every spelling. The two
+    /// <c>Produces…</c> tokens are the metadata — <c>ProducesProblem</c> is not a substring of
+    /// <c>ProducesValidationProblem</c>, so both are needed. The two <c>Results.</c> tokens are how
+    /// a handler could start genuinely returning one, and each matches its <c>TypedResults.</c>
+    /// spelling too, that being the longer string. A handler that does return one is the case where
+    /// this guard should be revisited rather than satisfied.
     /// </summary>
     private static readonly string[] ProblemDetailsResponses =
     [
         "ProducesValidationProblem",
+        "ProducesProblem",
         "Results.ValidationProblem",
         "Results.Problem",
     ];
 
     /// <summary>
-    /// The three APIs that are deployed and that the bot calls. <c>Affiliate.Api</c> and
-    /// <c>TallaEgg.Api</c> are absent because neither is run.
+    /// The three APIs that are deployed and that the bot calls, plus the shared kernel their error
+    /// handling lives in. <c>Affiliate.Api</c> and <c>TallaEgg.Api</c> are absent because neither
+    /// is run.
     /// </summary>
+    /// <remarks>
+    /// <c>TallaEgg.Core</c> is on the list for the reason <see cref="JsonNamingPolicyConsistencyTests"/>
+    /// gives for the same entry: cross-service concerns get hoisted there, and the error body this
+    /// guard is about is already one of them — <c>GlobalExceptionHandler</c> and the repository's
+    /// one <c>AddProblemDetails()</c> both live under <c>ErrorHandling/</c>. Scanning only the three
+    /// hosts would leave the guard passing vacuously the moment a refusal moves into a shared
+    /// helper.
+    /// </remarks>
     public static TheoryData<string> DeployedApiRoots =>
     [
         "src/User/Users.Api",
         "src/Wallet/Wallet.Api",
         "src/Order/Orders.Api",
+        "src/TallaEgg/TallaEgg.Core",
     ];
 
     /// <summary>
