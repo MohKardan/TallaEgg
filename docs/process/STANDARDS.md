@@ -158,27 +158,33 @@ Every property of every request body is optional and unbounded as far as the doc
 
 The servers are not. Roughly fifty hand-written checks refuse bodies the schema permits, because
 minimal APIs do not execute DataAnnotations and nothing here calls `Validator.TryValidateObject`,
-registers a validation filter, or references FluentValidation. **A client must expect a refusal it
-cannot predict from the document**, must read the `message` field rather than the status code —
-refusals arrive as 400, 404 *and* 200 with `success: false` — and must send every field it means,
-including falsey ones, because an omitted property is not "leave it alone" but the C# default, and
-on four endpoints that default disables something.
+registers a validation filter, or references FluentValidation.
+
+So a client must **expect a refusal it cannot predict from the document**; read `success` rather
+than the status code, since refusals arrive as 400, 404 *and* 200; not show `message` to a customer
+unconditionally, because some of them are internal English; and send every field it means, including
+falsey ones — an omitted property is not "leave it alone" but the C# default, and on several
+endpoints that default destroys something.
 
 [`../design/API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md) is the list: every
-check on all 24 writable endpoints, with its file and line, its refusal message, and the two paths
-that answer 500 rather than 400. It is a hand-measured snapshot and says how to re-measure it.
+check on all 24 writable endpoints, with its file, line and refusal message, plus the paths that
+answer 500 or 404 rather than 400. It is a hand-measured snapshot and says how to re-measure it.
+**Keep the measurements there and not here** — two copies of a hand-counted figure drift apart, and
+§9 of this document will only ever fix one of them.
 
 This is a decision, not an omission, and it was deferred twice before being taken. PR #236 deleted
 `OrderDto`'s DataAnnotations because they reached the schema without ever running — the document
 advertised a length limit and a minimum the server did not apply — which took the constraint count
-to zero everywhere. #237 raised the resulting gap again. #242 settled it on two measurements: only
-about a third of the checks are expressible as attributes at all, the rest being cross-field,
-stateful or catalogue lookups; and the bot reads `message` out of the `ApiResponse<T>` envelope at
-17 call sites, where a filter's `HttpValidationProblemDetails` would deserialize without error into
-a null message and silently stop telling customers why an order was refused. **Do not add a schema
-filter that declares constraints the endpoints happen to enforce** — that recreates the
-"schema promises what the server does not run" shape #236 removed, in a different file. Making the
-schema true means unifying the platform's error contract, which is its own piece of work.
+to zero everywhere. #237 raised the resulting gap again, and #242 settled it, on grounds that
+document records: most of the checks cannot be expressed as attributes at all, and the bot reads
+`message` out of the `ApiResponse<T>` envelope, where a filter's `HttpValidationProblemDetails`
+would deserialize without error into a null message and silently stop telling customers why an
+order was refused.
+
+**Do not add a schema filter that declares constraints the endpoints happen to enforce.** That
+recreates the "schema promises what the server does not run" shape #236 removed, in a different
+file. Making the schema true means unifying the platform's error contract, which is its own piece
+of work.
 
 #### Branch Names (Git)
 - **Feature**: `feat/{description}` (e.g., `feat/add-wallet-transaction`)
@@ -308,7 +314,9 @@ Steps to deploy or rollback if needed.
 - Example: `ADR-001-microservices-with-database-per-service.md`
 
 #### Design Documentation (`docs/design/`)
-- API contracts (OpenAPI/Swagger specs)
+- API contracts (OpenAPI/Swagger specs) — today:
+  [`API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md), what every writable endpoint
+  refuses and what the published schemas fail to say about it (see §2)
 - Database schemas
 - DDD domain models
 

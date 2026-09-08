@@ -2,16 +2,17 @@
 
 **Measured**: 2026-09-08, against `main` at `b8a2d14`, on the three running services.
 **Method**: walking `GET /swagger/v1/swagger.json` on Users (5136), Wallet (60933) and Orders
-(5140), and probing each writable endpoint over real HTTP — not read off the C#.
+(5140), and probing writable endpoints over real HTTP. Everything not probed is marked as derived
+from the code, and says so.
 
 This document exists because the published schemas declare **no constraints at all**, while the
-endpoints enforce roughly fifty. A client built from the document sends a body the document says
-is valid and gets refused. That is a deliberate state, recorded in issue #242 and summarized in
+endpoints enforce roughly fifty. A client built from the document sends a body the document says is
+valid and gets refused. That is a deliberate state, decided in issue #242 and stated as a rule in
 [`../process/STANDARDS.md`](../process/STANDARDS.md) §2; this file is the detail that rule points
 at, because the list of what is actually enforced is the part a client cannot discover any other
 way.
 
-Read it as a snapshot. It will drift, and "How to re-measure" at the end says how to check.
+Read it as a snapshot. It will drift, and §9 says how to check.
 
 ---
 
@@ -37,20 +38,26 @@ marked required. **No request-body property is required in any service.**
 Scale: 51 paths, 39 object schemas, 195 properties. 24 writable endpoints — 4 in Users, 6 in
 Wallet, 14 in Orders — taking 14 distinct request-body schemas between them, with 65 properties.
 
+### The one place a schema does describe a validation error
+
+`POST /api/orders` carries
+[`.ProducesValidationProblem(400)`](../../src/Order/Orders.Api/Program.cs#L687) — the only one in
+the repository — so its published 400 response is `HttpValidationProblemDetails`. The endpoint
+actually returns `new { success, message }` from
+[`Program.cs:661`](../../src/Order/Orders.Api/Program.cs#L661), `:664` and `:667`. The document
+promises a shape the server never sends, on the platform's busiest writable endpoint. It is the
+mirror of the `additionalProperties` over-statement PR #239 removed, and it survived that pass.
+
+This matters twice: a client parsing the published 400 shape finds no `errors` member and no
+`title`, and §7's argument against a validation filter has to account for the fact that one
+endpoint already advertises the filter's output.
+
 ## 2. What a schema-valid body actually gets
 
-There is no single answer. `{}` — valid against every request schema in all three services —
-produces **five** different outcomes:
+There is no single answer. Refusals arrive as `400`, as `404`, as `200` with `success: false`, and
+as `500`; and on five endpoints a schema-valid body is not refused at all but **acted on** (§4).
 
-| outcome | endpoints |
-|---|---|
-| `400` with a Persian message | most of them |
-| `404` | `POST /api/user/update-role`, `POST /api/outbox/{id}/abandon` |
-| `200` with `success: false` | `POST /api/user/register` |
-| `200` having **acted on C# defaults** | 4 endpoints — see §4 |
-| `500` | 2 endpoints — see §3 |
-
-Measured, `{}` to every writable endpoint whose failure path provably writes nothing:
+Measured — `{}` sent to every writable endpoint whose failure path provably writes nothing:
 
 | endpoint | status | body |
 |---|---|---|
@@ -70,9 +77,12 @@ Measured, `{}` to every writable endpoint whose failure path provably writes not
 | `POST /api/quotes/pending/{id}/reject` | 400 | `{"success":false,"message":"این مظنه پیدا نشد.","data":null}` |
 | `POST /api/outbox/{id}/abandon` | 404 | `{"success":false,"message":"پیام یافت نشد.","data":null}` |
 
-The refusal body is the platform's `ApiResponse<T>` envelope — `{"success", "message", "data"}` —
-with `message` in Persian and meant to be shown to the customer. A client should read `message`,
-and should not assume a non-200 status: `register` refuses inside a 200.
+**`{}` is the gentle case.** None of these is a 500, because on every one of them some guard fires
+before the code that would fault. A body that satisfies those guards and is still schema-valid does
+reach the faults — see §3. Two rows above are also less informative than they look: `POST /api/quotes`
+answers 400 with a *generic* message rather than its domain one (§3), and both pending-quote rows
+were probed with an id that does not exist, so they show the not-found branch and not what a live id
+does (§4).
 
 A body that is *almost* complete behaves the same way:
 
@@ -81,51 +91,106 @@ POST /api/orders   {"asset": "MAUA/IRT", "amount": 0.25}
 -> 400 {"success":false,"message":"قیمت برای سفارش محدود الزامی است"}
 ```
 
-## 3. Schema-valid bodies that answer 500
+### The refusal body is not one shape, and not always Persian
 
-Two endpoints answer `500`, not `400`, for a body the schema permits. For a client this is worse
-than an unpredictable 400: the envelope carries a generic message with nothing to show a customer.
+Most refusals use the platform's `ApiResponse<T>` envelope — `{"success", "message", "data"}` —
+with a Persian `message` written to be shown to the customer. Two exceptions a client must handle:
+
+- **No `data` member.** [`Orders.Api/Program.cs:661,664,667`](../../src/Order/Orders.Api/Program.cs#L661)
+  (`POST /api/orders`), `:723` (cancel), `:777` (confirm) and
+  [`Users.Api/Program.cs:463`](../../src/User/Users.Api/Program.cs#L463) (update-role) return bare
+  anonymous objects.
+- **English text meant for operators, not customers.** `POST /api/wallet/changeBalance` returns
+  `Invalid symbol '{x}'. Expected BASE/QUOTE.`, `Quantity and quoteQuantity must be positive.`,
+  `Fees cannot be negative.`, `Buyer and seller must be different users.` and
+  `Fee crediting is not implemented; settlement refused to avoid losing the fee amount.`
+  ([`WalletRepository.cs:543-573`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L543-L573)).
+  `POST /api/outbox/{id}/abandon` returns `An abandon reason is required.` and
+  `Only a failed message can be abandoned; this message is {Status}.`
+  ([`OutboxMessage.cs:190,192`](../../src/Order/Orders.Core/OutboxMessage.cs#L190)).
+
+**Do not pipe `message` to a customer unconditionally.** On those endpoints it is internal English.
+
+## 3. Schema-valid bodies that fault instead of validating
+
+Three writable endpoints dereference a property nothing requires. The client gets no usable reason
+either way, but the status code differs by endpoint, so both cases have to be handled.
+
+**Two answer a `400` whose message says nothing.** The fault is swallowed and reported as a generic
+failure, which is indistinguishable from a real business refusal:
+
+| endpoint | body | what happens |
+|---|---|---|
+| `POST /api/orders` | `{"asset":"MAUA","amount":1,"price":1}` | [`OrderService.cs:81-82`](../../src/Order/Orders.Application/OrderService.cs#L81-L82) does `request.Asset.Split('/')[1]` with no guard. `OrderSide.Buy` is `0`, the deserialized default, so the `[1]` branch runs on a one-element array → `IndexOutOfRangeException`, converted by the catch-all at [`:187`](../../src/Order/Orders.Application/OrderService.cs#L187) into `400` «خطا در ایجاد سفارش» |
+| `POST /api/quotes` | `{}` | [`QuoteRepository.cs:20`](../../src/Order/Orders.Infrastructure/QuoteRepository.cs#L20) does `symbol.Trim()` with no null check → `NullReferenceException`, reported as `400` «خطا در انتشار مظنه.» rather than the domain message |
+
+Measured:
 
 ```
-POST /api/quotes/accept   {"quantity": 1}   -> 500 {"success":false,"message":"خطای داخلی سرور"}
-POST /api/quotes          {}                -> 400, but through the generic catch, not the domain check
+POST /api/orders   {"asset":"MAUA","amount":1,"price":1}
+-> 400 {"success":false,"message":"خطا در ایجاد سفارش","data":null}
+   (run-logs/orders.out.log: System.IndexOutOfRangeException)
 ```
 
-Both are a `NullReferenceException` on a null `symbol`.
-[`QuoteFillService.cs:70`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L70)
-does `symbol.Split('/')[0]` with no null check, and the quantity guard at
-[`:59`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L59) runs first — so a body
+**One answers `500`**, because its fault happens outside that catch:
+
+```
+POST /api/quotes/accept   {"quantity": 1}
+-> 500 {"success":false,"message":"خطای داخلی سرور","data":null}
+   (run-logs/orders.out.log: System.NullReferenceException)
+```
+
+[`QuoteFillService.cs:70`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L70) does
+`symbol.Split('/')[0]` with no null check, and the quantity guard at
+[`:59`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L59) runs first, so a body
 that satisfies the quantity check reaches the split.
 
-`POST /api/wallet/unlockBalance` has the same shape for a different reason: a negative `amount`
-throws `ArgumentOutOfRangeException` at
+`POST /api/wallet/unlockBalance` is a fourth of the family: a negative `amount` throws
+`ArgumentOutOfRangeException` at
 [`WalletRepository.cs:343`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L343) and
-surfaces as 500. That one is already stated in the endpoint's own Swagger description.
+surfaces as 500 — already stated in that endpoint's own Swagger description.
+
+The first three are one defect repeated: an unguarded `Split`/`Trim` on a property nothing requires.
+The fourth is an explicit throw that simply is not mapped to a 400. All are recorded here as current
+behavior, not endorsed; fixing them changes what those endpoints return, which is behavior and
+outside #242.
+
+**Note the asymmetry**, because it decides how a client should react: `CreateOrderAsync`'s catch-all
+at [`OrderService.cs:187`](../../src/Order/Orders.Application/OrderService.cs#L187) deliberately
+excludes `ArgumentException`, `InvalidOperationException` and `UnauthorizedAccessException`. So an
+unexpected fault inside that method becomes an opaque 400, but an `ArgumentException` — the kind the
+`Order` factories throw (§5) — passes through as a 500.
 
 ## 4. Schema-valid bodies that are accepted, having acted on C# defaults
 
 The sharpest consequence of nothing being required: **an omitted property is not an error, it is a
-value** — and on four endpoints that value is meaningful and destructive.
+value** — and on five endpoints that value is meaningful and destructive.
 
-| endpoint | property omitted | what gets written |
-|---|---|---|
-| `POST /api/user/update-phone` | `phoneNumber`, `telegramId` | `""` onto the user whose TelegramId is `0` |
-| `PUT /api/user/status` | `newStatus`, `telegramId` | `UserStatus.Pending` onto the user whose TelegramId is `0` |
-| `POST /api/autoquote-settings/{Base}/{Quote}/enabled` | `isEnabled` | `false` — auto-quoting turned **off** |
-| `POST /api/symbols/{Base}/{Quote}/active` | `isActive` | `false` — the symbol **disabled** |
+| endpoint | property omitted | what gets written | how known |
+|---|---|---|---|
+| `POST /api/user/update-phone` | `phoneNumber`, `telegramId` | `""` onto the user whose TelegramId is `0` | measured |
+| `PUT /api/user/status` | `newStatus`, `telegramId` | `UserStatus.Pending` onto the user whose TelegramId is `0` | measured |
+| `POST /api/quotes/pending/{id}/reject` | `adminUserId` | a live pending quote is **discarded**, with `Guid.Empty` recorded as `ResolvedByUserId` | from code |
+| `POST /api/autoquote-settings/{Base}/{Quote}/enabled` | `isEnabled` | `false` — auto-quoting turned **off** | from code |
+| `POST /api/symbols/{Base}/{Quote}/active` | `isActive` | `false` — the symbol **disabled** | from code |
 
 The first two are not hypothetical. `TelegramId` is a `long`, its default is `0`, and the seeded
-root administrator's TelegramId is `0` (migration `20250918224949_init`). An empty body addressed
-to the platform's SuperAdmin row is a successful write answered `200` — confirmed by accident while
+root administrator's TelegramId is `0` (migration `20250918224949_init`). An empty body addressed to
+the platform's SuperAdmin row is a successful write answered `200` — confirmed by accident while
 measuring this document, and reverted.
 
-The last two were derived from the code rather than fired, because firing them would have disabled
-a live trading symbol.
+**`reject` is the one that looks safe and is not.** Its sibling `approve` refuses `Guid.Empty`
+([`PendingQuote.cs:183`](../../src/Order/Orders.Core/PendingQuote.cs#L183)); `Reject` has one guard
+and it is not that one ([`PendingQuote.cs:198`](../../src/Order/Orders.Core/PendingQuote.cs#L198)
+checks only `Status != Pending`). So `reject` accepts an empty body, throws away a proposed price,
+and leaves no record of who did it — and unlike `approve` it does not check expiry either. The three
+"from code" rows were not fired: doing so would have discarded a live quote or disabled a live
+trading symbol.
 
 ## 5. Every hand-written check, by endpoint
 
 **shape** — expressible as a DataAnnotation on the DTO.
-**state** — needs a database read or a runtime catalogue lookup.
+**state** — needs a database read or a runtime catalog lookup.
 **cross-field** — depends on another property of the same body.
 
 ### Users.Api — 4 writable endpoints, and **not one field-shape check**
@@ -159,13 +224,13 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 | | `amount >= 0` ([`WalletRepository.cs:343`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L343)) | shape | **500** (ArgumentOutOfRangeException) |
 | | `amount <= LockedBalance` ([`WalletRepository.cs:350`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L350)) | state | 400, naming both figures (#52) |
 | | `amount > 0` ([`Wallet.cs:136`](../../src/Wallet/Wallet.Core/Wallet.cs#L136)) | shape | 400 |
-| `POST /api/wallet/changeBalance` | `symbol` parses as `BASE/QUOTE` ([`WalletRepository.cs:542`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L542)) | shape | 400 |
-| | `quantity > 0` and `quoteQuantity > 0` ([`:548`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L548)) | shape | 400 |
-| | `feeBuyer >= 0`, `feeSeller >= 0` ([`:550`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L550)) | shape | 400 |
-| | fees are exactly zero ([`:568`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L568)) — a collected fee is credited to no account (#35) | shape | 400 |
-| | buyer ≠ seller ([`:555`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L555)) | cross-field | 400 |
-| | both assets known ([`:690`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L690)) | state | 400 |
-| | both sides' collateral is actually locked ([`:704`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L704), [`:709`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L709)) | state | 400 |
+| `POST /api/wallet/changeBalance` | `symbol` parses as `BASE/QUOTE` ([`WalletRepository.cs:542`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L542)) | shape | 400, English |
+| | `quantity > 0` and `quoteQuantity > 0` ([`:548`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L548)) | shape | 400, English |
+| | `feeBuyer >= 0`, `feeSeller >= 0` ([`:550`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L550)) | shape | 400, English |
+| | fees are exactly zero ([`:567`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L567)) — a collected fee is credited to no account (#35) | shape | 400, English |
+| | buyer ≠ seller ([`:555`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L555)) | cross-field | 400, English |
+| | both assets known ([`:690`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L690)) | state | 400, English |
+| | both sides' collateral is actually locked ([`:704`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L704), [`:709`](../../src/Wallet/Wallet.Infrastructure/WalletRepository.cs#L709)) | state | 400, English |
 | `POST /api/wallet/create-default/{userId}` | none — takes no body | — | — |
 
 ### Orders.Api — 14 writable endpoints
@@ -175,42 +240,57 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 | `POST /api/orders` | `asset` non-blank ([`Program.cs:660`](../../src/Order/Orders.Api/Program.cs#L660)) | shape | 400 «نماد معاملاتی الزامی است» |
 | | `amount > 0` ([`Program.cs:663`](../../src/Order/Orders.Api/Program.cs#L663)) | shape | 400 «مقدار سفارش باید بیشتر از صفر باشد» |
 | | `price > 0` ([`Program.cs:666`](../../src/Order/Orders.Api/Program.cs#L666), again at [`OrderService.cs:94`](../../src/Order/Orders.Application/OrderService.cs#L94)) | shape | 400 «قیمت برای سفارش محدود الزامی است» |
+| | `asset` contains a `/` — **no check** ([`OrderService.cs:82`](../../src/Order/Orders.Application/OrderService.cs#L82)) | — | **400, opaque** — §3 |
 | | per-symbol `MinQuantity` / `MaxQuantity` ([`OrderService.cs:230,235`](../../src/Order/Orders.Application/OrderService.cs#L230)) | state | 400 |
 | | `quantity * price >= MinNotional` ([`OrderService.cs:242`](../../src/Order/Orders.Application/OrderService.cs#L242)) | cross-field | 400 |
-| | credit + balance across both assets ([`OrderService.cs:121,128`](../../src/Order/Orders.Application/OrderService.cs#L121)) | state | 400 |
-| | `Order.Create` re-checks asset/amount/price/userId ([`Order.cs:38-47`](../../src/Order/Orders.Core/Order.cs#L38-L47)) | shape | 500, unreachable today |
-| `POST /api/quotes` | `symbol` non-blank ([`Quote.cs:64`](../../src/Order/Orders.Core/Quote.cs#L64)) — but a null symbol NREs first | shape | 400 |
+| | credit + balance across both assets ([`OrderService.cs:120,127`](../../src/Order/Orders.Application/OrderService.cs#L120)) — **skipped entirely when the user's role is `Admin`** ([`:118`](../../src/Order/Orders.Application/OrderService.cs#L118)) | state | 400, or no check at all |
+| | the order factories re-check asset/amount/price/userId ([`Order.cs:38-47`](../../src/Order/Orders.Core/Order.cs#L38-L47), in `CreateMakerOrder`; `CreateLimitOrder` at [`:72-82`](../../src/Order/Orders.Core/Order.cs#L72-L82)) | shape | 500. The first three are pre-checked above; `userId` is not, so `Guid.Empty` reaches here unless the balance check refuses it first |
+| `POST /api/quotes` | `symbol` non-blank ([`Quote.cs:64`](../../src/Order/Orders.Core/Quote.cs#L64)) — a **null** symbol faults earlier, §3 | shape | 400 |
 | | `buyPrice > 0`, `sellPrice > 0` ([`Quote.cs:67,70`](../../src/Order/Orders.Core/Quote.cs#L67)) | shape | 400 |
 | | `buyPrice <= sellPrice` ([`Quote.cs:76`](../../src/Order/Orders.Core/Quote.cs#L76)) | cross-field | 400 |
 | | `publishedByUserId` non-empty ([`Quote.cs:80`](../../src/Order/Orders.Core/Quote.cs#L80)) | shape¹ | 400 |
 | | plausibility band against the last published mid ([`Program.cs:370`](../../src/Order/Orders.Api/Program.cs#L370)) | state | **200**, held for approval |
 | `POST /api/quotes/pending/{id}/approve` | the pending quote exists ([`Program.cs:429`](../../src/Order/Orders.Api/Program.cs#L429)) | state | 400 |
 | | not already resolved, not expired, `adminUserId` non-empty ([`PendingQuote.cs:177,180,183`](../../src/Order/Orders.Core/PendingQuote.cs#L177)) | state / shape¹ | 400 |
-| `POST /api/quotes/pending/{id}/reject` | as above ([`PendingQuote.cs:198`](../../src/Order/Orders.Core/PendingQuote.cs#L198)) | state | 400 |
+| `POST /api/quotes/pending/{id}/reject` | the pending quote exists ([`Program.cs:459`](../../src/Order/Orders.Api/Program.cs#L459)) | state | 400 |
+| | not already resolved ([`PendingQuote.cs:198`](../../src/Order/Orders.Core/PendingQuote.cs#L198)) | state | 400 |
+| | **expiry and `adminUserId` are not checked here**, unlike approve — §4 | — | accepted |
 | `POST /api/quotes/accept` | `quantity > 0` ([`QuoteFillService.cs:59`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L59)) | shape | 400 |
 | | `quantity` survives rounding to the symbol's precision ([`:73`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L73)) | state | 400 |
 | | the symbol is in Dealer mode ([`:80`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L80)) | state | 400 |
 | | an active quote exists ([`:85`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L85)) | state | 400 |
 | | customer ≠ market maker ([`:113`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L113)) | state | 400 |
-| | credit + balance ([`:134,146`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L134)) | state | 400 |
+| | credit + balance ([`:134,146`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L134)) — unconditional here, unlike `POST /api/orders` | state | 400 |
 | | `symbol` non-blank — **no check at all** ([`:70`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L70)) | — | **500** |
 | `POST /api/autoquote-settings/{Base}/{Quote}/spread` | `spreadPercent >= 0` ([`AutoQuoteSettings.cs:64`](../../src/Order/Orders.Core/AutoQuoteSettings.cs#L64)) | shape | 400 |
 | | `updatedByUserId` — no check; `Guid.Empty` accepted | — | accepted |
 | `POST /api/autoquote-settings/{Base}/{Quote}/enabled` | **none** | — | accepted; omitting `isEnabled` turns auto-quoting off |
 | `POST /api/symbols/{Base}/{Quote}/active` | **none** | — | accepted; omitting `isActive` disables the symbol |
 | `POST /api/outbox/{messageId}/abandon` | the message exists ([`Program.cs:1217`](../../src/Order/Orders.Api/Program.cs#L1217)) | state | **404** |
-| | `reason` non-blank ([`OutboxMessage.cs:189`](../../src/Order/Orders.Core/OutboxMessage.cs#L189)) | shape | 400 |
-| | status is `Failed` ([`OutboxMessage.cs:191`](../../src/Order/Orders.Core/OutboxMessage.cs#L191)) | state | 400 |
+| | `reason` non-blank ([`OutboxMessage.cs:189`](../../src/Order/Orders.Core/OutboxMessage.cs#L189)) | shape | 400, English |
+| | status is `Failed` ([`OutboxMessage.cs:191`](../../src/Order/Orders.Core/OutboxMessage.cs#L191)) | state | 400, English |
+| `POST /api/outbox/{messageId}/redrive` | the message exists ([`Program.cs:1168`](../../src/Order/Orders.Api/Program.cs#L1168)) | state | **404** |
+| | the message is in a re-drivable state (`ResetForRetry`) | state | 400 |
+| `POST /api/outbox/redrive-all-failed` | **none** — takes no id, no body and no state check; with nothing failed it answers 200, "0 re-driven" | — | 200 |
 | `POST /api/orders/{orderId}/cancel` | order exists and is not Completed or Failed ([`OrderService.cs:498`](../../src/Order/Orders.Application/OrderService.cs#L498)) | state | 400 / 404 |
 | `POST /api/orders/{orderId}/confirm` | order exists and is Pending | state | 400 |
 | `POST /api/orders/user/{userId}/cancel-active` | **none** — an unknown user answers 200, "0 cancelled" | — | 200 |
-| `POST /api/outbox/{messageId}/redrive`, `POST /api/outbox/redrive-all-failed` | message state | state | 400 |
 
 ¹ `Guid.Empty` on a non-nullable `Guid`. `[Required]` can never fail on one, so this is not in fact
 expressible as a stock DataAnnotation — the trap PR #236 named when it deleted `[Required]` from
 `OrderDto.Id` and `OrderDto.Side`.
 
-## 6. Why it is this way
+## 6. Endpoints that answer 404, not 400
+
+Worth its own list, because it is not guessable and a client that only handles 400 will mis-report
+these as network or routing failures:
+
+- `POST /api/user/update-role` — unknown user
+- `POST /api/outbox/{messageId}/abandon` — unknown message
+- `POST /api/outbox/{messageId}/redrive` — unknown message
+- `POST /api/orders/{orderId}/cancel` — unknown or uncancellable order
+
+## 7. Why it is this way
 
 Not an oversight, and not a state anyone should "fix" without reading this first.
 
@@ -226,15 +306,16 @@ document records, and #236 declined to close it, as did #237 after it, for the s
 it properly means running validation for real, which is a platform-wide decision that changes the
 400 body of live trading endpoints.
 
-Issue #242 settled it: **leave the behavior, write down the contract.** Two measurements decided it.
+Issue #242 settled it: **leave the behavior, write the contract down.** Two measurements decided it.
 
 First, the counts in §5: about **16** of the checks are expressible as a DataAnnotation (`[Required]`
 on a string, `[Range]`, one `[RegularExpression]`), across 7 of the 14 request schemas. About **31**
-are cross-field, stateful, or catalogue lookups, and no attribute can carry them. So restoring the
+are cross-field, stateful, or catalog lookups, and no attribute can carry them. So restoring the
 attributes and running them would make the schema describe roughly a *third* of enforcement, not all
 of it — and would leave every endpoint answering two different error shapes,
 `HttpValidationProblemDetails` from the filter and `ApiResponse<T>` from everything the filter cannot
-replace.
+replace. (`POST /api/orders` already advertises the former and returns the latter — §1 — so that
+inconsistency exists today on one endpoint, and the filter would spread it to all 24.)
 
 Second, the client side. The bot reads `message` out of the `ApiResponse<T>` envelope at 17 call
 sites — 9 in
@@ -249,18 +330,26 @@ So the honest name for that work is not "turn on validation" but **"unify the pl
 contract"**, and it belongs to its own issue, reconsidered only if #97 finds these 400s genuinely
 painful in practice.
 
-## 7. What a client should therefore do
+## 8. What a client should therefore do
 
 - **Do not treat the schema as a contract for validity.** Every property is optional and unbounded
   in the document; almost none of them are in the server.
-- **Read `message`, not the status code.** Refusals arrive as 400, 404 and 200-with-`success:false`.
-  The `success` field is the reliable signal.
-- **Send every field you mean, including falsey ones.** Omitting `isEnabled` or `isActive` is not
-  "leave it alone", it is "set it to false" (§4).
-- **Expect an occasional 500 with no usable message** on the two paths in §3.
-- Use this document, endpoint by endpoint, as the list of what will be refused.
+- **Read `success`, not the status code.** Refusals arrive as 400, 404 and 200-with-`success:false`.
+- **Do not show `message` to a customer unconditionally** — on `changeBalance` and the outbox
+  endpoints it is internal English (§2).
+- **Send every field you mean, including falsey ones.** Omitting `isEnabled`, `isActive` or
+  `adminUserId` is not "leave it alone", it is "set it to the C# default", and on five endpoints
+  that default destroys something (§4).
+- **Always send a fully-qualified `BASE/QUOTE` symbol.** A slashless or absent one faults rather
+  than validating on four endpoints (§3) — surfacing as a 500 on one of them and as an opaque 400 on
+  two others, neither carrying a reason.
+- **Do not read an opaque 400 as a business refusal.** «خطا در ایجاد سفارش» and
+  «خطا در انتشار مظنه.» are what a fault looks like from outside; check the request shape against §3
+  before reporting a rejection to the customer.
+- **Treat a 500 as a possibly-bad request**, not an outage, until the bodies in §3 are ruled out.
+- Use §5, endpoint by endpoint, as the list of what will be refused.
 
-## 8. How to re-measure
+## 9. How to re-measure
 
 Nothing here is generated, so it goes stale silently. To check it:
 
@@ -272,9 +361,10 @@ Invoke-WebRequest http://localhost:5140/swagger/v1/swagger.json -UseBasicParsing
 ```
 
 Then walk the JSON for the keywords in §1 — count `required` only where its value is an *array*,
-since a boolean `required` is a parameter, not a schema constraint — and probe each endpoint in §5
-with `{}`.
+since a boolean `required` is a parameter, not a schema constraint — and probe each endpoint in §5.
 
-**Probe carefully.** The four endpoints in §4 accept an empty body and act on it: two write to the
-seeded administrator's row, and two disable live trading configuration. Everything else in §2 fails
-before it writes.
+**Probe carefully.** The five endpoints in §4 accept an empty body and act on it: two write to the
+seeded administrator's row, one discards a live pending quote, and two disable live trading
+configuration. Probing the pending-quote endpoints with an id that does not exist — as §2 did — only
+exercises the not-found branch and will not reveal the third. Everything else in §2 fails before it
+writes.
