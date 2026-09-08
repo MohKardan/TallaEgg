@@ -60,10 +60,50 @@ neither belongs in a deployment. Decision recorded on
 
 ## Redeploying a new version
 
+Two ways in. Prefer the first: it installs the same bytes for everyone and keeps `/version`
+able to name the commit.
+
+### From a published release
+
+Publishing a release runs the `release-artifacts` workflow, which builds the four services on a
+Windows runner and attaches one zip per service to it. The runner builds from a real checkout,
+so `/version` reports a commit hash rather than `null` — a source zip downloaded onto the server
+has no `.git` for the SDK to read.
+
+```powershell
+# Stop first: unzipping over a running service hits locked files.
+'TallaEggBot', 'TallaEggOrdersApi', 'TallaEggUsersApi', 'TallaEggWalletApi' |
+    ForEach-Object { sc.exe stop $_ }
+
+$tag = 'v1.3.0'
+foreach ($service in 'Wallet.Api', 'Users.Api', 'Orders.Api', 'Bot') {
+    $zip = "$env:TEMP\$service-$tag.zip"
+    Invoke-WebRequest -OutFile $zip `
+        "https://github.com/MohKardan/TallaEgg/releases/download/$tag/$service-$tag.zip"
+    Expand-Archive $zip -DestinationPath "C:\TallaEgg\publish\$service" -Force
+}
+
+.\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString "TallaEgg API key")
+```
+
+The shared configuration lives at `C:\TallaEgg\config\appsettings.global.json`, one level above
+`publish\`, so unzipping over the service folders never touches it. That separation is the reason
+the layout is shaped this way.
+
+The workflow refuses to package an `appsettings.global.json`, so a release asset never carries
+credentials, and it fails rather than attaching anything if the built assemblies do not report
+the tagged version.
+
+### Building on the server
+
+The only option for a commit that has no release, and the fallback if a release has no assets.
+
 ```powershell
 .\scripts\windows-services\publish-all.ps1 -InstallRoot C:\TallaEgg
 .\scripts\windows-services\install-services.ps1 -InstallRoot C:\TallaEgg -TallaEggApiKey (Read-Host -AsSecureString "TallaEgg API key")
 ```
+
+### Either way
 
 `install-services.ps1` stops and recreates each service, so re-running it is the redeploy step —
 there's no separate update path to remember.
