@@ -38,19 +38,35 @@ marked required. **No request-body property is required in any service.**
 Scale: 51 paths, 39 object schemas, 195 properties. 24 writable endpoints — 4 in Users, 6 in
 Wallet, 14 in Orders — taking 14 distinct request-body schemas between them, with 65 properties.
 
-### The one place a schema does describe a validation error
+Those counts are the header's snapshot and predate #240, which is the one thing in this document
+measured later: it took five properties off `OrderDto` and one object schema
+(`HttpValidationProblemDetails`) out of Orders, so a re-measure today finds five fewer request-body
+properties than the figures above. They are left as measured rather than adjusted by arithmetic,
+because §9's method is what produced them and re-running it is what should replace them.
 
-`POST /api/orders` carries
-[`.ProducesValidationProblem(400)`](../../src/Order/Orders.Api/Program.cs#L687) — the only one in
-the repository — so its published 400 response is `HttpValidationProblemDetails`. The endpoint
-actually returns `new { success, message }` from
+### No schema describes a validation error, and that is now true everywhere
+
+`POST /api/orders` used to carry `.ProducesValidationProblem(400)` — the only one in the repository
+— so its published 400 response was `HttpValidationProblemDetails`, while the endpoint returned
+`new { success, message }` from
 [`Program.cs:661`](../../src/Order/Orders.Api/Program.cs#L661), `:664` and `:667`. The document
-promises a shape the server never sends, on the platform's busiest writable endpoint. It is the
-mirror of the `additionalProperties` over-statement PR #239 removed, and it survived that pass.
+promised a shape the server never sends, on the platform's busiest writable endpoint: a client
+parsing it found no `errors` member and no `title`, and the member that actually carries the reason
+was not in the published shape at all. It was the mirror of the `additionalProperties`
+over-statement PR #239 removed, and it survived that pass.
 
-This matters twice: a client parsing the published 400 shape finds no `errors` member and no
-`title`, and §7's argument against a validation filter has to account for the fact that one
-endpoint already advertises the filter's output.
+Issue #240 replaced it with
+[`.Produces<ApiResponse<CreateOrderResponse>>(400)`](../../src/Order/Orders.Api/Program.cs#L690),
+matching the `200` on the line above and what the endpoint returns. `HttpValidationProblemDetails`
+is gone from the Orders document, and no schema in any service now describes a validation error at
+all — which is the honest state, since none of them produces one.
+
+All three hand-written refusals send `{ success, message }` with no `data` member, so they are that
+envelope minus a property rather than that envelope exactly; the endpoint's two `catch` blocks are
+the ones that build a real `ApiResponse<T>`. Nothing in any schema is `required` (above), so the
+document permits both, and every reader of these bodies treats a missing `data` as null. The bare
+anonymous object is the same shape by coincidence rather than by construction, which is worth
+knowing but is a separate concern from what the schema claims.
 
 ## 2. What a schema-valid body actually gets
 
@@ -322,8 +338,9 @@ are cross-field, stateful, or catalog lookups, and no attribute can carry them. 
 attributes and running them would make the schema describe roughly a *third* of enforcement, not all
 of it — and would leave every endpoint answering two different error shapes,
 `HttpValidationProblemDetails` from the filter and `ApiResponse<T>` from everything the filter cannot
-replace. (`POST /api/orders` already advertises the former and returns the latter — §1 — so that
-inconsistency exists today on one endpoint, and the filter would spread it to all 24.)
+replace. (`POST /api/orders` used to advertise the former while returning the latter — §1 — and #240
+removed the claim rather than making it true, so the platform now says `ApiResponse<T>` everywhere
+and a filter would be the one thing contradicting it.)
 
 Second, the client side. The bot reads `message` out of the `ApiResponse<T>` envelope at 17 call
 sites — 9 in
