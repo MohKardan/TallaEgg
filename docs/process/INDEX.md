@@ -1,6 +1,6 @@
 # TallaEgg Documentation Index — Master Guide
 
-**Last Updated**: September 2, 2026  
+**Last Updated**: September 8, 2026  
 **Language**: English (all documentation)  
 **Standards**: Software Engineering Best Practices + Lean Development
 
@@ -26,6 +26,7 @@ opening a PR.
 ### For Problem-Solving
 - **Why are we doing this?** → [`docs/audit/README.md`](../audit/README.md) — The audit archive: what each audit found, the score trend, and how the next one is run
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
+- **What will the API actually refuse?** → [`docs/design/API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md) — the published schemas declare no constraints; this is the list of what the endpoints enforce anyway, and what a client must therefore expect
 - **What's the architecture?** → [`AGENT.md`](../../AGENT.md) for services, ports and layout; [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today — *that one is in Persian, under the §1 exception in [`STANDARDS.md`](STANDARDS.md); it has no English summary yet*; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
 
 ### For Onboarding
@@ -64,6 +65,8 @@ docs/
 ├── architecture/
 │   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
 │   └── ROADMAP.md                ← Direction for a future web app; not scheduled work
+├── design/
+│   └── API_REQUEST_VALIDATION.md ← What the published schemas declare vs. what the endpoints refuse
 ├── operations/
 │   └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
 └── OKR.md                        ← The July–August 2026 cycle and its closing scores (Persian)

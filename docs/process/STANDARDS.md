@@ -48,6 +48,7 @@ TallaEgg/
 ├── docs/
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
 │   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), ROADMAP.md
+│   ├── design/                       # API_REQUEST_VALIDATION.md — what the endpoints actually refuse
 │   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
 │   ├── process/                      # This file, INDEX, WORKFLOW, PR_TEMPLATE, CODE_REVIEW_GUIDE
 │   ├── pull-requests/                # Archived PR records — never edited
@@ -147,6 +148,43 @@ and Wallet — `asset` versus `symbol` is a different name, not a different case
 case-insensitive binding that makes ordinary DTO renames survive a mixed deployment does not bridge
 it. Worth doing only before a browser client (#97) ships against the current shape, and only as its
 own piece of work.
+
+#### Request validation: the schemas declare nothing, the endpoints enforce plenty
+
+**No request schema in any service declares a constraint.** `required`, `maxLength` and `minimum`
+are zero across Users, Wallet and Orders, as are `pattern`, `minLength`, `maximum` and the rest;
+the only validation keyword in any of the three documents is `enum`, generated from C# enum types.
+Every property of every request body is optional and unbounded as far as the document is concerned.
+
+The servers are not. Roughly fifty hand-written checks refuse bodies the schema permits, because
+minimal APIs do not execute DataAnnotations and nothing here calls `Validator.TryValidateObject`,
+registers a validation filter, or references FluentValidation.
+
+So a client must **expect a refusal it cannot predict from the document**; read `success` rather
+than the status code, since refusals arrive as 400, 404 *and* 200; not show `message` to a customer
+unconditionally, because some of them are internal English; and send every field it means, including
+falsey ones — an omitted property is not "leave it alone" but the C# default, and on several
+endpoints that default destroys something.
+
+[`../design/API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md) is the list: every
+check on all 24 writable endpoints, with its file, line and refusal message, plus the paths that
+answer 500 or 404 rather than 400. It is a hand-measured snapshot and says how to re-measure it.
+**Keep the measurements there and not here** — two copies of a hand-counted figure drift apart, and
+§9 of this document will only ever fix one of them.
+
+This is a decision, not an omission, and it was deferred twice before being taken. PR #236 deleted
+`OrderDto`'s DataAnnotations because they reached the schema without ever running — the document
+advertised a length limit and a minimum the server did not apply — which took the constraint count
+to zero everywhere. #237 raised the resulting gap again, and #242 settled it, on grounds that
+document records: most of the checks cannot be expressed as attributes at all, and the bot reads
+`message` out of the `ApiResponse<T>` envelope, where a filter's `HttpValidationProblemDetails`
+would deserialize without error into a null message and silently stop telling customers why an
+order was refused.
+
+**Do not add a schema filter that declares constraints the endpoints happen to enforce.** That
+recreates the "schema promises what the server does not run" shape #236 removed, in a different
+file. Making the schema true means unifying the platform's error contract, which is its own piece
+of work.
 
 #### Branch Names (Git)
 - **Feature**: `feat/{description}` (e.g., `feat/add-wallet-transaction`)
@@ -276,7 +314,9 @@ Steps to deploy or rollback if needed.
 - Example: `ADR-001-microservices-with-database-per-service.md`
 
 #### Design Documentation (`docs/design/`)
-- API contracts (OpenAPI/Swagger specs)
+- API contracts (OpenAPI/Swagger specs) — today:
+  [`API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md), what every writable endpoint
+  refuses and what the published schemas fail to say about it (see §2)
 - Database schemas
 - DDD domain models
 
