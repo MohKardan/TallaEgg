@@ -1,0 +1,135 @@
+# Builds the four deployed services from a published release and attaches them to it.
+#
+# Until this existed, a deployment built on the server: the runbook's path is to download the
+# tag's source zip onto the VM and run publish-all.ps1 there. That works, and it has two costs
+# this removes. A zip is not a checkout, so the build sees no `.git` and the commit hash the
+# .NET SDK would otherwise embed is absent — `/version` reports `commitHash: null` on the one
+# machine where the question is asked (#218). And the artifact the server runs is built by
+# whoever happened to run the script, from a toolchain nobody recorded.
+#
+# It also automates the one step of `docs/process/STANDARDS.md` §11 that was manual and easy to
+# skip: reading the built assemblies to confirm they carry the tagged version. That check is
+# `Verify` below, and it fails the run rather than reporting into a log nobody reads. Before
+# #217 every release tag from v1 to v1.0.3 shipped assemblies still saying 1.0.0, and the only
+# reason v1.1.0 and v1.2.0 did not is that someone remembered to look.
+#
+# Deployment is still not here. `build-and-test.yml` says a half-working deploy pipeline would
+# be a pure loss, and that has not changed: the VM is reachable only through an IAP tunnel, and
+# restarting it messages every registered user. This produces the artifact a deployment uses.
+# Installing it stays a decision someone makes.
+#
+# `release: published`, not `push: tags`. §11 makes publishing the deliberate act and tagging a
+# mechanical one — a tag can be pushed for a release that is still a draft. Building on publish
+# means the artifacts exist exactly when the release becomes something people can act on.
+
+name: release-artifacts
+
+on:
+  release:
+    types: [published]
+
+  # For re-running against a release whose build failed, or was published before this existed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build (e.g. v1.3.0)'
+        required: true
+
+permissions:
+  # Uploading assets onto the release is a write to the repository's contents.
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      # Outside the workspace: publish-all.ps1 writes <InstallRoot>\publish\<Service>\, and
+      # anything under the checkout risks being swept into a later glob.
+      INSTALL_ROOT: ${{ runner.temp }}\TallaEgg
+
+    steps:
+      # The tag, not the default branch. main is routinely ahead of the tag being released —
+      # it was by one commit at v1.1.0 — so building whatever HEAD happens to be would attach
+      # artifacts that are not the release.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      # The same script an operator runs by hand, with no copy of its project list here: a
+      # fifth deployed service must not be something this workflow can forget.
+      - name: Publish the four deployed services
+        run: ./scripts/windows-services/publish-all.ps1 -InstallRoot "$env:INSTALL_ROOT"
+
+      # §11 step 3, automated. Reads what was actually built rather than trusting that
+      # Directory.Build.props and the tag agree — the failure this catches is a release tagged
+      # vX.Y.Z whose assemblies say something else, which is invisible until someone asks a
+      # running service what it is.
+      - name: Verify the assemblies carry the tagged version
+        shell: pwsh
+        run: |
+          $expected = $env:TAG -replace '^v', ''
+          $assemblies = @{
+            'Wallet.Api'  = 'Wallet.Api.dll'
+            'Users.Api'   = 'Users.Api.dll'
+            'Orders.Api'  = 'Orders.Api.dll'
+            'Bot'         = 'TallaEgg.TelegramBot.Infrastructure.dll'
+          }
+
+          $failed = $false
+          foreach ($service in $assemblies.Keys) {
+            $path = Join-Path $env:INSTALL_ROOT "publish\$service\$($assemblies[$service])"
+            $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+
+            # ProductVersion is InformationalVersion: "1.3.0+<commit>" inside a checkout.
+            $actual = ($info.ProductVersion -split '\+')[0]
+
+            if ($actual -ne $expected) {
+              Write-Host "::error::$service reports $actual, but the release is tagged $env:TAG (expected $expected). Raise VersionPrefix in Directory.Build.props."
+              $failed = $true
+            } else {
+              Write-Host "$service $($info.ProductVersion)"
+            }
+          }
+
+          if ($failed) { exit 1 }
+
+      # config/appsettings.global.json holds live credentials and is untracked (#33), so a CI
+      # checkout has none and Directory.Build.props copies nothing. This asserts that rather
+      # than assuming it: these zips are attached to a public release, and the cost of being
+      # wrong once is every credential in the file.
+      - name: Refuse to package a configuration file
+        shell: pwsh
+        run: |
+          $found = Get-ChildItem -Path "$env:INSTALL_ROOT\publish" -Recurse -Filter 'appsettings.global.json' -ErrorAction SilentlyContinue
+
+          if ($found) {
+            Write-Host "::error::A shared configuration file reached the publish output: $($found.FullName)"
+            exit 1
+          }
+
+          Write-Host "No appsettings.global.json in the publish output."
+
+      - name: Package each service
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\artifacts" | Out-Null
+
+          foreach ($service in 'Wallet.Api', 'Users.Api', 'Orders.Api', 'Bot') {
+            $zip = "$env:RUNNER_TEMP\artifacts\$service-$env:TAG.zip"
+            Compress-Archive -Path "$env:INSTALL_ROOT\publish\$service\*" -DestinationPath $zip
+            Write-Host "$zip  $([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB"
+          }
+
+      # --clobber so a re-run through workflow_dispatch replaces the assets instead of failing
+      # on a name that already exists.
+      - name: Attach the artifacts to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload $env:TAG "$env:RUNNER_TEMP\artifacts\*.zip" --clobber
