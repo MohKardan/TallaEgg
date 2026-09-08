@@ -43,19 +43,28 @@ jobs:
   publish:
     runs-on: windows-latest
 
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
-      # Outside the workspace: publish-all.ps1 writes <InstallRoot>\publish\<Service>\, and
-      # anything under the checkout risks being swept into a later glob.
-      INSTALL_ROOT: ${{ runner.temp }}\TallaEgg
-
     steps:
+      # Both values are set in a step rather than in a job-level `env:` block. The first version
+      # of this workflow put INSTALL_ROOT there as ${{ runner.temp }}, and the `runner` context
+      # is not available in a job's `env` — that is a startup failure, which GitHub reports as a
+      # run with no jobs, no steps and no log to read. A step is the first place every context
+      # and every RUNNER_* variable is guaranteed to resolve, so both live here now.
+      #
+      # INSTALL_ROOT stays outside the workspace: publish-all.ps1 writes
+      # <InstallRoot>\publish\<Service>\, and anything under the checkout risks being swept into
+      # a later glob.
+      - name: Resolve the release tag and the publish root
+        shell: pwsh
+        run: |
+          "TAG=${{ github.event.release.tag_name || inputs.tag }}" >> $env:GITHUB_ENV
+          "INSTALL_ROOT=$env:RUNNER_TEMP\TallaEgg" >> $env:GITHUB_ENV
+
       # The tag, not the default branch. main is routinely ahead of the tag being released —
       # it was by one commit at v1.1.0 — so building whatever HEAD happens to be would attach
       # artifacts that are not the release.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ env.TAG }}
 
       - uses: actions/setup-dotnet@v4
         with:
