@@ -916,6 +916,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         private static readonly Dictionary<string, string[]> Notes = new()
         {
+            ["1.3.0"] = new[]
+            {
+                "بازگشت خودکار سرویس‌ها پس از ری‌استارت یا قطعی سرور",
+                "جلوگیری از خاموش ماندن ربات وقتی دیتابیس دیرتر بالا می‌آید",
+            },
             ["1.2.0"] = new[]
             {
                 "ساخت مطمئن‌تر کیف‌پول‌ها هنگام ثبت‌نام",
