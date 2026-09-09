@@ -7,7 +7,6 @@ using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Enums.Wallet;
-using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Utilties;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Core.Utilties;
