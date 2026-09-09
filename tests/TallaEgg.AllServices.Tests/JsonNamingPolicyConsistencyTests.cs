@@ -41,7 +41,7 @@ public class JsonNamingPolicyConsistencyTests
     /// HTTP; an attribute instead travels with the type, so it matters wherever a serialized type
     /// is <em>declared</em> — and they are declared all over. <c>TallaEgg.Infrastructure/Clients</c>
     /// declares <c>RegisterUserResponse</c> and <c>UpdateRoleResponse</c>, the bot declares
-    /// <c>CancelActiveOrdersResponseDto</c> and <c>InvitationDto</c>, and the Application layers
+    /// <c>InvitationDto</c> in its affiliate client, and the Application layers
     /// declare more. Enumerating the projects that hold one today would leave this guard passing
     /// vacuously the first time somebody declares a DTO somewhere new, which is the failure mode a
     /// guard like this is most prone to.
