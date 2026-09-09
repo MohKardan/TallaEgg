@@ -658,6 +658,14 @@ public class OrderApiClient : IOrderApiClient
         {
             var response = await _httpClient.GetAsync($"{_baseUrl}/quotes/{symbol}");
 
+            // 404 is the service answering, not failing to answer: GET /api/quotes/{Base}/{Quote}
+            // returns NotFound when no quote is active (Orders.Api/Program.cs). Treating it as
+            // unreachable would make the order-book fallback (#48) unreachable in production for
+            // every unquoted symbol — which is the opposite defect to the one #258 is about, and
+            // is not visible from a test that never crosses HTTP.
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return (true, null);
+
             if (!response.IsSuccessStatusCode)
             {
                 // 503 while the readiness gate waits for migration (#230), 500, anything else:

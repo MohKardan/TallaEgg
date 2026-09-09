@@ -267,8 +267,13 @@ public class BotConversationFlowTests
 
         await TapAsync(InlineCallBackData.confirm_order);
 
-        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("سفارش با موفقیت ثبت شد"));
-        Assert.Contains(_messenger.Texts, t => t.Contains("مشکلی پیش آمد"));
+        // Against the constant, not a hand-copied string: the message reads "✅ سفارش شما ثبت شد."
+        // and an approximation of it makes the negative assertion vacuous — it would pass whatever
+        // the bot said.
+        var successHeadline = BotMsgs.MsgOrderSuccess.Split('\n')[0];
+
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains(successHeadline));
+        Assert.Contains(_messenger.Texts, t => t.Contains(BotMsgs.MsgUnexpectedError));
     }
 
     /// <summary>

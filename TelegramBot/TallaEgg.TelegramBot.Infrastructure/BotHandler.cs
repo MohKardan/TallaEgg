@@ -1479,8 +1479,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                         "Quote lookup for {Symbol} did not reach the Orders service at confirmation; user {TelegramId} was asked to retry and no order was placed.",
                         orderState.Asset, telegramId);
 
-                    // The conversation is deliberately left intact: the customer has already chosen
-                    // asset, side and amount, and tapping confirm again should resume from here.
+                    // This return runs the finally below, which clears the conversation — as every
+                    // exit from this method does, so the next order cannot inherit a half-filled
+                    // state. So the customer starts the order again from the menu rather than
+                    // re-tapping confirm. That is worse than resuming and better than resting an
+                    // order that will never fill; making it resumable means changing what that
+                    // finally guards, which is a wider change than this fix.
                     await _messenger.SendAsync(chatId, BotMsgs.MsgUnexpectedError);
                     return;
                 }
