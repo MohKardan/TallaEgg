@@ -909,8 +909,3 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 }
-
-public class CancelActiveOrdersResponseDto
-{
-    public int CancelledCount { get; set; }
-}
