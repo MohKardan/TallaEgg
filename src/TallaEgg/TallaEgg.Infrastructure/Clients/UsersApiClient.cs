@@ -493,7 +493,7 @@ public class UsersApiClient : IUsersApiClient
                 return null;
             }
 
-            return JsonSerializer.Deserialize<Guid>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return JsonSerializer.Deserialize<Guid>(payload, ApiJson.ResponseOptions);
         }
         catch (TaskCanceledException ex)
         {
@@ -530,7 +530,7 @@ public class UsersApiClient : IUsersApiClient
                 return null;
             }
 
-            return JsonSerializer.Deserialize<Guid>(payload, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return JsonSerializer.Deserialize<Guid>(payload, ApiJson.ResponseOptions);
         }
         catch (TaskCanceledException ex)
         {

@@ -108,6 +108,26 @@ right by coincidence and one promotion to a named DTO away from joining the rest
 `ClientRequestWireContractTests.cs` enforces both halves — that every call site names the options,
 and that a typed body goes out under the names its endpoint's schema declares.
 
+**Every client reads that shape as well.** A response body deserialized with `System.Text.Json` is
+read with `ApiJson.ResponseOptions`, named at the call site. Handed no options, `System.Text.Json`
+matches property names exactly — against a camelCase body and a PascalCase DTO it does not throw,
+it returns an object with every property at its default. `ClientResponseWireContractTests.cs`
+enforces this and is the reason the migration below is safe to do one call at a time.
+
+**`System.Text.Json` is the house serializer** (issue #233). `Newtonsoft.Json` is still on the
+classpath and still in use — twelve outbound bodies and twenty-two reads at the time of writing —
+and it is not to be swapped out mechanically. The two libraries differ on more than casing: null
+handling, date formats, enum conversion and missing-member behaviour all move. Migrate in small
+changes, exercise the bot end to end after each, and give every migrated read
+`ApiJson.ResponseOptions` in the same edit.
+
+The one asymmetry that is deliberate: **the outbox payload is read strictly, and must stay that
+way.** `OrderMatchingRepository` writes `OutboxMessages.Payload` with a bare serializer and
+`OutboxProcessorService` reads it back case-sensitively. There is no schema between that pair and
+no tolerance either, and the strictness is what makes a change to the write side fail loudly
+instead of settling trades for an empty symbol and zero quantity. Both wire-contract guards exempt
+that file by name.
+
 **Do not tighten `PropertyNameCaseInsensitive` on its own.** It is what lets a service read a body
 whose casing does not match its schema, and both the clients above and the mixed deployments of
 #235 rest on it. It becomes safe to remove only once every writer is known to send the published
