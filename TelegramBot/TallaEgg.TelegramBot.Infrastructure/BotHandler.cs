@@ -1277,7 +1277,21 @@ namespace TallaEgg.TelegramBot.Infrastructure
             // In dealer mode the customer is never asked for a price (issue #48): the price is the
             // admin's published quote. That removes the whole mesghal/gram ambiguity from the
             // customer's flow — they only give a quantity.
-            var activeQuote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+            var (quoteServiceReached, activeQuote) = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+
+            // Could not ask, as opposed to asked and told there is none (issue #258). Carrying on
+            // would price this order off the market-price branch while a quote sits published and
+            // active, so the customer would be quoted one number and filled at another. Stop here
+            // and keep the conversation, so tapping again resumes from the same place.
+            if (!quoteServiceReached)
+            {
+                _logger.LogWarning(
+                    "Quote lookup for {Symbol} did not reach the Orders service; asking user {TelegramId} to retry rather than pricing without it.",
+                    orderState.Asset, telegramId);
+
+                await _messenger.SendAsync(chatId, BotMsgs.MsgUnexpectedError);
+                return;
+            }
 
             if (activeQuote is not null)
             {
@@ -1451,7 +1465,29 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 // With no published quote we fall back to the ordinary order path — the order-book
                 // behaviour, which other symbols need and which this symbol will need if it moves to
                 // OrderBook mode.
-                var quote = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+                //
+                // That fallback is only right for "asked, and there is none". Every symbol is in
+                // dealer mode today, so an order placed on the order-book path has no counterparty
+                // and MatchingEngineService returns before matching it: it rests forever with the
+                // customer's collateral locked, and the ordinary success message tells them it
+                // worked. Taking that path because the service was unreachable is issue #258.
+                var (quoteServiceReached, quote) = await _orderApi.GetActiveQuoteAsync(orderState.Asset);
+
+                if (!quoteServiceReached)
+                {
+                    _logger.LogWarning(
+                        "Quote lookup for {Symbol} did not reach the Orders service at confirmation; user {TelegramId} was asked to retry and no order was placed.",
+                        orderState.Asset, telegramId);
+
+                    // This return runs the finally below, which clears the conversation — as every
+                    // exit from this method does, so the next order cannot inherit a half-filled
+                    // state. So the customer starts the order again from the menu rather than
+                    // re-tapping confirm. That is worse than resuming and better than resting an
+                    // order that will never fill; making it resumable means changing what that
+                    // finally guards, which is a wider change than this fix.
+                    await _messenger.SendAsync(chatId, BotMsgs.MsgUnexpectedError);
+                    return;
+                }
 
                 var (orderSuccess, orderMessage) = quote is not null
                     ? await _orderApi.AcceptQuoteAsync(

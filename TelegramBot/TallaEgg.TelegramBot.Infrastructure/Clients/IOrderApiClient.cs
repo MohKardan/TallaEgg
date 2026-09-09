@@ -32,8 +32,24 @@ public interface IOrderApiClient
     Task<(bool success, string message, PendingQuoteDto? pending)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId);
 
-    /// <summary>The active quote for a symbol, or null if none has been published.</summary>
-    Task<QuoteDto?> GetActiveQuoteAsync(string symbol);
+    /// <summary>
+    /// The active quote for a symbol.
+    ///
+    /// <para>
+    /// <c>reached</c> says whether the Orders service answered, and it is the half that matters.
+    /// A null <c>quote</c> means one thing when <c>reached</c> is true — nothing is published for
+    /// this symbol — and something else entirely when it is false: the quote may be published and
+    /// active, and we simply could not read it.
+    /// </para>
+    ///
+    /// <para>
+    /// The two are returned separately because collapsing them into one null is issue #258: with
+    /// every symbol in dealer mode, treating an unreachable service as "no quote" sends the
+    /// customer's trade to the order book, where it rests forever with their collateral locked
+    /// while they are told it succeeded. Only <c>reached: true, quote: null</c> may take that path.
+    /// </para>
+    /// </summary>
+    Task<(bool reached, QuoteDto? quote)> GetActiveQuoteAsync(string symbol);
     /// <summary>Published quotes for a symbol, newest first, including replaced ones.</summary>
     Task<PagedResult<QuoteDto>> GetQuoteHistoryAsync(string symbol, int pageNumber = 1, int pageSize = 5);
 

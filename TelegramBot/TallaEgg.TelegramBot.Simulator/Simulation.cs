@@ -246,17 +246,17 @@ public sealed class Simulation(
     /// </para>
     ///
     /// <para>
-    /// <c>GetActiveQuoteAsync</c> returns null for a symbol that has never been quoted and for an
-    /// Orders API that could not be reached, and nothing here can tell those apart — so a blip
-    /// falls back to a reference price that may be outside the band, and every quote for that
-    /// symbol is then held rather than published. That is not caught here but by
-    /// <see cref="FilterToQuotedSymbolsAsync"/>, which checks the outcome instead of guessing at
-    /// the cause.
+    /// <c>GetActiveQuoteAsync</c> now reports whether it reached the service (issue #258), so a
+    /// symbol that has never been quoted and an Orders API that could not be answered are no
+    /// longer the same answer. This method still treats both as "no usable quote" and falls back
+    /// to the reference price, which is right for a simulator: a blip here costs a held quote,
+    /// not a customer's trade. <see cref="FilterToQuotedSymbolsAsync"/> catches that by checking
+    /// the outcome rather than guessing at the cause, and remains the guard that matters.
     /// </para>
     /// </summary>
     private async Task<decimal> ResolveReferenceUnitPriceAsync(TradingPairInfo pair)
     {
-        var quote = await orderApi.GetActiveQuoteAsync(pair.Symbol);
+        var (_, quote) = await orderApi.GetActiveQuoteAsync(pair.Symbol);
         if (quote is not null && quote.BuyPrice > 0 && quote.SellPrice > 0)
             return (quote.BuyPrice + quote.SellPrice) / 2m;
 
@@ -290,7 +290,7 @@ public sealed class Simulation(
 
         foreach (var plan in plans)
         {
-            var quote = await orderApi.GetActiveQuoteAsync(plan.Symbol);
+            var (_, quote) = await orderApi.GetActiveQuoteAsync(plan.Symbol);
 
             if (quote is not null && quote.PublishedAt >= publishedAfter)
             {

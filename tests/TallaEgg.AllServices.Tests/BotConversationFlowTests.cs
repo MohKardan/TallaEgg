@@ -228,6 +228,72 @@ public class BotConversationFlowTests
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("معاملهٔ شما انجام شد"));
     }
 
+    // ── when the quote cannot be read at all (issue #258) ───────────────────────
+
+    /// <summary>
+    /// A quote lookup that fails is not a quote that does not exist.
+    ///
+    /// <para>
+    /// Every symbol runs in dealer mode, so the order-book path has no counterparty and
+    /// <c>MatchingEngineService</c> returns before matching. An order placed there rests
+    /// forever with the customer's collateral locked — while they are shown the ordinary
+    /// success message, because nothing on that path knows a trade was expected. Falling
+    /// through to it because the Orders service was restarting is the whole of #258.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task WhenTheQuoteLookupFails_NoOrderIsPlacedAtAll()
+    {
+        PublishQuote();                             // a quote IS published and active
+        _orderApi.QuoteLookupReachable = false;      // but the service cannot be reached
+        await WalkToConfirmationAsync();
+
+        await TapAsync(InlineCallBackData.confirm_order);
+
+        Assert.Empty(_orderApi.SubmittedOrders);
+        Assert.Empty(_orderApi.AcceptedQuotes);
+    }
+
+    /// <summary>
+    /// And the customer must not be told it worked. The success text is the one thing that
+    /// makes this defect expensive: without it they would retry, and nothing would be lost.
+    /// </summary>
+    [Fact]
+    public async Task WhenTheQuoteLookupFails_TheCustomerIsNotToldTheOrderSucceeded()
+    {
+        PublishQuote();
+        _orderApi.QuoteLookupReachable = false;
+        await WalkToConfirmationAsync();
+
+        await TapAsync(InlineCallBackData.confirm_order);
+
+        // Against the constant, not a hand-copied string: the message reads "✅ سفارش شما ثبت شد."
+        // and an approximation of it makes the negative assertion vacuous — it would pass whatever
+        // the bot said.
+        var successHeadline = BotMsgs.MsgOrderSuccess.Split('\n')[0];
+
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains(successHeadline));
+        Assert.Contains(_messenger.Texts, t => t.Contains(BotMsgs.MsgUnexpectedError));
+    }
+
+    /// <summary>
+    /// The other half of the same distinction: a service that answers and says there is no
+    /// quote must still reach the order book. That fallback is deliberate (#48) and this
+    /// test is what stops the #258 fix from removing it.
+    /// </summary>
+    [Fact]
+    public async Task WhenTheServiceAnswersAndThereIsNoQuote_TheOrderBookPathIsStillTaken()
+    {
+        _orderApi.ActiveQuote = null;                // nothing published
+        _orderApi.QuoteLookupReachable = true;       // and the service said so
+        await WalkToConfirmationAsync();
+
+        await TapAsync(InlineCallBackData.confirm_order);
+
+        Assert.Single(_orderApi.SubmittedOrders);
+        Assert.Empty(_orderApi.AcceptedQuotes);
+    }
+
     // ── what reaches the Orders service ─────────────────────────────────────────
 
     /// <summary>
