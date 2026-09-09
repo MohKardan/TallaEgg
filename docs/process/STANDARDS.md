@@ -125,8 +125,10 @@ The one asymmetry that is deliberate: **the outbox payload is read strictly, and
 way.** `OrderMatchingRepository` writes `OutboxMessages.Payload` with a bare serializer and
 `OutboxProcessorService` reads it back case-sensitively. There is no schema between that pair and
 no tolerance either, and the strictness is what makes a change to the write side fail loudly
-instead of settling trades for an empty symbol and zero quantity. Both wire-contract guards exempt
-that file by name.
+instead of settling trades for an empty symbol and zero quantity. Each wire-contract guard exempts
+its own end of that pair: `ClientRequestWireContractTests` exempts `OrderMatchingRepository.cs`,
+and `ClientResponseWireContractTests` exempts the payload reads in `OutboxProcessorService.cs` —
+those reads specifically, not the whole file.
 
 **Do not tighten `PropertyNameCaseInsensitive` on its own.** It is what lets a service read a body
 whose casing does not match its schema, and both the clients above and the mixed deployments of

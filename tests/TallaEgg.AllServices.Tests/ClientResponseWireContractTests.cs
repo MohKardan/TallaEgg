@@ -41,22 +41,28 @@ public class ClientResponseWireContractTests
     ];
 
     /// <summary>
-    /// Files that deserialize with <c>System.Text.Json</c> for something other than a response one
-    /// of these APIs served. Adding one is a statement about what the file does.
+    /// Reads that are not of a response one of these APIs served. An entry names the file
+    /// <em>and</em> what has to appear on the line, so it exempts a read rather than a file.
     /// </summary>
     /// <remarks>
-    /// There is one, and it is the same file that anchors the write-side exemption list from the
-    /// other end. <c>OutboxProcessorService</c> reads <c>OutboxMessages.Payload</c>, which
+    /// There is one, and it is the write-side exemption list's own pair seen from the other end.
+    /// <c>OutboxProcessorService</c> reads <c>OutboxMessages.Payload</c>, which
     /// <c>OrderMatchingRepository</c> wrote with a bare serializer — PascalCase, because that is
-    /// what a bare serializer writes. Giving this read the shared options would not break it today,
+    /// what a bare serializer writes. Giving that read the shared options would not break it today,
     /// since case-insensitive matching reads PascalCase and camelCase alike. It would remove the
     /// only thing keeping the pair honest: the read is strict precisely so that changing the write
     /// side fails loudly instead of settling trades for an empty symbol and zero quantity. That
     /// asymmetry is deliberate and <c>STANDARDS.md</c> §2 states it.
+    ///
+    /// Narrower than the write-side list, which exempts whole files. The justification here is
+    /// about two specific reads, not about the class they sit in — and
+    /// <c>OutboxProcessorService</c> is exactly the kind of file that could grow a genuine API
+    /// call, at which point a whole-file exemption would wave it through without anybody deciding
+    /// to.
     /// </remarks>
-    private static readonly (string Path, string Why)[] NotApiResponses =
+    private static readonly (string Path, string LineContains, string Why)[] NotApiResponses =
     [
-        ("src/Order/Orders.Application/Services/OutboxProcessorService.cs",
+        ("src/Order/Orders.Application/Services/OutboxProcessorService.cs", "message.Payload",
             "reads OutboxMessages.Payload, which is written PascalCase by a bare serializer and "
                 + "must stay case-sensitive so a change to the write side fails loudly"),
     ];
@@ -71,11 +77,20 @@ public class ClientResponseWireContractTests
     /// after <c>Deserialize</c> excludes it without naming it — which is the behaviour this guard
     /// wants. The Newtonsoft reads are not offenders; they are the migration this issue did not
     /// do, and the point is to catch the migration, not to fail until it happens.
+    ///
+    /// The <c>Async</c> spellings are listed for the same reason the write-side guard lists its
+    /// generic ones: the stream overload is strict by exactly the same default, so a migration
+    /// written as <c>DeserializeAsync</c> would slip past a list that only knew the synchronous
+    /// call — and slipping past quietly is the one way a guard like this fails. Nothing in the
+    /// product uses them today, which is why they can be added at no cost now rather than after
+    /// the first one is written.
     /// </remarks>
     private static readonly string[] DeserializeCalls =
     [
         ".Deserialize(",
         ".Deserialize<",
+        ".DeserializeAsync(",
+        ".DeserializeAsync<",
     ];
 
     private static string RepoRoot()
@@ -128,10 +143,6 @@ public class ClientResponseWireContractTests
             }
 
             var relative = Path.GetRelativePath(RepoRoot(), file).Replace(Path.DirectorySeparatorChar, '/');
-            if (NotApiResponses.Any(exempt => exempt.Path.Equals(relative, StringComparison.Ordinal)))
-            {
-                continue;
-            }
 
             var lines = File.ReadAllLines(file);
             for (var index = 0; index < lines.Length; index++)
@@ -144,6 +155,13 @@ public class ClientResponseWireContractTests
 
                 calls++;
                 if (line.Contains("ApiJson.ResponseOptions", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (NotApiResponses.Any(exempt =>
+                        exempt.Path.Equals(relative, StringComparison.Ordinal)
+                        && line.Contains(exempt.LineContains, StringComparison.Ordinal)))
                 {
                     continue;
                 }
@@ -169,21 +187,44 @@ public class ClientResponseWireContractTests
     }
 
     /// <summary>
-    /// An exemption that no longer names a real file is an exemption nobody is reading, and it
-    /// would silently widen the moment that path came back for some other reason.
+    /// An exemption nothing matches is an exemption nobody is reading, and it would silently widen
+    /// the moment that path came back for some other reason.
     /// </summary>
+    /// <remarks>
+    /// Checks the line, not just the file. An entry naming a file that still exists but no longer
+    /// contains the read it was written for is the more likely of the two to go stale, and it is
+    /// the one that leaves a real exemption sitting over code nobody meant to cover.
+    /// </remarks>
     [Fact]
-    public void NotApiResponses_EveryExemptFile_StillExists()
+    public void NotApiResponses_EveryExemption_StillMatchesARealRead()
     {
-        var missing = NotApiResponses
-            .Where(exempt => !File.Exists(Path.Combine(RepoRoot(), exempt.Path)))
-            .Select(exempt => $"  {exempt.Path} — exempt because it {exempt.Why}")
-            .ToList();
+        var stale = new List<string>();
+
+        foreach (var exempt in NotApiResponses)
+        {
+            var path = Path.Combine(RepoRoot(), exempt.Path);
+            if (!File.Exists(path))
+            {
+                stale.Add($"  {exempt.Path} — the file is gone; exempt because it {exempt.Why}");
+                continue;
+            }
+
+            var matches = File.ReadAllLines(path).Any(line =>
+                IsCode(line)
+                && DeserializeCalls.Any(call => line.Contains(call, StringComparison.Ordinal))
+                && line.Contains(exempt.LineContains, StringComparison.Ordinal));
+
+            if (!matches)
+            {
+                stale.Add($"  {exempt.Path} — no deserialize call there mentions '{exempt.LineContains}' "
+                    + $"any more; exempt because it {exempt.Why}");
+            }
+        }
 
         Assert.True(
-            missing.Count == 0,
-            "NotApiResponses exempts a file that is not there any more; drop the entry:"
-                + Environment.NewLine + string.Join(Environment.NewLine, missing));
+            stale.Count == 0,
+            "NotApiResponses carries an exemption nothing matches; drop the entry:"
+                + Environment.NewLine + string.Join(Environment.NewLine, stale));
     }
 
     /// <summary>
