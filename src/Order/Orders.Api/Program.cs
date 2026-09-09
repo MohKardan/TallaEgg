@@ -22,7 +22,6 @@ using TallaEgg.Core.Responses.Order;
 using TallaEgg.Core.Startup;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
-using CancelActiveOrdersResponseDto = TallaEgg.Core.DTOs.Order.CancelActiveOrdersResponseDto;
 using TallaEgg.Core.Swagger;
 
 var builder = WebApplication.CreateBuilder(args);

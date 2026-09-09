@@ -129,13 +129,13 @@ namespace TallaEgg.Core.DTOs.Order
     }
 
     /// <summary>
-    /// Response DTO for canceling active orders
-    /// Response DTO for cancelling active orders.
+    /// Response DTO for cancelling active orders. Declared here and only here: the bot used to
+    /// carry an identical copy in its clients namespace, which meant deleting either one still
+    /// compiled while a live call site silently changed type (issue #267).
     /// </summary>
     public class CancelActiveOrdersResponseDto
     {
         /// <summary>
-        /// Number of orders that were cancelled
         /// How many orders were cancelled.
         /// </summary>
         public int CancelledCount { get; set; }
