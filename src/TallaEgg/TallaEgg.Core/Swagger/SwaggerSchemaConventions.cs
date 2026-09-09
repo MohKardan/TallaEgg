@@ -24,12 +24,20 @@ public static class SwaggerSchemaConventions
     /// schema promises something the platform does not — it would turn every such addition into a
     /// break for any client that validates what it receives.
     ///
-    /// It is cleared here rather than at generation time because an <c>ISchemaFilter</c> — the
-    /// hook Swashbuckle offers for this, since <c>SchemaGeneratorOptions</c> carries no switch for
-    /// it — is a Swashbuckle type, and this assembly cannot reference Swashbuckle: Users.Api pins
-    /// 7.0.0 while Orders and Wallet are on 9.0.3, and a 9.0.3 reference here reaches Users.Api as
-    /// a package downgrade (NU1605), which <c>TreatWarningsAsErrors</c> makes a build failure.
-    /// <c>Microsoft.OpenApi</c>, which this needs instead, is already resolved by all three.
+    /// It is cleared on the finished document rather than at generation time. The hook Swashbuckle
+    /// offers for the latter is an <c>ISchemaFilter</c>, since <c>SchemaGeneratorOptions</c>
+    /// carries no switch for the flag — and when this was written that hook was out of reach: an
+    /// <c>ISchemaFilter</c> is a Swashbuckle type, and Users.Api pinned Swashbuckle 7.0.0 while
+    /// Orders and Wallet were on 9.0.3, so a 9.0.3 reference in this assembly reached Users.Api as
+    /// a package downgrade (NU1605) that <c>TreatWarningsAsErrors</c> turned into a build failure.
+    ///
+    /// Issue #243 put all three on 9.0.3, so that reference builds now and the filter is
+    /// available. It has deliberately not been taken, because for every schema that is a component
+    /// the two approaches produce the same document, and this one is already written and tested.
+    /// What it cannot reach is a schema Swashbuckle inlines into an operation instead of
+    /// referencing from <c>Components</c> — the loop below only ever sees components. Every object
+    /// schema is a component today, so that gap is hypothetical; the day an endpoint binds an
+    /// anonymous body is the day moving to an <c>ISchemaFilter</c> earns its change.
     ///
     /// A schema that names a type for its extra members is describing a dictionary, which is a
     /// real statement about the payload; only the blanket flag is cleared.
