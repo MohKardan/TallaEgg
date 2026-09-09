@@ -1247,49 +1247,6 @@ app.Run();
 // Request models
 
 /// <summary>
-/// Request model for creating a new maker order
-/// </summary>
-public record CreateOrderRequest(
-    string Asset, 
-    decimal Amount, 
-    decimal Price, 
-    Guid UserId, 
-    OrderSide Type,
-    TradingType TradingType,
-    string? Notes = null);
-
-/// <summary>
-/// Request model for creating a new limit order
-/// </summary>
-public record CreateLimitOrderRequest(
-    string Symbol,
-    decimal Quantity,
-    decimal Price,
-    Guid UserId);
-
-/// <summary>
-/// Request model for creating a new taker order
-/// </summary>
-public record CreateTakerOrderRequest(
-    Guid ParentOrderId,
-    decimal Amount,
-    Guid UserId,
-    string? Notes = null);
-
-/// <summary>
-/// Request model for updating order status
-/// </summary>
-public record UpdateOrderStatusRequest(
-    OrderStatus Status, 
-    string? Notes = null);
-
-/// <summary>
-/// Request model for cancelling an order
-/// </summary>
-public record CancelOrderRequest(
-    string? Reason = null);
-
-/// <summary>
 /// Request model for abandoning a permanently-failed outbox message (issue #39). The reason
 /// is mandatory — abandoning is an audited operator decision, not a silent drop.
 /// </summary>

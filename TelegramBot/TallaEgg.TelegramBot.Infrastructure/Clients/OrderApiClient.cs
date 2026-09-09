@@ -11,7 +11,6 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Json;
-using TallaEgg.Core.Requests.Order;
 
 namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 

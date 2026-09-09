@@ -8,7 +8,6 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
-using TallaEgg.Core.Requests.Order;
 using TallaEgg.Core.Services;
 using TallaEgg.Core.Utilties;
 using TallaEgg.Infrastructure;
