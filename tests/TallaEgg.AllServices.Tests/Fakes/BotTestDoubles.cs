@@ -30,7 +30,15 @@ public sealed class FakeOrderApiClient : IOrderApiClient
     /// <summary>What <c>AcceptQuoteAsync</c> reports back.</summary>
     public (bool Success, string Message) AcceptResult { get; set; } = (true, "ok");
 
-    public Task<QuoteDto?> GetActiveQuoteAsync(string symbol) => Task.FromResult(ActiveQuote);
+    /// <summary>
+    /// Whether the Orders service answers the quote lookup at all. False stands for a 503 from
+    /// the readiness gate, a timeout, or a connection reset — the cases issue #258 is about,
+    /// where a quote is published and active but cannot be read.
+    /// </summary>
+    public bool QuoteLookupReachable { get; set; } = true;
+
+    public Task<(bool reached, QuoteDto? quote)> GetActiveQuoteAsync(string symbol) =>
+        Task.FromResult(QuoteLookupReachable ? (true, ActiveQuote) : (false, (QuoteDto?)null));
 
     /// <summary>Quotes returned by the history endpoint, newest first.</summary>
     public List<QuoteDto> QuoteHistory { get; } = [];

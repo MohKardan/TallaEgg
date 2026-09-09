@@ -652,22 +652,39 @@ public class OrderApiClient : IOrderApiClient
     }
 
     /// <summary>The active quote for a symbol, or null if none has been published.</summary>
-    public async Task<QuoteDto?> GetActiveQuoteAsync(string symbol)
+    public async Task<(bool reached, QuoteDto? quote)> GetActiveQuoteAsync(string symbol)
     {
         try
         {
             var response = await _httpClient.GetAsync($"{_baseUrl}/quotes/{symbol}");
-            if (!response.IsSuccessStatusCode) return null;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // 503 while the readiness gate waits for migration (#230), 500, anything else:
+                // the quote may well be published and active. Saying "no quote" here is what
+                // sent a dealer trade to the order book (#258).
+                _logger.LogWarning(
+                    "Active-quote request for {Symbol} returned {Status}; the quote could not be read, which is not the same as there being none.",
+                    symbol, response.StatusCode);
+
+                return (false, null);
+            }
 
             var body = await response.Content.ReadAsStringAsync();
             var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<QuoteDto>>(
                 body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            return parsed?.Data;
+            // Reached the service and it answered: a null payload here genuinely means no quote
+            // is published for this symbol, which is the one case the order-book path is for.
+            return (true, parsed?.Data);
         }
-        catch
+        catch (Exception ex)
         {
-            return null;
+            // A timeout, a reset, a DNS failure. The bare catch this replaced logged nothing, so
+            // an operator had no record the call had failed at all.
+            _logger.LogError(ex, "Could not read the active quote for {Symbol}.", symbol);
+
+            return (false, null);
         }
     }
 
