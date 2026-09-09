@@ -98,8 +98,7 @@ public class WalletApiClient : IWalletApiClient
                 // Try to extract error message from response
                 try
                 {
-                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var errorResponse = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent, ApiJson.ResponseOptions);
                     return (false, errorResponse?.Message ?? "خطا در قفل کردن موجودی", null);
                 }
                 catch
@@ -108,8 +107,7 @@ public class WalletApiClient : IWalletApiClient
                 }
             }
 
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent, ApiJson.ResponseOptions);
 
             if (apiResponse?.Success == true)
             {
@@ -282,8 +280,7 @@ public class WalletApiClient : IWalletApiClient
             if (response.IsSuccessStatusCode)
             {
 
-                var result = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WalletDTO>>>(respText,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = JsonSerializer.Deserialize<ApiResponse<IEnumerable<WalletDTO>>>(respText, ApiJson.ResponseOptions);
 
                 // Deserialize returns null for a literal "null" body. The signature promises a
                 // response, so a caller reading .Success on it would get a NullReferenceException
@@ -335,8 +332,7 @@ public class WalletApiClient : IWalletApiClient
                 try
                 {
                     
-                    var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var walletDto = JsonSerializer.Deserialize<ApiResponse<WalletDTO>>(responseContent, ApiJson.ResponseOptions);
 
                     // A body of "null", or one shaped like the envelope but carrying no wallet,
                     // parses without throwing. Reaching through it would raise a
@@ -381,8 +377,7 @@ public class WalletApiClient : IWalletApiClient
                     try
                     {
 
-                        var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(responseContent,
-                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        var errorResponse = JsonSerializer.Deserialize<ApiResponse<object>>(responseContent, ApiJson.ResponseOptions);
 
                         if (errorResponse != null && !string.IsNullOrWhiteSpace(errorResponse.Message))
                         {
@@ -467,8 +462,7 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            var parsed = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(responseBody,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(responseBody, ApiJson.ResponseOptions);
 
             if (!string.IsNullOrWhiteSpace(parsed?.Message))
                 return ApiResponse<WalletBallanceDTO>.Fail(parsed!.Message);
@@ -495,8 +489,7 @@ public class WalletApiClient : IWalletApiClient
             if (response.IsSuccessStatusCode)
             {
 
-                var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText, ApiJson.ResponseOptions);
 
                 // Deserialize returns null for a literal "null" body; see the note in
                 // GetUserWalletsBalanceAsync.
@@ -528,8 +521,7 @@ public class WalletApiClient : IWalletApiClient
             if (response.IsSuccessStatusCode)
             {
 
-                var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = JsonSerializer.Deserialize<ApiResponse<WalletBallanceDTO>>(respText, ApiJson.ResponseOptions);
 
                 // Deserialize returns null for a literal "null" body; see the note in
                 // GetUserWalletsBalanceAsync.
@@ -603,8 +595,7 @@ public class WalletApiClient : IWalletApiClient
 
         try
         {
-            var apiResponse = JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<string>>(
-                body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var apiResponse = JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<string>>(body, ApiJson.ResponseOptions);
 
             return string.IsNullOrWhiteSpace(apiResponse?.Message) ? null : apiResponse.Message;
         }

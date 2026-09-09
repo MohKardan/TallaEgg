@@ -1,12 +1,12 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
 namespace TallaEgg.Core.Json;
 
 /// <summary>
-/// The JSON shape this platform writes its outbound request bodies in: camelCase, chosen rather
-/// than inherited (issue #241).
+/// The JSON shape this platform puts on the wire and reads back off it: camelCase, chosen rather
+/// than inherited — outbound bodies since #241, inbound responses since #233.
 /// </summary>
 /// <remarks>
 /// Every service publishes a camelCase schema — the rule in <c>STANDARDS.md</c> §2, guarded by
@@ -23,19 +23,26 @@ namespace TallaEgg.Core.Json;
 /// with no visible risk in it — would have flipped it to PascalCase silently. Naming the options at
 /// every call site is what removes that trapdoor.
 ///
-/// <b>Two objects, because there are two libraries.</b> Which serializer the platform standardises
-/// on is issue #233's question and is deliberately left open here; this type settles only the
-/// casing, so each library keeps an entry written in its own vocabulary. Both describe the same
-/// wire shape.
+/// <b>System.Text.Json is the house serializer</b> (issue #233), which is why the read side has one
+/// entry and the write side has two. <see cref="NewtonsoftRequestSettings"/> stays because twelve
+/// outbound bodies are still written with Newtonsoft and each has to name its casing until it is
+/// migrated; there is deliberately no Newtonsoft read counterpart, because the twenty-two reads
+/// still on that library are the migration #233 did not do, and giving them a shared settings
+/// object would make leaving them there look like a decision.
 ///
-/// <b>Nothing here is a deserialization setting.</b> The read side is #233's, and the clients'
-/// existing <c>PropertyNameCaseInsensitive</c> reads are untouched.
+/// <b>The read side is the one with a trapdoor in it.</b> Newtonsoft matches property names
+/// case-insensitively with nothing configured; <c>System.Text.Json</c> handed no options matches
+/// them exactly and returns an object with every property at its default rather than throwing. So
+/// migrating a <c>DeserializeObject</c> call to <c>Deserialize</c> is a one-word edit that can
+/// empty a customer's trade history in silence. <see cref="ResponseOptions"/> is what a migrated
+/// call names, and <c>ClientResponseWireContractTests</c> is what fails if it does not.
 ///
-/// <b>Neither member can be reshaped by one of its callers.</b> That matters more here than it
-/// looks: these objects are reached from every request path in the platform, so a single line
-/// setting some unrelated option on one of them would change what every other caller puts on the
-/// wire. <see cref="RequestOptions"/> is frozen, and <see cref="JsonSerializerOptions"/> throws on
-/// a write once it is. <see cref="JsonSerializerSettings"/> has no equivalent, so
+/// <b>No member can be reshaped by one of its callers.</b> That matters more here than it looks:
+/// these objects are reached from every request path in the platform, so a single line setting some
+/// unrelated option on one of them would change what every other caller puts on the wire — or now
+/// accepts back. <see cref="RequestOptions"/> and <see cref="ResponseOptions"/> are both frozen, and
+/// <see cref="JsonSerializerOptions"/> throws on a write once it is.
+/// <see cref="JsonSerializerSettings"/> has no equivalent, so
 /// <see cref="NewtonsoftRequestSettings"/> hands out a fresh instance instead — see the note there
 /// for why that costs nothing.
 /// </remarks>
@@ -51,7 +58,32 @@ public static class ApiJson
     /// framework's own profile rather than setting <c>PropertyNamingPolicy</c> by hand keeps the
     /// two sides tied to one definition instead of two that happen to agree.
     /// </remarks>
-    public static JsonSerializerOptions RequestOptions { get; } = BuildRequestOptions();
+    public static JsonSerializerOptions RequestOptions { get; } = BuildWebOptions();
+
+    /// <summary>
+    /// What a <c>System.Text.Json</c> response body is read with (issue #233).
+    /// </summary>
+    /// <remarks>
+    /// The same <see cref="JsonSerializerDefaults.Web"/> profile as <see cref="RequestOptions"/>,
+    /// which on the read side means case-insensitive name matching — the thing that lets a
+    /// PascalCase DTO read the camelCase every service answers in. Handed no options at all,
+    /// <c>System.Text.Json</c> matches exactly: it does not throw on a camelCase body, it returns
+    /// an object with every property at its default. Eighteen call sites each spelled
+    /// <c>PropertyNameCaseInsensitive = true</c> by hand before this existed, which worked and left
+    /// nothing saying it had to.
+    ///
+    /// <b>A separate object from <see cref="RequestOptions"/>, though the two are built the same
+    /// way today.</b> They are not the same decision: writing needs the naming policy, reading
+    /// needs the case-insensitive matching, and the profile happens to carry both. Aliasing one to
+    /// the other would mean a later change to what this platform writes silently changing what it
+    /// accepts, in a direction nobody looked at.
+    ///
+    /// <b>Not for anything but an API response.</b> The outbox payload is read strictly on purpose
+    /// — see <c>OutboxProcessorService</c> and <c>STANDARDS.md</c> §2. Reading it with these
+    /// options would work and would remove the only thing that makes a change to the write side
+    /// fail loudly.
+    /// </remarks>
+    public static JsonSerializerOptions ResponseOptions { get; } = BuildWebOptions();
 
     /// <summary>
     /// What a <c>Newtonsoft.Json</c> request body is written with.
@@ -87,7 +119,12 @@ public static class ApiJson
         NamingStrategy = new CamelCaseNamingStrategy(),
     };
 
-    private static JsonSerializerOptions BuildRequestOptions()
+    /// <summary>
+    /// One profile, two callers. Named for the profile rather than for either direction, because
+    /// both <see cref="RequestOptions"/> and <see cref="ResponseOptions"/> are built from it and a
+    /// name that claimed one of them would be wrong for the other.
+    /// </summary>
+    private static JsonSerializerOptions BuildWebOptions()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 

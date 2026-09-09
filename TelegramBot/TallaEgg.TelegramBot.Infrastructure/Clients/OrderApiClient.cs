@@ -544,8 +544,7 @@ public class OrderApiClient : IOrderApiClient
             if (!response.IsSuccessStatusCode) return null;
 
             var body = await response.Content.ReadAsStringAsync();
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<AutoQuoteSettingsDto>>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<AutoQuoteSettingsDto>>(body, ApiJson.ResponseOptions);
 
             return parsed?.Data;
         }
@@ -614,8 +613,7 @@ public class OrderApiClient : IOrderApiClient
             if (!response.IsSuccessStatusCode) return new List<string>();
 
             var body = await response.Content.ReadAsStringAsync();
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<List<string>>>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<List<string>>>(body, ApiJson.ResponseOptions);
 
             return parsed?.Data ?? new List<string>();
         }
@@ -678,8 +676,7 @@ public class OrderApiClient : IOrderApiClient
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<QuoteDto>>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<QuoteDto>>(body, ApiJson.ResponseOptions);
 
             // Reached the service and it answered: a null payload here genuinely means no quote
             // is published for this symbol, which is the one case the order-book path is for.
@@ -724,8 +721,7 @@ public class OrderApiClient : IOrderApiClient
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<PagedResult<QuoteDto>>>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<PagedResult<QuoteDto>>>(body, ApiJson.ResponseOptions);
 
             return parsed?.Data ?? empty;
         }
@@ -781,8 +777,7 @@ public class OrderApiClient : IOrderApiClient
 
         try
         {
-            return System.Text.Json.JsonSerializer.Deserialize<T>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return System.Text.Json.JsonSerializer.Deserialize<T>(body, ApiJson.ResponseOptions);
         }
         catch (System.Text.Json.JsonException)
         {
@@ -796,8 +791,7 @@ public class OrderApiClient : IOrderApiClient
 
         try
         {
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<object>>(
-                body, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<TallaEgg.Core.DTOs.ApiResponse<object>>(body, ApiJson.ResponseOptions);
 
             return string.IsNullOrWhiteSpace(parsed?.Message) ? null : parsed.Message;
         }
@@ -880,7 +874,7 @@ public class OrderApiClient : IOrderApiClient
 
             if (response.IsSuccessStatusCode)
             {
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<bool>>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<bool>>(responseContent, ApiJson.ResponseOptions);
                 return result ?? ApiResponse<bool>.Fail("خطا در پردازش پاسخ");
             }
 
