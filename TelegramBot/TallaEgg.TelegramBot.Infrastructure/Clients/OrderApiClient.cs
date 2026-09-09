@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Orders.Core;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -909,20 +908,6 @@ public class OrderApiClient : IOrderApiClient
             return ApiResponse<PositionsResponseDto>.Fail("خطای غیرمنتظره");
         }
     }
-}
-
-public class OrderResponse
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = "";
-    public Order? Order { get; set; }
-}
-
-public class OrdersResponse
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = "";
-    public IEnumerable<Order> Orders { get; set; } = Enumerable.Empty<Order>();
 }
 
 public class CancelActiveOrdersResponseDto
