@@ -1252,14 +1252,6 @@ app.Run();
 /// </summary>
 public record AbandonOutboxMessageRequest(string Reason);
 
-/// <summary>
-/// Request model for notifying the matching engine about a new order
-/// </summary>
-public record NotifyMatchingEngineRequest(
-    Guid OrderId,
-    string Asset,
-OrderSide Type);
-
 
 
 
