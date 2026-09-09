@@ -111,8 +111,6 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         throw new NotSupportedException(nameof(RejectPendingQuoteAsync));
     public Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null) =>
         throw new NotSupportedException(nameof(CancelAllUserActiveOrdersAsync));
-    public Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request) =>
-        throw new NotSupportedException(nameof(NotifyMatchingEngineAsync));
 
     // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 

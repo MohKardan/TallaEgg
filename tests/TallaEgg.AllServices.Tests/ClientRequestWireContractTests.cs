@@ -94,9 +94,10 @@ public class ClientRequestWireContractTests
         { typeof(WalletRequest), false },
         { typeof(TradeDto), false },
 
-        // OrderApiClient — System.Text.Json.
+        // OrderApiClient — System.Text.Json. NotifyMatchingEngineRequest was here until #262,
+        // which removed it along with the client method that sent it: the endpoint it posted to
+        // was deleted in August 2025 and the client was left behind.
         { typeof(OrderDto), false },
-        { typeof(NotifyMatchingEngineRequest), false },
     };
 
     /// <summary>

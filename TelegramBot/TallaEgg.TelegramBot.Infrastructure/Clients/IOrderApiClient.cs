@@ -66,8 +66,6 @@ public interface IOrderApiClient
     /// <param name="reason">Optional cancellation reason.</param>
     /// <returns>Success, a message, and how many orders were cancelled.</returns>
     Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null);
-    
-    Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request);
 
     // ── Automatic quotes (issue #90) ────────────────────────────────────────────
 

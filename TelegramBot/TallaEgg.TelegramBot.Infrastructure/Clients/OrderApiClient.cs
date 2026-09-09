@@ -862,31 +862,6 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
-    public async Task<ApiResponse<bool>> NotifyMatchingEngineAsync(NotifyMatchingEngineRequest request)
-    {
-        try
-        {
-            var json = System.Text.Json.JsonSerializer.Serialize(request, ApiJson.RequestOptions);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/market/notify-matching", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = System.Text.Json.JsonSerializer.Deserialize<ApiResponse<bool>>(responseContent, ApiJson.ResponseOptions);
-                return result ?? ApiResponse<bool>.Fail("خطا در پردازش پاسخ");
-            }
-
-            return ApiResponse<bool>.Fail($"خطا در اطلاع‌رسانی به موتور تطبیق: {responseContent}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error while notifying the matching engine.");
-            return ApiResponse<bool>.Fail("خطا در ارتباط با سرور");
-        }
-    }
-
     public async Task<ApiResponse<PositionsResponseDto>> GetPositionsAsync(Guid userId)
     {
         var uri = $"{_baseUrl}/positions/user/{userId}";
@@ -948,13 +923,6 @@ public class OrdersResponse
     public bool Success { get; set; }
     public string Message { get; set; } = "";
     public IEnumerable<Order> Orders { get; set; } = Enumerable.Empty<Order>();
-}
-
-public class NotifyMatchingEngineRequest
-{
-    public Guid OrderId { get; set; }
-    public string Asset { get; set; } = "";
-    public OrderSide Type { get; set; }
 }
 
 public class CancelActiveOrdersResponseDto
