@@ -5,7 +5,7 @@ using TallaEgg.TelegramBot.Infrastructure.Clients;
 namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
-/// That no type the bot's clients declare shares a name with one in <c>TallaEgg.Core</c>
+/// That no type in the typed-clients namespace shares a name with one in <c>TallaEgg.Core</c>
 /// (issue #267).
 /// </summary>
 /// <remarks>
@@ -23,17 +23,40 @@ namespace TallaEgg.AllServices.Tests;
 /// to repeat across bounded contexts, so this one covers the two namespaces that are actually
 /// imported together and have actually collided.
 ///
-/// Reflection rather than a source scan, unlike its sibling guards: both assemblies are referenced
-/// by this project, so the types can be asked directly and a declaration spelled some unusual way
-/// cannot hide from it.
+/// Reflection rather than a source scan, unlike its sibling guards: the assemblies are all
+/// referenced by this project, so the types can be asked directly and a declaration spelled some
+/// unusual way cannot hide from it. Note that "the clients namespace" is not one project — see
+/// <see cref="ClientNamespaceAssemblies"/>, which is the correction this guard needed after its
+/// first version covered only half of it.
 /// </remarks>
 public class ClientTypeNameCollisionTests
 {
-    /// <summary>Every public type the bot declares in its clients namespace.</summary>
-    private static Type[] BotClientTypes() =>
-        typeof(OrderApiClient).Assembly
-            .GetExportedTypes()
-            .Where(t => t.Namespace == typeof(OrderApiClient).Namespace)
+    /// <summary>
+    /// The assemblies that declare types in the clients namespace. There are two, which is the
+    /// whole reason this list is written out rather than derived from one anchor type.
+    /// </summary>
+    /// <remarks>
+    /// <c>TallaEgg.TelegramBot.Infrastructure.Clients</c> is not one project's namespace. The bot
+    /// declares <c>OrderApiClient</c> and <c>AffiliateApiClient</c> in it; <c>TallaEgg.Infrastructure</c>
+    /// declares <c>UsersApiClient</c> and <c>IUsersApiClient</c> in the same namespace from a
+    /// different assembly — and that is the half <c>Orders.Api</c> actually resolves
+    /// <c>UsersApiClient</c> from. A guard anchored on one assembly covered five of the nine types
+    /// and would have stayed green while the other four collided, which is the same shape of
+    /// blindness this whole issue is about.
+    /// </remarks>
+    private static readonly Assembly[] ClientNamespaceAssemblies =
+    [
+        typeof(OrderApiClient).Assembly,   // TallaEgg.TelegramBot.Infrastructure
+        typeof(UsersApiClient).Assembly,   // TallaEgg.Infrastructure
+    ];
+
+    private static readonly string ClientNamespace = typeof(OrderApiClient).Namespace!;
+
+    /// <summary>Every public type declared in the clients namespace, from either assembly.</summary>
+    private static Type[] ClientTypes() =>
+        ClientNamespaceAssemblies
+            .SelectMany(a => a.GetExportedTypes())
+            .Where(t => t.Namespace == ClientNamespace)
             .ToArray();
 
     /// <summary>Every public type in the shared kernel, whatever namespace it sits in.</summary>
@@ -56,9 +79,9 @@ public class ClientTypeNameCollisionTests
             .GroupBy(t => t.Name, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.First().FullName ?? g.Key, StringComparer.Ordinal);
 
-        var collisions = BotClientTypes()
+        var collisions = ClientTypes()
             .Where(t => coreNames.ContainsKey(t.Name))
-            .Select(t => $"  {t.FullName} collides with {coreNames[t.Name]}")
+            .Select(t => $"  {t.Assembly.GetName().Name}: {t.FullName} collides with {coreNames[t.Name]}")
             .OrderBy(line => line, StringComparer.Ordinal)
             .ToList();
 
@@ -74,13 +97,32 @@ public class ClientTypeNameCollisionTests
     }
 
     /// <summary>
-    /// Guards the guard: if the namespace filter ever stops matching, the test above would sweep an
-    /// empty set and report success.
+    /// Guards the guard: the sweep has to reach <em>both</em> assemblies that declare this
+    /// namespace, not just the one the anchor type lives in.
     /// </summary>
+    /// <remarks>
+    /// The first version of this asserted only that the set was non-empty, which it could not fail:
+    /// the filter was derived from <c>typeof(OrderApiClient).Namespace</c>, so <c>OrderApiClient</c>
+    /// always matched itself however the namespace was renamed. It sat over a guard that was in
+    /// fact missing four of the nine types, and said nothing. Counting distinct assemblies is what
+    /// that check should have been doing — it fails on exactly the gap that was there.
+    /// </remarks>
     [Fact]
-    public void TheGuard_IsActuallyLookingAtSomething()
+    public void TheGuard_Reaches_BothAssembliesThatDeclareTheClientsNamespace()
     {
-        Assert.NotEmpty(BotClientTypes());
+        var byAssembly = ClientTypes()
+            .GroupBy(t => t.Assembly.GetName().Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key!, g => g.Count(), StringComparer.Ordinal);
+
+        Assert.Contains("TallaEgg.TelegramBot.Infrastructure", byAssembly.Keys);
+        Assert.Contains("TallaEgg.Infrastructure", byAssembly.Keys);
+
+        // Not just reached — carrying types. An assembly present with nothing in it would mean the
+        // namespace filter has drifted away from what these projects actually declare.
+        Assert.All(byAssembly, entry => Assert.True(
+            entry.Value > 0,
+            $"{entry.Key} declares nothing in {ClientNamespace}; the namespace filter has drifted."));
+
         Assert.NotEmpty(CoreTypes());
     }
 }
