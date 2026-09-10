@@ -827,18 +827,31 @@ public class OrderApiClient : IOrderApiClient
     /// cancelledCount, how many orders were cancelled.
     /// </returns>
     /// <remarks>
-    /// POSTs to the cancel-orders endpoint with the reason in the body, parses the ApiResponse,
-    /// extracts the cancelled count, and turns any failure into a usable message.
+    /// The reason goes in the <b>query string</b>, which is where the endpoint reads it (issue #270).
+    /// It used to be posted as a JSON body, and the endpoint's parameter is a bare <c>string?</c> —
+    /// a simple type absent from the route template, so minimal APIs bind it from the query and
+    /// never looked at the body. The reason was therefore always null server-side and
+    /// <c>reason ?? "لغو همه سفارشات فعال"</c> always won, which meant an administrator's stated
+    /// reason was replaced by a generic one in the <c>Notes</c> of every order they cancelled. The
+    /// published schema had been describing the real contract all along: <c>reason</c> is declared
+    /// <c>in: query</c>, with no <c>requestBody</c>.
+    ///
+    /// Omitted entirely when there is no reason, rather than sent empty. An empty string is not
+    /// null, so <c>?reason=</c> would bind <c>""</c>, skip the server's fallback and store a blank
+    /// note — a different defect, introduced while fixing this one.
     /// </remarks>
     public async Task<(bool success, string message, int cancelledCount)> CancelAllUserActiveOrdersAsync(Guid userId, string? reason = null)
     {
         try
         {
-            var requestBody = new { reason };
-            var json = System.Text.Json.JsonSerializer.Serialize(requestBody, ApiJson.RequestOptions);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var uri = $"{_baseUrl}/orders/user/{userId}/cancel-active";
+            if (!string.IsNullOrWhiteSpace(reason))
+            {
+                uri += $"?reason={Uri.EscapeDataString(reason)}";
+            }
 
-            var response = await _httpClient.PostAsync($"{_baseUrl}/orders/user/{userId}/cancel-active", content);
+            // No body: the endpoint binds nothing from one, and the schema declares none.
+            var response = await _httpClient.PostAsync(uri, content: null);
             var respText = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
