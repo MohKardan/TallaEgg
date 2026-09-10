@@ -147,6 +147,11 @@ public class CancelActiveOrdersResponseTests
         Assert.NotNull(request);
         Assert.Equal(HttpMethod.Post, request!.Method);
         Assert.Contains($"reason={Uri.EscapeDataString(reason)}", request.RequestUri!.Query, StringComparison.Ordinal);
+
+        // And nowhere else. Asserting the query alone would stay green if a body were restored
+        // beside it, which is exactly the edit this issue is about: the server ignores the body,
+        // so nothing would fail and the next reader would find two apparent sources of truth.
+        Assert.Null(request.Content);
     }
 
     /// <summary>
