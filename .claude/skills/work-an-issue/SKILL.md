@@ -52,10 +52,11 @@ In this order:
   that is a finding — say so rather than working around it.
 - **A question the issue leaves open may not be open.** Search the history before putting it to the
   owner: `git log -S "<the thing>" --all`. #262 asked whether an endpoint had been abandoned or
-  never finished and said the choice was the owner's; the log answered it outright — added on one
-  date, deleted a week later by the commit that consolidated the order path, with "removing
-  market-related things" the day after. #267's central claim was the same shape and the build
-  settled it in one run. Both would otherwise have cost a stop and got a guess.
+  never finished and said the choice was the owner's; the log answered it outright — added
+  2025-08-21, deleted a week later by the commit that consolidated the order path, with "removing
+  market-related things" the day after. That would otherwise have cost a stop and got a guess, and
+  the same search dates a defect precisely enough to be worth quoting (#270: introduced 2025-09-09,
+  fixed 2026-09-10).
 
 State what you confirmed and what you could not. If the issue's central claim does not hold,
 **stop and say so** instead of building on it.
@@ -98,9 +99,11 @@ Some things are not yours to choose, even after the plan is approved:
 Small scope. Do what the issue asks and stop. This repository's habit — and the reason its issue
 list keeps producing good issues — is that adjacent problems get **reported, not fixed**. #223
 exists because #222 found it and left it alone. Keep that going: #251 → #262 → #266 → #267 → #270
-is one chain, each link found while *proving* the previous one, and the last was a year-old defect
-that dropped an administrator's audit trail. The proof step is where the next issue comes from, so
-write down what it shows you even when it is not what you were looking for.
+is one chain, and the last link was a year-old defect that dropped an administrator's audit trail.
+Note where the links came from — #262, #266 and #267 fell out of the *proof* step, #270 out of the
+`/code-review`. Both are places where you are looking hard at something adjacent to your change,
+which is why both keep producing issues: write down what they show you even when it is not what
+you were looking for.
 
 Branch: `fix/`, `feat/`, `chore/`, `docs/` or `hotfix/` plus a short description. Never commit to
 `main`.
@@ -109,11 +112,15 @@ Consider working in a git worktree. Parallel sessions switch the primary working
 and a file read from the wrong branch has caused real confusion. **Your own review step does this
 too** — see rule 8.
 
-**If the change frees something, say so at STOP 1 rather than filing it.** Deleting the last user
-of a dependency makes that dependency dead in the same breath: #266's two dead classes were the
-only reason the bot referenced the Orders service's *domain* assembly, and removing the reference
-belonged in that PR, not a later one. Name it in the plan and let the owner decide — a follow-up
-issue for something the current change already made obvious is worse than an extra line.
+**When the change frees something, raise it rather than filing it.** Deleting the last user of a
+dependency makes that dependency dead in the same breath: #266's two dead classes were the only
+reason the bot referenced the Orders service's *domain* assembly, and removing the reference
+belonged in that PR, not a later one. A follow-up issue for something the current change already
+made obvious is worse than one extra line in the plan.
+
+Which stop depends on when you notice. Before STOP 1, it goes in the plan. Discovered mid-work it
+is a **deletion the owner has not agreed to**, so it is rule 4's second stop — ask, do not take
+it. What is not an option is quietly widening the diff, and neither is saying nothing.
 
 # 6. Test — and prove the fix by making it fail
 
@@ -143,24 +150,38 @@ Some traps that have caught real sessions here:
   proved with.** In #266 all three classes at the bottom of a file were deleted at once, expecting
   the build to name the live one. It succeeded: the file imported another namespace declaring an
   identically-shaped type of the same name, so the name rebound and a live call site changed type
-  in silence. Before trusting a green or red build as evidence about a deletion, check the name is
-  declared once — `git grep -n "class <Name>\|record <Name>"`. This also breaks measurement by
-  reference count: #251's control read 7 references because two different types shared a name, and
-  the type it was actually measuring had 1.
+  in silence. Before trusting a green or red build as evidence about a deletion, check the name
+  resolves to one thing:
+
+  ```
+  git grep -nE "(class|record|interface|struct|enum) <Name>\b"   # every declaration kind
+  git grep -n  "= .*\.<Name>;"                                    # a using alias pointing at one
+  ```
+
+  Both matter. A bare `class|record` grep misses an interface or enum, and it misses the alias
+  entirely — and the alias was the load-bearing part in #267 (`Orders.Api/Program.cs` needed one to
+  say which of two identically-named types it meant, and removing it produced two `CS0104`
+  errors). A clean grep plus a green build can still be the wrong answer if the second type comes
+  from a package. This also breaks measurement by reference count: #251's control read 7 references
+  because two different types shared a name, and the type it was actually measuring had 1.
 - **The generated schema is an independent witness.** `swagger.json` is produced from the endpoint
   signatures, so it does not lie about what the server binds. When a client disagrees with it, the
   client is the one that is wrong: #270 posted a JSON body against a schema that declared the value
-  `in: query` and no `requestBody` at all, and #241 was the same shape a year earlier. So compare a
-  client against the *schema*, not against your reading of the endpoint. Capture it before and
-  after any change touching an API project, too — a byte-identical document is the cheapest proof
+  `in: query` and no `requestBody` at all, and the value was silently dropped for a year. So
+  compare a client against the *schema*, not against your reading of the endpoint. Capture it
+  before and after any change touching an API project, too — a byte-identical document is the
+  cheapest proof
   that a refactor is invisible from outside (#251, #262, #267), and a one-line diff can be the
   whole finding (#243 moved exactly `openapi: 3.0.1 → 3.0.4`, which was Users.Api rejoining its
   two siblings).
-- **A test double that throws for the method you are touching is a coverage hole, not a
-  convenience.** `FakeOrderApiClient.CancelAllUserActiveOrdersAsync` threw `NotSupportedException`,
+- **A test double that throws for the method you are touching is telling you the path has no
+  coverage.** `FakeOrderApiClient.CancelAllUserActiveOrdersAsync` threw `NotSupportedException`,
   which meant nothing exercised the cancel path at all — and a defect lived there from 2025-09-09
-  to 2026-09-10, a year and a day (#270). When a fake throws on your path, that is the first thing
-  to fix.
+  to 2026-09-10, a year and a day (#270). Read it as a finding about coverage, not as an obstacle.
+  It does **not** follow that the fake is what to fix: it still throws on `main`, deliberately, so
+  that a conversation test which reaches that path fails loudly instead of silently succeeding.
+  #270's gap was at the transport, and the coverage that closed it went there too — three tests
+  against a stubbed `HttpMessageHandler`. Put the test where the defect can live.
 - **Testing a client means asserting on the request, not only the response.** The stub in
   `CancelActiveOrdersResponseTests` had always been handed the `HttpRequestMessage` and never
   looked at it, which is exactly why #270 went unseen. Assert where the value goes — and assert
