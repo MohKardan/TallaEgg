@@ -916,6 +916,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
     {
         private static readonly Dictionary<string, string[]> Notes = new()
         {
+            ["1.4.0"] = new[]
+            {
+                "رفع خطایی که هنگام در دسترس نبودن قیمت، سفارش را بی‌سرانجام و موجودی را قفل نگه می‌داشت",
+                "ثبت دلیل واقعی لغو سفارش‌ها به‌جای یک متن پیش‌فرض",
+            },
             ["1.3.0"] = new[]
             {
                 "بازگشت خودکار سرویس‌ها پس از ری‌استارت یا قطعی سرور",
