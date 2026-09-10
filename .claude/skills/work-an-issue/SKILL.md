@@ -6,9 +6,9 @@ description: Take one GitHub issue from reading to merged, through this reposito
 One issue, start to finish, with two places where you stop and wait for the owner.
 
 This skill exists because the same brief was written by hand fifteen times in a week, and each
-time it absorbed something the previous run got wrong. Those lessons are the numbered rules
-below. They are not style preferences — every one of them is a mistake this repository has
-actually made.
+time it absorbed something the previous run got wrong. It keeps absorbing them: some of the rules
+below came from running *this* skill and watching it produce a wrong answer confidently. They are
+not style preferences — every one of them is a mistake this repository has actually made.
 
 ## The pipeline
 
@@ -50,6 +50,12 @@ In this order:
   endpoint by the time it was worked. Find the code yourself.
 - **Claims made from reading rather than running.** Check them. If a claim turns out to be wrong,
   that is a finding — say so rather than working around it.
+- **A question the issue leaves open may not be open.** Search the history before putting it to the
+  owner: `git log -S "<the thing>" --all`. #262 asked whether an endpoint had been abandoned or
+  never finished and said the choice was the owner's; the log answered it outright — added on one
+  date, deleted a week later by the commit that consolidated the order path, with "removing
+  market-related things" the day after. #267's central claim was the same shape and the build
+  settled it in one run. Both would otherwise have cost a stop and got a guess.
 
 State what you confirmed and what you could not. If the issue's central claim does not hold,
 **stop and say so** instead of building on it.
@@ -91,13 +97,23 @@ Some things are not yours to choose, even after the plan is approved:
 
 Small scope. Do what the issue asks and stop. This repository's habit — and the reason its issue
 list keeps producing good issues — is that adjacent problems get **reported, not fixed**. #223
-exists because #222 found it and left it alone. Keep that going.
+exists because #222 found it and left it alone. Keep that going: #251 → #262 → #266 → #267 → #270
+is one chain, each link found while *proving* the previous one, and the last was a year-old defect
+that dropped an administrator's audit trail. The proof step is where the next issue comes from, so
+write down what it shows you even when it is not what you were looking for.
 
 Branch: `fix/`, `feat/`, `chore/`, `docs/` or `hotfix/` plus a short description. Never commit to
 `main`.
 
 Consider working in a git worktree. Parallel sessions switch the primary working tree mid-task,
-and a file read from the wrong branch has caused real confusion.
+and a file read from the wrong branch has caused real confusion. **Your own review step does this
+too** — see rule 8.
+
+**If the change frees something, say so at STOP 1 rather than filing it.** Deleting the last user
+of a dependency makes that dependency dead in the same breath: #266's two dead classes were the
+only reason the bot referenced the Orders service's *domain* assembly, and removing the reference
+belonged in that PR, not a later one. Name it in the plan and let the owner decide — a follow-up
+issue for something the current change already made obvious is worse than an extra line.
 
 # 6. Test — and prove the fix by making it fail
 
@@ -123,6 +139,37 @@ Some traps that have caught real sessions here:
 - Casing, schema and wire-format defects are invisible in the C#. **Look at the wire** — the
   actual request body, the actual `swagger.json` — not the diff. Seven issues in this repository
   hid behind that.
+- **A duplicated type name switches the compiler off, and the compiler is what a deletion is
+  proved with.** In #266 all three classes at the bottom of a file were deleted at once, expecting
+  the build to name the live one. It succeeded: the file imported another namespace declaring an
+  identically-shaped type of the same name, so the name rebound and a live call site changed type
+  in silence. Before trusting a green or red build as evidence about a deletion, check the name is
+  declared once — `git grep -n "class <Name>\|record <Name>"`. This also breaks measurement by
+  reference count: #251's control read 7 references because two different types shared a name, and
+  the type it was actually measuring had 1.
+- **The generated schema is an independent witness.** `swagger.json` is produced from the endpoint
+  signatures, so it does not lie about what the server binds. When a client disagrees with it, the
+  client is the one that is wrong: #270 posted a JSON body against a schema that declared the value
+  `in: query` and no `requestBody` at all, and #241 was the same shape a year earlier. So compare a
+  client against the *schema*, not against your reading of the endpoint. Capture it before and
+  after any change touching an API project, too — a byte-identical document is the cheapest proof
+  that a refactor is invisible from outside (#251, #262, #267), and a one-line diff can be the
+  whole finding (#243 moved exactly `openapi: 3.0.1 → 3.0.4`, which was Users.Api rejoining its
+  two siblings).
+- **A test double that throws for the method you are touching is a coverage hole, not a
+  convenience.** `FakeOrderApiClient.CancelAllUserActiveOrdersAsync` threw `NotSupportedException`,
+  which meant nothing exercised the cancel path at all — and a defect lived there from 2025-09-09
+  to 2026-09-10, a year and a day (#270). When a fake throws on your path, that is the first thing
+  to fix.
+- **Testing a client means asserting on the request, not only the response.** The stub in
+  `CancelActiveOrdersResponseTests` had always been handed the `HttpRequestMessage` and never
+  looked at it, which is exactly why #270 went unseen. Assert where the value goes — and assert
+  that it goes *nowhere else*, or a restored duplicate stays green.
+- **A guard needs its own check that it is looking at something, and that check must be able to
+  fail.** #267 shipped one that could not: the filter was derived from the anchor type, so the
+  anchor always matched itself. Count what the sweep actually reached and assert on that. In the
+  same guard, **a namespace is not a project** — `TallaEgg.TelegramBot.Infrastructure.Clients` is
+  declared in two assemblies, and a guard anchored on one covered five of nine types.
 
 Always:
 
@@ -159,7 +206,15 @@ The PR body must carry:
 Run `/code-review high <PR#>` on your own work. You wrote it, so you are not independent evidence
 about it — this is the least that can be done about that.
 
-Answer every finding: fix it, or say why it stands.
+Answer every finding: fix it, or say why it stands. **A finding the reviewer calls "not a bug" can
+still be worth fixing** — the observation that #270's tests asserted the query but never that the
+body was gone was filed as an editorial note, and it was the one thing that would have let the
+defect come back green.
+
+The review runs on real checkouts, so **it may leave the primary working tree on a different
+branch**. Verify the branch before trusting a file read afterwards, and say plainly whether it was
+the review or a parallel session that moved it — those call for different responses, and only the
+second is a reason to stop and look.
 
 Wait for CI. The required check is `test`; there is also a documentation link check.
 
