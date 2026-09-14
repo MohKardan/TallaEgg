@@ -238,12 +238,12 @@ public class OrderService
 
         if (pair.MinQuantity > 0 && quantity < pair.MinQuantity)
             throw new BusinessRuleException(
-                $"مقدار سفارش نمی‌تواند کمتر از {PersianFormat.Number(pair.MinQuantity, 8).TrimEnd('۰').TrimEnd('٫')} " +
+                $"مقدار سفارش نمی‌تواند کمتر از {PersianFormat.Amount(pair.MinQuantity, pair.BaseAsset)} " +
                 $"{pair.BaseUnit} باشد.");
 
         if (pair.MaxQuantity > 0 && quantity > pair.MaxQuantity)
             throw new BusinessRuleException(
-                $"مقدار سفارش نمی‌تواند بیشتر از {PersianFormat.Number(pair.MaxQuantity, 8).TrimEnd('۰').TrimEnd('٫')} " +
+                $"مقدار سفارش نمی‌تواند بیشتر از {PersianFormat.Amount(pair.MaxQuantity, pair.BaseAsset)} " +
                 $"{pair.BaseUnit} باشد.");
 
         // Notional is what the order is worth, which is the limit that actually matters: a
