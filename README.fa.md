@@ -1,6 +1,6 @@
 # پلتفرم معاملاتی TallaEgg
 
-[English](README.md) | **فارسی** | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+[English](README.md) | **فارسی** | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md) | [Русский](README.ru.md)
 
 > این متن ترجمهٔ [`README.md`](README.md) است. در صورت هرگونه مغایرت، نسخهٔ انگلیسی ملاک است.
 

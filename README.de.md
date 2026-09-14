@@ -1,6 +1,6 @@
 # TallaEgg Handelsplattform
 
-[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | **Deutsch** | [हिन्दी](README.hi.md)
+[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | **Deutsch** | [हिन्दी](README.hi.md) | [Русский](README.ru.md)
 
 > Dies ist eine Übersetzung von [`README.md`](README.md). Bei Abweichungen gilt die englische Fassung.
 
