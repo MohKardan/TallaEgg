@@ -722,8 +722,6 @@ SendExceptions*.txt
 # The archived deliverable is docs/audit/AUDIT_YYYY-MM.md; nothing in here is kept.
 .audit-work/
 
-# Google Cloud authentication and credentials (issue #H-7).
-# Private keys, access tokens, and gcloud configuration should never be committed.
+# Local gcloud credential store, when CLOUDSDK_CONFIG has been pointed inside the repo.
+# Holds an SSH private key, access tokens and credential databases (audit finding H-7).
 .gcloud-auth/
-bootstrap-ssh-temporary.ps1
-scripts/aws-pasarguard-userdata.sh
