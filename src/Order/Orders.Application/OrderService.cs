@@ -95,8 +95,6 @@ public class OrderService
 
             request.Price = CurrenciesConstant.RoundOrderPrice(request.Price);
 
-            ValidateTradingLimits(request.Asset, request.Amount, request.Price);
-
             var (_, amountToCheck) = ComputeCollateral(request.Asset, orderSide, request.Amount, request.Price);
 
             _logger.LogInformation("Validating balance for user {UserId}: {Amount} {Asset}",
@@ -192,7 +190,10 @@ public class OrderService
 
             return response;
         }
-        catch (Exception ex) when (ex is not UnauthorizedAccessException and not ArgumentException and not InvalidOperationException)
+        // A BusinessRuleException is a deliberate refusal whose message is written for the caller;
+        // rewrapping it left every refusal on this path reading «خطا در ایجاد سفارش» (#278).
+        catch (Exception ex) when (ex is not UnauthorizedAccessException and not ArgumentException
+                                   and not InvalidOperationException and not BusinessRuleException)
         {
             _logger.LogError(ex, "Error creating unified order for user {UserId}", request.UserId);
             throw new BusinessRuleException("خطا در ایجاد سفارش", ex);
@@ -275,6 +276,12 @@ public class OrderService
     /// </summary>
     private async Task<(Order Order, bool Confirmed)> CreateLockedAndConfirmedOrderAsync(CreateOrderCommand command)
     {
+        // Every order is created here, whichever endpoint asked for it, so this is where a symbol's
+        // size limits hold for all of them. Checked at the entry point instead, they covered
+        // POST /api/orders and missed the quote fill every customer actually uses (#277). It runs
+        // before the order is saved or anything is locked, so a refusal leaves nothing behind.
+        ValidateTradingLimits(command.Asset, command.Amount, command.Price);
+
         // Create order with Pending status
         var order = Order.CreateMakerOrder(
             command.Asset,
