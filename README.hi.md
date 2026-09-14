@@ -1,6 +1,6 @@
 # TallaEgg ट्रेडिंग प्लेटफ़ॉर्म
 
-[English](README.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | **हिन्दी**
+[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | **हिन्दी**
 
 > यह [`README.md`](README.md) का अनुवाद है। दोनों में कोई अंतर होने पर अंग्रेज़ी संस्करण ही मान्य है।
 

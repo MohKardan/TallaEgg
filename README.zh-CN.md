@@ -1,6 +1,6 @@
 # TallaEgg 交易平台
 
-[English](README.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | **中文** | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | **中文** | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
 
 > 本文是 [`README.md`](README.md) 的译文。如两者存在出入，以英文版为准。
 
