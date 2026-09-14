@@ -1,6 +1,6 @@
 # منصة تداول TallaEgg
 
-[English](README.md) | [فارسی](README.fa.md) | **العربية** | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+[English](README.md) | [فارسی](README.fa.md) | **العربية** | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md) | [Русский](README.ru.md)
 
 > هذه ترجمة لملف [`README.md`](README.md). عند وجود أي اختلاف بينهما، تكون النسخة الإنجليزية هي المرجع المعتمد.
 

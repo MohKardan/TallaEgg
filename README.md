@@ -1,6 +1,6 @@
 # TallaEgg Trading Platform
 
-**English** | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+**English** | [فارسی](README.fa.md) | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md) | [Русский](README.ru.md)
 
 ## Overview
 

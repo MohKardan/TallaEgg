@@ -1,6 +1,6 @@
 # TallaEgg Alım Satım Platformu
 
-[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | **Türkçe** | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+[English](README.md) | [فارسی](README.fa.md) | [العربية](README.ar.md) | **Türkçe** | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md) | [Русский](README.ru.md)
 
 > Bu belge [`README.md`](README.md) dosyasının çevirisidir. İkisi arasında bir farklılık olursa İngilizce sürüm esas alınır.
 
