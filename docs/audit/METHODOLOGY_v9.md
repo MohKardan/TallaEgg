@@ -1,12 +1,8 @@
-# TallaEgg — MVP Risk Audit (v8)
+# TallaEgg — MVP Risk Audit (v9)
 
-**Methodology Version:** 8.0
-**Supersedes:** v7 (kept as `METHODOLOGY_v7.md`, since `AUDIT_2026-08b.md` was run under it)
-**Status:** **superseded by [`METHODOLOGY_v9.md`](METHODOLOGY_v9.md)** — do not run an audit
-from this file. It is kept because `AUDIT_2026-09.md` was conducted under it and cites it, so
-deleting it would leave that audit describing a method nobody can read. v9 keeps every rule
-below and adds five, all of them from defects observed in that run; its "Changes from v8"
-table lists them.
+**Methodology Version:** 9.0
+**Supersedes:** v8 (kept as `METHODOLOGY_v8.md`, since `AUDIT_2026-09.md` was run under it)
+**Status:** current — use this file, not a pasted copy of an older prompt.
 
 ## WHAT THIS IS
 
@@ -317,6 +313,14 @@ whether a balance can be reconstructed independently of the live value.
 one asset backs positions in another. A query that groups by asset and flags negative
 balances will produce false positives, and has.
 
+**A data anomaly is placed in time before it is diagnosed.** Rows that look like a live
+defect — failed messages, orphaned records, impossible states — are first grouped by
+timestamp and read against `git log` for the same window. An anomaly clustered into minutes,
+or one that stops where a fix landed, is usually the residue of a single run or of the bug
+that fix closed: report it as residue, name the commit, and move the finding to the question
+that remains — what the production database holds. A local developer database carries
+simulator runs and reset history that production does not.
+
 **Before flagging something as a defect, check whether it might be intentional product
 behavior** — Section 0 first, then the code, then ask what the feature is for. A finding
 built on inferred rather than confirmed intent is Medium confidence at most, stated
@@ -353,10 +357,17 @@ than pad.
 | Reproduction | what was run and what it output, or why it could not be run — **required for Critical and High** |
 | Analysis | why it matters, reasoned from the evidence (fold into the prose) |
 | Risk | engineering and business consequence if unaddressed |
-| Recommendation | concrete and actionable |
+| Recommendation | concrete and actionable — and, if it removes or changes existing code, what that code does today (see below) |
 | Confidence | High / Medium / Low |
 | Estimated Effort | Low / Medium / High |
 | Already Tracked | GitHub issue number, or "no" |
+
+**A recommendation to remove or change code must first say what that code does.** The
+reproduction requirement exempts Medium and Low findings, so their recommendations get the
+least scrutiny while being the easiest to apply casually. Before recommending that a line be
+deleted, simplified or replaced, establish what currently depends on it — a guard, a
+normalization, a side effect — and state it in the recommendation. If that cannot be
+established, say so, and recommend the check rather than the change.
 
 ## Severity first, score second — never the reverse
 
@@ -432,7 +443,7 @@ Required sections, in this order:
    Audit Date: <real date>
    Commit / Branch: <real git output, or "unavailable">
    Audit ID: TALLAEGG-AUDIT-<YYYYMMDD>-<short id>
-   Methodology Version: 8.0
+   Methodology Version: 9.0
    ```
    Plus, once:
    > This audit was performed with the assistance of Artificial Intelligence, based on
@@ -451,24 +462,37 @@ Required sections, in this order:
    "Initial audit — no prior baseline."
 5. **Critical Findings**
 6. **High-Priority Findings**
-7. **Key Positive Findings** — genuine strengths, not a courtesy section; skip if there
+7. **Medium and Low Findings** — every `M-` and `L-` finding, each carrying the finding
+   schema above. Reproduction and a failure scenario are not required at these severities,
+   but Location, Evidence and Recommendation are: a finding named in the roadmap and defined
+   nowhere can be neither actioned by the team nor re-checked by the next audit. If a tier is
+   empty, say so in a line rather than dropping the heading.
+8. **Key Positive Findings** — genuine strengths, not a courtesy section; skip if there
    is nothing real to say.
-8. **Security Assessment**
-9. **Financial & Data Integrity Assessment**
-10. **Architecture Assessment**
-11. **Production/MVP Readiness** — the percentage and, above it, the actual
+9. **Security Assessment**
+10. **Financial & Data Integrity Assessment**
+11. **Architecture Assessment**
+12. **Production/MVP Readiness** — the percentage and, above it, the actual
     **fix-before-release list**. This is the section the team acts on first.
-12. **Prioritized Fix Roadmap** — ordered by risk, following the priority order above,
-    not by effort. Mark items already tracked with their issue number.
-13. **Final Score** — overall, plus the handful of categories that matter (Security,
+13. **Prioritized Fix Roadmap** — ordered by risk, following the priority order above,
+    not by effort. Mark items already tracked with their issue number. Every row must trace
+    to a finding defined in §5–§7; the roadmap may not introduce work no finding explains.
+14. **Final Score** — overall, plus the handful of categories that matter (Security,
     Financial Integrity, Reliability/Concurrency, Architecture, Data Layer). Any category
     containing an unresolved Critical caps at 3/10; more than one unresolved High caps it
-    at 5/10 — name the finding that triggered the cap.
-14. **A note on this audit's own reliability** — which findings were reproduced and which
+    at 5/10 — name the finding that triggered the cap. **State how the overall was derived**
+    — the mean of the categories, or the weighting used. A number the reader cannot recompute
+    from the table above it cannot be compared with the next audit's.
+15. **A note on this audit's own reliability** — which findings were reproduced and which
     were only reasoned about; anything the audit could not check; where it is most likely to
     be wrong; and how many prior-findings rows were (a), (b) and (c). Both audits preceding
     this methodology had their errors found through this section rather than through their
     findings. It is required, not optional.
+
+**Read the finished file back before archiving it.** An archived audit is never edited, so a
+sentence that says the opposite of what was meant survives every future reading of it. One pass
+over the assembled document, reading for sense rather than for facts, is the last cheap check
+there is.
 
 ## No false certification
 
@@ -484,11 +508,26 @@ Nothing else.
 
 ---
 
-## CHANGES FROM v7
+## CHANGES FROM v8
 
 Recorded so a future reader can tell whether a score moved because the code improved or
-because the method changed. Every one of these comes from a specific failure in the
-`AUDIT_2026-08b.md` run, which was conducted under v7 and reviewed afterwards.
+because the method changed. Every one of these comes from a specific defect in the
+`AUDIT_2026-09.md` run, which was conducted under v8 and reviewed afterwards.
+
+| # | Change | Why |
+|---|---|---|
+| H | A Medium and Low Findings section in the report template, carrying the finding schema | The schema already required `M-` and `L-` findings to have Location, Evidence and Recommendation, but the template gave them nowhere to live. Five findings were cited twenty times — four of them as roadmap items the team was told to act on — and defined nowhere |
+| I | The overall score must state how it was derived from the categories | Five categories averaging 6.8 were published as an overall 7.0 with no formula, so the number can be neither recomputed nor compared with the next audit's |
+| J | A final read-back of the assembled document, for sense rather than for facts | §4 was archived with two clauses fused into a sentence that cannot be parsed, and an archived audit is never edited |
+| K | A recommendation that removes or changes code must state what that code does today | L-1's roadmap row implied deleting a `ToUpper()` from the wallet lookup. `Wallet.Asset` is not normalized on write, so that call may be the only thing making the lookup case-insensitive — applied literally, the recommendation could have broken it |
+| L | A data anomaly is grouped by time and read against `git log` for that window before it is reported as a live defect | M-4 reported 101 failed settlements without dating them. All 101 fall inside four minutes and nineteen seconds, on the morning #185 landed the fix for exactly that failure — almost certainly one simulator run |
+
+H, I and J were found reading the report; K and L while turning its findings into issues
+(#277–#282), which is where a finding's recommendation first meets the code it names.
+
+Every rule below remains in force.
+
+## Inherited from v8 (changes from v7)
 
 | # | Change | Why |
 |---|---|---|
@@ -498,7 +537,7 @@ because the method changed. Every one of these comes from a specific failure in 
 | D | `git log --since=<previous audit date>` mandatory before the prior-findings table | The commit fixing the false row was in that list, by name |
 | E | Every prior-findings row labelled (a) re-verified / (b) checked now / (c) carried over; no (c) may be published as anything else | Three of nineteen rows were carried over silently; two of the three were wrong |
 | F | Per-session wall-clock times reported in §3 | A four-session run took 67 minutes and nothing in the report said so |
-| G | §14 reports the (a)/(b)/(c) counts | Makes the weakest part of a re-audit visible to its reader |
+| G | §15 reports the (a)/(b)/(c) counts | Makes the weakest part of a re-audit visible to its reader |
 
 Rules A, C, E and F were proposed by the reviewer; B and G by the auditor whose run produced
 the failures, in its own account of how they happened.
@@ -517,4 +556,4 @@ v7's own changes from v6 are listed in `METHODOLOGY_v7.md`, and all of them rema
 | 8 | Open GitHub issues cross-referenced at synthesis | Prevents re-reporting already-tracked findings as new work |
 | 9 | Severity fixed before scores are computed | The score caps created pressure to downgrade real findings |
 | 10 | Trend table carries methodology version and model | Scores from different methods and models are not comparable |
-| 11 | Section 14, the audit's self-assessment, made mandatory | It is what made the last audit's errors visible |
+| 11 | Section 15 (then 14), the audit's self-assessment, made mandatory | It is what made the last audit's errors visible |

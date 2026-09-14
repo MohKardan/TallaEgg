@@ -718,7 +718,7 @@ obj/
 # (audit finding N-5). Relative path, so it lands wherever the process was started from.
 SendExceptions*.txt
 
-# Disposable working notes from a risk audit (docs/audit/METHODOLOGY_v7.md).
+# Disposable working notes from a risk audit (docs/audit/METHODOLOGY_v9.md).
 # The archived deliverable is docs/audit/AUDIT_YYYY-MM.md; nothing in here is kept.
 .audit-work/
 
