@@ -53,7 +53,7 @@ namespace TallaEgg.Core
                 [BTC_IRT] = new TradingPairInfo
                 {
                     Symbol = BTC_IRT, BaseAsset = Btc, QuoteAsset = Toman, PersianName = "بیت‌کوین/تومان",
-                    MinQuantity = 0.0001m, MaxQuantity = 100m, PriceDecimalPlaces = 0, QuantityDecimalPlaces = 8,
+                    MinQuantity = 0.0001m, MaxQuantity = 1m, PriceDecimalPlaces = 0, QuantityDecimalPlaces = 8,
                     MinNotional = 1000000m, BaseAssetPersianName = "بیت‌کوین", BaseUnit = "بیت‌کوین",
                     BaseDecimalPlaces = 8, Aliases = new List<string> { "بیت", "بیتکوین", "بیت‌کوین" }
                 },
@@ -66,7 +66,7 @@ namespace TallaEgg.Core
                 [SEKE_BAHAR_IRT] = new TradingPairInfo
                 {
                     Symbol = SEKE_BAHAR_IRT, BaseAsset = SekeBahar, QuoteAsset = Toman,
-                    PersianName = "سکه تمام بهار آزادی/تومان", MinQuantity = 0.01m, MaxQuantity = 50m,
+                    PersianName = "سکه تمام بهار آزادی/تومان", MinQuantity = 0.01m, MaxQuantity = 5m,
                     PriceDecimalPlaces = 0, QuantityDecimalPlaces = 2, MinNotional = 1000000m,
                     BaseAssetPersianName = "سکه تمام بهار آزادی", BaseUnit = "سکه", BaseDecimalPlaces = 2,
                     Aliases = new List<string> { "سکه" }
