@@ -5,7 +5,7 @@
 **Status:** **superseded by [`METHODOLOGY_v9.md`](METHODOLOGY_v9.md)** — do not run an audit
 from this file. It is kept because `AUDIT_2026-09.md` was conducted under it and cites it, so
 deleting it would leave that audit describing a method nobody can read. v9 keeps every rule
-below and adds three, all of them from defects observed in that run; its "Changes from v8"
+below and adds five, all of them from defects observed in that run; its "Changes from v8"
 table lists them.
 
 ## WHAT THIS IS

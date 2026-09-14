@@ -313,6 +313,14 @@ whether a balance can be reconstructed independently of the live value.
 one asset backs positions in another. A query that groups by asset and flags negative
 balances will produce false positives, and has.
 
+**A data anomaly is placed in time before it is diagnosed.** Rows that look like a live
+defect — failed messages, orphaned records, impossible states — are first grouped by
+timestamp and read against `git log` for the same window. An anomaly clustered into minutes,
+or one that stops where a fix landed, is usually the residue of a single run or of the bug
+that fix closed: report it as residue, name the commit, and move the finding to the question
+that remains — what the production database holds. A local developer database carries
+simulator runs and reset history that production does not.
+
 **Before flagging something as a defect, check whether it might be intentional product
 behavior** — Section 0 first, then the code, then ask what the feature is for. A finding
 built on inferred rather than confirmed intent is Medium confidence at most, stated
@@ -349,10 +357,17 @@ than pad.
 | Reproduction | what was run and what it output, or why it could not be run — **required for Critical and High** |
 | Analysis | why it matters, reasoned from the evidence (fold into the prose) |
 | Risk | engineering and business consequence if unaddressed |
-| Recommendation | concrete and actionable |
+| Recommendation | concrete and actionable — and, if it removes or changes existing code, what that code does today (see below) |
 | Confidence | High / Medium / Low |
 | Estimated Effort | Low / Medium / High |
 | Already Tracked | GitHub issue number, or "no" |
+
+**A recommendation to remove or change code must first say what that code does.** The
+reproduction requirement exempts Medium and Low findings, so their recommendations get the
+least scrutiny while being the easiest to apply casually. Before recommending that a line be
+deleted, simplified or replaced, establish what currently depends on it — a guard, a
+normalization, a side effect — and state it in the recommendation. If that cannot be
+established, say so, and recommend the check rather than the change.
 
 ## Severity first, score second — never the reverse
 
@@ -504,6 +519,11 @@ because the method changed. Every one of these comes from a specific defect in t
 | H | A Medium and Low Findings section in the report template, carrying the finding schema | The schema already required `M-` and `L-` findings to have Location, Evidence and Recommendation, but the template gave them nowhere to live. Five findings were cited twenty times — four of them as roadmap items the team was told to act on — and defined nowhere |
 | I | The overall score must state how it was derived from the categories | Five categories averaging 6.8 were published as an overall 7.0 with no formula, so the number can be neither recomputed nor compared with the next audit's |
 | J | A final read-back of the assembled document, for sense rather than for facts | §4 was archived with two clauses fused into a sentence that cannot be parsed, and an archived audit is never edited |
+| K | A recommendation that removes or changes code must state what that code does today | L-1's roadmap row implied deleting a `ToUpper()` from the wallet lookup. `Wallet.Asset` is not normalized on write, so that call may be the only thing making the lookup case-insensitive — applied literally, the recommendation could have broken it |
+| L | A data anomaly is grouped by time and read against `git log` for that window before it is reported as a live defect | M-4 reported 101 failed settlements without dating them. All 101 fall inside four minutes and nineteen seconds, on the morning #185 landed the fix for exactly that failure — almost certainly one simulator run |
+
+H, I and J were found reading the report; K and L while turning its findings into issues
+(#277–#282), which is where a finding's recommendation first meets the code it names.
 
 Every rule below remains in force.
 

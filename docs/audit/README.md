@@ -96,7 +96,7 @@ a record of what this project learned about auditing itself:
 | v1 | Nothing yet — the first pass. Fifty-odd review dimensions weighted equally, a score for each, and no rule about evidence, reproduction, scope, or what counts as a finding |
 | v7 | Findings inferred from the shape of the code without checking product intent; an audit that only read and never ran anything; a directory the method named but that did not exist |
 | v8 | Claims written during synthesis that no session had checked; a prior-audit status row carried forward for a problem already fixed; a verified sample stated as a verified universe; command output lost by the terminal and read as a negative result |
-| v9 | Findings cited in the fix roadmap but defined in no section of the report; an overall score with no stated derivation from its categories; a sentence archived with two clauses fused into one unreadable claim |
+| v9 | Findings cited in the fix roadmap but defined in no section of the report; an overall score with no stated derivation from its categories; a sentence archived with two clauses fused into one unreadable claim; a recommendation to delete code that may have been load-bearing; simulator residue reported without being placed in time |
 
 A rising score with a rising methodology version is not evidence of a rising codebase. The two
 have to be read together, which is what the caveat above is for.
