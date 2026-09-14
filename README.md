@@ -1,5 +1,7 @@
 # TallaEgg Trading Platform
 
+**English** | [العربية](README.ar.md) | [Türkçe](README.tr.md) | [Français](README.fr.md) | [中文](README.zh-CN.md) | [Deutsch](README.de.md) | [हिन्दी](README.hi.md)
+
 ## Overview
 
 TallaEgg lets a gold shop trade with its own customers over Telegram.
