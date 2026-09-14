@@ -16,10 +16,11 @@ about a build-warning count.
 
 ## How the next audit is run
 
-Follow [`METHODOLOGY_v8.md`](METHODOLOGY_v8.md). It is the current methodology; hand it to
+Follow [`METHODOLOGY_v9.md`](METHODOLOGY_v9.md). It is the current methodology; hand it to
 the auditor rather than pasting an older prompt. It detects re-audit mode from this file, so
-keep the table below current. [`METHODOLOGY_v7.md`](METHODOLOGY_v7.md) is retired and kept only
-because the 2026-08-29 audit was run under it.
+keep the table below current. [`METHODOLOGY_v7.md`](METHODOLOGY_v7.md) and
+[`METHODOLOGY_v8.md`](METHODOLOGY_v8.md) are retired and kept only because the 2026-08-29 and
+2026-09-12 audits were run under them.
 
 A second audit in a month that already has one gets a letter suffix (`AUDIT_2026-08b.md`)
 rather than replacing the file that is there. Nothing in this directory is ever overwritten.
@@ -78,9 +79,11 @@ it.
   audit.** They are the iteration, not the instrument, and each carries a banner saying so.
 - **[v7](METHODOLOGY_v7.md)** is where that process settled, and the version the team decided
   to audit with. It produced the 2026-08-29 audit.
-- **[v8](METHODOLOGY_v8.md)** is current, written from what that audit got wrong.
+- **[v8](METHODOLOGY_v8.md)** was written from what that audit got wrong. It produced the
+  2026-09-12 audit.
+- **[v9](METHODOLOGY_v9.md)** is current, written from what *that* audit got wrong.
 
-So the jump from v1 to v7 in the trend table is not missing history: two versions have ever
+So the jump from v1 to v7 in the trend table is not missing history: three versions have ever
 produced an audit, and the 2026-08-26 run used none at all.
 
 ## Why the methodology keeps changing
@@ -93,6 +96,7 @@ a record of what this project learned about auditing itself:
 | v1 | Nothing yet — the first pass. Fifty-odd review dimensions weighted equally, a score for each, and no rule about evidence, reproduction, scope, or what counts as a finding |
 | v7 | Findings inferred from the shape of the code without checking product intent; an audit that only read and never ran anything; a directory the method named but that did not exist |
 | v8 | Claims written during synthesis that no session had checked; a prior-audit status row carried forward for a problem already fixed; a verified sample stated as a verified universe; command output lost by the terminal and read as a negative result |
+| v9 | Findings cited in the fix roadmap but defined in no section of the report; an overall score with no stated derivation from its categories; a sentence archived with two clauses fused into one unreadable claim |
 
 A rising score with a rising methodology version is not evidence of a rising codebase. The two
 have to be read together, which is what the caveat above is for.
