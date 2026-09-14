@@ -721,3 +721,7 @@ SendExceptions*.txt
 # Disposable working notes from a risk audit (docs/audit/METHODOLOGY_v7.md).
 # The archived deliverable is docs/audit/AUDIT_YYYY-MM.md; nothing in here is kept.
 .audit-work/
+
+# Local gcloud credential store, when CLOUDSDK_CONFIG has been pointed inside the repo.
+# Holds an SSH private key, access tokens and credential databases (audit finding H-7).
+.gcloud-auth/
