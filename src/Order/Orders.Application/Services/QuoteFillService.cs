@@ -3,6 +3,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using TallaEgg.Core;
 using TallaEgg.Core.Enums.Order;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Infrastructure.Clients;
 
 namespace Orders.Application.Services;
@@ -165,14 +166,16 @@ public class QuoteFillService
         // participant who can name a price, so a customer's order can only ever be a market order.
         // When peer-to-peer opens, the customer's side stops being a constant and starts coming
         // from the request.
-        var customerOrder = await CreateSideAsync(customerUserId, symbol, customerSide, quantity, price,
+        var (customerOrder, customerRefusal) = await CreateSideAsync(customerUserId, symbol, customerSide, quantity, price,
             OrderType.Market, $"پذیرش مظنه {quote.Id}");
 
         if (customerOrder is null)
-            return (false, "ثبت سفارش شما انجام نشد.", null);
+            return (false, customerRefusal ?? "ثبت سفارش شما انجام نشد.", null);
 
         var adminSide = customerSide == OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy;
-        var adminOrder = await CreateSideAsync(marketMakerUserId, symbol, adminSide, quantity, price,
+        // The dealer's refusal is deliberately not passed on: it is not the customer's to act on, and
+        // the branch below must run whatever the reason, or the customer's lock is never released.
+        var (adminOrder, _) = await CreateSideAsync(marketMakerUserId, symbol, adminSide, quantity, price,
             OrderType.Limit, $"طرف مقابل مظنه {quote.Id}");
 
         if (adminOrder is null)
@@ -213,8 +216,11 @@ public class QuoteFillService
     /// <summary>
     /// Builds one side of the trade: the order is created, its collateral locked and the order
     /// confirmed — but not matched. Matching happens once, for both orders together.
+    ///
+    /// Returns no order on any failure, so the caller's cleanup always runs. A deliberate refusal
+    /// also returns its message, which the caller may show; an unexpected failure returns none.
     /// </summary>
-    private async Task<Order?> CreateSideAsync(
+    private async Task<(Order? Order, string? Refusal)> CreateSideAsync(
         Guid userId, string symbol, OrderSide side, decimal quantity, decimal price,
         OrderType orderType, string notes)
     {
@@ -223,14 +229,21 @@ public class QuoteFillService
             var command = new CreateOrderCommand(
                 symbol, quantity, price, userId, side, orderType, TradingType.Spot, notes);
 
-            return await _orderService.CreateLockedAndConfirmedOrderForQuoteAsync(command);
+            return (await _orderService.CreateLockedAndConfirmedOrderForQuoteAsync(command), null);
+        }
+        catch (BusinessRuleException ex)
+        {
+            _logger.LogInformation(
+                "Refused the {Side} side of a quote fill for user {UserId} on {Symbol}: {Reason}",
+                side, userId, symbol, ex.Message);
+            return (null, ex.Message);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex,
                 "Could not create the {Side} side of a quote fill for user {UserId} on {Symbol}.",
                 side, userId, symbol);
-            return null;
+            return (null, null);
         }
     }
 }

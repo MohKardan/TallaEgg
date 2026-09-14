@@ -1,6 +1,7 @@
 using System.Reflection;
 using TallaEgg.Core;
 using TallaEgg.Core.ErrorHandling;
+using TallaEgg.Core.Utilties;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -174,6 +175,44 @@ public class TradingLimitTests
             "These limits are configured but not applied, so they read as protection and give " +
             "none:" + Environment.NewLine +
             string.Join(Environment.NewLine, unenforced.Select(u => "  " + u)));
+    }
+
+    // ── What the customer reads ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// The limit is stated the way a person writes it: «۰٫۱ گرم», not «۰٫۱۰۰۰۰۰۰۰ گرم».
+    /// </summary>
+    /// <remarks>
+    /// The quantity was formatted to eight decimals and then trimmed with <c>TrimEnd('۰')</c>, but
+    /// <see cref="PersianFormat.Number"/> wraps its result in a left-to-right isolate, so the last
+    /// character was the closing isolate and nothing was ever trimmed. It went unseen because on
+    /// the order path the message was swallowed (#278) and the quote path never produced it (#277).
+    /// The closing isolate is part of the expectation on purpose: it pins the end of the number, so
+    /// «۰٫۱۰» cannot pass as «۰٫۱».
+    /// </remarks>
+    [Fact]
+    public void ValidateTradingLimits_BelowMinQuantity_StatesTheMinimumWithoutTrailingZeros()
+    {
+        var pair = Gold();
+        Assert.Equal(0.1m, pair.MinQuantity); // the literal below is written for this value
+
+        var ex = Assert.Throws<BusinessRuleException>(
+            () => Validate("MAUA/IRT", pair.MinQuantity / 2m, 20_000_000m));
+
+        Assert.Contains("۰٫۱" + PersianFormat.Pdi + " گرم", ex.Message);
+    }
+
+    /// <summary>A whole-number limit carries no decimal separator at all: «۵ سکه», not «۵٫۰۰۰۰۰۰۰۰ سکه».</summary>
+    [Fact]
+    public void ValidateTradingLimits_AboveMaxQuantity_StatesTheMaximumWithoutTrailingZeros()
+    {
+        var pair = CurrenciesConstant.GetTradingPairInfo("SEKE_BAHAR/IRT")!;
+        Assert.Equal(5m, pair.MaxQuantity); // the literal below is written for this value
+
+        var ex = Assert.Throws<BusinessRuleException>(
+            () => Validate("SEKE_BAHAR/IRT", pair.MaxQuantity + 1m, 97_900_000m));
+
+        Assert.Contains(PersianFormat.Lri + "۵" + PersianFormat.Pdi + " سکه", ex.Message);
     }
 
     /// <summary>A price high enough that the notional rule cannot be what refuses an order.</summary>

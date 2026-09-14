@@ -257,8 +257,8 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 | | `amount > 0` ([`Program.cs:663`](../../src/Order/Orders.Api/Program.cs#L663)) | shape | 400 «مقدار سفارش باید بیشتر از صفر باشد» |
 | | `price > 0` ([`Program.cs:666`](../../src/Order/Orders.Api/Program.cs#L666), again at [`OrderService.cs:94`](../../src/Order/Orders.Application/OrderService.cs#L94)) | shape | 400 «قیمت برای سفارش محدود الزامی است» |
 | | `asset` contains a `/` — **no check** ([`OrderService.cs:82`](../../src/Order/Orders.Application/OrderService.cs#L82)) | — | **400, opaque** — §3 |
-| | per-symbol `MinQuantity` / `MaxQuantity` ([`OrderService.cs:230,235`](../../src/Order/Orders.Application/OrderService.cs#L230)) | state | 400 |
-| | `quantity * price >= MinNotional` ([`OrderService.cs:242`](../../src/Order/Orders.Application/OrderService.cs#L242)) | cross-field | 400 |
+| | per-symbol `MinQuantity` / `MaxQuantity` — since #277 checked where every order is created ([`OrderService.cs:283`](../../src/Order/Orders.Application/OrderService.cs#L283), measured 2026-09-14), so after the credit check below | state | 400 with the limit's own message since #278; before it, «خطا در ایجاد سفارش» |
+| | `quantity * price >= MinNotional` — the same check | cross-field | 400, as above |
 | | credit + balance across both assets ([`OrderService.cs:120,127`](../../src/Order/Orders.Application/OrderService.cs#L120)) — **skipped entirely when the user's role is `Admin`**, deliberately ([`:118`](../../src/Order/Orders.Application/OrderService.cs#L118)) | state | 400, or no check at all |
 | | the order factories re-check asset/amount/price/userId ([`Order.cs:38-47`](../../src/Order/Orders.Core/Order.cs#L38-L47), in `CreateMakerOrder`; `CreateLimitOrder` at [`:72-82`](../../src/Order/Orders.Core/Order.cs#L72-L82)) | shape | 500. The first three are pre-checked above; `userId` is not, so `Guid.Empty` reaches here unless the balance check refuses it first |
 | `POST /api/quotes` | `symbol` non-blank ([`Quote.cs:64`](../../src/Order/Orders.Core/Quote.cs#L64)) — a **null** symbol faults earlier, §3 | shape | 400 |
@@ -277,6 +277,7 @@ Every refusal here is "this row does not exist". Nothing about the body itself i
 | | an active quote exists ([`:85`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L85)) | state | 400 |
 | | customer ≠ market maker ([`:113`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L113)) | state | 400 |
 | | credit + balance ([`:134,146`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L134)) — unconditional here, unlike `POST /api/orders` | state | 400 |
+| | per-symbol `MinQuantity` / `MaxQuantity` and `quantity * price >= MinNotional` — **added by #277**; the same check as `POST /api/orders`, run when the customer's order is created ([`OrderService.cs:283`](../../src/Order/Orders.Application/OrderService.cs#L283), measured 2026-09-14) | state / cross-field | 400 with the limit's own message |
 | | `symbol` non-blank — **no check at all** ([`:70`](../../src/Order/Orders.Application/Services/QuoteFillService.cs#L70)) | — | **500** |
 | `POST /api/autoquote-settings/{Base}/{Quote}/spread` | `spreadPercent >= 0` ([`AutoQuoteSettings.cs:64`](../../src/Order/Orders.Core/AutoQuoteSettings.cs#L64)) | shape | 400 |
 | | `updatedByUserId` — no check; `Guid.Empty` accepted | — | accepted |
