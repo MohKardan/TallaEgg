@@ -47,7 +47,7 @@ TallaEgg/
 ├── scripts/                          # windows-services/ publish, install, uninstall; one data migration
 ├── docs/
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
-│   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), ROADMAP.md
+│   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), BOT_USER_FLOW.md, ROADMAP.md
 │   ├── design/                       # API_REQUEST_VALIDATION.md — what the endpoints actually refuse
 │   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
 │   ├── process/                      # This file, INDEX, WORKFLOW, PR_TEMPLATE, CODE_REVIEW_GUIDE
