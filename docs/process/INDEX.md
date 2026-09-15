@@ -65,6 +65,7 @@ docs/
 │   └── CODE_REVIEW_GUIDE.md      ← How to review a PR (reviewer side)
 ├── architecture/
 │   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
+│   ├── BOT_USER_FLOW.md          ← What the Telegram bot shows customers and admins, step by step (Persian)
 │   └── ROADMAP.md                ← Direction for a future web app; not scheduled work
 ├── design/
 │   └── API_REQUEST_VALIDATION.md ← What the published schemas declare vs. what the endpoints refuse
