@@ -150,7 +150,7 @@ public class QuoteFillService
                 "Refusing quote fill for {UserId}: not enough {Side} funds for {Quantity} {Symbol} at {Price}.",
                 customerUserId, customerSide, quantity, symbol, price);
 
-            return (false, "موجودی یا اعتبار شما برای این معامله کافی نیست.", null);
+            return (false, OrderRefusalMessages.InsufficientFunds, null);
         }
 
         // Both orders are created at the same price and quantity, so the match is always complete

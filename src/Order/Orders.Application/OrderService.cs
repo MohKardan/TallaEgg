@@ -125,7 +125,7 @@ public class OrderService
             if (!hasSufficientBalance)
             {
                 _logger.LogWarning("Insufficient balance for user {UserId}: {Message}", userId, balanceMessage);
-                throw new BusinessRuleException($"موجودی ناکافی: {balanceMessage}");
+                throw new BusinessRuleException(OrderRefusalMessages.InsufficientFunds);
             }
 
             // 4. Create appropriate order command based on order type
