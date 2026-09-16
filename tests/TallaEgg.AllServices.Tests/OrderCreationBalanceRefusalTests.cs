@@ -120,7 +120,10 @@ public class OrderCreationBalanceRefusalTests : IDisposable
 
         var ex = await Assert.ThrowsAsync<BusinessRuleException>(() => CreateOrderAsync());
 
-        Assert.Contains(UnderfundedWallet.CheckFailureMessage, ex.Message);
+        // Both halves: the prefix the service adds, and the wallet's own words after it. Asserting
+        // on a stub message that already carried the prefix would have passed even if the service
+        // stopped adding one.
+        Assert.Equal($"خطا در بررسی موجودی: {UnderfundedWallet.CheckFailureMessage}", ex.Message);
     }
 
     /// <summary>
@@ -167,7 +170,11 @@ public class OrderCreationBalanceRefusalTests : IDisposable
     /// </summary>
     private sealed class UnderfundedWallet : StubWalletApiClient
     {
-        public const string CheckFailureMessage = "خطا در بررسی موجودی: خطا در ارتباط با سرویس کیف پول";
+        /// <summary>
+        /// What the wallet client says when the check could not run — its words only. The
+        /// «خطا در بررسی موجودی: » prefix is the service's, and the test asserts on it separately.
+        /// </summary>
+        public const string CheckFailureMessage = "خطا در ارتباط با سرویس کیف پول";
 
         public List<(Guid UserId, string Asset, decimal Amount)> Locks { get; } = new();
 
