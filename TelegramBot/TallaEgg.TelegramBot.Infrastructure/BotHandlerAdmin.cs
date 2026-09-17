@@ -600,7 +600,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
             // The customer was shown no menu while pending (issue #291), so approval is where they
             // get one; without it they would read "you can now trade" with no button to do it.
             if (newStatus == UserStatus.Approved)
-                await ShowMainMenuAsync(target.TelegramId);
+                await ShowMainMenuForRoleAsync(target.TelegramId, target.Role);
         }
 
         /// <summary>Only the two statuses these commands can set need a name.</summary>
@@ -609,7 +609,29 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task ApproveUser(long telegramUserId, long adminTgId, Message originalMsg)
         {
-            await _usersApi.UpdateUserStatusAsync(telegramUserId, TallaEgg.Core.Enums.User.UserStatus.Approved);
+            // The approval card goes to every operator, and a button can be tapped twice. The ت
+            // command already refused a no-op change; the button now does too, so the customer is not
+            // notified and handed a menu a second time. A lookup that answers nothing is not taken as
+            // "already approved" — the update below is the authority.
+            var target = await _usersApi.GetUserAsync(telegramUserId);
+            if (target?.Status == UserStatus.Approved)
+            {
+                await _messenger.SendAsync(originalMsg.Chat.Id,
+                    string.Format(BotMsgs.MsgAdminStatusUnchanged,
+                        PersianFormat.Ltr(PersianFormat.ToPersianDigits(target.PhoneNumber ?? telegramUserId.ToString())),
+                        StatusName(UserStatus.Approved)));
+                return;
+            }
+
+            var result = await _usersApi.UpdateUserStatusAsync(telegramUserId, UserStatus.Approved);
+
+            // The account is still pending if this failed. Notifying the customer and handing them a
+            // menu that refuses them would be issue #291 again; the admin is told instead.
+            if (!result.Success)
+            {
+                await _messenger.SendAsync(originalMsg.Chat.Id, string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
+                return;
+            }
 
             // Edit the admin's message.
             await _messenger.EditTextAsync(
@@ -618,9 +640,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 text: originalMsg.Text + BotMsgs.MsgAdminApprovedSuffix,
                 replyMarkup: null);
 
-            // Notify the user, and give them the menu they were not shown while pending (issue #291).
+            // Notify the user, and give them the menu they were not shown while pending (issue #291),
+            // chosen from the role already in hand rather than from a second lookup.
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserApproved);
-            await ShowMainMenuAsync(telegramUserId);
+            await ShowMainMenuForRoleAsync(telegramUserId, result.Data?.Role ?? target?.Role ?? UserRole.RegularUser);
             _logger.LogInformation("User {TelegramUserId} approved by admin {AdminTelegramId}.", telegramUserId, adminTgId);
         }
 

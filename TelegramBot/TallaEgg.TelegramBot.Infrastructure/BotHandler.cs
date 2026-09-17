@@ -834,6 +834,24 @@ namespace TallaEgg.TelegramBot.Infrastructure
             }
         }
 
+        /// <summary>
+        /// The main menu for an account whose role is already known — used where the account was just
+        /// changed and looking it up again could only add a way to fail.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="ShowMainMenuAsync"/> looks the account up to choose, and a lookup that answers
+        /// nothing sends «حساب شما پیدا نشد» and throws. Right after an approval that would tell the
+        /// customer their account does not exist a moment after telling them it is active (issue #291).
+        /// The rule is the same as <see cref="IsOperatorAsync"/>'s.
+        /// </remarks>
+        private async Task ShowMainMenuForRoleAsync(long chatId, UserRole role)
+        {
+            if (_ownerTelegramIds.Contains(chatId) || role is UserRole.Admin or UserRole.SuperAdmin)
+                await _messenger.SendMainKeyboardForAdminAsync(chatId);
+            else
+                await _messenger.SendMainKeyboardForUserAsync(chatId);
+        }
+
         private async Task HandleAccountingMenuAsync(long chatId)
         {
             if (await IsOperatorAsync(chatId))

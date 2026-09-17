@@ -181,7 +181,16 @@ public sealed class FakeUsersApiClient : IUsersApiClient
     /// </summary>
     public Dictionary<string, UserDto> UsersByPhone { get; } = [];
 
-    public Task<UserDto?> GetUserAsync(long telegramId) => Task.FromResult(User);
+    /// <summary>
+    /// Users reachable by Telegram id. Empty means every id answers with <see cref="User"/>, which
+    /// is what tests with a single person rely on; filled, an id not in it answers null.
+    /// </summary>
+    public Dictionary<long, UserDto> UsersByTelegramId { get; } = [];
+
+    public Task<UserDto?> GetUserAsync(long telegramId) => Task.FromResult(
+        UsersByTelegramId.Count == 0
+            ? User
+            : UsersByTelegramId.TryGetValue(telegramId, out var found) ? found : null);
 
     public Task<UserDto?> GetUserAsync(string phone) => Task.FromResult(
         UsersByPhone.Count == 0

@@ -350,6 +350,12 @@ public class FirstRunBootstrapTests
     {
         _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
 
+        // The button now skips a customer who is already approved (issue #291), so the customer has
+        // to exist as pending; with a single fake user every id would answer as the approved owner.
+        _usersApi.UsersByTelegramId[OwnerTelegramId] = _usersApi.User;
+        _usersApi.UsersByTelegramId[CustomerTelegramId] =
+            Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
+
         var handler = Build();
 
         await TapAsync(handler, $"approve_{CustomerTelegramId}", from: OwnerTelegramId);
