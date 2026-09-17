@@ -79,7 +79,6 @@ public class AdminRoleCommandTests
             usersApi: _usersApi,
             affiliateApi: new FakeAffiliateApiClient(),
             walletApi: new StubWalletApiClient(),
-            telegramLogger: new SilentTelegramLogger(),
             versionService: new FakeVersionService(),
             ownerTelegramIds: owners);
     }

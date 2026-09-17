@@ -51,7 +51,6 @@ public class AdminChargeCommandTests
             usersApi: _usersApi,
             affiliateApi: new FakeAffiliateApiClient(),
             walletApi: _walletApi,
-            telegramLogger: new SilentTelegramLogger(),
             versionService: new FakeVersionService());
     }
 

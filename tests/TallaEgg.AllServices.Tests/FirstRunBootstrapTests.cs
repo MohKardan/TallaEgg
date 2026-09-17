@@ -67,7 +67,6 @@ public class FirstRunBootstrapTests
         usersApi: _usersApi,
         affiliateApi: new FakeAffiliateApiClient(),
         walletApi: new StubWalletApiClient(),
-        telegramLogger: new SilentTelegramLogger(),
         versionService: new FakeVersionService(),
         ownerTelegramIds: owners);
 

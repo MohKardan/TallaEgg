@@ -47,7 +47,6 @@ public class AnnounceQuoteButtonTests
             usersApi: _usersApi,
             affiliateApi: new FakeAffiliateApiClient(),
             walletApi: new StubWalletApiClient(),
-            telegramLogger: new SilentTelegramLogger(),
             versionService: new FakeVersionService());
     }
 

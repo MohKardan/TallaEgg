@@ -5,7 +5,6 @@ using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Responses.Order;
-using TallaEgg.Core.Services;
 using TallaEgg.TelegramBot.Infrastructure.Services;
 using TallaEgg.TelegramBot.Infrastructure;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -243,19 +242,6 @@ public sealed class FakeAffiliateApiClient : IAffiliateApiClient
 {
     public Task<(bool success, string message, Guid? invitationId)> UseInvitationAsync(string invitationCode, Guid usedByUserId) =>
         Task.FromResult((true, "ok", (Guid?)Guid.NewGuid()));
-}
-
-/// <summary>
-/// Swallows diagnostics. These calls are observational: they must never influence what the
-/// customer sees, and a test should not post to a real Telegram channel.
-/// </summary>
-public sealed class SilentTelegramLogger : ITelegramLogger
-{
-    public Task Notif(string message, string chatId = "", string parseMode = "") => Task.CompletedTask;
-    public Task Notif<T>(string message, T dto, string chatId = "", string parseMode = "") => Task.CompletedTask;
-    public Task LogAsync<T>(string message, T dto, string chatId = "", string parseMode = "") => Task.CompletedTask;
-    public Task LogAsync(string log, string chatId = "") => Task.CompletedTask;
-    public Task ErrorAsync(Exception ex, string message = "") => Task.CompletedTask;
 }
 
 public sealed class FakeVersionService : IVersionService

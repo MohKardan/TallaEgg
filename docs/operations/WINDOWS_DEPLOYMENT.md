@@ -346,5 +346,6 @@ Stops and deletes all four. Published files, logs, and the database are untouche
 
 ## Not covered here
 
-A liveness signal (the running bot proactively reporting a restart, e.g. through the existing
-`TelegramLoggerService`) was noted in #70 as worth doing but not required — it's still open.
+A liveness signal (the running bot proactively reporting a restart) was noted in #70 as worth doing
+but not required — it's still open. The Telegram error logger it once suggested for this has been
+removed; diagnostics go to the Serilog files under `logs/` only.

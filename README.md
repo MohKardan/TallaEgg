@@ -90,15 +90,13 @@ A symbol priced by a source neither nerkh.io nor brsapi.ir covers still needs a 
 
 Every service loads `config/appsettings.global.json`, then flattens the section under `Services:` matching its own assembly name. There is no per-service `appsettings.json` to maintain.
 
-> ⚠️ **Old bot tokens and the old shared API key are still readable in this repo** — in git
-> history, because this file used to be tracked, and in one tracked source file: the
-> `TelegramLoggerService` registration in `TallaEgg.TelegramBot.Infrastructure/Program.cs`, which
-> has no configuration key of its own. **Every one of them was rotated under
-> [#33](https://github.com/MohKardan/TallaEgg/issues/33) and is dead — do not report them as a
-> live leak.** Fresh readers rediscover them and raise an incident on every pass; it is a false
-> alarm each time. History is deliberately **not** rewritten — that decision and its reasoning
-> are on [#105](https://github.com/MohKardan/TallaEgg/issues/105). The config file itself is now
-> git-ignored; do not re-add it, or any new secret, to source control.
+> ⚠️ **Old bot tokens and the old shared API key are still readable in this repo's git history**,
+> because this file used to be tracked. No token remains in tracked source. **Treat anything found
+> in history as compromised, and do not take a document's word that it was rotated**: check it, and
+> revoke it through BotFather (or rotate the key) if it still works. History is deliberately
+> **not** rewritten — rotation is the remedy, and that decision and its reasoning are on
+> [#105](https://github.com/MohKardan/TallaEgg/issues/105). The config file itself is now git-ignored; do not re-add it, or any new secret,
+> to source control.
 
 Create your own copy from the template below.
 
