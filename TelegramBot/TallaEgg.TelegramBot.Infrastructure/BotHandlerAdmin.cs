@@ -525,24 +525,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
         }
 
         /// <summary>
-        /// Checks only whether the user is an admin of the Telegram group.
-        /// 
-        /// </summary>
-        /// <param name="user"></param>
-        /// <returns></returns>
-        private async Task<bool> IsTelegramAdmin(UserDto user)
-        {
-            var ids = await _botClient.GetAdminUserIdsAsync(Constants.GroupId);
-            return ids.Contains(user.TelegramId);
-        }
-
-        /// <summary>
         /// <c>ت [شمارهٔ تلفن]</c> and <c>ر [شمارهٔ تلفن]</c> — approve or reject an account from
         /// inside the bot.
         ///
         /// <para>
         /// Until now the only way to approve anybody was an inline button delivered to the
-        /// administrators of one hard-coded Telegram group (<c>Constants.GroupId</c>). That makes
+        /// administrators of one hard-coded Telegram group (a constant since removed). That makes
         /// activation depend on a Telegram group rather than on the product: if the bot is not a
         /// member of that group — and a newly deployed bot is not — <c>GetChatAdministrators</c>
         /// throws, the exception is swallowed by the catch-all in <c>HandleMessageAsync</c>, and

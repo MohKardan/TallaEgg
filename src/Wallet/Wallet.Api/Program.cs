@@ -11,7 +11,6 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.ErrorHandling;
-using TallaEgg.Core.Requests.Trade;
 using TallaEgg.Core.Requests.Wallet;
 using TallaEgg.Core.Startup;
 using Wallet.Application;

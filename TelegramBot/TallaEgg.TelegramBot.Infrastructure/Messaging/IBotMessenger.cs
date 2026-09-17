@@ -17,8 +17,8 @@ namespace TallaEgg.TelegramBot.Infrastructure.Messaging;
 /// perform, not a mirror of the Telegram API. A wider surface would be more to fake and
 /// would not buy any more coverage.
 ///
-/// Non-messaging calls — <c>StartReceiving</c>, <c>GetMe</c>, <c>DeleteWebhook</c>,
-/// <c>GetAdminUserIdsAsync</c> — stay on the raw client. They are lifecycle and lookup
+/// Non-messaging calls — <c>StartReceiving</c>, <c>GetMe</c>, <c>DeleteWebhook</c> — stay on
+/// the raw client. They are lifecycle and lookup
 /// concerns, not part of a conversation, and none of them appear in a flow worth testing.
 /// </summary>
 public interface IBotMessenger
