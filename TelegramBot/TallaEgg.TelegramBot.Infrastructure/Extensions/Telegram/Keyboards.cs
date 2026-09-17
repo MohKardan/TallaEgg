@@ -20,33 +20,6 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
 {
     public static class Keyboards
     {
-        public static async Task RequestContactKeyboard(this IBotMessenger _botClient, long chatId)
-        {
-            var keyboard = new ReplyKeyboardMarkup(
-                 new[]
-                 {
-                    new[]
-                    {
-                        KeyboardButton.WithRequestContact("ارسال شماره همراه")
-                    }
-                 }
-             )
-            {
-                ResizeKeyboard = true
-            };
-
-
-            await _botClient.SendAsync(
-                chatId,
-                "برای ثبت نام شماره خود را از طریق کلید زیر ارسال کنید",
-            replyMarkup: keyboard);
-
-        }
-
-        // MainMenuKeyboard was removed from here: nothing called it, and it was the only place that
-        // showed a futures button — a button for a market that does not exist and had no handler.
-        // The real main menu is built elsewhere.
-
         public static async Task SendContactKeyboardAsync(this IBotMessenger _botClient, long chatId)
         {
             var sharePhoneButton = new KeyboardButton(BotBtns.BtnSharePhone) { RequestContact = true };

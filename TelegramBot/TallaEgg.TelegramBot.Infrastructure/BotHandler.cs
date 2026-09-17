@@ -825,10 +825,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task ShowMainMenuAsync(long chatId)
         {
-            //bool isAdmin = await IsTelegramAdmin(user);
-            //isAdmin = true; // for test
-            ////if (isAdmin)
-
             if (await IsOperatorAsync(chatId))
             {
                 await _messenger.SendMainKeyboardForAdminAsync(chatId);
