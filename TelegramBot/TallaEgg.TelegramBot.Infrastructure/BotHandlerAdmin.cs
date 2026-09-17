@@ -596,6 +596,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
             await _messenger.SendAsync(target.TelegramId,
                 newStatus == UserStatus.Approved ? BotMsgs.MsgUserApproved : BotMsgs.MsgUserRejected);
+
+            // The customer was shown no menu while pending (issue #291), so approval is where they
+            // get one; without it they would read "you can now trade" with no button to do it.
+            if (newStatus == UserStatus.Approved)
+                await ShowMainMenuAsync(target.TelegramId);
         }
 
         /// <summary>Only the two statuses these commands can set need a name.</summary>
@@ -613,8 +618,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 text: originalMsg.Text + BotMsgs.MsgAdminApprovedSuffix,
                 replyMarkup: null);
 
-            // Notify the user.
+            // Notify the user, and give them the menu they were not shown while pending (issue #291).
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserApproved);
+            await ShowMainMenuAsync(telegramUserId);
             _logger.LogInformation("User {TelegramUserId} approved by admin {AdminTelegramId}.", telegramUserId, adminTgId);
         }
 

@@ -275,7 +275,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 {
                     await _messenger.SendAsync(chatId, BotMsgs.MsgPhoneSuccess,
                         replyMarkup: new ReplyKeyboardRemove());
-                    await ShowMainMenuAsync(chatId);
+
+                    // No menu until the account can use it. Every button refuses a pending
+                    // customer, so showing one here contradicted the message above it (issue
+                    // #291); the menu arrives with the approval instead. A configured owner is
+                    // approved in this same step, below, so they get theirs now.
+                    if (_ownerTelegramIds.Contains(telegramId))
+                        await ShowMainMenuAsync(chatId);
 
                     // A configured owner approves themselves, because there is nobody else to
                     // do it. Their authority already comes from the configuration file; asking
