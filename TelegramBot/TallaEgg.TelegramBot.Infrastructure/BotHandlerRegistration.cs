@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure.Clients;
@@ -34,7 +33,6 @@ public static class BotHandlerRegistration
         services.AddSingleton<IUsersApiClient>(p => p.GetRequiredService<UsersApiClient>());
         services.AddSingleton<IAffiliateApiClient>(p => p.GetRequiredService<AffiliateApiClient>());
         services.AddSingleton<IWalletApiClient>(p => p.GetRequiredService<WalletApiClient>());
-        services.AddSingleton<ITelegramLogger>(p => p.GetRequiredService<TelegramLoggerService>());
 
         // Everything the handler says to a chat goes through the messenger; the raw client
         // stays registered for lifecycle and lookup calls.
@@ -65,7 +63,6 @@ public static class BotHandlerRegistration
                 provider.GetRequiredService<IUsersApiClient>(),
                 provider.GetRequiredService<IAffiliateApiClient>(),
                 provider.GetRequiredService<IWalletApiClient>(),
-                provider.GetRequiredService<ITelegramLogger>(),
                 provider.GetRequiredService<IVersionService>(),
                 settings.RequireReferralCode,
                 settings.DefaultReferralCode,

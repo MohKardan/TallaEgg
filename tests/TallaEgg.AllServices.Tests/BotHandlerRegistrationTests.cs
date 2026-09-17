@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using TallaEgg.Core.Services;
 using TallaEgg.TelegramBot.Infrastructure.Options;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
@@ -65,8 +64,6 @@ public class BotHandlerRegistrationTests
         services.AddSingleton(p => new AffiliateApiClient(
             "http://localhost", new HttpClient(), p.GetRequiredService<ILogger<AffiliateApiClient>>()));
         services.AddSingleton(_ => new WalletApiClient("http://localhost"));
-        services.AddSingleton(p => new TelegramLoggerService(
-            p.GetRequiredService<IHttpClientFactory>(), "1:AA"));
         services.AddSingleton<IVersionService, FakeVersionService>();
 
         services.AddBotHandler();
@@ -91,7 +88,6 @@ public class BotHandlerRegistrationTests
     [InlineData(typeof(IUsersApiClient))]
     [InlineData(typeof(IAffiliateApiClient))]
     [InlineData(typeof(IWalletApiClient))]
-    [InlineData(typeof(ITelegramLogger))]
     [InlineData(typeof(IBotMessenger))]
     [InlineData(typeof(IConversationStore))]
     public void EveryAbstractionTheHandlerNeeds_IsRegistered(Type serviceType)
@@ -114,7 +110,6 @@ public class BotHandlerRegistrationTests
         Assert.Same(provider.GetRequiredService<OrderApiClient>(), provider.GetRequiredService<IOrderApiClient>());
         Assert.Same(provider.GetRequiredService<UsersApiClient>(), provider.GetRequiredService<IUsersApiClient>());
         Assert.Same(provider.GetRequiredService<WalletApiClient>(), provider.GetRequiredService<IWalletApiClient>());
-        Assert.Same(provider.GetRequiredService<TelegramLoggerService>(), provider.GetRequiredService<ITelegramLogger>());
     }
 
     /// <summary>
@@ -214,7 +209,6 @@ public class BotHandlerRegistrationTests
         services.AddSingleton<IUsersApiClient, FakeUsersApiClient>();
         services.AddSingleton<IAffiliateApiClient, FakeAffiliateApiClient>();
         services.AddSingleton<IWalletApiClient, StubWalletApiClient>();
-        services.AddSingleton<ITelegramLogger, SilentTelegramLogger>();
         services.AddSingleton<IVersionService, FakeVersionService>();
         services.AddSingleton<IBotHandler, BotHandler>();
 

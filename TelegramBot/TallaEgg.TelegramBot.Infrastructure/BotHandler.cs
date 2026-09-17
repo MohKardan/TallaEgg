@@ -8,7 +8,6 @@ using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
-using TallaEgg.Core.Services;
 using TallaEgg.Core.Utilties;
 using TallaEgg.Infrastructure;
 using TallaEgg.Infrastructure.Clients;
@@ -54,7 +53,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
         private readonly IUsersApiClient _usersApi;
         private readonly IAffiliateApiClient _affiliateApi;
         private readonly IWalletApiClient _walletApi;
-        private readonly ITelegramLogger _telegramLogger;
         private readonly IVersionService _versionService;
 
         /// <summary>
@@ -79,7 +77,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                          IConversationStore conversations,
                          IOrderApiClient orderApi, IUsersApiClient usersApi,
                          IAffiliateApiClient affiliateApi, IWalletApiClient walletApi,
-                         ITelegramLogger telegramLogger, IVersionService versionService,
+                         IVersionService versionService,
                          bool requireReferralCode = false,
                          string defaultReferralCode = BootstrapConstant.RootInvitationCode,
                          IEnumerable<long>? ownerTelegramIds = null)
@@ -95,7 +93,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
             _usersApi = usersApi;
             _affiliateApi = affiliateApi;
             _walletApi = walletApi;
-            _telegramLogger = telegramLogger;
             _requireReferralCode = requireReferralCode;
             _defaultReferralCode = defaultReferralCode;
             _versionService = versionService;
@@ -127,7 +124,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
                     catch (OperationCanceledException) { return; }
                     catch (Exception ex)
                     {
-                        await _telegramLogger.ErrorAsync(ex, "Error in cleanup");
                         _logger.LogError(ex, "Error sweeping completed conversations.");
                     }
                 }
@@ -147,7 +143,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
             // not just the ones that happen not to hit this now-removed try.
             var chatId = message.Chat.Id;
             var telegramId = message.From?.Id ?? 0;
-            await _telegramLogger.LogAsync<Message>($"✔➕ new message:",message);
+            // Identifiers and the message kind only. The content can be a shared contact card with
+            // the customer's phone number, and a log file is the wrong place to keep a copy of it.
+            _logger.LogInformation("Message from chat {ChatId} (user {TelegramId}): {MessageType}.",
+                chatId, telegramId, message.Type);
 
 
             // Absent on a contact, photo or sticker message, all of which reach this handler.

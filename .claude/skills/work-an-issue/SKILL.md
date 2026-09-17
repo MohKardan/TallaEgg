@@ -282,8 +282,11 @@ gh issue list --state open --limit 50
   body — not even part of one.
 - **No personal identity anywhere**: names, handles, emails, personal paths, chat exports, server
   names or addresses. If you find any in a file, stop and ask; do not decide it is acceptable.
-- **The bot tokens visible in this repository are dead** (#33). Do not report them as a leak.
-  History is deliberately not rewritten (#105).
+- **Do not assume a token in git history is dead** — a 2026-09 check found some that were not.
+  Check with a read-only `getMe`, never print the value, and keep token details out of public
+  text. History is deliberately not rewritten (#105); revoking in BotFather is the remedy.
+- **Diagnostics go to `ILogger` only.** No Telegram or outside-endpoint reporting path, and no
+  message content in logs.
 - **Never write a per-asset balance check.** Credit is cross-asset — a customer holding only
   `CREDIT_MAUA` can legitimately drive their IRT balance negative.
 - **Scope stays narrow.** No refactor nobody asked for. Report what you find; fix what you were

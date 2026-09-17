@@ -90,7 +90,7 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 
 每个服务都会加载 `config/appsettings.global.json`，然后将 `Services:` 下与自身程序集名称匹配的配置节展开使用。无需维护各服务单独的 `appsettings.json`。
 
-> ⚠️ **旧的机器人令牌和旧的共享 API 密钥仍可在本仓库中读到**——一处在 git 历史中，因为该文件过去曾被跟踪；另一处在一个被跟踪的源文件中：`TallaEgg.TelegramBot.Infrastructure/Program.cs` 里 `TelegramLoggerService` 的注册代码，它没有自己的配置键。**这些凭据已全部在 [#33](https://github.com/MohKardan/TallaEgg/issues/33) 中轮换并已失效——请勿将其报告为正在泄露的凭据。** 新读者每次审查都会重新发现它们并提起安全事件，而每次都是误报。历史**刻意没有**被改写——该决定及其理由记录在 [#105](https://github.com/MohKardan/TallaEgg/issues/105)。配置文件本身现已被 git 忽略；请勿将它或任何新的密钥重新加入版本控制。
+> ⚠️ **旧的机器人令牌和旧的共享 API 密钥仍可在本仓库的 git 历史中读到**，因为该文件过去曾被跟踪。被跟踪的源文件中已不再包含任何令牌。**请将历史中找到的任何凭据视为已泄露，不要轻信文档中“已轮换”的说法**：请自行验证，若仍然有效，请通过 BotFather 撤销（或轮换密钥）。历史**刻意没有**被改写——补救办法是轮换；该决定及其理由记录在 [#105](https://github.com/MohKardan/TallaEgg/issues/105)。配置文件本身现已被 git 忽略；请勿将它或任何新的密钥重新加入版本控制。
 
 请根据下面的模板创建你自己的副本。
 

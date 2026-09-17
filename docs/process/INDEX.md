@@ -250,8 +250,9 @@ A: Say so on the issue and pick up something else — see [`WORKFLOW.md`](WORKFL
 A: Copy [`PR_TEMPLATE.md`](PR_TEMPLATE.md), fill out all sections, verify checklist items.
 
 **Q: Why does this repo care so much about secrets?**  
-A: See [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md), findings C-1, C-2, C-7, C-9 — and note
-that everything they describe was rotated under #33 and is dead.
+A: See [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md), findings C-1, C-2, C-7, C-9. Their
+remedy was rotation under #33, but do not take a document's word that a credential is dead: a
+2026-09 check found history tokens that still worked. Measure it (see `CLAUDE.md`).
 
 **Q: What's the rollback plan if a deployment fails?**  
 A: See [`PR_TEMPLATE.md`](PR_TEMPLATE.md), section "Rollback Plan" (fill in per task).

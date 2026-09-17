@@ -627,7 +627,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
             // Notify the user.
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserApproved);
-            await _telegramLogger.Notif<Message>($"کاربر تایید شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
+            _logger.LogInformation("User {TelegramUserId} approved by admin {AdminTelegramId}.", telegramUserId, adminTgId);
         }
 
         private async Task RejectUser(long telegramUserId, long adminTgId, Message originalMsg)
@@ -642,7 +642,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
             // Notify the user.
             await _messenger.SendAsync(telegramUserId, BotMsgs.MsgUserRejected);
-            await _telegramLogger.Notif<Message>($"کاربر رد شد \n userId : {telegramUserId} adminId : {adminTgId}", originalMsg);
+            _logger.LogInformation("User {TelegramUserId} rejected by admin {AdminTelegramId}.", telegramUserId, adminTgId);
 
         }
 

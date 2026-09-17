@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using TallaEgg.Core.Services;
 using TallaEgg.Infrastructure.Clients;
 using TallaEgg.TelegramBot.Core.Interfaces;
 using TallaEgg.TelegramBot.Infrastructure;
@@ -90,11 +89,10 @@ services.AddSingleton<WalletApiClient>(p =>
         p.GetRequiredService<ILogger<WalletApiClient>>());
 });
 
-// Same wiring the real bot uses (issue #65) — only IBotMessenger, ITelegramLogger and
-// IVersionService are swapped below for fakes that never touch a real Telegram chat.
+// Same wiring the real bot uses (issue #65) — only IBotMessenger and IVersionService are
+// swapped below for fakes that never touch a real Telegram chat.
 services.AddBotHandler();
 services.AddSingleton<IBotMessenger, FakeBotMessenger>();
-services.AddSingleton<ITelegramLogger, NullTelegramLogger>();
 services.AddSingleton<IVersionService, NullVersionService>();
 
 // BotHandler still takes the raw ITelegramBotClient for lifecycle/lookup calls the messenger
