@@ -212,8 +212,15 @@ public sealed class FakeUsersApiClient : IUsersApiClient
     /// <summary>What <c>UpdatePhoneAsync</c> answers; null means it succeeds with <see cref="User"/>.</summary>
     public ApiResponse<UserDto>? PhoneUpdateResult { get; set; }
 
-    public Task<ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber) =>
-        Task.FromResult(PhoneUpdateResult ?? ApiResponse<UserDto>.Ok(User!, "ok"));
+    /// <summary>Every phone number the handler asked to store, exactly as it was sent.</summary>
+    public List<(long TelegramId, string PhoneNumber)> PhoneUpdates { get; } = [];
+
+    public Task<ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber)
+    {
+        PhoneUpdates.Add((telegramId, phoneNumber));
+        return Task.FromResult(PhoneUpdateResult ?? ApiResponse<UserDto>.Ok(User!, "ok"));
+    }
+
     /// <summary>Every status change asked for, and what the call was told to answer.</summary>
     public List<(long TelegramId, UserStatus NewStatus)> StatusChanges { get; } = [];
     public ApiResponse<UserDto>? StatusChangeResult { get; set; }

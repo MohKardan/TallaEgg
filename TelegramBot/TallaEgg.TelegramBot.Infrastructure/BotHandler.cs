@@ -268,14 +268,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
             var phoneNumber = message.Contact?.PhoneNumber;
             if (phoneNumber != null)
             {
-                if (phoneNumber.StartsWith("98"))//98938621990
-                {
-                    phoneNumber = phoneNumber.Replace("98", "0");
-                }
-                if (phoneNumber.StartsWith("+98"))//98938621990
-                {
-                    phoneNumber = phoneNumber.Replace("+98", "0");
-                }
+                phoneNumber = SharedPhoneNumber.ToLocal(phoneNumber);
                 var response = await _usersApi.UpdatePhoneAsync(telegramId, phoneNumber);
 
                 if (response.Success)
