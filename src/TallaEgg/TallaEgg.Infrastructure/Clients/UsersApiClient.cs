@@ -17,6 +17,13 @@ namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 
 public class UsersApiClient : IUsersApiClient
 {
+    /// <summary>
+    /// Shown when the lookup itself failed — the service was unreachable, or answered something
+    /// this client could not read. A refusal the service explains in its own words is passed
+    /// through instead of this; only a failure with nothing to say falls back here.
+    /// </summary>
+    private const string UserLookupFailed = "❌ دریافت اطلاعات کاربر ممکن نشد.";
+
     private readonly HttpClient _httpClient;
     private readonly string _baseUrl;
     private readonly ILogger<UsersApiClient> _logger;
@@ -219,46 +226,54 @@ public class UsersApiClient : IUsersApiClient
             return null;
         }
     }
-    public async Task<UserDto?> GetUserAsync(string phone)
+    public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> GetUserAsync(string phone)
     {
         try
         {
             using var response = await _httpClient.GetAsync($"{_baseUrl}/userByPhone/{phone}");
             var payload = await response.Content.ReadAsStringAsync();
 
+            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Users API returned {StatusCode} while fetching user by phone {Phone}. Payload: {Payload}",
                     (int)response.StatusCode, phone, payload);
-                return null;
+
+                // The refusal's own message when there is one — "this number is on more than one
+                // account" has to reach the operator, and only the service knows which refusal
+                // this was (issue #303). A transport-level failure has no message and falls back.
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(
+                    string.IsNullOrWhiteSpace(result?.Message) ? UserLookupFailed : result!.Message);
             }
 
-            var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
             if (result?.Data == null)
             {
                 _logger.LogWarning("Users API returned empty data while fetching user by phone {Phone}. Payload: {Payload}", phone, payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(UserLookupFailed);
             }
-            return result?.Data;
+
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Ok(result.Data, result.Message ?? string.Empty);
         }
         catch (TaskCanceledException ex)
         {
             _logger.LogError(ex, "Users API request timed out while fetching user by phone {Phone}", phone);
-            return null;
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(UserLookupFailed);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Users API communication error while fetching user by phone {Phone}", phone);
-            return null;
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(UserLookupFailed);
         }
         catch (System.Text.Json.JsonException ex)
         {
             _logger.LogError(ex, "Users API returned invalid JSON while fetching user by phone {Phone}", phone);
-            return null;
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(UserLookupFailed);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error while fetching user by phone {Phone}", phone);
-            return null;
+            return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(UserLookupFailed);
         }
     }
     public async Task<TallaEgg.Core.DTOs.ApiResponse<UserDto>> UpdatePhoneAsync(long telegramId, string phoneNumber)
@@ -281,7 +296,14 @@ public class UsersApiClient : IUsersApiClient
             {
                 _logger.LogWarning("Users API returned {StatusCode} while updating phone for TelegramId {TelegramId}. Payload: {Payload}",
                     (int)response.StatusCode, telegramId, payload);
-                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail("بروزرسانی شماره تلفن ناموفق بود.");
+
+                // A refusal the customer is meant to read — «این شماره قبلاً برای حساب دیگری
+                // ثبت شده است…», or «کاربر یافت نشد.» — arrives as a message in the body, and the
+                // bot shows whatever this returns. Replacing it with a generic sentence threw
+                // away the only thing that told them what to do next (issue #303).
+                var refusal = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);
+                return TallaEgg.Core.DTOs.ApiResponse<UserDto>.Fail(
+                    string.IsNullOrWhiteSpace(refusal?.Message) ? "بروزرسانی شماره تلفن ناموفق بود." : refusal!.Message);
             }
 
             var result = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<UserDto>>(payload);

@@ -333,7 +333,9 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
 .WithSummary("Set a user's phone number")
 .WithDescription(
     "Identifies the user by Telegram id and overwrites the stored phone number, with no format " +
-    "check and no uniqueness check. An unknown Telegram id answers 400 with «کاربر یافت نشد.».")
+    "check. An unknown Telegram id answers 400 with «کاربر یافت نشد.». A number already held by " +
+    "another account answers 400 as well and stores nothing: the refusal carries the caller's " +
+    "Telegram id as a reference for support (issue #303).")
 .WithTags("Users");
 
 app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userService) =>
@@ -374,16 +376,32 @@ app.MapGet("/api/user/userId/{userId}", async (Guid userId, UserService userServ
 
 app.MapGet("/api/userByPhone/{phone}", async (string phone, UserService userService) =>
 {
-    var user = await userService.GetUserByPhoneNumberAsync(phone);
-    if (user == null)
-        return Results.BadRequest(ApiResponse<UserDto>.Fail("User not found"));
+    // A number held by two accounts raises BusinessRuleException, whose message is written for
+    // the operator reading it in the bot — the same treatment update-phone gives its refusals.
+    // Without this catch it would be a 500 and the caller would be told nothing (issue #303).
+    try
+    {
+        var user = await userService.GetUserByPhoneNumberAsync(phone);
 
-    return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
+        // Persian, because the operator reads it: the bot now shows this endpoint's message
+        // rather than discarding it, and that is what carries the "more than one account"
+        // refusal below. An English sentence would reach them just as directly (issue #303).
+        if (user == null)
+            return Results.BadRequest(ApiResponse<UserDto>.Fail("❌ کاربری با این شمارهٔ تلفن پیدا نشد."));
+
+        return Results.Ok(ApiResponse<UserDto>.Ok(user, "User loaded successfully"));
+    }
+    catch (BusinessRuleException ex)
+    {
+        return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
+    }
 })
 .WithSummary("Get a user by phone number")
 .WithDescription(
     "Matches the stored phone number exactly — no normalisation of country code or leading zero, " +
-    "so the caller has to send it in the form registration stored. A miss answers 400, not 404.")
+    "so the caller has to send it in the form registration stored. A miss answers 400, not 404. " +
+    "A number held by more than one account answers 400 as well, with a message saying so, and " +
+    "names no account: picking one of them is what issue #303 removed.")
 .WithTags("Users");
 
 

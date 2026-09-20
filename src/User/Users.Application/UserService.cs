@@ -61,10 +61,29 @@ public class UserService
         return _userMapper.Map(user);
     }
 
+    /// <summary>
+    /// The operator side of the bot identifies a customer by phone number — charging credit,
+    /// deducting it, changing a role, approving, rejecting. When two accounts hold the number,
+    /// answering one of them is a coin toss the caller cannot see, so this refuses instead.
+    /// Refusing costs the operator a puzzled moment; guessing costs a customer's credit (#303).
+    /// </summary>
     public async Task<UserDto?> GetUserByPhoneNumberAsync(string phone)
     {
-        var user = await _userRepository.GetByPhoneNumberAsync(phone);
-        return _userMapper.Map(user);
+        var holders = await _userRepository.GetAllByPhoneNumberAsync(phone);
+
+        if (holders.Count > 1)
+        {
+            _logger.LogWarning(
+                "Phone number lookup refused: {Count} accounts hold it — {UserIds}.",
+                holders.Count,
+                string.Join(", ", holders.Select(h => h.Id)));
+
+            throw new BusinessRuleException(
+                "این شماره روی بیش از یک حساب ثبت شده است و تا اصلاح آن، دستور روی هیچ حسابی اجرا نمی‌شود. " +
+                "لطفاً با پشتیبانی تماس بگیرید.");
+        }
+
+        return _userMapper.Map(holders.SingleOrDefault());
     }
 
     public async Task<PagedResult<UserDto>> GetUsersAsync(string? q,int page,int size)
@@ -79,6 +98,29 @@ public class UserService
         if (user == null)
         {
             throw new BusinessRuleException("کاربر یافت نشد.");
+        }
+
+        // One number, one account. Storage does not enforce this — PhoneNumber has no unique
+        // index, and adding one would have to migrate whatever duplicates already exist — so the
+        // rule lives here, where the refusal can say something useful to the person reading it.
+        //
+        // The customer cannot fix this themselves: by construction the number is on an account
+        // that is not theirs. Support can, which is why the message sends them there and the log
+        // line names both accounts. The number itself is deliberately absent from the log; it is
+        // personal data, and the two ids are what an operator needs anyway (issue #303).
+        var otherHolder = (await _userRepository.GetAllByPhoneNumberAsync(phoneNumber))
+            .FirstOrDefault(holder => holder.Id != user.Id);
+
+        if (otherHolder is not null)
+        {
+            _logger.LogWarning(
+                "Phone number update refused for Telegram id {TelegramId}: already registered to user {ExistingUserId}.",
+                telegramId,
+                otherHolder.Id);
+
+            throw new BusinessRuleException(
+                "این شماره تلفن قبلاً برای حساب دیگری ثبت شده است.\n" +
+                $"لطفاً با پشتیبانی تماس بگیرید و کد پیگیری {telegramId} را اعلام کنید.");
         }
 
         user.PhoneNumber = phoneNumber;

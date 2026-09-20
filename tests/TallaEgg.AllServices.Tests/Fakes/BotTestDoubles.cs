@@ -192,10 +192,26 @@ public sealed class FakeUsersApiClient : IUsersApiClient
             ? User
             : UsersByTelegramId.TryGetValue(telegramId, out var found) ? found : null);
 
-    public Task<UserDto?> GetUserAsync(string phone) => Task.FromResult(
-        UsersByPhone.Count == 0
+    /// <summary>
+    /// Phone numbers the Users API refuses to resolve, and the message it refuses with. A
+    /// number held by two accounts is the real case: the service answers neither of them and
+    /// says so, and the bot has to pass that on rather than act (issue #303).
+    /// </summary>
+    public Dictionary<string, string> PhoneLookupRefusals { get; } = [];
+
+    public Task<ApiResponse<UserDto>> GetUserAsync(string phone)
+    {
+        if (PhoneLookupRefusals.TryGetValue(phone, out var refusal))
+            return Task.FromResult(ApiResponse<UserDto>.Fail(refusal));
+
+        var found = UsersByPhone.Count == 0
             ? User
-            : UsersByPhone.TryGetValue(phone, out var found) ? found : null);
+            : UsersByPhone.TryGetValue(phone, out var match) ? match : null;
+
+        return Task.FromResult(found is null
+            ? ApiResponse<UserDto>.Fail("❌ کاربری با این شمارهٔ تلفن پیدا نشد.")
+            : ApiResponse<UserDto>.Ok(found, "ok"));
+    }
 
     /// <summary>Every role change asked for, and what the call was told to answer.</summary>
     public List<(Guid UserId, UserRole NewRole)> RoleChanges { get; } = [];

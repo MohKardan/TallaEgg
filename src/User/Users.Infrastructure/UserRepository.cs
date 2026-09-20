@@ -22,10 +22,11 @@ public class UserRepository : IUserRepository
             .FirstOrDefaultAsync(u => u.TelegramId == telegramId);
     }
 
-    public async Task<User?> GetByPhoneNumberAsync(string phone)
+    public async Task<IReadOnlyList<User>> GetAllByPhoneNumberAsync(string phoneNumber)
     {
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.PhoneNumber == phone);
+            .Where(u => u.PhoneNumber == phoneNumber)
+            .ToListAsync();
     }
 
     public async Task<User> CreateAsync(User user)
