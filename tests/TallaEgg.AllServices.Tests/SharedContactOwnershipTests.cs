@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.AllServices.Tests.Fakes;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
@@ -111,6 +111,29 @@ public class SharedContactOwnershipTests
         await SendContactAsync(handler, from: ImpostorTelegramId, SomebodyElsesPhone, contactOwner: CustomerTelegramId);
 
         Assert.Contains(_messenger.Texts, t => t.Contains("شماره خودتان"));
+    }
+
+    /// <summary>
+    /// A message with no <c>From</c> at all, carrying a card with no <c>UserId</c>. The handler
+    /// reads the sender as <c>message.From?.Id ?? 0</c>, so both sides of the comparison were
+    /// absent and the card passed a check meant to reject exactly this. Zero is the seeded root
+    /// admin's TelegramId, so the number would have landed on the one account that can charge
+    /// credit to anybody.
+    /// </summary>
+    [Fact]
+    public async Task SharingAContactOnAMessageWithNoSender_DoesNotStoreThatNumber()
+    {
+        var handler = Build();
+        _usersApi.UsersByTelegramId[0] = _usersApi.User!;
+
+        await handler.HandleMessageAsync(new Message
+        {
+            Chat = new Chat { Id = ImpostorTelegramId },
+            From = null,
+            Contact = new Contact { PhoneNumber = SomebodyElsesPhone, UserId = null }
+        });
+
+        Assert.Empty(_usersApi.PhoneUpdates);
     }
 
     /// <summary>
