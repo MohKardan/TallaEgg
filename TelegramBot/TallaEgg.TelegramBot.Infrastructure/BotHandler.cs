@@ -294,7 +294,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
             var phoneNumber = contact?.PhoneNumber;
             if (phoneNumber != null)
             {
-                phoneNumber = SharedPhoneNumber.ToLocal(phoneNumber);
+                phoneNumber = PhoneNumbers.Canonical(phoneNumber)!;
                 var response = await _usersApi.UpdatePhoneAsync(telegramId, phoneNumber);
 
                 if (response.Success)
