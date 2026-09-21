@@ -91,7 +91,7 @@ public class SymbolPickerTests
     [Fact]
     public void CreateSymbolButtons_PastTheSafetyCeiling_StopsAtTheCeiling()
     {
-        var buttons = _handler.CreateSymbolButtons(Pairs(60));
+        var buttons = _handler.CreateSymbolButtons(Pairs(BotHandler.MaxSymbolButtons + 10));
 
         Assert.Equal(BotHandler.MaxSymbolButtons, buttons.Count);
     }
@@ -103,9 +103,11 @@ public class SymbolPickerTests
     [Fact]
     public void CreateSymbolButtons_PastTheSafetyCeiling_WarnsRatherThanInforms()
     {
-        _handler.CreateSymbolButtons(Pairs(60));
+        _handler.CreateSymbolButtons(Pairs(BotHandler.MaxSymbolButtons + 10));
 
-        Assert.Contains(_logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("60"));
+        Assert.Contains(_logger.Entries,
+            e => e.Level == LogLevel.Warning
+                 && e.Message.Contains((BotHandler.MaxSymbolButtons + 10).ToString()));
     }
 
     /// <summary>
@@ -148,10 +150,16 @@ public class SymbolPickerTests
     [Fact]
     public void CreateSymbolButtons_WhenAPairIsSkipped_TheWarningCountsTheButtonsItActuallyBuilt()
     {
-        var pairs = Pairs(60);
+        // Deliberately below the ceiling. With enough pairs to hit it, the number of buttons built
+        // equals MaxSymbolButtons, and an implementation that logged the ceiling instead of what it
+        // built would satisfy this assertion too — the test would pin nothing. Eleven pairs with
+        // one skipped gives ten, which no constant here coincides with.
+        var pairs = Pairs(11);
         pairs[0].Symbol = new string('X', 70) + "/IRT";   // skipped: callback data too long
 
         var buttons = _handler.CreateSymbolButtons(pairs);
+        Assert.Equal(10, buttons.Count);
+        Assert.NotEqual(BotHandler.MaxSymbolButtons, buttons.Count);
 
         // The skipped pair logs a warning of its own, so the summary is picked out by name
         // rather than by being the only warning.

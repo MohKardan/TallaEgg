@@ -1112,6 +1112,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 // Build the symbol buttons.
                 var symbolButtons = CreateSymbolButtons(activeTradingPairs);
 
+                // Counted before the back button is appended, and taken from the buttons rather
+                // than from the pairs that went in: a pair can be dropped inside (issue #296), and
+                // reporting the input count here would contradict the warning logged one frame
+                // down — "50 built" immediately followed by "showed 60".
+                var symbolsShown = symbolButtons.Count;
+
                 // Add the back button.
                 symbolButtons.Add(new[]
                 {
@@ -1130,7 +1136,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 }
 
                 _logger.LogInformation("Successfully showed {Count} trading symbols to user {TelegramId}",
-                    activeTradingPairs.Count, telegramId);
+                    symbolsShown, telegramId);
 
                 return true;
             }
