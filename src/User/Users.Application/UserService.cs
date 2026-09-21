@@ -69,7 +69,10 @@ public class UserService
     /// </summary>
     public async Task<UserDto?> GetUserByPhoneNumberAsync(string phone)
     {
-        var holders = await _userRepository.GetAllByPhoneNumberAsync(phone);
+        // The operator types the number the way they have it written down. Storage holds one
+        // form, so the question has to be asked in that form or an account plainly there answers
+        // "no such customer" (issue #307).
+        var holders = await _userRepository.GetAllByPhoneNumberAsync(PhoneNumbers.Canonical(phone)!);
 
         if (holders.Count > 1)
         {
@@ -100,14 +103,22 @@ public class UserService
             throw new BusinessRuleException("کاربر یافت نشد.");
         }
 
-        // One number, one account. Storage does not enforce this — PhoneNumber has no unique
-        // index, and adding one would have to migrate whatever duplicates already exist — so the
-        // rule lives here, where the refusal can say something useful to the person reading it.
+        // One number, one account. Storage enforces this too since #307 — a filtered unique
+        // index on PhoneNumber — but the rule stays here as well, because the index can only
+        // answer with a constraint violation and this can say something the customer can act on.
+        // The index is also created only when the data allowed it, so it may be absent on a
+        // database that still holds duplicates.
         //
         // The customer cannot fix this themselves: by construction the number is on an account
         // that is not theirs. Support can, which is why the message sends them there and the log
         // line names both accounts. The number itself is deliberately absent from the log; it is
         // personal data, and the two ids are what an operator needs anyway (issue #303).
+        // Canonical before the comparison and before the write, so "the same number" is one
+        // string rather than however many ways it can be written. Without it the duplicate check
+        // below finds one holder of each form and lets the second account claim it, and #303's
+        // ambiguity guard sees nothing either (issue #307).
+        phoneNumber = PhoneNumbers.Canonical(phoneNumber)!;
+
         var otherHolder = (await _userRepository.GetAllByPhoneNumberAsync(phoneNumber))
             .FirstOrDefault(holder => holder.Id != user.Id);
 
@@ -168,8 +179,10 @@ public class UserService
         if (string.IsNullOrWhiteSpace(phoneNumber))
             return null;
 
-        // Look in the Users table first.
-        var id = await _userRepository.GetUserIdByPhonenumberAsync(phoneNumber);
+        // Same form as every other phone lookup. This one still answers an arbitrary holder
+        // when a number is on more than one account — its endpoint returns a bare Guid with
+        // nowhere to carry a refusal — and no bot command calls it any more (issue #307).
+        var id = await _userRepository.GetUserIdByPhonenumberAsync(PhoneNumbers.Canonical(phoneNumber)!);
         if (id != null)
         {
             return id;

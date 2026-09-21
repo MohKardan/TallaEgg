@@ -1,4 +1,4 @@
-using TallaEgg.Core.DTOs;
+﻿using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 
@@ -9,9 +9,10 @@ public interface IUserRepository
     Task<User?> GetByTelegramIdAsync(long telegramId);
     /// <summary>
     /// Every account holding this number. It returns a list rather than one user because a
-    /// phone number is not unique in storage: <c>PhoneNumber</c> carries no unique index, and a
     /// caller that cannot see a second holder has no way to refuse the ambiguity — it would
-    /// silently act on whichever row came back first (issue #303).
+    /// silently act on whichever row came back first (issue #303). Duplicates are rarer since
+    /// #307 added a unique index, but that index is skipped on a database that already held
+    /// duplicates when it ran, so more than one holder remains possible.
     /// </summary>
     Task<IReadOnlyList<User>> GetAllByPhoneNumberAsync(string phoneNumber);
     Task<User> CreateAsync(User user);

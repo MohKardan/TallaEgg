@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.TelegramBot.Infrastructure;
@@ -87,12 +87,16 @@ public class SharedPhoneNumberStorageTests
     }
 
     /// <summary>
-    /// A number from outside Iran is stored as sent. Whether to accept one at all is a separate
-    /// decision (issue #297 leaves it to the owner); this change only stops corrupting Iranian ones.
+    /// A number from outside Iran is accepted — the owner settled that on 2026-09-21, and one
+    /// real account on this database already has one — and stored as its digits with the country
+    /// code. The plus goes, because the country code already says what it said, and because a
+    /// number stored two ways is two accounts as far as the duplicate rule is concerned
+    /// (issue #307). This test previously asserted the number came through untouched, back when
+    /// #297 deliberately left the question open.
     /// </summary>
     [Fact]
-    public async Task ANonIranianNumber_IsStoredAsSent()
+    public async Task ANonIranianNumber_IsAcceptedInInternationalForm()
     {
-        Assert.Equal("+447700900123", await StoredAfterSharingAsync("+447700900123"));
+        Assert.Equal("447700900123", await StoredAfterSharingAsync("+447700900123"));
     }
 }

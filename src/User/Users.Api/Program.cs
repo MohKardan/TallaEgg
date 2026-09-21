@@ -205,6 +205,34 @@ builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToke
 
     await context.Database.MigrateAsync(cancellationToken);
 
+    // The migration that adds IX_Users_PhoneNumber creates it only when no number is held by
+    // more than one account, so that a duplicate costs the index rather than the service's
+    // startup (issue #307). It announces a skip with RAISERROR, which travels on
+    // SqlConnection.InfoMessage — a channel EF does not subscribe to, so nothing of it reaches
+    // the log. And because the migration is recorded as applied either way, it never runs again:
+    // without this check a database would go on for ever with no index and nobody the wiser.
+    // Checked on every startup, so cleaning the duplicates and restarting is the remedy.
+    var phoneIndexes = await context.Database
+        .SqlQuery<int>($@"SELECT COUNT(*) AS Value FROM sys.indexes
+                           WHERE object_id = OBJECT_ID('dbo.Users') AND name = 'IX_Users_PhoneNumber'")
+        .SingleAsync(cancellationToken);
+
+    if (phoneIndexes == 0)
+    {
+        var duplicates = await context.Users
+            .Where(u => u.PhoneNumber != null)
+            .GroupBy(u => u.PhoneNumber)
+            .CountAsync(group => group.Count() > 1, cancellationToken);
+
+        services.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Users.Api.Startup")
+            .LogWarning(
+                "IX_Users_PhoneNumber is missing: {Duplicates} phone number(s) are held by more " +
+                "than one account. One number, one account is enforced in the application layer " +
+                "only, until the duplicates are removed and the index is created by hand.",
+                duplicates);
+    }
+
     var adminId = TallaEgg.Core.BootstrapConstant.RootAdminUserId;
     var existingAdmin = await context.Users.FirstOrDefaultAsync(u => u.Id == adminId, cancellationToken);
 
@@ -325,6 +353,16 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
         var response = await userService.UpdateUserPhoneAsync(request.TelegramId, request.PhoneNumber);
         return Results.Ok(ApiResponse<UserDto>.Ok(response, "Phone number updated successfully"));
     }
+    catch (DbUpdateException)
+    {
+        // Two concurrent calls for the same number both pass the check inside UserService and
+        // both write; the unique index added in #307 refuses the second. Without this the caller
+        // gets a 500, and the bot shows its generic «بروزرسانی شماره تلفن ناموفق بود.» — losing
+        // the support instruction and the reference id that #303 put in the message.
+        return Results.BadRequest(ApiResponse<UserDto>.Fail(
+            "این شماره تلفن قبلاً برای حساب دیگری ثبت شده است." + Environment.NewLine +
+            $"لطفاً با پشتیبانی تماس بگیرید و کد پیگیری {request.TelegramId} را اعلام کنید."));
+    }
     catch (BusinessRuleException ex)
     {
         return Results.BadRequest(ApiResponse<UserDto>.Fail(ex.Message));
@@ -332,10 +370,13 @@ app.MapPost("/api/user/update-phone", async (UpdatePhoneRequest request, UserSer
 })
 .WithSummary("Set a user's phone number")
 .WithDescription(
-    "Identifies the user by Telegram id and overwrites the stored phone number, with no format " +
-    "check. An unknown Telegram id answers 400 with «کاربر یافت نشد.». A number already held by " +
-    "another account answers 400 as well and stores nothing: the refusal carries the caller's " +
-    "Telegram id as a reference for support (issue #303).")
+    "Identifies the user by Telegram id and overwrites the stored phone number. The number is " +
+    "stored in one canonical form — an Iranian number as 09…, any other country's as its digits " +
+    "with the country code and no plus — so the form it is sent in does not matter (issue #307). " +
+    "An unknown Telegram id answers 400 with «کاربر یافت نشد.». A number already held by " +
+    "another account answers 400 as well and stores nothing, whichever form each was written in: " +
+    "the refusal carries the caller's Telegram id as a reference for support (issue #303). Two " +
+    "concurrent calls for the same number answer the same way, refused by the unique index.")
 .WithTags("Users");
 
 app.MapGet("/api/user/{telegramId}", async (long telegramId, UserService userService) =>

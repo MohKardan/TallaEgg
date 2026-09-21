@@ -16,6 +16,16 @@ public class UsersDbContext : DbContext
         modelBuilder.Entity<User>().HasKey(u => u.Id);
         modelBuilder.Entity<User>().Property(u => u.TelegramId).IsRequired();
         modelBuilder.Entity<User>().HasIndex(u => u.TelegramId).IsUnique();
+
+        // One phone number, one account — the rule #303 put in the application layer, now also in
+        // storage, where a race between two concurrent update-phone calls cannot slip past it.
+        // Filtered because the column is nullable and SQL Server treats NULLs as equal in a unique
+        // index: without the filter the accounts that have no number yet collide with each other
+        // (issue #307).
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.PhoneNumber)
+            .IsUnique()
+            .HasFilter("[PhoneNumber] IS NOT NULL");
         modelBuilder.Entity<User>().Property(u => u.CreatedAt).IsRequired();
         modelBuilder.Entity<User>().Property(u => u.Status).IsRequired();
 
