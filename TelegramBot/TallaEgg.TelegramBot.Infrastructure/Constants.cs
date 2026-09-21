@@ -171,13 +171,24 @@ namespace TallaEgg.TelegramBot.Infrastructure
         ///
         /// <para>
         /// It no longer promises to report the trade when it happens, either. On the quote path —
-        /// the only one customers use — the trade executed in the same instant and the
-        /// trade-executed message follows immediately, so describing a wait that was already over
-        /// read as though something were still pending.
+        /// the one customers reach from their own menu — the trade executed in the same instant and
+        /// the trade-executed message follows immediately, so describing a wait that was already
+        /// over read as though something were still pending.
+        /// </para>
+        ///
+        /// <para>
+        /// It points at the trade history without claiming this order produced a trade, and that
+        /// wording is deliberate. The same message is also sent on the order-book fallback, taken
+        /// when the quote is gone by the time the customer confirms — a published quote they began
+        /// against, withdrawn or expired a moment later. Nothing executes there and
+        /// SendTradeExecutedAsync is skipped, so a message promising «the result of the trade»
+        /// would point at a history that stays empty. What that path really needs is to stop
+        /// resting an order that can never fill (#258); this only avoids adding a second wrong
+        /// thing to it.
         /// </para>
         /// </summary>
         public const string MsgOrderSuccess = "✅ سفارش شما ثبت شد.\n\n" +
-                                              "نتیجهٔ معامله را از «" + BotBtns.BtnAccounting +
+                                              "وضعیت معامله‌هایتان را از «" + BotBtns.BtnAccounting +
                                               "» ← «" + BotBtns.BtnTradeHistory + "» ببینید.";
 
         /// <summary>

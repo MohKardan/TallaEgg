@@ -1,6 +1,10 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.RegularExpressions;
 using TallaEgg.TelegramBot.Infrastructure;
+using TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram;
+using TallaEgg.TelegramBot.Infrastructure.Messaging;
+using TallaEgg.AllServices.Tests.Fakes;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -55,13 +59,54 @@ public class BotMessagesNameRealButtonsTests
         "{0}", "هر مثقال", "گرم", "آبشده", "سکه"
     };
 
-    /// <summary>Ordinal: these strings carry invisible formatting characters that a culture-sensitive comparison would fold away.</summary>
-    private static HashSet<string> ButtonLabels() =>
-        new(typeof(BotBtns)
-                .GetFields(BindingFlags.Public | BindingFlags.Static)
-                .Where(f => f.IsLiteral && f.FieldType == typeof(string))
-                .Select(f => (string)f.GetRawConstantValue()!),
-            StringComparer.Ordinal);
+    /// <summary>
+    /// Every keyboard the bot sends. Driving them is the whole point: a label is only real if a
+    /// menu renders it.
+    ///
+    /// <para>
+    /// Reading <see cref="BotBtns"/> instead would be weaker in exactly the way that let #292
+    /// through. Several constants there are on no keyboard at all — <c>BtnWallet</c>,
+    /// <c>BtnHistory</c> and <c>BtnSpot</c> have no use outside their own declaration, and
+    /// <c>BtnSpotCreateOrder</c> survives only in a commented-out row of the admin menu
+    /// (<c>Keyboards.cs:51</c>). A message naming one of those would name a button no customer can
+    /// see, and a guard reading the constants would call it fine. #292 was caught by such a guard
+    /// only because that particular constant happened to be deleted as well.
+    /// </para>
+    /// </summary>
+    private static readonly Func<IBotMessenger, Task>[] EveryKeyboard =
+    [
+        m => m.SendContactKeyboardAsync(ChatId),
+        m => m.SendMainKeyboardForAdminAsync(ChatId),
+        m => m.SendMainKeyboardForUserAsync(ChatId),
+        m => m.SendAccountingMenuKeyboard(ChatId),
+        m => m.SendAccountingMenuKeyboardForAdmin(ChatId),
+        m => m.SendSpotSideMenuKeyboard(ChatId)
+    ];
+
+    private const long ChatId = 12345;
+
+    /// <summary>
+    /// The labels a menu actually renders. Ordinal: these strings carry invisible formatting
+    /// characters that a culture-sensitive comparison would fold away.
+    /// </summary>
+    private static async Task<HashSet<string>> RenderedButtonLabelsAsync()
+    {
+        var labels = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var send in EveryKeyboard)
+        {
+            var messenger = new FakeBotMessenger();
+            await send(messenger);
+
+            foreach (var sent in messenger.Sent)
+            {
+                if (sent.ReplyMarkup is ReplyKeyboardMarkup keyboard)
+                    labels.UnionWith(keyboard.Keyboard.SelectMany(row => row).Select(b => b.Text));
+            }
+        }
+
+        return labels;
+    }
 
     private static List<(string Name, string Text)> Messages() =>
         typeof(BotMsgs)
@@ -73,9 +118,9 @@ public class BotMessagesNameRealButtonsTests
     // ── the guard ───────────────────────────────────────────────────────────────
 
     [Fact]
-    public void NoMessageNamesAButtonThatIsNotOnAMenu()
+    public async Task NoMessageNamesAButtonThatIsNotOnAMenu()
     {
-        var buttons = ButtonLabels();
+        var buttons = await RenderedButtonLabelsAsync();
 
         var offenders = Messages()
             .SelectMany(m => Quoted.Matches(m.Text).Select(match => (m.Name, Label: match.Groups[1].Value)))
@@ -114,9 +159,9 @@ public class BotMessagesNameRealButtonsTests
     /// passing because nothing it extracts ever resembles a menu label.
     /// </summary>
     [Fact]
-    public void TheSweepMatchesAQuotedLabelAgainstTheButtonItNames()
+    public async Task TheSweepMatchesAQuotedLabelAgainstTheButtonItNames()
     {
-        var buttons = ButtonLabels();
+        var buttons = await RenderedButtonLabelsAsync();
 
         var quoted = Messages()
             .SelectMany(m => Quoted.Matches(m.Text).Select(x => x.Groups[1].Value))
