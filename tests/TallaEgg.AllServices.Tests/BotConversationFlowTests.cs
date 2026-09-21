@@ -537,4 +537,130 @@ public class BotConversationFlowTests
         var keyboard = Assert.IsType<ReplyKeyboardMarkup>(prompt.ReplyMarkup);
         Assert.Contains(keyboard.Keyboard.SelectMany(row => row), b => b.Text == BotBtns.BtnBack);
     }
+
+    // ── a conversation a restart took away (issue #295) ─────────────────────────
+
+    /// <summary>
+    /// The conversation lives only in the bot's memory, so a restart empties it while the
+    /// confirmation message and its buttons stay in the customer's chat. Clearing the store
+    /// between the two steps is exactly what a restart does to them.
+    ///
+    /// <para>
+    /// The reply they used to get was "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید" — an error
+    /// naming no cause, ending in advice that cannot work: the store is empty, so every further
+    /// tap of the same button lands on the same empty store and produces the same error.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ConfirmingAnOrderWhoseConversationIsGone_SaysItExpiredInsteadOfAGenericError()
+    {
+        PublishQuote();
+        await WalkToConfirmationAsync();
+        var before = _messenger.Sent.Count;
+
+        _conversations.Clear(TelegramId);           // what a restart leaves behind
+        await TapAsync(InlineCallBackData.confirm_order);
+
+        var after = _messenger.Texts.Skip(before).ToList();
+
+        Assert.Contains(BotMsgs.MsgOrderConversationExpired, after);
+
+        // The advice specifically, not merely the old wording: telling them to retry is the part
+        // that sends a customer round a loop that can never terminate.
+        Assert.DoesNotContain(after, t => t.Contains("دوباره تلاش کنید"));
+    }
+
+    /// <summary>
+    /// And nothing may be placed on the way.
+    ///
+    /// <para>
+    /// This was already true before the fix — the guard returned early — so it proves nothing
+    /// about the change. It is here as a regression guard: the expired reply sends the customer
+    /// away to check their accounting, and that is only sane advice if this path genuinely cannot
+    /// place an order behind their back.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ConfirmingAnOrderWhoseConversationIsGone_PlacesNoOrderAtAll()
+    {
+        PublishQuote();
+        await WalkToConfirmationAsync();
+
+        _conversations.Clear(TelegramId);
+        await TapAsync(InlineCallBackData.confirm_order);
+
+        Assert.Empty(_orderApi.SubmittedOrders);
+        Assert.Empty(_orderApi.AcceptedQuotes);
+        Assert.DoesNotContain(_messenger.Texts, t => t.Contains("معاملهٔ شما انجام شد"));
+    }
+
+
+    /// <summary>
+    /// A missing conversation does not mean nothing happened, and the reply must not pretend it
+    /// does.
+    ///
+    /// <para>
+    /// <c>HandleOrderConfirmationAsync</c> clears the conversation in its <c>finally</c> on every
+    /// exit, success included, and the confirmation keyboard is never deleted or edited. So the
+    /// second tap of a تایید button whose first tap executed and settled a trade arrives at the
+    /// very same guard as a restart, and nothing there can tell the two apart. A draft of this fix
+    /// reassured the customer that nothing was placed and nothing was charged — which on this path
+    /// would be a lie told immediately after debiting their wallet, and a worse one than the vague
+    /// error it replaced.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ConfirmingTwiceAfterATradeExecuted_DoesNotClaimThatNothingWasPlaced()
+    {
+        PublishQuote();
+        await WalkToConfirmationAsync();
+
+        await TapAsync(InlineCallBackData.confirm_order);        // executes and settles
+        Assert.NotEmpty(_orderApi.AcceptedQuotes);               // the trade really did happen
+        var before = _messenger.Sent.Count;
+
+        await TapAsync(InlineCallBackData.confirm_order);        // the same button, tapped again
+
+        var after = _messenger.Texts.Skip(before).ToList();
+        Assert.NotEmpty(after);
+        Assert.DoesNotContain(after, t => t.Contains("هیچ سفارشی ثبت نشد"));
+        Assert.DoesNotContain(after, t => t.Contains("کم نشده است"));
+    }
+
+    /// <summary>
+    /// A restart can land on any step, not only the last one. The asset keyboard is an inline
+    /// message, so it survives in the chat and can be tapped afterwards just as the confirmation
+    /// can.
+    /// </summary>
+    [Fact]
+    public async Task ChoosingAnAssetAfterTheConversationIsGone_SaysItExpired()
+    {
+        PublishQuote();
+        await SayAsync(BotBtns.BtnSpotMarket);
+        var before = _messenger.Sent.Count;
+
+        _conversations.Clear(TelegramId);
+        await TapAsync($"asset_{Gold}");
+
+        var after = _messenger.Texts.Skip(before).ToList();
+        Assert.Contains(BotMsgs.MsgOrderConversationExpired, after);
+        Assert.DoesNotContain(after, t => t.Contains("دوباره تلاش کنید"));
+    }
+
+    /// <summary>Same again for the buy/sell keyboard, the other inline step of the flow.</summary>
+    [Fact]
+    public async Task ChoosingASideAfterTheConversationIsGone_SaysItExpired()
+    {
+        PublishQuote();
+        await SayAsync(BotBtns.BtnSpotMarket);
+        await TapAsync($"asset_{Gold}");
+        var before = _messenger.Sent.Count;
+
+        _conversations.Clear(TelegramId);
+        await TapAsync(InlineCallBackData.buy_spot);
+
+        var after = _messenger.Texts.Skip(before).ToList();
+        Assert.Contains(BotMsgs.MsgOrderConversationExpired, after);
+        Assert.DoesNotContain(after, t => t.Contains("دوباره تلاش کنید"));
+    }
 }

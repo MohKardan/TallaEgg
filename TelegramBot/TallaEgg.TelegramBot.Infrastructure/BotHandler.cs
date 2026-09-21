@@ -519,9 +519,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
                     if (!_conversations.TryGet(telegramId, out var sideConversation))
                     {
                         // The customer tapped a button from a message whose conversation is
-                        // gone — after a restart, or after the flow already finished. Sending
-                        // them back to the menu beats a NullReferenceException.
-                        await _messenger.SendAsync(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+                        // gone — after a restart, or after the flow already finished. An inline
+                        // keyboard stays in the chat indefinitely, so this is reachable for as
+                        // long as that message exists (issue #295).
+                        await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
                         break;
                     }
 
@@ -575,8 +576,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
                         if (!_conversations.TryGet(telegramId, out var assetConversation))
                         {
-                            await _messenger.SendAsync(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
-                            return;
+                            await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
+
+                            // break, not return: returning skips the AnswerCallbackAsync that ends
+                            // this method, leaving the button spinning until Telegram times it out —
+                            // on the one reply whose whole point is to stop the customer tapping again.
+                            break;
                         }
 
                         assetConversation.Asset = asset;
@@ -1295,9 +1300,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task HandleOrderAmountInputAsync(long chatId, long telegramId, string amountText)
         {
+            // No sequential path reaches this: the only caller enters from inside its own
+            // successful TryGet, so a customer whose conversation is gone is shown the main menu
+            // there and never arrives here. It stays a real guard because a cancel or back tap can
+            // race a typed message and clear the store in between. Kept saying the same thing as
+            // the live paths, so that race cannot resurrect the old wording (issue #295).
             if (!_conversations.TryGet(telegramId, out var conversation))
             {
-                await _messenger.SendAsync(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+                await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
                 return;
             }
 
@@ -1404,9 +1414,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task HandleOrderPriceInputAsync(long chatId, long telegramId, string priceStr)
         {
+            // Not reached sequentially either, for the same reason as the amount guard above:
+            // both callers already hold the conversation when they get here (issue #295).
             if (!_conversations.TryGet(telegramId, out var conversation))
             {
-                await _messenger.SendAsync(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+                await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
                 return;
             }
 
@@ -1487,7 +1499,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         {
             if (!_conversations.TryGet(telegramId, out var conversation))
             {
-                await _messenger.SendAsync(chatId, "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید.");
+                await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
                 return;
             }
 
