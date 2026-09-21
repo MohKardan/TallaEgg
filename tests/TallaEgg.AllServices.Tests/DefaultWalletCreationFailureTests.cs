@@ -82,7 +82,7 @@ public class DefaultWalletCreationFailureTests
         }
 
         public Task<User?> GetByTelegramIdAsync(long telegramId) => throw new NotSupportedException();
-        public Task<User?> GetByPhoneNumberAsync(string phone) => throw new NotSupportedException();
+        public Task<IReadOnlyList<User>> GetAllByPhoneNumberAsync(string phoneNumber) => throw new NotSupportedException();
         public Task<User> UpdateAsync(User user) => throw new NotSupportedException();
         public Task<bool> ExistsByTelegramIdAsync(long telegramId) => throw new NotSupportedException();
         public Task<PagedResult<UserDto>> GetAllAsync(string? q, int page, int size) => throw new NotSupportedException();

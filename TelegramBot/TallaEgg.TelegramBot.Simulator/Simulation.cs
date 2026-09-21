@@ -691,7 +691,17 @@ public sealed class Simulation(
     {
         Chat = new Chat { Id = user.TelegramId, Type = ChatType.Private },
         From = new User { Id = user.TelegramId, FirstName = user.FirstName, LastName = user.LastName, Username = user.Username },
-        Contact = new Contact { PhoneNumber = user.Phone, FirstName = user.FirstName, LastName = user.LastName },
+        // UserId is what Telegram sets when somebody taps "share my phone number", and the bot
+        // now stores a number only when it matches the sender (issue #303). Without it these
+        // virtual users look like people forwarding somebody else's contact card, and none of
+        // them gets past registration.
+        Contact = new Contact
+        {
+            PhoneNumber = user.Phone,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            UserId = user.TelegramId
+        },
         Date = DateTime.UtcNow,
     };
 

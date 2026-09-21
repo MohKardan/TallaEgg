@@ -15,7 +15,14 @@ namespace TallaEgg.TelegramBot.Infrastructure.Clients;
 public interface IUsersApiClient
 {
     Task<UserDto?> GetUserAsync(long telegramId);
-    Task<UserDto?> GetUserAsync(string phone);
+
+    /// <summary>
+    /// Looks a user up by phone number. Unlike the Telegram-id lookup this carries the envelope
+    /// rather than a bare user, because the answer can be a refusal the operator has to read:
+    /// a number held by more than one account resolves to neither of them, and "not found" and
+    /// "ambiguous" call for different actions from whoever typed the command (issue #303).
+    /// </summary>
+    Task<ApiResponse<UserDto>> GetUserAsync(string phone);
     Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? searchTerm = null);
     Task<(bool success, string message, Guid? userId)> RegisterUserAsync(
         long telegramId, string invitationCode, string? username, string? firstName, string? lastName);

@@ -84,6 +84,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                               "حساب شما در انتظار تایید مدیر است.\n" +
                                               "به‌محض تایید، به شما اطلاع می‌دهیم و می‌توانید معامله کنید.";
 
+        /// <summary>
+        /// A contact card arrived that belongs to somebody else. The share button sends the
+        /// sender's own contact, so this is either an address-book card or a forward — neither
+        /// of which proves the number is theirs (issue #303).
+        /// </summary>
+        public const string MsgPhoneMustBeYourOwn = "❌ فقط شماره خودتان قابل ثبت است.\n\n" +
+                                                    "لطفاً با دکمهٔ زیر شماره خودتان را به اشتراک بگذارید " +
+                                                    "و کارت تماس فرد دیگری را ارسال نکنید.";
+
         public const string MsgMainMenu = "🎯 منوی اصلی\n\nیکی از گزینه‌های زیر را انتخاب کنید:";
 
         /// <summary>{0} = the user's name. The account is registered but an admin has not approved it yet.</summary>

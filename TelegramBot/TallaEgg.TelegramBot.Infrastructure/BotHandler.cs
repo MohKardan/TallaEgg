@@ -265,7 +265,33 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task HandlePhoneNumberRequestAsync(long chatId, long telegramId, Message message)
         {
-            var phoneNumber = message.Contact?.PhoneNumber;
+            // Only the sender's own number. The share button (RequestContact) sends the sender's
+            // own contact and sets Contact.UserId to their id, but Telegram delivers a card
+            // attached from the address book through the very same field — with somebody else's
+            // id in it, or none at all. Without this comparison anyone could register under a
+            // customer's number, and the approval card put that number in front of the operator
+            // beside a Telegram profile name the sender chooses (issue #303).
+            //
+            // A missing UserId is refused on its own terms rather than compared: telegramId is
+            // message.From?.Id ?? 0, so a message with no From against a card with no UserId
+            // would otherwise compare null to nothing and pass — and 0 is the seeded root
+            // admin's TelegramId, the worst possible row to land a stranger's number on.
+            var contact = message.Contact;
+            if (contact is not null && (contact.UserId is null || contact.UserId != telegramId))
+            {
+                // The customer is told what to do; the operator is not told anything, because
+                // nothing was created. The number itself stays out of the log — a contact card
+                // is somebody's personal data.
+                _logger.LogWarning(
+                    "Telegram id {TelegramId} shared a contact card belonging to another account; refused.",
+                    telegramId);
+
+                await _messenger.SendAsync(chatId, BotMsgs.MsgPhoneMustBeYourOwn);
+                await _messenger.SendContactKeyboardAsync(chatId);
+                return;
+            }
+
+            var phoneNumber = contact?.PhoneNumber;
             if (phoneNumber != null)
             {
                 phoneNumber = SharedPhoneNumber.ToLocal(phoneNumber);

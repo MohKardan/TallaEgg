@@ -70,6 +70,36 @@ namespace TallaEgg.TelegramBot.Infrastructure
             return resolved;
         }
 
+        /// <summary>
+        /// The customer a phone-number command names, or null with the operator already told why.
+        ///
+        /// <para>
+        /// Shared by every command that takes a number — ش, د, م, س, ن, ت, ر — because they all
+        /// face the same two ways of not finding one person: nobody holds the number, or two
+        /// accounts do. The second used to be invisible here. The lookup answered whichever row
+        /// the database returned first, so a credit charge could land on an account that had
+        /// merely claimed the customer's number, and nothing said anything (issue #303).
+        /// </para>
+        ///
+        /// <para>
+        /// The message comes from the service rather than from a constant here: only it knows
+        /// which of the two happened, and the two send the operator to different places — one to
+        /// check what they typed, the other to support.
+        /// </para>
+        /// </summary>
+        private async Task<UserDto?> FindCustomerByPhoneAsync(long chatId, string phone)
+        {
+            var lookup = await _usersApi.GetUserAsync(phone);
+
+            if (lookup.Success && lookup.Data is not null)
+                return lookup.Data;
+
+            await _messenger.SendAsync(chatId,
+                string.IsNullOrWhiteSpace(lookup.Message) ? BotMsgs.MsgAdminUserNotFound : lookup.Message);
+
+            return null;
+        }
+
         private async Task<bool> HandleAdminCommandsAsync(long chatId, long telegramId, Message message, UserDto user)
         {
             var msgText = message.Text ?? "";
@@ -99,7 +129,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
                 if (currency is null) return true;
 
-                var userDto = await _usersApi.GetUserAsync(phone);
+                var userDto = await FindCustomerByPhoneAsync(message.Chat.Id, phone);
                 if (userDto != null)
                 {
                     var creditAsset = CurrenciesConstant.CreditAssetFor(currency);
@@ -169,10 +199,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
                             string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
-                else
-                {
-                    await _messenger.SendAsync(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
-                }
 
                 return true;
 
@@ -209,7 +235,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 var currency = await ResolveCreditableAssetAsync(message.Chat.Id, currencyInput);
                 if (currency is null) return true;
 
-                var userDto = await _usersApi.GetUserAsync(phone);
+                var userDto = await FindCustomerByPhoneAsync(message.Chat.Id, phone);
                 if (userDto != null)
                 {
                     // The credit ledger, exactly as the charge command writes to it. These two
@@ -283,10 +309,6 @@ namespace TallaEgg.TelegramBot.Infrastructure
                             string.Format(BotMsgs.MsgAdminOperationFailed, result.Message));
                     }
                 }
-                else
-                {
-                    await _messenger.SendAsync(message.Chat.Id, BotMsgs.MsgAdminUserNotFound);
-                }
 
                 return true;
 
@@ -322,14 +344,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 var msgSplit = msgText.Split(" ");
                 string phone = "";
                 if (msgSplit.Length > 1) phone = msgSplit[1];
-                var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
-                if (useId.HasValue)
+                // Resolved the same way every other phone command resolves a customer, so a
+                // number on two accounts refuses here too rather than showing one of them
+                // (issue #303).
+                var customer = await FindCustomerByPhoneAsync(chatId, phone);
+                if (customer != null)
                 {
-                    await ShowWalletsBalance(chatId, useId.Value);
-                }
-                else
-                {
-                    await _messenger.SendAsync(chatId, "شماره تلفن پیدا نشد");
+                    await ShowWalletsBalance(chatId, customer.Id);
                 }
                 return true;
             }
@@ -338,18 +359,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 var msgSplit = msgText.Split(" ");
                 string phone = "";
                 if (msgSplit.Length > 1) phone = msgSplit[1];
-                var useId = await _usersApi.GetUserIdByPhoneNumberAsync(phone);
-                if (useId.HasValue)
+                var customer = await FindCustomerByPhoneAsync(chatId, phone);
+                if (customer != null)
                 {
                     // Was "show this customer's active orders". In the dealer model an order
                     // exists only for the instant of a fill, so that list was always empty and
                     // the command answered nothing. Their completed trades are what the admin
                     // is actually looking for when they type a customer's number.
-                    await ShowCustomerTradeHistoryAsync(chatId, useId.Value, phone);
-                }
-                else
-                {
-                    await _messenger.SendAsync(chatId, "شماره تلفن پیدا نشد");
+                    await ShowCustomerTradeHistoryAsync(chatId, customer.Id, phone);
                 }
                 return true;
             }
@@ -464,12 +481,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 return;
             }
 
-            var target = await _usersApi.GetUserAsync(phone);
-            if (target is null)
-            {
-                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUserNotFound);
-                return;
-            }
+            var target = await FindCustomerByPhoneAsync(chatId, phone);
+            if (target is null) return;
 
             // Refusing self-change is what stops the only operator from locking everyone out of
             // the administrative side in one message. There is no undo from inside the bot: once
@@ -555,13 +568,9 @@ namespace TallaEgg.TelegramBot.Infrastructure
             }
 
             var phone = match.Groups["phone"].Value;
-            var target = await _usersApi.GetUserAsync(phone);
+            var target = await FindCustomerByPhoneAsync(chatId, phone);
 
-            if (target is null)
-            {
-                await _messenger.SendAsync(chatId, BotMsgs.MsgAdminUserNotFound);
-                return;
-            }
+            if (target is null) return;
 
             // The status endpoint is keyed on the Telegram id, so an account that has none
             // cannot be reached through it. The seeded administrator row is exactly that: it
