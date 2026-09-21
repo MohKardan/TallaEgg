@@ -519,6 +519,27 @@ namespace TallaEgg.TelegramBot.Infrastructure
             "این پیام قدیمی است. لطفاً از منوی اصلی دوباره شروع کنید.";
 
         /// <summary>
+        /// Reply when a step of the order flow finds no conversation behind it (issue #295).
+        ///
+        /// The conversation lives only in this process, so a restart — a deploy, a crash, the
+        /// service being recycled — drops every order in flight while the confirmation message
+        /// and its buttons stay in the customer's chat. Not persisting it is deliberate: prices
+        /// move, and resuming an order begun before a restart would confirm it at a stale price.
+        ///
+        /// What was wrong was the reply. The generic "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید"
+        /// named no cause and told the customer to retry, which at the confirmation step can never
+        /// succeed — the store is empty and every further tap lands on the same empty store. So
+        /// this text says what happened, states that nothing was placed or charged, and sends them
+        /// to the menu. The closing line about prices is not filler: the figure they are looking at
+        /// was quoted before the restart and must not be assumed to still hold.
+        /// </summary>
+        public const string MsgOrderConversationExpired =
+            "⏳ این سفارش دیگر معتبر نیست.\n\n" +
+            "اطلاعات این سفارش در دسترس نیست — معمولاً وقتی پیش می‌آید که ربات به‌روزرسانی یا دوباره راه‌اندازی شده باشد.\n\n" +
+            "هیچ سفارشی ثبت نشد و هیچ مبلغی از حساب شما کم نشده است.\n\n" +
+            "لطفاً از منوی اصلی دوباره شروع کنید. توجه کنید که قیمت‌ها ممکن است تغییر کرده باشند.";
+
+        /// <summary>
         /// The generic reply when handling a user's message stops on an unexpected error with no
         /// specific response from the handler (issue #99). This is what keeps a raw exception message
         /// from ever reaching a user.
