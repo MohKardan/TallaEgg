@@ -1112,6 +1112,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 // Build the symbol buttons.
                 var symbolButtons = CreateSymbolButtons(activeTradingPairs);
 
+                // Counted before the back button is appended, and taken from the buttons rather
+                // than from the pairs that went in: a pair can be dropped inside (issue #296), and
+                // reporting the input count here would contradict the warning logged one frame
+                // down — "50 built" immediately followed by "showed 60".
+                var symbolsShown = symbolButtons.Count;
+
                 // Add the back button.
                 symbolButtons.Add(new[]
                 {
@@ -1130,7 +1136,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 }
 
                 _logger.LogInformation("Successfully showed {Count} trading symbols to user {TelegramId}",
-                    activeTradingPairs.Count, telegramId);
+                    symbolsShown, telegramId);
 
                 return true;
             }
@@ -1184,21 +1190,49 @@ namespace TallaEgg.TelegramBot.Infrastructure
         }
 
         /// <summary>
-        /// Builds the symbol buttons, subject to a count limit.
+        /// A safety rail on the symbol picker, not a product limit (issue #296).
+        ///
+        /// <para>
+        /// Telegram refuses a keyboard that is too large, and a refused keyboard leaves the
+        /// customer with no picker at all — strictly worse than one missing symbol. So a ceiling
+        /// stays, set far above any realistic number of tradable symbols: three are active today,
+        /// and adding one needs only a config block.
+        /// </para>
+        ///
+        /// <para>
+        /// The figure is a conservative guard, not a measurement. Telegram's Bot API documents a
+        /// 64-byte cap on callback data (enforced per button below) but publishes no maximum
+        /// button count, and this cannot be measured without a live Telegram connection. If the
+        /// picker ever approaches it, measure before raising it.
+        /// </para>
+        /// </summary>
+        internal const int MaxSymbolButtons = 50;
+
+        /// <summary>
+        /// Builds the symbol buttons, one row per pair.
+        ///
+        /// <para>
+        /// internal, not private, so a test can hand it more pairs than the platform has
+        /// (issue #296). The obvious alternative — registering extra symbols through
+        /// <c>CurrenciesConstant.Configure</c> — is not available: that catalog lives in shared
+        /// static fields every test in the process reads, and xUnit runs test classes in
+        /// parallel, so mutating it makes unrelated tests flaky. <c>CurrenciesConstantSymbolsTests</c>
+        /// already avoids <c>Configure</c> for exactly that reason.
+        /// </para>
         /// </summary>
         /// <param name="tradingPairs">The trading pairs.</param>
         /// <returns>The inline keyboard buttons.</returns>
-        private List<InlineKeyboardButton[]> CreateSymbolButtons(List<TradingPairInfo> tradingPairs)
+        internal List<InlineKeyboardButton[]> CreateSymbolButtons(List<TradingPairInfo> tradingPairs)
         {
             var buttons = new List<InlineKeyboardButton[]>();
 
             try
             {
-                const int maxButtonsPerPage = 10; // محدودیت تعداد دکمه‌ها
-                var pairsToShow = tradingPairs.Take(maxButtonsPerPage);
-
-                foreach (var pair in pairsToShow)
+                foreach (var pair in tradingPairs)
                 {
+                    if (buttons.Count >= MaxSymbolButtons)
+                        break;
+
                     try
                     {
                         // Extra validation per pair.
@@ -1230,14 +1264,20 @@ namespace TallaEgg.TelegramBot.Infrastructure
                     }
                 }
 
-                if (tradingPairs.Count > maxButtonsPerPage)
+                // Any shortfall at all is worth a warning, whether a symbol hit the ceiling or
+                // was skipped for an unusable callback: either way a symbol an admin activated
+                // cannot be traded, and the admin was told it could. Warning, not Information —
+                // this is the only record anywhere that it happened, and Information is the level
+                // nobody greps.
+                //
+                // The count is the buttons actually built. It used to report the page-size
+                // constant, so on any run where a pair was also skipped for an over-long callback,
+                // the one witness overstated how many symbols had survived.
+                if (buttons.Count < tradingPairs.Count)
                 {
-                    _logger.LogInformation("Showing {Shown} out of {Total} trading pairs due to pagination limit",
-                        maxButtonsPerPage, tradingPairs.Count);
-
-                    // Symbols past this limit are simply not offered. With a handful of
-                    // symbols nobody notices; the day the list grows, a customer cannot reach
-                    // the ones that fell off, and there is no sign in the bot that they exist.
+                    _logger.LogWarning(
+                        "Symbol picker built {Shown} button(s) from {Total} active trading pair(s); {Dropped} symbol(s) cannot be reached from the bot.",
+                        buttons.Count, tradingPairs.Count, tradingPairs.Count - buttons.Count);
                 }
             }
             catch (Exception ex)
