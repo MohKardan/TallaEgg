@@ -157,9 +157,28 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                      "{0}\n\n" +
                                                      "برای افزایش موجودی یا اعتبار، با طلافروشی خود تماس بگیرید.";
 
+        /// <summary>
+        /// Sent when an order is accepted (issue #292).
+        ///
+        /// <para>
+        /// Built from the button constants rather than from literals, so deleting a button breaks
+        /// this message at compile time instead of silently. That is not hypothetical: it used to
+        /// end by pointing at «سفارشات فعال», and BtnActiveOrders was deleted on 2026-07-30 by the
+        /// commit that made one quote fill produce one trade (#74/#75). The message went on naming
+        /// it for fifty-three days, because a label inside a string literal is invisible to the
+        /// compiler.
+        /// </para>
+        ///
+        /// <para>
+        /// It no longer promises to report the trade when it happens, either. On the quote path —
+        /// the only one customers use — the trade executed in the same instant and the
+        /// trade-executed message follows immediately, so describing a wait that was already over
+        /// read as though something were still pending.
+        /// </para>
+        /// </summary>
         public const string MsgOrderSuccess = "✅ سفارش شما ثبت شد.\n\n" +
-                                              "به‌محض انجام معامله، نتیجه به شما اطلاع داده می‌شود.\n" +
-                                              "سفارش‌های در جریان را از «سفارشات فعال» ببینید.";
+                                              "نتیجهٔ معامله را از «" + BotBtns.BtnAccounting +
+                                              "» ← «" + BotBtns.BtnTradeHistory + "» ببینید.";
 
         /// <summary>
         /// The outcome of a trade that actually executed. Sent after the order-placed message.
