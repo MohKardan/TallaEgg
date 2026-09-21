@@ -108,7 +108,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
             {
                 // Accepted forms of the top-up command, with the currency given as a code, omitted,
                 // or written as a multi-word Persian name.
-                var regex = new Regex(@"^ش\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
+                var regex = new Regex(@"^ش\s+(?<phone>\d{10,15})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
@@ -208,7 +208,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
             {
                 // Accepted forms of the deduction command, with the currency given as a code,
                 // omitted, or written as a multi-word Persian name.
-                var regex = new Regex(@"^د\s+(?<phone>\d{10,11})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
+                var regex = new Regex(@"^د\s+(?<phone>\d{10,15})\s+(?<amount>\d+)(\s+(?<currency>.+?))?\s*$",
                     RegexOptions.Compiled | RegexOptions.IgnoreCase);
                 var match = regex.Match(msgText);
                 if (!match.Success)
@@ -460,7 +460,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         {
             // Same shape as the charge command: a phone number, then the argument.
             var match = Regex.Match(msgText.Trim(),
-                @"^ن\s+(?<phone>\d{10,11})\s+(?<role>.+)$",
+                @"^ن\s+(?<phone>\d{10,15})\s+(?<role>.+)$",
                 RegexOptions.Compiled);
 
             if (!match.Success)
@@ -559,7 +559,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
         private async Task HandleSetUserStatusCommandAsync(
             long chatId, string msgText, string prefix, UserStatus newStatus)
         {
-            var match = Regex.Match(msgText.Trim(), $@"^{prefix}\s+(?<phone>\d{{10,11}})$", RegexOptions.Compiled);
+            var match = Regex.Match(msgText.Trim(), $@"^{prefix}\s+(?<phone>\d{{10,15}})$", RegexOptions.Compiled);
 
             if (!match.Success)
             {

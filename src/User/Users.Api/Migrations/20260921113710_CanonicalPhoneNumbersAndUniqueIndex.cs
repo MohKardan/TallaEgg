@@ -39,13 +39,37 @@ namespace Users.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Punctuation a person typed, and the plus, whose meaning the country code already
-            // carries. Done first so the prefix rules below see bare digits.
+            // Persian (U+06F0..) and Arabic-Indic (U+0660..) digits become ASCII, exactly as
+            // Utils.ConvertPersianDigitsToEnglish does in the application. This has to come
+            // before the strip below, which would otherwise delete them as non-digits and leave
+            // the row holding a fragment of a number, or nothing at all. The binary collation
+            // makes the comparison exact: under the database's default collation a Persian digit
+            // can compare equal to its ASCII counterpart, and the replacement would be a no-op.
             migrationBuilder.Sql(@"
-                UPDATE Users
-                   SET PhoneNumber = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
-                                     PhoneNumber, ' ', ''), '-', ''), '(', ''), ')', ''), '.', ''), '+', '')
-                 WHERE PhoneNumber IS NOT NULL;");
+                DECLARE @digit int = 0;
+                WHILE @digit < 10
+                BEGIN
+                    UPDATE Users
+                       SET PhoneNumber = REPLACE(REPLACE(
+                             PhoneNumber COLLATE Latin1_General_BIN2,
+                             NCHAR(0x06F0 + @digit), CHAR(48 + @digit)),
+                             NCHAR(0x0660 + @digit), CHAR(48 + @digit))
+                     WHERE PhoneNumber IS NOT NULL;
+                    SET @digit = @digit + 1;
+                END");
+
+            // Every non-digit, one at a time, until none is left — not a fixed list of the
+            // punctuation we happen to think of. Canonical strips everything that is not a digit,
+            // so a row left holding a stray character this pass did not know about would stay
+            // non-canonical forever while every lookup canonicalises, and that account would
+            // become unfindable by phone.
+            migrationBuilder.Sql(@"
+                WHILE EXISTS (SELECT 1 FROM Users WHERE PhoneNumber LIKE '%[^0-9]%')
+                BEGIN
+                    UPDATE Users
+                       SET PhoneNumber = STUFF(PhoneNumber, PATINDEX('%[^0-9]%', PhoneNumber), 1, '')
+                     WHERE PhoneNumber LIKE '%[^0-9]%';
+                END");
 
             // The international dialling prefix. An Iranian local number begins 09, never 00.
             migrationBuilder.Sql(@"

@@ -103,9 +103,11 @@ public class UserService
             throw new BusinessRuleException("کاربر یافت نشد.");
         }
 
-        // One number, one account. Storage does not enforce this — PhoneNumber has no unique
-        // index, and adding one would have to migrate whatever duplicates already exist — so the
-        // rule lives here, where the refusal can say something useful to the person reading it.
+        // One number, one account. Storage enforces this too since #307 — a filtered unique
+        // index on PhoneNumber — but the rule stays here as well, because the index can only
+        // answer with a constraint violation and this can say something the customer can act on.
+        // The index is also created only when the data allowed it, so it may be absent on a
+        // database that still holds duplicates.
         //
         // The customer cannot fix this themselves: by construction the number is on an account
         // that is not theirs. Support can, which is why the message sends them there and the log

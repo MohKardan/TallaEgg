@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 
 namespace TallaEgg.Core.Utilties;
 
@@ -43,12 +43,20 @@ public static class PhoneNumbers
         if (string.IsNullOrWhiteSpace(phoneNumber))
             return phoneNumber;
 
+        // Persian and Arabic-Indic digits first. The bot converts them in message text, but a
+        // number can also arrive through the API — from an operator tool, or the web client of
+        // #97 — and char.IsDigit accepts the whole Unicode Nd category, so ۰۹۱۵… would survive
+        // the strip below, miss the ASCII prefix comparisons, and be stored as a row no ASCII
+        // spelling of the same number can ever match. The unique index would accept it happily:
+        // it is a different string.
+        phoneNumber = Utils.ConvertPersianDigitsToEnglish(phoneNumber);
+
         // Everything that is not a digit is punctuation a person added: spaces, dashes,
         // parentheses, and the plus, whose meaning is carried by the country code that follows it.
         var digits = new StringBuilder(phoneNumber.Length);
         foreach (var character in phoneNumber)
         {
-            if (char.IsDigit(character))
+            if (character is >= '0' and <= '9')
                 digits.Append(character);
         }
 

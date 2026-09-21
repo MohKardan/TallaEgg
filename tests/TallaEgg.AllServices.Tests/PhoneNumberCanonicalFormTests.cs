@@ -1,4 +1,4 @@
-using TallaEgg.AllServices.Tests.Fakes;
+﻿using TallaEgg.AllServices.Tests.Fakes;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
 using TallaEgg.Core.Enums.User;
@@ -111,6 +111,22 @@ public class PhoneNumberCanonicalFormTests
     [InlineData("+44 7700 900123", "447700900123")]
     [InlineData("0044 7700 900123", "447700900123")]
     public void Canonical_ForeignNumber_KeepsItsCountryCode(string arrived, string expected) =>
+        Assert.Equal(expected, PhoneNumbers.Canonical(arrived));
+
+    /// <summary>
+    /// Persian and Arabic-Indic digits reach the same form as their ASCII spelling. The bot
+    /// converts digits in message text, but a contact card's number and a direct API call do not
+    /// go through that, and <c>char.IsDigit</c> accepts the whole Unicode Nd category — so these
+    /// would otherwise survive the strip, miss the ASCII prefix comparison, and be stored as a
+    /// row no ASCII spelling of the same number could ever match, one the unique index would
+    /// accept because it is a different string.
+    /// </summary>
+    [Theory]
+    [InlineData("۰۹۱۵۱۱۹۸۱۶۱", "09151198161")]
+    [InlineData("۹۸۹۱۵۱۱۹۸۱۶۱", "09151198161")]
+    [InlineData("+۹۸ ۹۱۵ ۱۱۹ ۸۱۶۱", "09151198161")]
+    [InlineData("٠٩١٥١١٩٨١٦١", "09151198161")]
+    public void Canonical_PersianOrArabicDigits_ReachTheSameForm(string arrived, string expected) =>
         Assert.Equal(expected, PhoneNumbers.Canonical(arrived));
 
     /// <summary>Nothing to canonicalise is not an error; the caller decides what absent means.</summary>

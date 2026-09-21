@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using TallaEgg.AllServices.Tests.Fakes;
 using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.User;
@@ -15,7 +15,8 @@ namespace TallaEgg.AllServices.Tests;
 ///
 /// <para>
 /// Nothing used to stop a second account from claiming a number another account already held:
-/// <c>UpdateUserPhoneAsync</c> assigned it, and <c>PhoneNumber</c> carries no unique index. The
+/// <c>UpdateUserPhoneAsync</c> assigned it, and <c>PhoneNumber</c> carried no unique index — it
+/// has one since #307, filtered, and created only where the data allowed it. The
 /// operator side then had no way to tell the two apart — it identifies customers by phone, and
 /// the lookup returned whichever row the database handed back first. Ids are
 /// <c>Guid.NewGuid()</c>, so which one that is, is not something the code decides.
