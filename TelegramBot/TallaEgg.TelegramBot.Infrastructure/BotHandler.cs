@@ -577,7 +577,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
                         if (!_conversations.TryGet(telegramId, out var assetConversation))
                         {
                             await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
-                            return;
+
+                            // break, not return: returning skips the AnswerCallbackAsync that ends
+                            // this method, leaving the button spinning until Telegram times it out —
+                            // on the one reply whose whole point is to stop the customer tapping again.
+                            break;
                         }
 
                         assetConversation.Asset = asset;
@@ -1296,10 +1300,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task HandleOrderAmountInputAsync(long chatId, long telegramId, string amountText)
         {
-            // Unreachable today: the only caller reaches this method from inside its own
+            // No sequential path reaches this: the only caller enters from inside its own
             // successful TryGet, so a customer whose conversation is gone is shown the main menu
-            // there and never arrives here. Kept as a guard, and kept saying the same thing as
-            // the live paths, so exposing it later cannot resurrect the old wording (issue #295).
+            // there and never arrives here. It stays a real guard because a cancel or back tap can
+            // race a typed message and clear the store in between. Kept saying the same thing as
+            // the live paths, so that race cannot resurrect the old wording (issue #295).
             if (!_conversations.TryGet(telegramId, out var conversation))
             {
                 await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);
@@ -1409,8 +1414,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
         private async Task HandleOrderPriceInputAsync(long chatId, long telegramId, string priceStr)
         {
-            // Unreachable today, for the same reason as the amount guard above: both callers
-            // already hold the conversation when they get here (issue #295).
+            // Not reached sequentially either, for the same reason as the amount guard above:
+            // both callers already hold the conversation when they get here (issue #295).
             if (!_conversations.TryGet(telegramId, out var conversation))
             {
                 await _messenger.SendAsync(chatId, BotMsgs.MsgOrderConversationExpired);

@@ -528,16 +528,28 @@ namespace TallaEgg.TelegramBot.Infrastructure
         ///
         /// What was wrong was the reply. The generic "خطا در پردازش سفارش. لطفاً دوباره تلاش کنید"
         /// named no cause and told the customer to retry, which at the confirmation step can never
-        /// succeed — the store is empty and every further tap lands on the same empty store. So
-        /// this text says what happened, states that nothing was placed or charged, and sends them
-        /// to the menu. The closing line about prices is not filler: the figure they are looking at
-        /// was quoted before the restart and must not be assumed to still hold.
+        /// succeed — the store is empty and every further tap lands on the same empty store.
+        ///
+        /// <para>
+        /// It says nothing about whether an order was placed, and that omission is load-bearing.
+        /// A missing conversation does not mean nothing happened: <c>HandleOrderConfirmationAsync</c>
+        /// clears the conversation in its <c>finally</c> on every exit, success included, and the
+        /// confirmation keyboard is never deleted or edited. So a second tap of تایید after a trade
+        /// that executed and debited the wallet arrives here too, and cannot be told apart from a
+        /// restart. An earlier draft reassured the customer that nothing was placed and nothing was
+        /// charged; on that path it would have been a lie, and a worse one than the vague error it
+        /// replaced. Pointing at «📊 حسابداری» answers the question honestly instead, because that is
+        /// where the truth of it actually is.
+        /// </para>
+        ///
+        /// The closing line about prices is not filler either: the figure still on their screen was
+        /// quoted before the restart and must not be assumed to still hold.
         /// </summary>
         public const string MsgOrderConversationExpired =
             "⏳ این سفارش دیگر معتبر نیست.\n\n" +
             "اطلاعات این سفارش در دسترس نیست — معمولاً وقتی پیش می‌آید که ربات به‌روزرسانی یا دوباره راه‌اندازی شده باشد.\n\n" +
-            "هیچ سفارشی ثبت نشد و هیچ مبلغی از حساب شما کم نشده است.\n\n" +
-            "لطفاً از منوی اصلی دوباره شروع کنید. توجه کنید که قیمت‌ها ممکن است تغییر کرده باشند.";
+            "لطفاً پیش از ثبت دوباره، وضعیت حساب و معامله‌هایتان را از «📊 حسابداری» ببینید.\n\n" +
+            "قیمت‌ها هم ممکن است از آن زمان تغییر کرده باشند.";
 
         /// <summary>
         /// The generic reply when handling a user's message stops on an unexpected error with no

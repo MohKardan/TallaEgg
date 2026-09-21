@@ -571,8 +571,14 @@ public class BotConversationFlowTests
     }
 
     /// <summary>
-    /// And nothing may be placed on the way. The message claims no order was submitted and no
-    /// money moved; that claim has to be true, or the fix is worse than the defect it replaces.
+    /// And nothing may be placed on the way.
+    ///
+    /// <para>
+    /// This was already true before the fix — the guard returned early — so it proves nothing
+    /// about the change. It is here as a regression guard: the expired reply sends the customer
+    /// away to check their accounting, and that is only sane advice if this path genuinely cannot
+    /// place an order behind their back.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task ConfirmingAnOrderWhoseConversationIsGone_PlacesNoOrderAtAll()
@@ -586,6 +592,39 @@ public class BotConversationFlowTests
         Assert.Empty(_orderApi.SubmittedOrders);
         Assert.Empty(_orderApi.AcceptedQuotes);
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("معاملهٔ شما انجام شد"));
+    }
+
+
+    /// <summary>
+    /// A missing conversation does not mean nothing happened, and the reply must not pretend it
+    /// does.
+    ///
+    /// <para>
+    /// <c>HandleOrderConfirmationAsync</c> clears the conversation in its <c>finally</c> on every
+    /// exit, success included, and the confirmation keyboard is never deleted or edited. So the
+    /// second tap of a تایید button whose first tap executed and settled a trade arrives at the
+    /// very same guard as a restart, and nothing there can tell the two apart. A draft of this fix
+    /// reassured the customer that nothing was placed and nothing was charged — which on this path
+    /// would be a lie told immediately after debiting their wallet, and a worse one than the vague
+    /// error it replaced.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task ConfirmingTwiceAfterATradeExecuted_DoesNotClaimThatNothingWasPlaced()
+    {
+        PublishQuote();
+        await WalkToConfirmationAsync();
+
+        await TapAsync(InlineCallBackData.confirm_order);        // executes and settles
+        Assert.NotEmpty(_orderApi.AcceptedQuotes);               // the trade really did happen
+        var before = _messenger.Sent.Count;
+
+        await TapAsync(InlineCallBackData.confirm_order);        // the same button, tapped again
+
+        var after = _messenger.Texts.Skip(before).ToList();
+        Assert.NotEmpty(after);
+        Assert.DoesNotContain(after, t => t.Contains("هیچ سفارشی ثبت نشد"));
+        Assert.DoesNotContain(after, t => t.Contains("کم نشده است"));
     }
 
     /// <summary>
