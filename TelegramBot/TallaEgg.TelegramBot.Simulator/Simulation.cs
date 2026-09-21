@@ -324,7 +324,7 @@ public sealed class Simulation(
                 FirstName = FirstNames[random.Next(FirstNames.Length)],
                 LastName = LastNames[random.Next(LastNames.Length)],
                 Username = $"sim_user_{i}",
-                Phone = $"+98912{i:D7}",
+                Phone = $"989151198{i:D3}",
             };
 
             try
@@ -490,7 +490,7 @@ public sealed class Simulation(
 
         foreach (var user in sample)
         {
-            var normalizedPhone = user.Phone.Replace("+98", "0");
+            var normalizedPhone = "0" + user.Phone.Substring(2);
             try
             {
                 // "ش <phone> <amount>" — charges CREDIT_MAUA (Maua is the default currency).
