@@ -126,7 +126,12 @@ public class SwissquotePriceProvider : IReferencePriceProvider
     /// </summary>
     private DateTimeOffset? TimestampOf(JsonElement platform)
     {
-        if (!platform.TryGetProperty("ts", out var ts) || !ts.TryGetInt64(out var milliseconds))
+        // The ValueKind check is not redundant: TryGetInt64 throws rather than returning false
+        // when the value is not a number, and the catch-all above would then discard a perfectly
+        // good bid and ask over a timestamp. An unreadable time costs the age, not the price.
+        if (!platform.TryGetProperty("ts", out var ts) ||
+            ts.ValueKind != JsonValueKind.Number ||
+            !ts.TryGetInt64(out var milliseconds))
         {
             _logger.LogWarning("swissquote.com gave no timestamp; its price will be treated as of unknown age.");
             return null;

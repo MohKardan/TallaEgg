@@ -91,6 +91,11 @@ namespace TallaEgg.Core
                     PriceDecimalPlaces = 2, QuantityDecimalPlaces = 2, MinNotional = 40m,
                     BaseAssetPersianName = "انس طلا", BaseUnit = "انس", BaseDecimalPlaces = 2,
                     QuoteAssetPersianName = "دلار", QuoteUnit = "دلار", QuoteDecimalPlaces = 2,
+                    // The spot market closes every weekend, and a closed market's last price must
+                    // not be republished as live (issue #316). Compiled rather than left to the
+                    // config file, because a deployment without a Symbols block would otherwise
+                    // quote Friday's close all weekend.
+                    MaxPriceAgeMinutes = 15,
                     Aliases = new List<string> { "انس", "اونس" }
                 }
             };
@@ -113,6 +118,14 @@ namespace TallaEgg.Core
         /// ceiling now that there is more than one.
         /// </summary>
         public static string CreditAssetFor(string baseAsset) => "CREDIT_" + baseAsset;
+
+        /// <summary>
+        /// What a quote currency gets when its config block does not say. Two, because that is
+        /// what almost every currency but Toman uses, and because the alternative default — zero —
+        /// would round a fill to whole units without anything saying so. Toman is unaffected: it is
+        /// registered structurally, before any pair is read.
+        /// </summary>
+        private const int DefaultQuoteDecimalPlaces = 2;
 
         /// <summary>
         /// Whether a code is already a credit ledger. Callers that are about to apply
@@ -211,10 +224,17 @@ namespace TallaEgg.Core
             QuoteAssetPersianName = source.QuoteAssetPersianName,
             QuoteUnit = source.QuoteUnit,
             QuoteDecimalPlaces = source.QuoteDecimalPlaces,
+            MaxPriceAgeMinutes = source.MaxPriceAgeMinutes,
             Aliases = new List<string>(source.Aliases)
         };
 
-        private static Dictionary<string, CurrencyInfo> BuildCurrencies(Dictionary<string, TradingPairInfo> pairs)
+        /// <summary>
+        /// The currency catalogue derived from a set of pairs. Internal rather than private so a
+        /// test can check what a given set of pairs registers without calling
+        /// <see cref="Configure"/>, which replaces the static catalogue every other test in the
+        /// process reads.
+        /// </summary>
+        internal static Dictionary<string, CurrencyInfo> BuildCurrencies(Dictionary<string, TradingPairInfo> pairs)
         {
             var map = new Dictionary<string, CurrencyInfo>(StringComparer.OrdinalIgnoreCase)
             {
@@ -290,7 +310,7 @@ namespace TallaEgg.Core
                 Code = pair.QuoteAsset,
                 PersianName = string.IsNullOrWhiteSpace(pair.QuoteAssetPersianName) ? pair.QuoteAsset : pair.QuoteAssetPersianName,
                 Unit = pair.QuoteUnit,
-                DecimalPlaces = pair.QuoteDecimalPlaces,
+                DecimalPlaces = pair.QuoteDecimalPlaces ?? DefaultQuoteDecimalPlaces,
                 IsTradable = false
             };
         }
@@ -576,8 +596,28 @@ namespace TallaEgg.Core
         /// <summary>
         /// Quote-asset decimal places. Toman has none; a dollar amount has two, and rounding one
         /// to zero would lose cents on every settlement.
+        ///
+        /// <para>
+        /// Nullable so that "not stated" is distinguishable from "zero". A config block naming a
+        /// new quote currency and forgetting this would otherwise register it with no decimals at
+        /// all, and every fill would round to whole units in silence —
+        /// <see cref="DefaultQuoteDecimalPlaces"/> is used instead.
+        /// </para>
         /// </summary>
-        public int QuoteDecimalPlaces { get; set; }
+        public int? QuoteDecimalPlaces { get; set; }
+
+        /// <summary>
+        /// How old an external reference price may be before auto-quote refuses it and tries the
+        /// next source, in minutes. Null or zero means no limit (issue #316).
+        ///
+        /// <para>
+        /// It belongs to the symbol rather than to a source because it describes the market: one
+        /// that shuts overnight and one that trades around the clock tolerate very different ages
+        /// from the same feed. XAU/USD carries 15 as a compiled default, so a deployment whose
+        /// config file has no block for it still refuses a closed market's last price.
+        /// </para>
+        /// </summary>
+        public int? MaxPriceAgeMinutes { get; set; }
 
         /// <summary>Persian keywords the bot's admin commands accept for this symbol, for example "سکه".</summary>
         public List<string> Aliases { get; set; } = new();

@@ -25,7 +25,7 @@ public interface IReferencePriceProvider
     string Name { get; }
 
     /// <summary>
-    /// The current price in Toman per one unit of <paramref name="symbol"/>'s base asset, together
+    /// The current price in the symbol's quote currency per one unit of its base asset, together
     /// with the moment the source says it was true — or null if this provider has no data for that
     /// symbol or could not answer (network failure, invalid/missing credentials, unexpected
     /// response shape). Never throws — a provider that cannot answer is reported by returning

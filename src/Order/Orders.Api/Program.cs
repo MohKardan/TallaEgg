@@ -214,8 +214,6 @@ builder.Services.AddHttpClient("TgjuPriceProvider", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
 });
 
-// bonbast.com hands out a request token in a cookie alongside the one in its markup, so this
-// client keeps a cookie jar; the two requests it makes are a pair, not independent calls.
 // xaus.com and Swissquote price the ounce in dollars (issue #304). Both answer from the
 // production VM, so XAU/USD is the one symbol whose feed works where the Iranian sources do not.
 builder.Services.AddHttpClient("XausPriceProvider", client =>
@@ -230,6 +228,8 @@ builder.Services.AddHttpClient("SwissquotePriceProvider", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
 });
 
+// bonbast.com hands out a request token in a cookie alongside the one in its markup, so this
+// client keeps a cookie jar; the two requests it makes are a pair, not independent calls.
 builder.Services
     .AddHttpClient("BonbastPriceProvider", client =>
     {

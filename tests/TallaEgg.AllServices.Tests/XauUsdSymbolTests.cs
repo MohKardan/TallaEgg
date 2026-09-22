@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using TallaEgg.Core;
 
 namespace TallaEgg.AllServices.Tests;
@@ -122,6 +123,44 @@ public class XauUsdSymbolTests
     public void TheDollarIsReachableByItsPersianName()
     {
         Assert.Equal(CurrenciesConstant.Usd, CurrenciesConstant.ResolveCurrencyCode("دلار"));
+    }
+
+    /// <summary>
+    /// The staleness limit is compiled in, not left to the config file. The deployment recipe
+    /// treats a <c>Symbols</c> block as optional — the symbol works without one — so a limit that
+    /// lived only in configuration would be absent on exactly the host that needs it, and
+    /// auto-quote would republish Friday's close all weekend. Found by the review of PR #320.
+    /// </summary>
+    [Fact]
+    public void TheOunceCarriesItsStalenessLimitWithoutAnyConfiguration()
+    {
+        Assert.Equal(15, CurrenciesConstant.GetTradingPairInfo(CurrenciesConstant.XAU_USD)!.MaxPriceAgeMinutes);
+    }
+
+    /// <summary>
+    /// A quote currency whose block says nothing about precision gets two decimals, not none.
+    /// Zero is what an <c>int</c> defaults to, and it would round every fill to whole units in
+    /// silence — where the old behaviour, before quote assets were registered at all, was a loud
+    /// refusal at settlement. Found by the review of PR #320.
+    /// </summary>
+    [Fact]
+    public void AQuoteCurrencyWithNoStatedPrecision_GetsCentsRatherThanWholeUnits()
+    {
+        var merged = CurrenciesConstant.MergeWithConfiguration(
+            new Dictionary<string, TradingPairInfo>(),
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Symbols:FOO/EUR:BaseAssetPersianName"] = "فو"
+                }).Build());
+
+        // The pair itself records that nothing was said, rather than silently meaning zero.
+        Assert.Null(merged["FOO/EUR"].QuoteDecimalPlaces);
+
+        var euro = CurrenciesConstant.BuildCurrencies(merged)["EUR"];
+
+        Assert.Equal(2, euro.DecimalPlaces);
+        Assert.False(euro.IsTradable);
     }
 
     /// <summary>

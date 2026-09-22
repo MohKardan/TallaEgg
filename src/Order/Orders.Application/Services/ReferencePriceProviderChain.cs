@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
+using TallaEgg.Core;
 
 namespace Orders.Application.Services;
 
@@ -89,7 +90,13 @@ public class ReferencePriceProviderChain
     /// </summary>
     private TimeSpan? MaxAgeFor(string symbol)
     {
-        var minutes = _configuration.GetValue<int?>($"Symbols:{symbol}:MaxPriceAgeMinutes");
+        // Configuration first, then the symbol's compiled default — the same precedence the
+        // config file has over compiled symbol metadata everywhere else. Reading configuration
+        // directly, rather than only through CurrenciesConstant, also keeps this testable without
+        // mutating the static symbol catalogue every test in the process shares.
+        var minutes = _configuration.GetValue<int?>($"Symbols:{symbol}:MaxPriceAgeMinutes")
+                      ?? CurrenciesConstant.GetTradingPairInfo(symbol)?.MaxPriceAgeMinutes;
+
         return minutes is > 0 ? TimeSpan.FromMinutes(minutes.Value) : null;
     }
 

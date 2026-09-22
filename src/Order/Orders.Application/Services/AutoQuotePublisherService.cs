@@ -181,9 +181,10 @@ public class AutoQuotePublisherService : BackgroundService
 
         var referencePrice = quoted.Value.Price;
 
-        // referencePrice is already Toman per traded base unit (a gram of gold, a whole coin, a
-        // whole Bitcoin) — each provider does its own unit conversion, so nothing here is
-        // specific to any one symbol.
+        // referencePrice is already the symbol's quote currency per traded base unit — Toman for
+        // a gram of gold, a whole coin or a whole Bitcoin; dollars for a troy ounce — because each
+        // provider does its own unit conversion. Nothing here is specific to any one symbol, which
+        // is why XAU/USD needed no change in this service at all.
         var halfSpread = settings.SpreadPercent / 100m / 2m;
         var buyPrice = decimal.Round(referencePrice * (1 - halfSpread), 2);
         var sellPrice = decimal.Round(referencePrice * (1 + halfSpread), 2);
