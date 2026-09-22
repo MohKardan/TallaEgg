@@ -112,8 +112,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgEnterPriceGold = "قیمت یک مثقال طلای آبشده را به تومان وارد کنید:\n\n" +
                                                "نمونه: ۷۹۰۰۰۰۰۰";
 
-        /// <summary>Price prompt for other assets. {0} = the asset's Persian name.</summary>
-        public const string MsgEnterPrice = "قیمت هر واحد {0} را به تومان وارد کنید:";
+        /// <summary>Price prompt for other assets. {0} = the asset's Persian name; {1} = the currency it is priced in.</summary>
+        public const string MsgEnterPrice = "قیمت هر واحد {0} را به {1} وارد کنید:";
 
         /// <summary>
         /// Order confirmation. Icons and the separator before the total match the executed-trade
@@ -122,16 +122,16 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// before tapping "confirm".
         ///
         /// {0} = Persian symbol; {1} = side with its colour icon; {2} = quantity with unit;
-        /// {3} = price per unit; {4} = total amount.
+        /// {3} = price per unit; {4} = total amount; {5} = the currency both are in.
         /// Every value must already have been formatted through PersianFormat.
         /// </summary>
         public const string MsgOrderConfirmation = "📋 تأیید سفارش\n\n" +
                                                   "🏷️ دارایی: {0}\n" +
                                                   "{1}\n" +
                                                   "📊 مقدار: {2}\n" +
-                                                  "💰 قیمت هر واحد: {3} تومان\n" +
+                                                  "💰 قیمت هر واحد: {3} {5}\n" +
                                                   "➖➖➖➖➖➖➖➖➖\n" +
-                                                  "💵 مبلغ کل: {4} تومان\n\n" +
+                                                  "💵 مبلغ کل: {4} {5}\n\n" +
                                                   "آیا این سفارش را تأیید می‌کنید؟";
 
         /// <summary>
@@ -209,15 +209,15 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// their account, and it should not have to be found among the others.
         ///
         /// {0} = side with its colour icon; {1} = Persian symbol; {2} = quantity with unit;
-        /// {3} = price label; {4} = price; {5} = "paid" or "received"; {6} = total amount.
+        /// {3} = price label; {4} = price; {5} = "paid" or "received"; {6} = total amount; {7} = the currency.
         /// </summary>
         public const string MsgTradeExecuted = "✅ معاملهٔ شما انجام شد\n\n" +
                                                "{0}\n" +
                                                "🏷️ دارایی: {1}\n" +
                                                "📊 مقدار: {2}\n" +
-                                               "💰 {3}: {4} تومان\n" +
+                                               "💰 {3}: {4} {7}\n" +
                                                "➖➖➖➖➖➖➖➖➖\n" +
-                                               "💵 {5}: {6} تومان\n\n" +
+                                               "💵 {5}: {6} {7}\n\n" +
                                                "جزئیات را از «📊 تاریخچه معاملات» ببینید.";
 
         /// <summary>{0} = the error reason.</summary>
@@ -758,10 +758,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgAdminQuoteNeedsApprovalSimple =
             "⚠️ مظنهٔ {0} با قیمت فعلی اختلاف زیادی دارد و منتشر نشد.\n\n" +
             "🏷️ دارایی: {1}\n\n" +
-            "🟢 شما می‌خرید (مشتری می‌فروشد): {2} تومان به ازای هر {5}\n" +
-            "🔴 شما می‌فروشید (مشتری می‌خرد): {3} تومان به ازای هر {5}\n\n" +
+            "🟢 شما می‌خرید (مشتری می‌فروشد): {2} {9} به ازای هر {5}\n" +
+            "🔴 شما می‌فروشید (مشتری می‌خرد): {3} {9} به ازای هر {5}\n\n" +
             "➖➖➖➖➖➖➖➖➖\n" +
-            "میانگین قبلی: {4} تومان به ازای هر {5}\n" +
+            "میانگین قبلی: {4} {9} به ازای هر {5}\n" +
             "اختلاف: {6}٪ (حد مجاز: {7}٪)\n\n" +
             "اگر این قیمت درست است تأیید کنید. تا آن زمان مظنهٔ قبلی برقرار است.\n" +
             "این درخواست تا {8} دقیقهٔ دیگر معتبر است.";
@@ -795,8 +795,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </summary>
         public const string MsgAdminQuoteApprovedSimple = "✅ مظنه تأیید و منتشر شد.\n\n" +
                                                          "🏷️ دارایی: {0}\n\n" +
-                                                         "🟢 شما می‌خرید: {1} تومان به ازای هر {3}\n" +
-                                                         "🔴 شما می‌فروشید: {2} تومان به ازای هر {3}\n\n" +
+                                                         "🟢 شما می‌خرید: {1} {4} به ازای هر {3}\n" +
+                                                         "🔴 شما می‌فروشید: {2} {4} به ازای هر {3}\n\n" +
                                                          "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
         /// <summary>{0} = the asset's Persian name.</summary>
@@ -898,10 +898,10 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// </summary>
         public const string MsgAdminQuotePublishedSimple = "📊 مظنه منتشر شد\n\n" +
                                                      "🏷️ دارایی: {0}\n\n" +
-                                                     "🟢 شما می‌خرید (مشتری می‌فروشد): {1} تومان به ازای هر {4}\n" +
-                                                     "🔴 شما می‌فروشید (مشتری می‌خرد): {2} تومان به ازای هر {4}\n\n" +
+                                                     "🟢 شما می‌خرید (مشتری می‌فروشد): {1} {5} به ازای هر {4}\n" +
+                                                     "🔴 شما می‌فروشید (مشتری می‌خرد): {2} {5} به ازای هر {4}\n\n" +
                                                      "➖➖➖➖➖➖➖➖➖\n" +
-                                                     "📈 حاشیهٔ شما: {3} تومان به ازای هر {4}\n\n" +
+                                                     "📈 حاشیهٔ شما: {3} {5} به ازای هر {4}\n\n" +
                                                      "از این پس مشتریان روی همین قیمت‌ها معامله می‌کنند.";
 
         /// <summary>{0} = why it failed.</summary>

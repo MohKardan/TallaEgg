@@ -41,8 +41,8 @@ public static class TradeExecutedMessage
         // The total is computed from the per-gram price, never from the per-mesghal
         // display price: the displayed price is a presentation detail, and multiplying by
         // it would overstate the total by the same 4.3318.
-        var total = CurrenciesConstant.RoundToCurrencyPrecision(
-            quantity * pricePerGram, CurrenciesConstant.Toman);
+        var quoteAsset = symbol.Split('/')[1];
+        var total = CurrenciesConstant.RoundToCurrencyPrecision(quantity * pricePerGram, quoteAsset);
 
         // Two independent signals for one fact: the coloured word here, and the direction of
         // the money below. Colour alone is not enough for someone who does not distinguish
@@ -58,8 +58,11 @@ public static class TradeExecutedMessage
             PersianFormat.Symbol(symbol),
             $"{PersianFormat.Amount(quantity, baseAsset)} {PersianFormat.Unit(baseAsset)}",
             isGold ? "قیمت هر مثقال" : "قیمت هر واحد",
-            PersianFormat.Number(displayPrice),
+            // Amount, not Number: a dollar price and total keep their cents; toman is unchanged.
+            PersianFormat.Amount(displayPrice, quoteAsset),
             isBuy ? "پرداختی" : "دریافتی",
-            PersianFormat.Number(total));
+            PersianFormat.Amount(total, quoteAsset),
+            // Not "تومان" in the template any more: the ounce is priced in dollars (issue #304).
+            PersianFormat.QuoteUnit(symbol));
     }
 }

@@ -1420,7 +1420,7 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 // explicitly.
                 var pricePrompt = orderState.Asset == CurrenciesConstant.MAUA_IRT
                     ? BotMsgs.MsgEnterPriceGold
-                    : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset));
+                    : string.Format(BotMsgs.MsgEnterPrice, PersianFormat.Symbol(orderState.Asset), PersianFormat.QuoteUnit(orderState.Asset));
 
                 await _messenger.SendAsync(chatId, pricePrompt,
                  replyMarkup: new ReplyKeyboardMarkup(new[]

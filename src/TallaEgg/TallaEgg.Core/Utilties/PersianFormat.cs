@@ -129,6 +129,33 @@
             CurrenciesConstant.GetCurrencyInfo(assetCode)?.Unit ?? string.Empty;
 
         /// <summary>
+        /// The unit a symbol's prices and totals are denominated in — "تومان" for the three
+        /// toman-quoted symbols, "دلار" for XAU/USD (issue #304).
+        ///
+        /// <para>
+        /// Every price the bot shows used to have "تومان" written into the Persian template beside
+        /// it, which was true of every symbol until the ounce. A dollar price under a toman label
+        /// is not a cosmetic defect: it is the bot telling a customer the wrong thing about the
+        /// money they are about to commit.
+        /// </para>
+        ///
+        /// <para>
+        /// An unrecognised quote asset falls back to toman rather than to nothing. Three of the
+        /// four symbols are toman-quoted, and a price with no unit beside it reads worse than one
+        /// with the usual unit.
+        /// </para>
+        /// </summary>
+        public static string QuoteUnit(string? symbol)
+        {
+            var parts = symbol?.Split('/');
+            if (parts is not { Length: 2 })
+                return Unit(CurrenciesConstant.Toman);
+
+            var unit = Unit(parts[1]);
+            return string.IsNullOrEmpty(unit) ? Unit(CurrenciesConstant.Toman) : unit;
+        }
+
+        /// <summary>
         /// Displays a date and time the way an Iranian user expects it: <b>Jalali calendar, Tehran
         /// time (UTC+03:30), Persian digits</b>.
         ///

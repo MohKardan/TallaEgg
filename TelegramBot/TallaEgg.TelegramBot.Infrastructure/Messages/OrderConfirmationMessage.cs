@@ -51,8 +51,10 @@ public static class OrderConfirmationMessage
         // thing on the screen, not a word buried after "نوع سفارش:".
         var sideText = side == OrderSide.Buy ? "🟢 خرید" : "🔴 فروش";
 
-        var total = CurrenciesConstant.RoundToCurrencyPrecision(
-            quantity * pricePerGram, CurrenciesConstant.Toman);
+        // Rounded to the quote asset's own precision, which is whole toman for three symbols
+        // and cents for the ounce (issue #304).
+        var quoteAsset = symbol.Split('/')[1];
+        var total = CurrenciesConstant.RoundToCurrencyPrecision(quantity * pricePerGram, quoteAsset);
 
         if (!isGold)
         {
@@ -60,8 +62,11 @@ public static class OrderConfirmationMessage
                 PersianFormat.Symbol(symbol),
                 sideText,
                 amountText,
-                PersianFormat.Number(pricePerGram),
-                PersianFormat.Number(total));
+                // Amount, not Number: Number shows no decimals, which is right for toman and
+                // would round a dollar price to the nearest whole dollar (issue #304).
+                PersianFormat.Amount(pricePerGram, quoteAsset),
+                PersianFormat.Amount(total, quoteAsset),
+                PersianFormat.QuoteUnit(symbol));
         }
 
         var pricePerMesghal = displayPricePerMesghal
