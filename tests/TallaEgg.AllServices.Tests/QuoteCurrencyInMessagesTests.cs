@@ -48,13 +48,34 @@ public class QuoteCurrencyInMessagesTests
         Assert.Equal(Toman, PersianFormat.QuoteUnit(symbol));
     }
 
+    /// <summary>
+    /// Asserts the currency where it actually matters — immediately after a figure — rather than
+    /// anywhere in the message. Found by the review of PR #321: every symbol's Persian name
+    /// already contains its currency ("انس جهانی/دلار", "آبشده/تومان") on the دارایی line, so a
+    /// bare Contains("دلار") passed even with the currency argument removed entirely.
+    /// </summary>
+    private static void AssertPricedIn(string text, string symbol, params decimal[] figures)
+    {
+        var quoteAsset = CurrenciesConstant.QuoteAssetOf(symbol);
+        var unit = PersianFormat.QuoteUnit(symbol);
+
+        foreach (var figure in figures)
+        {
+            var expected = $"{PersianFormat.Amount(figure, quoteAsset)} {unit}";
+            Assert.Contains(expected, text, StringComparison.Ordinal);
+        }
+
+        var wrongUnit = unit == Toman ? Dollar : Toman;
+        Assert.DoesNotContain($" {wrongUnit}", text, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void OrderConfirmation_ForTheOunce_IsPricedInDollars()
     {
         var text = OrderConfirmationMessage.Build(CurrenciesConstant.XAU_USD, OrderSide.Buy, 0.5m, OuncePrice);
 
-        Assert.Contains(Dollar, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Toman, text, StringComparison.Ordinal);
+        // Price and total, both in dollars: 0.5 × 4318.55 = 2159.275 → 2159.28 at two decimals.
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, OuncePrice, 2159.28m);
     }
 
     [Fact]
@@ -63,23 +84,7 @@ public class QuoteCurrencyInMessagesTests
         var text = OrderConfirmationMessage.Build(CurrenciesConstant.MAUA_IRT, OrderSide.Buy, 8m, GoldPricePerGram);
 
         Assert.Contains(Toman, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Dollar, text, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The total is rounded to the quote asset's precision, which is cents for dollars and whole
-    /// units for toman. Rounding a dollar total the toman way would drop up to 99 cents from the
-    /// figure the customer is asked to approve.
-    /// </summary>
-    [Fact]
-    public void OrderConfirmation_ForTheOunce_KeepsTheCentsInTheTotal()
-    {
-        // 0.5 × 4318.55 = 2159.275 → 2159.28 at the dollar's two decimals, and the price itself
-        // keeps its cents rather than being shown as a whole number of dollars.
-        var text = OrderConfirmationMessage.Build(CurrenciesConstant.XAU_USD, OrderSide.Buy, 0.5m, OuncePrice);
-
-        Assert.Contains(PersianFormat.Amount(2159.28m, CurrenciesConstant.Usd), text, StringComparison.Ordinal);
-        Assert.Contains(PersianFormat.Amount(OuncePrice, CurrenciesConstant.Usd), text, StringComparison.Ordinal);
+        Assert.DoesNotContain($" {Dollar}", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -87,8 +92,8 @@ public class QuoteCurrencyInMessagesTests
     {
         var text = TradeExecutedMessage.Build(CurrenciesConstant.XAU_USD, OrderSide.Sell, 1.25m, OuncePrice);
 
-        Assert.Contains(Dollar, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Toman, text, StringComparison.Ordinal);
+        // 1.25 × 4318.55 = 5398.1875 → 5398.19.
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, OuncePrice, 5398.19m);
     }
 
     [Fact]
@@ -96,8 +101,7 @@ public class QuoteCurrencyInMessagesTests
     {
         var text = TradeExecutedMessage.Build(CurrenciesConstant.SEKE_BAHAR_IRT, OrderSide.Sell, 2m, 230_130_000m);
 
-        Assert.Contains(Toman, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Dollar, text, StringComparison.Ordinal);
+        AssertPricedIn(text, CurrenciesConstant.SEKE_BAHAR_IRT, 230_130_000m, 460_260_000m);
     }
 
     /// <summary>
@@ -109,8 +113,7 @@ public class QuoteCurrencyInMessagesTests
     {
         var text = QuoteMessage.Prepare(CurrenciesConstant.XAU_USD, 4315.20m, 4321.90m).Text;
 
-        Assert.Contains(Dollar, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Toman, text, StringComparison.Ordinal);
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, 4315.20m, 4321.90m);
     }
 
     [Fact]
@@ -118,8 +121,7 @@ public class QuoteCurrencyInMessagesTests
     {
         var (text, _) = PendingQuoteMessage.Build(OuncePending(), new DateTime(2026, 9, 22, 12, 0, 0, DateTimeKind.Utc));
 
-        Assert.Contains(Dollar, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Toman, text, StringComparison.Ordinal);
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, 4315.20m, 4321.90m, 4290.00m);
     }
 
     [Fact]
@@ -127,8 +129,32 @@ public class QuoteCurrencyInMessagesTests
     {
         var text = PendingQuoteMessage.Approved(OuncePending());
 
-        Assert.Contains(Dollar, text, StringComparison.Ordinal);
-        Assert.DoesNotContain(Toman, text, StringComparison.Ordinal);
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, 4315.20m, 4321.90m);
+    }
+
+    /// <summary>
+    /// The first price screen a customer sees after picking a symbol — and, before the review of
+    /// PR #321, the one that said «۴٬۳۱۹ تومان» for the ounce one message before the confirmation
+    /// said «دلار».
+    /// </summary>
+    [Fact]
+    public void BestPrices_ForTheOunce_IsPricedInDollars()
+    {
+        var text = BestPricesMessage.Build(4315.20m, 4321.90m, CurrenciesConstant.XAU_USD);
+
+        AssertPricedIn(text, CurrenciesConstant.XAU_USD, 4315.20m, 4321.90m);
+    }
+
+    [Fact]
+    public void BestPrices_ForGold_IsStillPricedInTomanPerMesghal()
+    {
+        // Gold is quoted per mesghal on this screen: 23,707,927 × 4.3318 per gram.
+        var perMesghal = CurrenciesConstant.RoundToCurrencyPrecision(
+            GoldPricePerGram * CurrenciesConstant.GramsPerMesghal, CurrenciesConstant.Toman);
+
+        var text = BestPricesMessage.Build(GoldPricePerGram, GoldPricePerGram, CurrenciesConstant.MAUA_IRT);
+
+        AssertPricedIn(text, CurrenciesConstant.MAUA_IRT, perMesghal);
     }
 
     private static PendingQuoteDto OuncePending() => new()

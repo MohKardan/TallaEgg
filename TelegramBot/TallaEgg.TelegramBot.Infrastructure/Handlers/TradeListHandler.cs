@@ -93,8 +93,12 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
                 sb.AppendLine($"🏷️ دارایی: {PersianFormat.Symbol(t.Symbol)}");
                 sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(t.Quantity, baseAsset)} {unit}");
-                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
-                sb.AppendLine($"💵 {amountLabel}: {PersianFormat.Number(t.QuoteQuantity)} تومان");
+                // The screen the executed-trade message points the customer at, so it has to agree with
+                // that message about the currency and the cents (issue #304).
+                var quoteAsset = CurrenciesConstant.QuoteAssetOf(t.Symbol);
+                var quoteUnit = PersianFormat.QuoteUnit(t.Symbol);
+                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Amount(displayPrice, quoteAsset)} {quoteUnit}");
+                sb.AppendLine($"💵 {amountLabel}: {PersianFormat.Amount(t.QuoteQuantity, quoteAsset)} {quoteUnit}");
                 sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(t.CreatedAt))}");
                 sb.AppendLine("➖➖➖➖➖➖➖➖➖");
                 sb.AppendLine();

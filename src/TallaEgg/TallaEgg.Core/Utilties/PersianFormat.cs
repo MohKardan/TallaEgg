@@ -147,12 +147,13 @@
         /// </summary>
         public static string QuoteUnit(string? symbol)
         {
-            var parts = symbol?.Split('/');
-            if (parts is not { Length: 2 })
-                return Unit(CurrenciesConstant.Toman);
+            var quoteAsset = CurrenciesConstant.QuoteAssetOf(symbol);
+            var unit = Unit(quoteAsset);
 
-            var unit = Unit(parts[1]);
-            return string.IsNullOrEmpty(unit) ? Unit(CurrenciesConstant.Toman) : unit;
+            // A well-formed symbol whose quote asset has no display unit configured shows the code
+            // itself — "EUR" — rather than being labelled toman, which would be a false statement
+            // about the money rather than a missing one.
+            return string.IsNullOrEmpty(unit) ? quoteAsset : unit;
         }
 
         /// <summary>

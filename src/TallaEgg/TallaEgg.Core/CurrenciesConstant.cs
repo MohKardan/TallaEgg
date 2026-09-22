@@ -432,6 +432,26 @@ namespace TallaEgg.Core
         public static decimal RoundOrderPrice(decimal price) =>
             Math.Round(price, OrderPriceDecimalPlaces, MidpointRounding.AwayFromZero);
 
+        /// <summary>
+        /// The quote asset of a BASE/QUOTE symbol — what its prices are denominated in, and so the
+        /// precision and unit they are displayed at. Toman for the three toman pairs, dollars for
+        /// XAU/USD (issue #304).
+        ///
+        /// <para>
+        /// Parsed defensively rather than by index, because callers hold symbols that came from a
+        /// database row or a callback payload. A malformed symbol falls back to Toman: three of the
+        /// four symbols use it, and an amount shown with no currency reads worse than one shown
+        /// with the usual currency.
+        /// </para>
+        /// </summary>
+        public static string QuoteAssetOf(string? symbol)
+        {
+            var parts = symbol?.Split('/');
+            return parts is { Length: 2 } && !string.IsNullOrWhiteSpace(parts[1])
+                ? parts[1].Trim().ToUpperInvariant()
+                : Toman;
+        }
+
         /// <summary>Looks up a trading pair, case-insensitively. Returns null if there is no match.</summary>
         public static TradingPairInfo? GetTradingPairInfo(string symbol) =>
             symbol is not null && _pairs.TryGetValue(symbol, out var info) ? info : null;
