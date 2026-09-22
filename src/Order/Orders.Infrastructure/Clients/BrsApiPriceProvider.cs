@@ -36,7 +36,7 @@ public class BrsApiPriceProvider : IReferencePriceProvider
         _configuration = configuration;
     }
 
-    public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
+    public async Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
     {
         var apiKey = _configuration["AutoQuote:BrsApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -69,9 +69,15 @@ public class BrsApiPriceProvider : IReferencePriceProvider
             // brsapi's "cryptocurrency" array is USD-denominated (a JSON string) and needs a
             // USD/Toman conversion from the same response's "currency" array; "gold" is already
             // Toman (a JSON number) and covers both metal and coin instruments alike.
-            return array == "cryptocurrency"
+            var toman = array == "cryptocurrency"
                 ? ConvertCryptoToToman(doc, instrumentSymbol)
                 : FindGoldPrice(doc, instrumentSymbol, convertFromMesghal);
+
+            // AsOf is null rather than "now": each item carries a date and a time, but the
+            // configured key answers 403 today, so neither the field names nor the time zone they
+            // are in could be confirmed against a real response. An age this provider has not read
+            // is worse than no age at all — see issue #316.
+            return toman is null ? null : new ReferencePrice(toman.Value, null);
         }
         catch (Exception ex)
         {

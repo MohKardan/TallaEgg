@@ -262,6 +262,9 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
     sp.GetRequiredService<IConfiguration>(),
     sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
 
+// The chain measures how old a price is against this clock (issue #316); a test supplies its
+// own so it can age a price without waiting for one.
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
 

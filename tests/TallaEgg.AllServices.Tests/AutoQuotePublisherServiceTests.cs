@@ -45,7 +45,9 @@ public class AutoQuotePublisherServiceTests : IDisposable
         services.AddScoped<IAutoQuoteSettingsRepository, AutoQuoteSettingsRepository>();
         services.AddScoped<IQuoteRepository, QuoteRepository>();
         services.AddScoped<IPendingQuoteRepository, PendingQuoteRepository>();
-        services.AddScoped(_ => new ReferencePriceProviderChain([_stubProvider], NullLogger<ReferencePriceProviderChain>.Instance));
+        services.AddScoped(_ => new ReferencePriceProviderChain(
+            [_stubProvider], NullLogger<ReferencePriceProviderChain>.Instance,
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build(), TimeProvider.System));
         _provider = services.BuildServiceProvider();
     }
 
@@ -68,8 +70,12 @@ public class AutoQuotePublisherServiceTests : IDisposable
     {
         public string Name => "stub";
         public decimal? Price { get; set; }
-        public Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Price);
+
+        /// <summary>When the stub's price was true; null is a source that does not say (issue #316).</summary>
+        public DateTimeOffset? AsOf { get; set; }
+
+        public Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Price is null ? null : (ReferencePrice?)new ReferencePrice(Price.Value, AsOf));
     }
 
     // These tests drive PublishIfDueAsync directly, so the leader gate never runs; the lease is

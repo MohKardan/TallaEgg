@@ -117,9 +117,9 @@ public class TgjuAndBonbastPriceProviderTests
         var price = await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT);
 
         Assert.NotNull(price);
-        Assert.Equal(1026980000m / 10m / CurrenciesConstant.GramsPerMesghal, price!.Value);
+        Assert.Equal(1026980000m / 10m / CurrenciesConstant.GramsPerMesghal, price!.Value.Price);
         // Sanity in absolute terms, not only relative to the formula under test.
-        Assert.InRange(price.Value, 20_000_000m, 30_000_000m);
+        Assert.InRange(price.Value.Price, 20_000_000m, 30_000_000m);
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class TgjuAndBonbastPriceProviderTests
 
         var price = await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT);
 
-        Assert.Equal(230_130_000m, price);
+        Assert.Equal(230_130_000m, price?.Price);
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class TgjuAndBonbastPriceProviderTests
 
         var price = await provider.GetPriceAsync(CurrenciesConstant.BTC_IRT);
 
-        Assert.Equal(19_512_271_600m, price);
+        Assert.Equal(19_512_271_600m, price?.Price);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public class TgjuAndBonbastPriceProviderTests
 
         var price = await provider.GetPriceAsync("GERAM18/IRT");
 
-        Assert.Equal(23_707_200m, price);
+        Assert.Equal(23_707_200m, price?.Price);
     }
 
     [Fact]
@@ -198,7 +198,7 @@ public class TgjuAndBonbastPriceProviderTests
         var price = await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT);
 
         Assert.NotNull(price);
-        Assert.Equal(103650000m / CurrenciesConstant.GramsPerMesghal, price!.Value);
+        Assert.Equal(103650000m / CurrenciesConstant.GramsPerMesghal, price!.Value.Price);
     }
 
     /// <summary>
@@ -214,7 +214,7 @@ public class TgjuAndBonbastPriceProviderTests
 
         var price = await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT);
 
-        Assert.Equal(231_000_000m, price);
+        Assert.Equal(231_000_000m, price?.Price);
     }
 
     /// <summary>
@@ -312,7 +312,69 @@ public class TgjuAndBonbastPriceProviderTests
     {
         var provider = Tgju(new StubHandler((HttpStatusCode.OK, "{\"current\":{\"sekeb\":{\"p\":2301300000}}}")));
 
-        Assert.Equal(230_130_000m, await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT));
+        Assert.Equal(230_130_000m, (await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT))?.Price);
+    }
+
+    // ---- how old the price is (issue #316) --------------------------------------------------
+
+    /// <summary>
+    /// tgju's <c>ts</c> is Tehran local time with no zone marker, so reading it as UTC would put
+    /// every price 3.5 hours further into the past than it is — enough to make a live price look
+    /// stale under any limit shorter than that.
+    /// </summary>
+    [Fact]
+    public async Task Tgju_ReportsTheDocumentsTimestamp_AsTehranTime()
+    {
+        var provider = Tgju(new StubHandler((HttpStatusCode.OK, TgjuBody)));
+
+        var price = await provider.GetPriceAsync(CurrenciesConstant.BTC_IRT);
+
+        // "2026-09-22 08:05:29" in Tehran is 04:35:29 UTC.
+        Assert.Equal(new DateTimeOffset(2026, 9, 22, 4, 35, 29, TimeSpan.Zero), price!.Value.AsOf!.Value.ToUniversalTime());
+    }
+
+    /// <summary>
+    /// The state a staleness check exists for: while the gold market is shut, tgju keeps serving
+    /// the last price under a date-only timestamp — here yesterday's, read this morning.
+    /// </summary>
+    [Fact]
+    public async Task Tgju_WhenTheMarketIsShut_ReportsTheOldTimestampRatherThanNow()
+    {
+        var provider = Tgju(new StubHandler((HttpStatusCode.OK, TgjuBody)));
+
+        var price = await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT);
+
+        Assert.Equal(new DateTimeOffset(2026, 9, 21, 0, 0, 0, TimeSpan.FromHours(3.5)), price!.Value.AsOf);
+    }
+
+    [Theory]
+    [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\"}}}")]
+    [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\",\"ts\":\"yesterday\"}}}")]
+    [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\",\"ts\":1789765200}}}")]
+    public async Task Tgju_WithNoReadableTimestamp_ReportsAnUnknownAgeAndStillGivesThePrice(string body)
+    {
+        var provider = Tgju(new StubHandler((HttpStatusCode.OK, body)));
+
+        var price = await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT);
+
+        Assert.Equal(230_130_000m, price?.Price);
+        Assert.Null(price!.Value.AsOf);
+    }
+
+    /// <summary>
+    /// bonbast's <c>last_modified</c> carries no zone and bonbast does not say which one it
+    /// means, so the age is reported as unknown rather than guessed: an age wrong by hours is
+    /// worse for a staleness check than no age at all.
+    /// </summary>
+    [Fact]
+    public async Task Bonbast_ReportsAnUnknownAge()
+    {
+        var provider = Bonbast(new StubHandler((HttpStatusCode.OK, BonbastPage), (HttpStatusCode.OK, BonbastBody)));
+
+        var price = await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT);
+
+        Assert.NotNull(price);
+        Assert.Null(price!.Value.AsOf);
     }
 
     // ---- one fetch per tick, not one per symbol ---------------------------------------------
@@ -399,7 +461,7 @@ public class TgjuAndBonbastPriceProviderTests
         var fromBonbast = await Bonbast(new StubHandler((HttpStatusCode.OK, BonbastPage), (HttpStatusCode.OK, BonbastBody)))
             .GetPriceAsync(CurrenciesConstant.MAUA_IRT);
 
-        var deviation = Math.Abs(fromTgju!.Value - fromBonbast!.Value) / fromBonbast.Value * 100m;
-        Assert.True(deviation < 2m, $"tgju {fromTgju} and bonbast {fromBonbast} differ by {deviation:F2}%");
+        var deviation = Math.Abs(fromTgju!.Value.Price - fromBonbast!.Value.Price) / fromBonbast.Value.Price * 100m;
+        Assert.True(deviation < 2m, $"tgju {fromTgju.Value.Price} and bonbast {fromBonbast.Value.Price} differ by {deviation:F2}%");
     }
 }

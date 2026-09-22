@@ -36,7 +36,7 @@ public class NerkhPriceProvider : IReferencePriceProvider
         _configuration = configuration;
     }
 
-    public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
+    public async Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
     {
         var apiToken = _configuration["AutoQuote:NerkhApiToken"];
         if (string.IsNullOrWhiteSpace(apiToken))
@@ -58,7 +58,13 @@ public class NerkhPriceProvider : IReferencePriceProvider
 
         // MESGHAL is nerkh's native gold unit; quotes for MAUA/IRT are stored per gram. Every
         // other instrument (coins, crypto) is already priced per the whole unit we trade.
-        return convertFromMesghal ? price / CurrenciesConstant.GramsPerMesghal : price;
+        var toman = convertFromMesghal ? price.Value / CurrenciesConstant.GramsPerMesghal : price.Value;
+
+        // AsOf is null rather than "now": nerkh.io's response does carry a time per instrument,
+        // but the configured token answers 403 today, so the field's name and shape could not be
+        // confirmed against a real response. Reporting an age this provider has not actually read
+        // would be worse than reporting none — see issue #316.
+        return new ReferencePrice(toman, null);
     }
 
     /// <summary>
