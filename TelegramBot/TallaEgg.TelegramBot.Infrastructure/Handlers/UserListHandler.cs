@@ -48,10 +48,19 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
                 if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
                 {
+                    // «س» shows the customer's completed trades, not their orders: in the dealer
+                    // model an order exists only for the instant of a fill, so the order list was
+                    // always empty and the command was repointed. The label said otherwise here
+                    // and in the admin help, which is half of issue #293.
+                    //
+                    // The «ف» line offered «سفارشات باز» and is gone. No dispatch for it has ever
+                    // existed — git log -S 'StartsWith("ف' finds nothing in the whole history —
+                    // so from the day it was added, 2025-09-10, an admin who typed it silently got
+                    // the main menu. Removing it beats implementing a list the dealer model keeps
+                    // empty, which is the same reasoning that repointed «س».
                     sb.AppendLine("🔹 دستورات:");
                     sb.AppendLine($"   ▫️ موجودی → `م {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ سفارشات → `س {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ سفارشات باز → `ف {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ معامله‌ها → `س {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
                 }
 
                 sb.AppendLine("──────────────────────");
