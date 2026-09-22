@@ -1,8 +1,9 @@
 namespace Orders.Core;
 
 /// <summary>
-/// A source of the current external reference price for a trading pair, in Toman per one whole
-/// unit of the base asset — a gram of melted gold, a full Bahar Azadi coin, one Bitcoin. Multiple
+/// A source of the current external reference price for a trading pair, in that pair's quote
+/// currency per one whole unit of its base asset — Toman for a gram of melted gold, a full Bahar
+/// Azadi coin or one Bitcoin; dollars for a troy ounce of gold (issue #304). Multiple
 /// implementations exist so <c>ReferencePriceProviderChain</c> can fall back from one external
 /// service to another; adding a third or fourth source later is just one more class implementing
 /// this interface.
@@ -12,7 +13,10 @@ namespace Orders.Core;
 /// configured symbol when coin and Bitcoin quoting were added. "Per mesghal" was never a property
 /// of the interface — it was nerkh.io's and brsapi.ir's native gold unit, converted to per-gram
 /// before use. That conversion, and any other unit conversion a provider's upstream API needs,
-/// now happens inside each provider, per symbol, so callers only ever see Toman per traded unit.
+/// now happens inside each provider, per symbol, so callers only ever see the quote currency per
+/// traded unit. It was "Toman per traded unit" until XAU/USD, the first symbol quoted in anything
+/// else; no caller had to change, because the quote currency is a property of the symbol and
+/// every caller already had the symbol.
 /// </para>
 /// </summary>
 public interface IReferencePriceProvider

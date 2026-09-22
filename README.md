@@ -51,7 +51,9 @@ The platform supports two market modes per symbol, set in configuration:
 | **`Dealer`** (current) | The shop publishes a quote. A customer accepting it creates both orders and matches them in one operation. The background matching engine **skips these symbols entirely** — it would otherwise reach the same order pair a fill is already matching and produce two trades from one. |
 | `OrderBook` | Classic maker/taker matching through the background engine. Not used in production today. |
 
-`MAUA/IRT` (gold / toman), `SEKE_BAHAR/IRT` (Bahar Azadi coin / toman), and `BTC/IRT` (Bitcoin / toman) run in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
+`MAUA/IRT` (gold / toman), `SEKE_BAHAR/IRT` (Bahar Azadi coin / toman), `BTC/IRT` (Bitcoin / toman) and `XAU/USD` (the global ounce / US dollar) run in `Dealer` mode. The counterparty of a fill is whoever published the quote, so nothing needs to name the shop in configuration.
+
+`XAU/USD` is the one symbol not quoted in toman ([#304](https://github.com/MohKardan/TallaEgg/issues/304)). Its quote side is registered as a currency exactly as toman is — held, not traded, and with no credit ledger of its own — so a customer's dollars live in an ordinary wallet and settlement treats the pair like any other. Its price comes from two dollar sources, and because the spot market closes at weekends it is the first symbol to carry `MaxPriceAgeMinutes`.
 
 ### Adding a trading symbol
 
@@ -62,24 +64,26 @@ Two independent things determine whether customers can trade a symbol, deliberat
 | **Metadata** — decimal precision, min/max quantity, Persian display name, which instrument of each price source prices it | `Symbols:{Base}/{Quote}` in `appsettings.global.json` (see the block already there for the three symbols above) | Edit the file, restart the affected service(s). No code change, no rebuild. |
 | **Active or not** — shown in the customer's symbol picker, eligible for auto-quote, usable for a manual quote | A database row per symbol (`SymbolSettings`, next to `AutoQuoteSettings`) | A bot command, immediately, no restart: `نماد فعال [سکه\|بیت]` / `نماد غیرفعال [...]`. No keyword means MAUA/IRT. |
 
-A symbol that fits the standard shape — Toman-denominated, priced by one of the four sources below the same way gold/coin/Bitcoin already are — needs **only a config block**, then an admin turning it on. `TallaEgg.Core.CurrenciesConstant` ships with the three symbols above as compiled defaults (so the test suite and a fresh clone need no config file at all); a config block for a *new* key adds a fourth entry on top, and a block for an *existing* key overrides only the fields it sets.
+A symbol that fits the standard shape — priced by one of the six sources below the same way gold, the coin, Bitcoin and the ounce already are — needs **only a config block**, then an admin turning it on. `TallaEgg.Core.CurrenciesConstant` ships with the three symbols above as compiled defaults (so the test suite and a fresh clone need no config file at all); a config block for a *new* key adds a fourth entry on top, and a block for an *existing* key overrides only the fields it sets.
 
 `Matching:MarketModes` (above) is separate again — it decides `Dealer` vs `OrderBook`, and still needs its own entry per symbol.
 
-Four reference price sources are tried in order, and each takes its own block inside the symbol's config (`Nerkh`, `BrsApi`, `Tgju`, `Bonbast`):
+Six reference price sources are tried in order, and each takes its own block inside the symbol's config (`Nerkh`, `BrsApi`, `Xaus`, `Swissquote`, `Tgju`, `Bonbast`):
 
 | Source | Credentials | Reachable from | Covers |
 | --- | --- | --- | --- |
 | nerkh.io | API token | Iranian IPs only | gold, coin, Bitcoin |
 | brsapi.ir | API key | Iranian IPs only | gold, coin, Bitcoin |
 | tgju.org | none | anywhere | gold, coin, Bitcoin |
+| xaus.com | none | anywhere | the ounce (XAU/USD) |
+| swissquote.com | none | anywhere | the ounce (XAU/USD) |
 | bonbast.com | none | anywhere | gold, coin |
 
-Each source reads its instrument mapping from its own block inside the symbol's config — but only for a symbol it has no compiled default for. For the three symbols traded today every provider's mapping is compiled in and wins, so the blocks in `appsettings.global.example.json` document what those mappings are rather than setting them; changing one of *those* is a code change. This is how `Nerkh` and `BrsApi` already behaved.
+Each source reads its instrument mapping from its own block inside the symbol's config — but only for a symbol it has no compiled default for. For the four symbols traded today every provider's mapping is compiled in and wins, so the blocks in `appsettings.global.example.json` document what those mappings are rather than setting them; changing one of *those* is a code change. This is how `Nerkh` and `BrsApi` already behaved.
 
-`MaxPriceAgeMinutes`, set on the symbol itself rather than inside a source's block, decides how old a source's price may be before auto-quote refuses it and tries the next source ([#316](https://github.com/MohKardan/TallaEgg/issues/316)). Leave it out — as every symbol does today — and no age is enforced; set it and a market that has closed stops being re-quoted, with the reason in the log, while the last published quote stands. It only bites where a source reports a timestamp: tgju.org does, and nerkh.io, brsapi.ir and bonbast.com report an unknown age, which is never treated as stale.
+`MaxPriceAgeMinutes`, set on the symbol itself rather than inside a source's block, decides how old a source's price may be before auto-quote refuses it and tries the next source ([#316](https://github.com/MohKardan/TallaEgg/issues/316)). Leave it out — as the three toman symbols do — and no age is enforced; set it, as `XAU/USD` does at 15 minutes, and a market that has closed stops being re-quoted, with the reason in the log, while the last published quote stands. It only bites where a source reports a timestamp: tgju.org, xaus.com and swissquote.com do, while nerkh.io, brsapi.ir and bonbast.com report an unknown age, which is never treated as stale.
 
-The first two are tried first, so on an Iranian host nothing about the published price changes. The last two exist because the first two refuse a foreign IP, which left auto-quote unusable on the production VM ([#305](https://github.com/MohKardan/TallaEgg/issues/305)) — and because neither is a published API (tgju sells one; bonbast hides the endpoint behind a page token), both can change shape without notice, which is why they are a fallback and not the primary.
+The first two are tried first, so on an Iranian host nothing about the published price changes. The ounce's two sources answer for `XAU/USD` alone and return nothing for every toman symbol, and the reachability runs the other way round for them: they answer from the production VM, where the Iranian sources are refused by IP. The last two exist because the first two refuse a foreign IP, which left auto-quote unusable on the production VM ([#305](https://github.com/MohKardan/TallaEgg/issues/305)) — and because neither is a published API (tgju sells one; bonbast hides the endpoint behind a page token), both can change shape without notice, which is why they are a fallback and not the primary.
 
 A symbol priced by a source none of the four covers still needs a new class implementing `Orders.Core.IReferencePriceProvider` — that's the one part of this that's unavoidably code, because it's a new external integration, not a new symbol definition.
 
