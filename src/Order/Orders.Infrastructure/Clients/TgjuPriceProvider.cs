@@ -35,14 +35,20 @@ public class TgjuPriceProvider : IReferencePriceProvider
     private readonly HttpClient _httpClient;
     private readonly ILogger<TgjuPriceProvider> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ReferencePriceDocumentCache _cache;
 
     public string Name => "tgju.org";
 
-    public TgjuPriceProvider(HttpClient httpClient, ILogger<TgjuPriceProvider> logger, IConfiguration configuration)
+    public TgjuPriceProvider(
+        HttpClient httpClient,
+        ILogger<TgjuPriceProvider> logger,
+        IConfiguration configuration,
+        ReferencePriceDocumentCache cache)
     {
         _httpClient = httpClient;
         _logger = logger;
         _configuration = configuration;
+        _cache = cache;
     }
 
     public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
@@ -96,28 +102,26 @@ public class TgjuPriceProvider : IReferencePriceProvider
     {
         try
         {
-            using var response = await _httpClient.GetAsync(Url, cancellationToken);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                // Truncated: the document is ~180 KB, and an error page can be just as long.
-                _logger.LogWarning("tgju.org returned {StatusCode}: {Body}", (int)response.StatusCode, Truncate(body));
-                return null;
-            }
+            var body = await DocumentAsync(cancellationToken);
+            if (body is null) return null;
 
             using var doc = JsonDocument.Parse(body);
 
-            if (!doc.RootElement.TryGetProperty("current", out var current) ||
+            if (doc.RootElement.ValueKind != JsonValueKind.Object ||
+                !doc.RootElement.TryGetProperty("current", out var current) ||
+                current.ValueKind != JsonValueKind.Object ||
                 !current.TryGetProperty(key, out var instrument) ||
+                instrument.ValueKind != JsonValueKind.Object ||
                 !instrument.TryGetProperty("p", out var price))
             {
                 _logger.LogWarning("tgju.org response did not contain current.{Key}.p.", key);
                 return null;
             }
 
-            // "1,026,980,000" — a string with thousands separators, not a JSON number.
-            var text = price.GetString();
+            // "1,026,980,000" — a string with thousands separators, not a JSON number. The raw
+            // text is read if it ever arrives as one, so that shape is reported as the price
+            // problem it is rather than throwing and being logged as a failed request.
+            var text = price.ValueKind == JsonValueKind.String ? price.GetString() : price.GetRawText();
             if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
             {
                 _logger.LogWarning("tgju.org returned an unparsable price for {Key}: {Price}", key, text);
@@ -131,6 +135,30 @@ public class TgjuPriceProvider : IReferencePriceProvider
             _logger.LogWarning(ex, "tgju.org request failed for {Key}.", key);
             return null;
         }
+    }
+
+    /// <summary>
+    /// The whole document, fetched at most once per cache lifetime however many symbols ask.
+    /// One response carries every instrument, so pulling it per symbol would be the same ~180 KB
+    /// three times a tick — see <see cref="ReferencePriceDocumentCache"/>.
+    /// </summary>
+    private async Task<string?> DocumentAsync(CancellationToken cancellationToken)
+    {
+        var cached = _cache.Get(Name);
+        if (cached is not null) return cached;
+
+        using var response = await _httpClient.GetAsync(Url, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            // Truncated: the document is ~180 KB, and an error page can be just as long.
+            _logger.LogWarning("tgju.org returned {StatusCode}: {Body}", (int)response.StatusCode, Truncate(body));
+            return null;
+        }
+
+        _cache.Set(Name, body);
+        return body;
     }
 
     private static string Truncate(string body) =>

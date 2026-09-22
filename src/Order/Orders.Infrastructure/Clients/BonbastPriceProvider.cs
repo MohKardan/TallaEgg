@@ -42,14 +42,20 @@ public class BonbastPriceProvider : IReferencePriceProvider
     private readonly HttpClient _httpClient;
     private readonly ILogger<BonbastPriceProvider> _logger;
     private readonly IConfiguration _configuration;
+    private readonly ReferencePriceDocumentCache _cache;
 
     public string Name => "bonbast.com";
 
-    public BonbastPriceProvider(HttpClient httpClient, ILogger<BonbastPriceProvider> logger, IConfiguration configuration)
+    public BonbastPriceProvider(
+        HttpClient httpClient,
+        ILogger<BonbastPriceProvider> logger,
+        IConfiguration configuration,
+        ReferencePriceDocumentCache cache)
     {
         _httpClient = httpClient;
         _logger = logger;
         _configuration = configuration;
+        _cache = cache;
     }
 
     public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
@@ -129,15 +135,17 @@ public class BonbastPriceProvider : IReferencePriceProvider
         return parsed;
     }
 
-    /// <summary>
-    /// The page-then-JSON pair. The returned element belongs to a <see cref="JsonDocument"/> that
-    /// is disposed before this returns, so it is cloned — reading a disposed document's element
-    /// throws, and the failure would look like a parsing bug rather than a lifetime one.
-    /// </summary>
+    /// <summary>The page-then-JSON pair, or the body a recent pair already produced.</summary>
     private async Task<JsonElement?> FetchAsync(CancellationToken cancellationToken)
     {
         try
         {
+            // One document holds every instrument, and reaching it costs two requests, so a tick
+            // asking about three symbols would otherwise repeat the whole handshake three times
+            // (see ReferencePriceDocumentCache).
+            var cached = _cache.Get(Name);
+            if (cached is not null) return Parse(cached);
+
             var token = await FetchTokenAsync(cancellationToken);
             if (token is null) return null;
 
@@ -157,14 +165,42 @@ public class BonbastPriceProvider : IReferencePriceProvider
                 return null;
             }
 
-            using var doc = JsonDocument.Parse(body);
-            return doc.RootElement.Clone();
+            var prices = Parse(body);
+            if (prices is not null) _cache.Set(Name, body);
+
+            return prices;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "bonbast.com request failed.");
             return null;
         }
+    }
+
+    /// <summary>
+    /// The prices object, or null if the body is not one.
+    ///
+    /// <para>
+    /// The <see cref="JsonElement"/> is cloned because its <see cref="JsonDocument"/> is disposed
+    /// before this returns, and reading a disposed document's element throws — a failure that
+    /// would read as a parsing bug rather than a lifetime one. The object check matters for the
+    /// same reason the clone does: on valid JSON that is not an object — an empty array, a bare
+    /// string — <c>TryGetProperty</c> throws instead of returning false, and at the one call site
+    /// that reads keys there is no catch left between here and the chain, which has none of its
+    /// own. The interface promises a null for every failure.
+    /// </para>
+    /// </summary>
+    private JsonElement? Parse(string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+
+        if (doc.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            _logger.LogWarning("bonbast.com returned {Kind} where an object of prices was expected.", doc.RootElement.ValueKind);
+            return null;
+        }
+
+        return doc.RootElement.Clone();
     }
 
     private async Task<string?> FetchTokenAsync(CancellationToken cancellationToken)

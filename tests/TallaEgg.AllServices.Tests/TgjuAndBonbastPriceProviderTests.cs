@@ -84,11 +84,22 @@ public class TgjuAndBonbastPriceProviderTests
     private const string BonbastPage =
         "<html><body><script>$.post('/json', {param: \"99d8f481f71d02df6c386f742cf60709,UYZvk,2026-09-19-11-56-27\"}, function(json){});</script></body></html>";
 
-    private static TgjuPriceProvider Tgju(StubHandler handler, IConfiguration? configuration = null) =>
-        new(new HttpClient(handler), NullLogger<TgjuPriceProvider>.Instance, configuration ?? EmptyConfiguration());
+    /// <summary>
+    /// A cache of its own per provider under test. Sharing one would carry a stubbed response
+    /// from one test into the next, which is exactly why the cache is an injected object rather
+    /// than a static field inside each provider.
+    /// </summary>
+    private static ReferencePriceDocumentCache FreshCache() => new(TimeSpan.FromSeconds(90));
 
-    private static BonbastPriceProvider Bonbast(StubHandler handler, IConfiguration? configuration = null) =>
-        new(new HttpClient(handler), NullLogger<BonbastPriceProvider>.Instance, configuration ?? EmptyConfiguration());
+    private static TgjuPriceProvider Tgju(
+        StubHandler handler, IConfiguration? configuration = null, ReferencePriceDocumentCache? cache = null) =>
+        new(new HttpClient(handler), NullLogger<TgjuPriceProvider>.Instance,
+            configuration ?? EmptyConfiguration(), cache ?? FreshCache());
+
+    private static BonbastPriceProvider Bonbast(
+        StubHandler handler, IConfiguration? configuration = null, ReferencePriceDocumentCache? cache = null) =>
+        new(new HttpClient(handler), NullLogger<BonbastPriceProvider>.Instance,
+            configuration ?? EmptyConfiguration(), cache ?? FreshCache());
 
     // ---- tgju.org -------------------------------------------------------------------------
 
@@ -262,6 +273,114 @@ public class TgjuAndBonbastPriceProviderTests
         var provider = Bonbast(new StubHandler((HttpStatusCode.OK, BonbastPage), (status, body)));
 
         Assert.Null(await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT));
+    }
+
+    /// <summary>
+    /// Valid JSON that is not an object. <c>TryGetProperty</c> throws on it rather than returning
+    /// false, and at the call site that reads the price keys there is no catch left between the
+    /// provider and the chain — which has none of its own, because the interface promises a null
+    /// for every failure. Found by the review of PR #315.
+    /// </summary>
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("\"maintenance\"")]
+    [InlineData("null")]
+    public async Task Bonbast_WhenTheBodyIsNotAnObject_ReturnsNullRatherThanThrowing(string body)
+    {
+        var provider = Bonbast(new StubHandler((HttpStatusCode.OK, BonbastPage), (HttpStatusCode.OK, body)));
+
+        Assert.Null(await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT));
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("{\"current\":[]}")]
+    [InlineData("{\"current\":{\"mesghal\":\"1,026,980,000\"}}")]
+    public async Task Tgju_WhenTheDocumentIsNotShapedAsExpected_ReturnsNullRatherThanThrowing(string body)
+    {
+        var provider = Tgju(new StubHandler((HttpStatusCode.OK, body)));
+
+        Assert.Null(await provider.GetPriceAsync(CurrenciesConstant.MAUA_IRT));
+    }
+
+    /// <summary>
+    /// A price arriving as a JSON number instead of a string is still reported as a price this
+    /// provider could not use — and, here, parsed rather than rejected.
+    /// </summary>
+    [Fact]
+    public async Task Tgju_WhenThePriceIsANumber_ReadsItAnyway()
+    {
+        var provider = Tgju(new StubHandler((HttpStatusCode.OK, "{\"current\":{\"sekeb\":{\"p\":2301300000}}}")));
+
+        Assert.Equal(230_130_000m, await provider.GetPriceAsync(CurrenciesConstant.SEKE_BAHAR_IRT));
+    }
+
+    // ---- one fetch per tick, not one per symbol ---------------------------------------------
+
+    /// <summary>
+    /// Both hosts answer with every instrument in one document, and the publisher asks per symbol
+    /// in a scope of its own. Without the shared cache that is the same ~180 KB document three
+    /// times a tick from tgju, and three page-and-token handshakes from bonbast — about 390 MB a
+    /// day against a host that serves this as a courtesy. Found by the review of PR #315.
+    /// </summary>
+    [Fact]
+    public async Task Tgju_AcrossSymbolsInOneTick_FetchesTheDocumentOnce()
+    {
+        var handler = new StubHandler((HttpStatusCode.OK, TgjuBody));
+        var cache = FreshCache();
+
+        // A provider instance per symbol, as the publisher's per-symbol DI scope produces.
+        foreach (var symbol in new[] { CurrenciesConstant.MAUA_IRT, CurrenciesConstant.SEKE_BAHAR_IRT, CurrenciesConstant.BTC_IRT })
+        {
+            Assert.NotNull(await Tgju(handler, cache: cache).GetPriceAsync(symbol));
+        }
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task Bonbast_AcrossSymbolsInOneTick_RepeatsNeitherRequest()
+    {
+        var handler = new StubHandler((HttpStatusCode.OK, BonbastPage), (HttpStatusCode.OK, BonbastBody));
+        var cache = FreshCache();
+
+        foreach (var symbol in new[] { CurrenciesConstant.MAUA_IRT, CurrenciesConstant.SEKE_BAHAR_IRT })
+        {
+            Assert.NotNull(await Bonbast(handler, cache: cache).GetPriceAsync(symbol));
+        }
+
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    /// <summary>
+    /// An expired entry is a miss. Without this the test above would also pass on a cache that
+    /// never expires, which would hold one price for the life of the process.
+    /// </summary>
+    [Fact]
+    public async Task ReferencePriceDocumentCache_AfterItsLifetime_FetchesAgain()
+    {
+        var handler = new StubHandler((HttpStatusCode.OK, TgjuBody), (HttpStatusCode.OK, TgjuBody));
+        var cache = new ReferencePriceDocumentCache(TimeSpan.Zero);
+
+        await Tgju(handler, cache: cache).GetPriceAsync(CurrenciesConstant.MAUA_IRT);
+        await Tgju(handler, cache: cache).GetPriceAsync(CurrenciesConstant.MAUA_IRT);
+
+        Assert.Equal(2, handler.Requests.Count);
+    }
+
+    /// <summary>A failed fetch must not be cached, or one bad minute becomes ninety seconds of them.</summary>
+    [Fact]
+    public async Task Bonbast_WhenAFetchFails_DoesNotCacheTheFailure()
+    {
+        var handler = new StubHandler(
+            (HttpStatusCode.OK, BonbastPage),
+            (HttpStatusCode.ServiceUnavailable, ""),
+            (HttpStatusCode.OK, BonbastPage),
+            (HttpStatusCode.OK, BonbastBody));
+        var cache = FreshCache();
+
+        Assert.Null(await Bonbast(handler, cache: cache).GetPriceAsync(CurrenciesConstant.MAUA_IRT));
+        Assert.NotNull(await Bonbast(handler, cache: cache).GetPriceAsync(CurrenciesConstant.MAUA_IRT));
     }
 
     // ---- both ------------------------------------------------------------------------------
