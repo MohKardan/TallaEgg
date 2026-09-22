@@ -40,12 +40,16 @@ public static class QuoteMessage
         var baseAsset = symbol.Split('/')[0];
         var unit = CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset;
 
+        var quoteAsset = symbol.Split('/')[1];
+
         var text = string.Format(BotMsgs.MsgAdminQuotePublishedSimple,
             PersianFormat.Symbol(symbol),
-            PersianFormat.Number(roundedBuy),
-            PersianFormat.Number(roundedSell),
-            PersianFormat.Number(margin),
-            unit);
+            // At the quote asset's precision: whole toman for three symbols, cents for the ounce.
+            PersianFormat.Amount(roundedBuy, quoteAsset),
+            PersianFormat.Amount(roundedSell, quoteAsset),
+            PersianFormat.Amount(margin, quoteAsset),
+            unit,
+            PersianFormat.QuoteUnit(symbol));
 
         return new QuotePublication(roundedBuy, roundedSell, text);
     }

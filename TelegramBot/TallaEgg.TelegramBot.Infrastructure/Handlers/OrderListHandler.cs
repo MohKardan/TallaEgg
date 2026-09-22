@@ -51,8 +51,10 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
                 sb.AppendLine($"{GetTypeIcon(o.Type)} نوع: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Type)}");
                 sb.AppendLine($"📊 مقدار: {PersianFormat.Amount(o.Amount, baseAsset)} {unit}");
                 sb.AppendLine($"⏳ باقی‌مانده: {PersianFormat.Amount(o.RemainingAmount, baseAsset)} {unit}");
-                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Number(displayPrice)} تومان");
-                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Number(o.Amount * o.Price)} تومان");
+                var quoteAsset = CurrenciesConstant.QuoteAssetOf(o.Asset);
+                var quoteUnit = PersianFormat.QuoteUnit(o.Asset);
+                sb.AppendLine($"💰 {priceLabel}: {PersianFormat.Amount(displayPrice, quoteAsset)} {quoteUnit}");
+                sb.AppendLine($"💵 ارزش کل: {PersianFormat.Amount(o.Amount * o.Price, quoteAsset)} {quoteUnit}");
                 sb.AppendLine($"{GetStatusEmoji(o.Status)} وضعیت: {TallaEgg.Core.Utilties.Utils.GetEnumDescription(o.Status)}");
                 sb.AppendLine($"🕓 زمان: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(o.CreatedAt))}");
 

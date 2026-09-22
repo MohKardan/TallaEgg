@@ -25,15 +25,18 @@ public static class BestPricesMessage
         var isGold = symbol == CurrenciesConstant.MAUA_IRT;
         var unit = isGold ? "مثقال" : CurrenciesConstant.GetTradingPairInfo(symbol)?.BaseUnit ?? "واحد";
 
-        return string.Format(BotMsgs.MsgBestPrices, unit, Format(bestBidPrice, isGold), Format(bestAskPrice, isGold));
+        return string.Format(BotMsgs.MsgBestPrices, unit, Format(bestBidPrice, isGold, symbol), Format(bestAskPrice, isGold, symbol));
     }
 
-    private static string Format(decimal? price, bool isGold)
+    private static string Format(decimal? price, bool isGold, string symbol)
     {
         if (!price.HasValue)
             return BotMsgs.MsgPriceNotAvailable;
 
         var displayPrice = isGold ? price.Value * CurrenciesConstant.GramsPerMesghal : price.Value;
-        return $"{PersianFormat.Number(displayPrice)} تومان";
+
+        // Currency and precision both from the symbol: this is the first price screen a customer
+        // sees after picking one, and it said toman even for the ounce (issue #304).
+        return $"{PersianFormat.Amount(displayPrice, CurrenciesConstant.QuoteAssetOf(symbol))} {PersianFormat.QuoteUnit(symbol)}";
     }
 }

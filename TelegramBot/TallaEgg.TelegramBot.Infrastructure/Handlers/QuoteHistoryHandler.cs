@@ -65,6 +65,10 @@ public static class QuoteHistoryHandler
             // the customer actually speak in.
             var buyDisplay = isGold ? q.BuyPrice * CurrenciesConstant.GramsPerMesghal : q.BuyPrice;
             var sellDisplay = isGold ? q.SellPrice * CurrenciesConstant.GramsPerMesghal : q.SellPrice;
+            // Must agree with the publish and approval messages about the currency (issue #304).
+            var quoteAsset = CurrenciesConstant.QuoteAssetOf(q.Symbol);
+            var quoteUnit = PersianFormat.QuoteUnit(q.Symbol);
+
             var unitLabel = isGold
                 ? "هر مثقال"
                 : $"هر {CurrenciesConstant.GetCurrencyInfo(q.Symbol.Split('/')[0])?.Unit ?? "واحد"}";
@@ -75,14 +79,14 @@ public static class QuoteHistoryHandler
 
             if (isAdmin)
             {
-                sb.AppendLine($"🟢 شما می‌خرید — {unitLabel}: {PersianFormat.Number(buyDisplay)} تومان");
-                sb.AppendLine($"🔴 شما می‌فروشید — {unitLabel}: {PersianFormat.Number(sellDisplay)} تومان");
-                sb.AppendLine($"📈 حاشیه: {PersianFormat.Number(sellDisplay - buyDisplay)} تومان");
+                sb.AppendLine($"🟢 شما می‌خرید — {unitLabel}: {PersianFormat.Amount(buyDisplay, quoteAsset)} {quoteUnit}");
+                sb.AppendLine($"🔴 شما می‌فروشید — {unitLabel}: {PersianFormat.Amount(sellDisplay, quoteAsset)} {quoteUnit}");
+                sb.AppendLine($"📈 حاشیه: {PersianFormat.Amount(sellDisplay - buyDisplay, quoteAsset)} {quoteUnit}");
             }
             else
             {
-                sb.AppendLine($"🔴 قیمت فروش شما — {unitLabel}: {PersianFormat.Number(buyDisplay)} تومان");
-                sb.AppendLine($"🟢 قیمت خرید شما — {unitLabel}: {PersianFormat.Number(sellDisplay)} تومان");
+                sb.AppendLine($"🔴 قیمت فروش شما — {unitLabel}: {PersianFormat.Amount(buyDisplay, quoteAsset)} {quoteUnit}");
+                sb.AppendLine($"🟢 قیمت خرید شما — {unitLabel}: {PersianFormat.Amount(sellDisplay, quoteAsset)} {quoteUnit}");
             }
 
             sb.AppendLine($"🕓 انتشار: {PersianFormat.ToPersianDigits(TallaEgg.Core.Utilties.Utils.ConvertToPersianDate(q.PublishedAt))}");

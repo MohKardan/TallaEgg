@@ -67,9 +67,10 @@ public static class PendingQuoteMessage
                 PersianFormat.Number(pending.SellPrice))
             : string.Format(BotMsgs.MsgAdminQuoteApprovedSimple,
                 PersianFormat.Asset(baseAsset),
-                PersianFormat.Number(pending.BuyPrice),
-                PersianFormat.Number(pending.SellPrice),
-                CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset);
+                PersianFormat.Amount(pending.BuyPrice, QuoteAssetOf(pending.Symbol)),
+                PersianFormat.Amount(pending.SellPrice, QuoteAssetOf(pending.Symbol)),
+                CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset,
+                PersianFormat.QuoteUnit(pending.Symbol));
     }
 
     /// <summary>The confirmation after a rejection: which symbol, and that the previous quote stands.</summary>
@@ -103,19 +104,21 @@ public static class PendingQuoteMessage
     private static string SimpleText(PendingQuoteDto pending, DateTime utcNow)
     {
         var baseAsset = BaseAssetOf(pending.Symbol);
+        var quoteAsset = QuoteAssetOf(pending.Symbol);
         var unit = CurrenciesConstant.GetCurrencyInfo(baseAsset)?.Unit ?? baseAsset;
 
         return string.Format(
             BotMsgs.MsgAdminQuoteNeedsApprovalSimple,
             SourceLabel(pending.Source),
             PersianFormat.Asset(baseAsset),
-            PersianFormat.Number(pending.BuyPrice),
-            PersianFormat.Number(pending.SellPrice),
-            pending.PreviousMid is null ? BotMsgs.MsgNoPreviousQuote : PersianFormat.Number(pending.PreviousMid.Value),
+            PersianFormat.Amount(pending.BuyPrice, quoteAsset),
+            PersianFormat.Amount(pending.SellPrice, quoteAsset),
+            pending.PreviousMid is null ? BotMsgs.MsgNoPreviousQuote : PersianFormat.Amount(pending.PreviousMid.Value, quoteAsset),
             unit,
             Percent(pending.DeviationPercent),
             Percent(pending.BandPercent),
-            PersianFormat.ToPersianDigits(MinutesLeft(pending, utcNow).ToString()));
+            PersianFormat.ToPersianDigits(MinutesLeft(pending, utcNow).ToString()),
+            PersianFormat.QuoteUnit(pending.Symbol));
     }
 
     /// <summary>
@@ -158,5 +161,19 @@ public static class PendingQuoteMessage
         return parts is { Length: 2 } && !string.IsNullOrWhiteSpace(parts[0])
             ? parts[0].Trim().ToUpperInvariant()
             : CurrenciesConstant.Maua;
+    }
+
+    /// <summary>
+    /// The quote asset — what the prices are denominated <i>in</i>, and so the precision they are
+    /// shown at. Toman for three symbols, dollars for the ounce (issue #304). Parsed as
+    /// defensively as <see cref="BaseAssetOf"/>, and falling back to toman for the same kind of
+    /// reason: three of the four symbols use it, and a malformed symbol has no better default.
+    /// </summary>
+    private static string QuoteAssetOf(string symbol)
+    {
+        var parts = symbol?.Split('/');
+        return parts is { Length: 2 } && !string.IsNullOrWhiteSpace(parts[1])
+            ? parts[1].Trim().ToUpperInvariant()
+            : CurrenciesConstant.Toman;
     }
 }
