@@ -59,14 +59,25 @@ Two independent things determine whether customers can trade a symbol, deliberat
 
 | What | Where it lives | How it changes |
 | --- | --- | --- |
-| **Metadata** — decimal precision, min/max quantity, Persian display name, which nerkh.io/brsapi.ir instrument prices it | `Symbols:{Base}/{Quote}` in `appsettings.global.json` (see the block already there for the three symbols above) | Edit the file, restart the affected service(s). No code change, no rebuild. |
+| **Metadata** — decimal precision, min/max quantity, Persian display name, which instrument of each price source prices it | `Symbols:{Base}/{Quote}` in `appsettings.global.json` (see the block already there for the three symbols above) | Edit the file, restart the affected service(s). No code change, no rebuild. |
 | **Active or not** — shown in the customer's symbol picker, eligible for auto-quote, usable for a manual quote | A database row per symbol (`SymbolSettings`, next to `AutoQuoteSettings`) | A bot command, immediately, no restart: `نماد فعال [سکه\|بیت]` / `نماد غیرفعال [...]`. No keyword means MAUA/IRT. |
 
-A symbol that fits the standard shape — Toman-denominated, priced by nerkh.io and/or brsapi.ir the same way gold/coin/Bitcoin already are — needs **only a config block**, then an admin turning it on. `TallaEgg.Core.CurrenciesConstant` ships with the three symbols above as compiled defaults (so the test suite and a fresh clone need no config file at all); a config block for a *new* key adds a fourth entry on top, and a block for an *existing* key overrides only the fields it sets.
+A symbol that fits the standard shape — Toman-denominated, priced by one of the four sources below the same way gold/coin/Bitcoin already are — needs **only a config block**, then an admin turning it on. `TallaEgg.Core.CurrenciesConstant` ships with the three symbols above as compiled defaults (so the test suite and a fresh clone need no config file at all); a config block for a *new* key adds a fourth entry on top, and a block for an *existing* key overrides only the fields it sets.
 
 `Matching:MarketModes` (above) is separate again — it decides `Dealer` vs `OrderBook`, and still needs its own entry per symbol.
 
-A symbol priced by a source neither nerkh.io nor brsapi.ir covers still needs a new class implementing `Orders.Core.IReferencePriceProvider` — that's the one part of this that's unavoidably code, because it's a new external integration, not a new symbol definition.
+Four reference price sources are tried in order, and each takes its own block inside the symbol's config (`Nerkh`, `BrsApi`, `Tgju`, `Bonbast`):
+
+| Source | Credentials | Reachable from | Covers |
+| --- | --- | --- | --- |
+| nerkh.io | API token | Iranian IPs only | gold, coin, Bitcoin |
+| brsapi.ir | API key | Iranian IPs only | gold, coin, Bitcoin |
+| tgju.org | none | anywhere | gold, coin, Bitcoin |
+| bonbast.com | none | anywhere | gold, coin |
+
+The first two are tried first, so on an Iranian host nothing about the published price changes. The last two exist because the first two refuse a foreign IP, which left auto-quote unusable on the production VM ([#305](https://github.com/MohKardan/TallaEgg/issues/305)) — and because neither is a published API (tgju sells one; bonbast hides the endpoint behind a page token), both can change shape without notice, which is why they are a fallback and not the primary.
+
+A symbol priced by a source none of the four covers still needs a new class implementing `Orders.Core.IReferencePriceProvider` — that's the one part of this that's unavoidably code, because it's a new external integration, not a new symbol definition.
 
 ## Tech Stack
 
