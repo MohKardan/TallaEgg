@@ -193,8 +193,44 @@ builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorSer
 // implementations share IReferencePriceProvider. Each now takes IConfiguration directly (not
 // just its own token/key) so it can also resolve a config-driven instrument mapping for a
 // symbol added without a code change — see NerkhPriceProvider/BrsApiPriceProvider.InstrumentFor.
+const string ReferencePriceUserAgent = "TallaEgg/1.0 (+https://github.com/MohKardan/TallaEgg)";
+
 builder.Services.AddHttpClient("NerkhPriceProvider");
 builder.Services.AddHttpClient("BrsApiPriceProvider");
+
+// tgju.org and bonbast.com need no credentials, and unlike the two above they answer from
+// outside Iran (issue #305). Both identify themselves rather than posing as a browser.
+//
+// The timeout is not HttpClient's 100-second default on purpose. A tick fetches a price per
+// symbol, in sequence, and the publisher holds a six-minute lease while it does (issue #160):
+// three symbols waiting out two defaults each would outlast the lease and let a second instance
+// start publishing the same prices. A reference price that has not arrived in fifteen seconds is
+// of no use to this tick anyway — the next one is two minutes away.
+var referencePriceTimeout = TimeSpan.FromSeconds(15);
+
+builder.Services.AddHttpClient("TgjuPriceProvider", client =>
+{
+    client.Timeout = referencePriceTimeout;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
+});
+
+// bonbast.com hands out a request token in a cookie alongside the one in its markup, so this
+// client keeps a cookie jar; the two requests it makes are a pair, not independent calls.
+builder.Services
+    .AddHttpClient("BonbastPriceProvider", client =>
+    {
+        client.Timeout = referencePriceTimeout;
+        client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        CookieContainer = new System.Net.CookieContainer(),
+        UseCookies = true
+    });
+
+// One fetch per source per tick, rather than one per symbol: both sources answer with every
+// instrument in a single document, and neither publishes it as an API.
+builder.Services.AddSingleton(new Orders.Infrastructure.Clients.ReferencePriceDocumentCache(TimeSpan.FromSeconds(90)));
 
 builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infrastructure.AutoQuoteSettingsRepository>();
 
@@ -210,6 +246,21 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiPriceProvider"),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>()));
+
+// Registered after the two Iranian providers on purpose: where nerkh.io and brsapi.ir answer —
+// on an Iranian host — the chain never reaches these, so the price a customer sees is unchanged.
+// They matter where those two are refused by IP, which is every foreign-hosted instance.
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.TgjuPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("TgjuPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.TgjuPriceProvider>>(),
+    sp.GetRequiredService<IConfiguration>(),
+    sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
+
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BonbastPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BonbastPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BonbastPriceProvider>>(),
+    sp.GetRequiredService<IConfiguration>(),
+    sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
 
 builder.Services.AddScoped<Orders.Application.Services.ReferencePriceProviderChain>();
 builder.Services.AddHostedService<Orders.Application.Services.AutoQuotePublisherService>();
