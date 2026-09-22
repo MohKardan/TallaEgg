@@ -59,6 +59,32 @@ public class AdminHelpMatchesTheCommandsTests
     /// <summary>A command as the user list offers it: `x 09123456789` in a Markdown code span.</summary>
     private static readonly Regex ListedCommand = new(@"`(?<cmd>[\u0600-\u06FF]+)\s+[\d\\]+`", RegexOptions.Compiled);
 
+    /// <summary>
+    /// Whether the help documents one particular command, in command position: at the start of a
+    /// line or straight after a colon, and followed by whitespace, a bracketed argument or the end
+    /// of the text.
+    ///
+    /// <para>
+    /// Asking per command, rather than extracting every command the help contains, is what makes
+    /// this direction complete. Extraction can only recognise the bracketed form, and one command
+    /// is not written that way: «روشن/خاموش: اتومات روشن یا اتومات خاموش» spells out the words an
+    /// operator has to type, because there the second word is the literal input and not a
+    /// placeholder for it. Rewriting it as «اتومات [روشن یا خاموش]» to please a parser was the
+    /// first attempt, and <c>UserHelpMatchesTheMenuTests</c> rightly failed it: the brackets
+    /// elsewhere mean "your value here", and using them for a keyword the operator must type
+    /// verbatim would teach the wrong thing.
+    /// </para>
+    ///
+    /// <para>
+    /// Command position, not a substring search. Eight of the eleven commands are a single Persian
+    /// letter and every one occurs inside ordinary words in the help — «ش» in «شمارهٔ», «ک» in
+    /// «کاربر», «ت» in «تلفن», «د» in «درصد» — so <c>help.Contains(c)</c> is true whatever the help
+    /// says. The first version of this test did exactly that and was vacuous for all eight.
+    /// </para>
+    /// </summary>
+    private static bool TheHelpDocuments(string command) =>
+        Regex.IsMatch(BotMsgs.MsgAdminHelp, @"(?:^|\n|:\s*)" + Regex.Escape(command) + @"(?=\s|\[|$)");
+
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
@@ -152,14 +178,18 @@ public class AdminHelpMatchesTheCommandsTests
     /// <summary>
     /// The direction that caught «نماد»: handled, working, and invisible to the only documentation
     /// an operator has.
+    ///
+    /// <para>
+    /// See <see cref="TheHelpDocuments"/> for why this asks per command and why it is not a
+    /// substring search — the first version of this test was one, and was vacuous for eight of the
+    /// eleven commands.
+    /// </para>
     /// </summary>
     [Fact]
     public void EveryHandledCommandIsInTheHelp()
     {
-        var help = BotMsgs.MsgAdminHelp;
-
         var undocumented = HandledCommands()
-            .Where(c => !help.Contains(c, StringComparison.Ordinal))
+            .Where(c => !TheHelpDocuments(c))
             .ToList();
 
         Assert.True(undocumented.Count == 0,
@@ -171,8 +201,15 @@ public class AdminHelpMatchesTheCommandsTests
     /// <summary>
     /// Every check above passes on an empty set. Each source is pinned so a regex that silently
     /// stopped matching — or a file that moved — turns the guard red instead of green-and-blind.
-    /// Eleven dispatch prefixes, eight documented commands and three offered by the user list at
-    /// the time of writing; the floors sit below those so ordinary additions do not trip them.
+    ///
+    /// <para>
+    /// Measured on this branch: eleven dispatch prefixes, ten commands extracted from the help —
+    /// the eleventh, «اتومات», is the one not written in the bracketed form, which is why
+    /// <see cref="EveryHandledCommandIsInTheHelp"/> asks per command instead of comparing sets —
+    /// and two offered by the user list, «م» and «س», which is all of them now that «ف» is gone.
+    /// The floors sit below those with room for ordinary additions, except the user list's: two is
+    /// the whole set, so its floor is exact by necessity and removing either line fails here.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task AllThreeSetsWereActuallyRead()
@@ -182,7 +219,7 @@ public class AdminHelpMatchesTheCommandsTests
         var offered = await CommandsOfferedByTheUserListAsync();
 
         Assert.True(handled.Count >= 10, $"only {handled.Count} dispatch prefixes were found");
-        Assert.True(documented.Count >= 6, $"only {documented.Count} commands were parsed out of the help");
+        Assert.True(documented.Count >= 9, $"only {documented.Count} commands were parsed out of the help");
         Assert.True(offered.Count >= 2, $"only {offered.Count} commands were parsed out of the user list");
 
         // The ones every reading must contain, so a regex that matched something unrelated still fails.
@@ -194,6 +231,11 @@ public class AdminHelpMatchesTheCommandsTests
         // first version of the help parser could not see that shape. Parsing it as nothing would
         // have left EveryCommandTheHelpDocumentsIsHandled silently skipping it.
         Assert.Contains("نماد", documented);
+
+        // And «اتومات», which extraction cannot see at all, is pinned through the per-command
+        // search instead — the one place it is visible to any check here.
+        Assert.True(TheHelpDocuments("اتومات"), "the per-command search no longer finds «اتومات» in the help");
+        Assert.False(TheHelpDocuments("ب"), "the per-command search matches a letter the help never documents");
     }
 
     // ── what the help says «س» does ─────────────────────────────────────────────
