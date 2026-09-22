@@ -58,7 +58,7 @@ public class BonbastPriceProvider : IReferencePriceProvider
         _cache = cache;
     }
 
-    public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
+    public async Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
     {
         var instrument = InstrumentFor(symbol);
         if (instrument is null)
@@ -89,7 +89,13 @@ public class BonbastPriceProvider : IReferencePriceProvider
             price = (sell.Value + buy.Value) / 2m;
         }
 
-        return convertFromMesghal ? price / CurrenciesConstant.GramsPerMesghal : price;
+        var toman = convertFromMesghal ? price / CurrenciesConstant.GramsPerMesghal : price;
+
+        // AsOf is null rather than "now": the response carries "last_modified", but as a bare
+        // "September 19, 2026 11:56" with no zone marker, and bonbast does not say which zone it
+        // means. A timestamp read in the wrong zone is an age wrong by hours, which is worse for
+        // a staleness check than no age at all (issue #316).
+        return new ReferencePrice(toman, null);
     }
 
     /// <summary>

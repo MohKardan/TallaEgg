@@ -168,20 +168,25 @@ public class AutoQuotePublisherService : BackgroundService
         if (!settings.IsEnabled) return;
 
         var chain = scope.ServiceProvider.GetRequiredService<ReferencePriceProviderChain>();
-        var referencePrice = await chain.GetPriceAsync(symbol, ct);
+        var quoted = await chain.GetPriceAsync(symbol, ct);
 
-        if (referencePrice is null)
+        if (quoted is null)
         {
+            // Also the path a closed market takes: since #316 a price older than the symbol's
+            // configured maximum counts as no answer, so the previous quote stands rather than
+            // being republished with a new timestamp.
             _logger.LogWarning("Auto-quote for {Symbol} skipped this tick: no price source answered.", symbol);
             return;
         }
+
+        var referencePrice = quoted.Value.Price;
 
         // referencePrice is already Toman per traded base unit (a gram of gold, a whole coin, a
         // whole Bitcoin) — each provider does its own unit conversion, so nothing here is
         // specific to any one symbol.
         var halfSpread = settings.SpreadPercent / 100m / 2m;
-        var buyPrice = decimal.Round(referencePrice.Value * (1 - halfSpread), 2);
-        var sellPrice = decimal.Round(referencePrice.Value * (1 + halfSpread), 2);
+        var buyPrice = decimal.Round(referencePrice * (1 - halfSpread), 2);
+        var sellPrice = decimal.Round(referencePrice * (1 + halfSpread), 2);
 
         var quoteRepo = scope.ServiceProvider.GetRequiredService<IQuoteRepository>();
         var currentQuote = await quoteRepo.GetActiveAsync(symbol);
@@ -207,7 +212,7 @@ public class AutoQuotePublisherService : BackgroundService
             // survives one.
             _logger.LogInformation(
                 "Auto-quote for {Symbol}: no previous quote to compare against, so the plausibility band was not applied to reference {Reference}.",
-                symbol, referencePrice.Value);
+                symbol, referencePrice);
         }
 
         try

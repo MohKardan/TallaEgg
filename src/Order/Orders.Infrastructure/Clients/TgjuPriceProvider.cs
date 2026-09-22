@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orders.Core;
 using TallaEgg.Core;
+using TallaEgg.Core.Utilties;
 
 namespace Orders.Infrastructure.Clients;
 
@@ -51,7 +52,7 @@ public class TgjuPriceProvider : IReferencePriceProvider
         _cache = cache;
     }
 
-    public async Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
+    public async Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
     {
         var instrument = InstrumentFor(symbol);
         if (instrument is null)
@@ -61,11 +62,13 @@ public class TgjuPriceProvider : IReferencePriceProvider
         }
 
         var (key, convertFromMesghal) = instrument.Value;
-        var rials = await FetchAsync(key, cancellationToken);
-        if (rials is null) return null;
+        var quoted = await FetchAsync(key, cancellationToken);
+        if (quoted is null) return null;
 
-        var toman = rials.Value / RialsPerToman;
-        return convertFromMesghal ? toman / CurrenciesConstant.GramsPerMesghal : toman;
+        var toman = quoted.Value.Rials / RialsPerToman;
+        var price = convertFromMesghal ? toman / CurrenciesConstant.GramsPerMesghal : toman;
+
+        return new ReferencePrice(price, quoted.Value.AsOf);
     }
 
     /// <summary>
@@ -98,7 +101,7 @@ public class TgjuPriceProvider : IReferencePriceProvider
         return (key, section.GetValue("ConvertFromMesghal", false));
     }
 
-    private async Task<decimal?> FetchAsync(string key, CancellationToken cancellationToken)
+    private async Task<(decimal Rials, DateTimeOffset? AsOf)?> FetchAsync(string key, CancellationToken cancellationToken)
     {
         try
         {
@@ -128,11 +131,57 @@ public class TgjuPriceProvider : IReferencePriceProvider
                 return null;
             }
 
-            return parsed;
+            return (parsed, TimestampOf(instrument, key));
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "tgju.org request failed for {Key}.", key);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// When tgju says this instrument last moved, from its <c>ts</c> field.
+    ///
+    /// <para>
+    /// The value is Tehran local time with no zone marker — <c>"2026-09-22 08:05:29"</c> — so the
+    /// fixed +03:30 offset every date in this system already uses is applied (see
+    /// <c>Utils.TehranOffset</c>; Iran has observed no daylight saving since 2022).
+    /// </para>
+    ///
+    /// <para>
+    /// Gold and the coin carry a date with a midnight time while the market is shut
+    /// (<c>"2026-09-21 00:00:00"</c> at eight the next morning), which is precisely the state a
+    /// staleness check exists to notice. A missing or unreadable <c>ts</c> is reported as an
+    /// unknown age, not as now.
+    /// </para>
+    /// </summary>
+    private DateTimeOffset? TimestampOf(JsonElement instrument, string key)
+    {
+        if (!instrument.TryGetProperty("ts", out var ts) || ts.ValueKind != JsonValueKind.String)
+        {
+            _logger.LogWarning("tgju.org gave no timestamp for {Key}; its price will be treated as of unknown age.", key);
+            return null;
+        }
+
+        if (!DateTime.TryParseExact(ts.GetString(), "yyyy-MM-dd HH:mm:ss",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var tehranTime))
+        {
+            _logger.LogWarning("tgju.org returned an unreadable timestamp for {Key}: {Timestamp}", key, ts.GetString());
+            return null;
+        }
+
+        try
+        {
+            return new DateTimeOffset(tehranTime, Utils.TehranOffset);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // A date that parses but cannot carry an offset — "0001-01-01 00:00:00", the sentinel
+            // a source might use for "never" — would otherwise throw into FetchAsync's catch and
+            // lose the price along with the timestamp. An unreadable time costs the age, not the
+            // price.
+            _logger.LogWarning("tgju.org returned a timestamp out of range for {Key}: {Timestamp}", key, ts.GetString());
             return null;
         }
     }

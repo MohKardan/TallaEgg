@@ -21,11 +21,18 @@ public interface IReferencePriceProvider
     string Name { get; }
 
     /// <summary>
-    /// The current price in Toman per one unit of <paramref name="symbol"/>'s base asset, or null
-    /// if this provider has no data for that symbol or could not answer (network failure,
-    /// invalid/missing credentials, unexpected response shape). Never throws — a provider that
-    /// cannot answer is reported by returning null, not by an exception, so the chain can move to
-    /// the next one without a try/catch at every call site.
+    /// The current price in Toman per one unit of <paramref name="symbol"/>'s base asset, together
+    /// with the moment the source says it was true — or null if this provider has no data for that
+    /// symbol or could not answer (network failure, invalid/missing credentials, unexpected
+    /// response shape). Never throws — a provider that cannot answer is reported by returning
+    /// null, not by an exception, so the chain can move to the next one without a try/catch at
+    /// every call site.
+    ///
+    /// <para>
+    /// A provider whose source publishes no usable timestamp returns
+    /// <see cref="ReferencePrice.AsOf"/> null rather than the current time. Claiming an age the
+    /// source did not give would defeat the staleness check the field exists for (issue #316).
+    /// </para>
     /// </summary>
-    Task<decimal?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default);
+    Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default);
 }
