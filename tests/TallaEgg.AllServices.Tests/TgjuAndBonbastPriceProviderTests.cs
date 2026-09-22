@@ -351,6 +351,9 @@ public class TgjuAndBonbastPriceProviderTests
     [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\"}}}")]
     [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\",\"ts\":\"yesterday\"}}}")]
     [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\",\"ts\":1789765200}}}")]
+    // Parses as a date, but cannot carry Tehran's offset without going before DateTimeOffset's
+    // minimum — the review of PR #319 found this one throwing away the price with the timestamp.
+    [InlineData("{\"current\":{\"sekeb\":{\"p\":\"2,301,300,000\",\"ts\":\"0001-01-01 00:00:00\"}}}")]
     public async Task Tgju_WithNoReadableTimestamp_ReportsAnUnknownAgeAndStillGivesThePrice(string body)
     {
         var provider = Tgju(new StubHandler((HttpStatusCode.OK, body)));

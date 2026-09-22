@@ -171,7 +171,19 @@ public class TgjuPriceProvider : IReferencePriceProvider
             return null;
         }
 
-        return new DateTimeOffset(tehranTime, Utils.TehranOffset);
+        try
+        {
+            return new DateTimeOffset(tehranTime, Utils.TehranOffset);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            // A date that parses but cannot carry an offset — "0001-01-01 00:00:00", the sentinel
+            // a source might use for "never" — would otherwise throw into FetchAsync's catch and
+            // lose the price along with the timestamp. An unreadable time costs the age, not the
+            // price.
+            _logger.LogWarning("tgju.org returned a timestamp out of range for {Key}: {Timestamp}", key, ts.GetString());
+            return null;
+        }
     }
 
     /// <summary>
