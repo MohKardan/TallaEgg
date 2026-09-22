@@ -214,6 +214,20 @@ builder.Services.AddHttpClient("TgjuPriceProvider", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
 });
 
+// xaus.com and Swissquote price the ounce in dollars (issue #304). Both answer from the
+// production VM, so XAU/USD is the one symbol whose feed works where the Iranian sources do not.
+builder.Services.AddHttpClient("XausPriceProvider", client =>
+{
+    client.Timeout = referencePriceTimeout;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
+});
+
+builder.Services.AddHttpClient("SwissquotePriceProvider", client =>
+{
+    client.Timeout = referencePriceTimeout;
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
+});
+
 // bonbast.com hands out a request token in a cookie alongside the one in its markup, so this
 // client keeps a cookie jar; the two requests it makes are a pair, not independent calls.
 builder.Services
@@ -255,6 +269,19 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.TgjuPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>(),
     sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
+
+// The ounce's two sources answer for XAU/USD alone and return null for every Toman symbol, so
+// their position in the chain costs the others nothing.
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.XausPriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("XausPriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.XausPriceProvider>>(),
+    sp.GetRequiredService<IConfiguration>(),
+    sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
+
+builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.SwissquotePriceProvider(
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("SwissquotePriceProvider"),
+    sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.SwissquotePriceProvider>>(),
+    sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BonbastPriceProvider(
     sp.GetRequiredService<IHttpClientFactory>().CreateClient("BonbastPriceProvider"),

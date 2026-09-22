@@ -21,6 +21,15 @@ namespace TallaEgg.Core
 
         public const string Btc = "BTC";
 
+        /// <summary>A troy ounce of gold, the instrument the world quotes as XAU (issue #304).</summary>
+        public const string Xau = "XAU";
+
+        /// <summary>
+        /// The US dollar. The first quote currency here that is not Toman, and — like Toman — a
+        /// currency customers hold rather than trade, with no credit ledger of its own.
+        /// </summary>
+        public const string Usd = "USD";
+
         /// <summary>
         /// The weight of one mesghal in grams. Users and admins enter prices per mesghal, and they
         /// are converted to per gram for storage.
@@ -31,6 +40,7 @@ namespace TallaEgg.Core
         public const string BTC_IRT = "BTC/IRT";
         public const string MAUA_IRT = "MAUA/IRT";
         public const string SEKE_BAHAR_IRT = "SEKE_BAHAR/IRT";
+        public const string XAU_USD = "XAU/USD";
 
         /// <summary>
         /// Compiled defaults for every symbol this platform trades today. A process that never
@@ -70,6 +80,23 @@ namespace TallaEgg.Core
                     PriceDecimalPlaces = 0, QuantityDecimalPlaces = 2, MinNotional = 1000000m,
                     BaseAssetPersianName = "سکه تمام بهار آزادی", BaseUnit = "سکه", BaseDecimalPlaces = 2,
                     Aliases = new List<string> { "سکه" }
+                },
+                // The first symbol quoted in something other than Toman (issue #304). Its quote
+                // side is registered as a currency by BuildCurrencies, the same way Toman is, so
+                // wallets, settlement and the credit check work on it without a special case.
+                [XAU_USD] = new TradingPairInfo
+                {
+                    Symbol = XAU_USD, BaseAsset = Xau, QuoteAsset = Usd,
+                    PersianName = "انس جهانی/دلار", MinQuantity = 0.01m, MaxQuantity = 5m,
+                    PriceDecimalPlaces = 2, QuantityDecimalPlaces = 2, MinNotional = 40m,
+                    BaseAssetPersianName = "انس طلا", BaseUnit = "انس", BaseDecimalPlaces = 2,
+                    QuoteAssetPersianName = "دلار", QuoteUnit = "دلار", QuoteDecimalPlaces = 2,
+                    // The spot market closes every weekend, and a closed market's last price must
+                    // not be republished as live (issue #316). Compiled rather than left to the
+                    // config file, because a deployment without a Symbols block would otherwise
+                    // quote Friday's close all weekend.
+                    MaxPriceAgeMinutes = 15,
+                    Aliases = new List<string> { "انس", "اونس" }
                 }
             };
 
@@ -91,6 +118,14 @@ namespace TallaEgg.Core
         /// ceiling now that there is more than one.
         /// </summary>
         public static string CreditAssetFor(string baseAsset) => "CREDIT_" + baseAsset;
+
+        /// <summary>
+        /// What a quote currency gets when its config block does not say. Two, because that is
+        /// what almost every currency but Toman uses, and because the alternative default — zero —
+        /// would round a fill to whole units without anything saying so. Toman is unaffected: it is
+        /// registered structurally, before any pair is read.
+        /// </summary>
+        private const int DefaultQuoteDecimalPlaces = 2;
 
         /// <summary>
         /// Whether a code is already a credit ledger. Callers that are about to apply
@@ -186,10 +221,20 @@ namespace TallaEgg.Core
             BaseAssetPersianName = source.BaseAssetPersianName,
             BaseUnit = source.BaseUnit,
             BaseDecimalPlaces = source.BaseDecimalPlaces,
+            QuoteAssetPersianName = source.QuoteAssetPersianName,
+            QuoteUnit = source.QuoteUnit,
+            QuoteDecimalPlaces = source.QuoteDecimalPlaces,
+            MaxPriceAgeMinutes = source.MaxPriceAgeMinutes,
             Aliases = new List<string>(source.Aliases)
         };
 
-        private static Dictionary<string, CurrencyInfo> BuildCurrencies(Dictionary<string, TradingPairInfo> pairs)
+        /// <summary>
+        /// The currency catalogue derived from a set of pairs. Internal rather than private so a
+        /// test can check what a given set of pairs registers without calling
+        /// <see cref="Configure"/>, which replaces the static catalogue every other test in the
+        /// process reads.
+        /// </summary>
+        internal static Dictionary<string, CurrencyInfo> BuildCurrencies(Dictionary<string, TradingPairInfo> pairs)
         {
             var map = new Dictionary<string, CurrencyInfo>(StringComparer.OrdinalIgnoreCase)
             {
@@ -223,9 +268,51 @@ namespace TallaEgg.Core
                     DecimalPlaces = pair.BaseDecimalPlaces,
                     IsTradable = false
                 };
+
+                RegisterQuoteAsset(map, pair);
             }
 
             return map;
+        }
+
+        /// <summary>
+        /// Registers a pair's quote asset as a currency, so a symbol quoted in something other
+        /// than Toman has a side the wallet recognises (issue #304).
+        ///
+        /// <para>
+        /// Without this, <c>USD</c> was not a currency at all: <see cref="IsValidCurrency"/>
+        /// answered false, so an admin could not credit a customer's dollars and
+        /// <c>WalletRepository.SettleTradeAsync</c> refused to settle a trade whose quote asset it
+        /// did not know. Every other part of the order path was already written against
+        /// <c>pair.QuoteAsset</c> rather than Toman, which is why this one gap was the whole of
+        /// what made the system Toman-only.
+        /// </para>
+        ///
+        /// <para>
+        /// Deliberately mirrors Toman in two ways. A quote asset is <b>not tradable</b> — it is
+        /// what a price is denominated in, not something the customer buys — and it gets
+        /// <b>no credit ledger</b>: credit is a ceiling per tradable base asset, and
+        /// <c>CREDIT_IRT</c> has never existed. Whether a quote-side credit ledger should exist is
+        /// the open half of #36, and adding one here would answer that question by accident.
+        /// </para>
+        ///
+        /// <para>
+        /// Toman is registered before this loop runs and is skipped by the guard below, so its
+        /// structural entry keeps winning over anything a pair says about it.
+        /// </para>
+        /// </summary>
+        private static void RegisterQuoteAsset(Dictionary<string, CurrencyInfo> map, TradingPairInfo pair)
+        {
+            if (string.IsNullOrWhiteSpace(pair.QuoteAsset) || map.ContainsKey(pair.QuoteAsset)) return;
+
+            map[pair.QuoteAsset] = new CurrencyInfo
+            {
+                Code = pair.QuoteAsset,
+                PersianName = string.IsNullOrWhiteSpace(pair.QuoteAssetPersianName) ? pair.QuoteAsset : pair.QuoteAssetPersianName,
+                Unit = pair.QuoteUnit,
+                DecimalPlaces = pair.QuoteDecimalPlaces ?? DefaultQuoteDecimalPlaces,
+                IsTradable = false
+            };
         }
 
         // The currency catalogue.
@@ -498,6 +585,39 @@ namespace TallaEgg.Core
 
         /// <summary>Base-asset decimal places, used when rounding amounts via CurrenciesConstant.RoundToCurrencyPrecision.</summary>
         public int BaseDecimalPlaces { get; set; }
+
+        /// <summary>Persian name of the quote asset, for example "دلار". Empty for Toman, which
+        /// is registered structurally rather than derived from any pair.</summary>
+        public string QuoteAssetPersianName { get; set; } = string.Empty;
+
+        /// <summary>Display unit for the quote asset, for example "دلار".</summary>
+        public string QuoteUnit { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Quote-asset decimal places. Toman has none; a dollar amount has two, and rounding one
+        /// to zero would lose cents on every settlement.
+        ///
+        /// <para>
+        /// Nullable so that "not stated" is distinguishable from "zero". A config block naming a
+        /// new quote currency and forgetting this would otherwise register it with no decimals at
+        /// all, and every fill would round to whole units in silence —
+        /// <see cref="DefaultQuoteDecimalPlaces"/> is used instead.
+        /// </para>
+        /// </summary>
+        public int? QuoteDecimalPlaces { get; set; }
+
+        /// <summary>
+        /// How old an external reference price may be before auto-quote refuses it and tries the
+        /// next source, in minutes. Null or zero means no limit (issue #316).
+        ///
+        /// <para>
+        /// It belongs to the symbol rather than to a source because it describes the market: one
+        /// that shuts overnight and one that trades around the clock tolerate very different ages
+        /// from the same feed. XAU/USD carries 15 as a compiled default, so a deployment whose
+        /// config file has no block for it still refuses a closed market's last price.
+        /// </para>
+        /// </summary>
+        public int? MaxPriceAgeMinutes { get; set; }
 
         /// <summary>Persian keywords the bot's admin commands accept for this symbol, for example "سکه".</summary>
         public List<string> Aliases { get; set; } = new();
