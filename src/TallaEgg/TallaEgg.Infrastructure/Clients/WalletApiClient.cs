@@ -262,15 +262,18 @@ public class WalletApiClient : IWalletApiClient
             // An absent wallet is different and stays zero: the customer really does hold none of
             // that asset. Only IRT, MAUA and CREDIT_MAUA exist at registration, so refusing to
             // decide whenever a row is missing would refuse every trade on every other symbol.
-            var unavailable = Array.Find(reads, r => r.Outcome == BalanceRead.Unavailable);
-
-            if (unavailable.Outcome == BalanceRead.Unavailable)
+            // Array.Exists, not "did Find return something" — the default of a value tuple has
+            // Outcome == Read only because Read happens to be the zero enum member, and reordering
+            // the enum would silently invert the test.
+            if (Array.Exists(reads, r => r.Outcome == BalanceRead.Unavailable))
             {
+                var unavailable = Array.Find(reads, r => r.Outcome == BalanceRead.Unavailable);
+
                 _logger?.LogWarning(
                     "Balance check for user {UserId} on {Symbol} could not read a balance, so it reports nothing rather than zero — {Message}",
                     userId, symbol, unavailable.Message);
 
-                return (false, "بررسی موجودی انجام نشد", false, false);
+                return (false, TallaEgg.Core.RefusalMessages.BalanceCheckFailed, false, false);
             }
 
             var spotBaseAssetBalance = reads[0].Balance;
@@ -458,12 +461,19 @@ public class WalletApiClient : IWalletApiClient
                     }
                 }
 
-                // 400 is how this endpoint says the customer has never held the asset: only IRT,
-                // MAUA and CREDIT_MAUA are seeded and every other row appears when something first
-                // writes to it. That is a real zero. Every other status means we did not learn the
-                // balance, and a balance we could not read is not a balance of zero (issue #290).
-                var outcome = response.StatusCode is System.Net.HttpStatusCode.BadRequest
-                                                  or System.Net.HttpStatusCode.NotFound
+                // 400, and only 400, is how this endpoint says the customer has never held the
+                // asset: WalletService.GetBalanceAsync throws BusinessRuleException and the
+                // endpoint turns that into BadRequest. Only IRT, MAUA and CREDIT_MAUA are seeded
+                // and every other row appears when something first writes to it, so that is a real
+                // zero and must stay one.
+                //
+                // 404 is deliberately NOT treated as a missing wallet, though it reads like one.
+                // No endpoint in Wallet.Api returns it, so a 404 means the route is not being
+                // served — a base address with a path prefix and no trailing slash, a proxy
+                // answering mid-deploy, an older build. Calling that "the customer has nothing"
+                // would answer Success with four zero balances and tell a funded customer their
+                // funds are short: issue #290 surviving its own fix.
+                var outcome = response.StatusCode == System.Net.HttpStatusCode.BadRequest
                     ? BalanceRead.NoWallet
                     : BalanceRead.Unavailable;
 

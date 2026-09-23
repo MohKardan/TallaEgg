@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -66,6 +66,13 @@ public class WalletUnreachableIsNotZeroBalanceTests
         public PerAssetHandler Unreachable(string asset)
         {
             _answers[asset] = () => throw new HttpRequestException("connection refused");
+            return this;
+        }
+
+        /// <summary>A 404, which for this API means the route is not there at all.</summary>
+        public PerAssetHandler RouteMissing(string asset)
+        {
+            _answers[asset] = () => Json(HttpStatusCode.NotFound, "");
             return this;
         }
 
@@ -201,6 +208,36 @@ public class WalletUnreachableIsNotZeroBalanceTests
 
         Assert.False(result.Success);
         Assert.NotEqual("اعتبار و موجودی کاربر بررسی شد", result.Message);
+
+        // The flags too, not only Success — the name of this test claims both, and a caller that
+        // reads them without checking Success is exactly the mistake worth guarding against.
+        Assert.False(result.HasSufficientCreditAndBalanceBase);
+        Assert.False(result.HasSufficientCreditAndBalanceQuote);
+    }
+
+    /// <summary>
+    /// 404 reads like "no wallet" and is not.
+    ///
+    /// <para>
+    /// No endpoint in Wallet.Api answers 404 — a missing wallet is 400 — so a 404 means the route
+    /// is not being served: a base address with a path prefix and no trailing slash, a proxy
+    /// answering mid-deploy, an older build. Classifying it as a missing wallet would answer
+    /// Success with four zero balances and tell a funded customer their funds are short, which is
+    /// this very issue surviving its own fix. It was classified that way in the first draft.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A404MeansTheRouteIsMissing_NotThatTheCustomerHasNoWallet()
+    {
+        var client = ClientOver(new PerAssetHandler()
+            .Balance("MAUA", 100m)
+            .Balance("CREDIT_MAUA", 0m)
+            .RouteMissing("IRT")
+            .Balance("CREDIT_IRT", 0m));
+
+        var result = await client.ValidateCreditAndBalanceAsync(Customer, Symbol, Quantity, PricePerGram);
+
+        Assert.False(result.Success);
     }
 
     /// <summary>
