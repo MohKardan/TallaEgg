@@ -103,24 +103,7 @@ public class AutoQuotePublisherService : BackgroundService
 
             var activeSymbols = await ActiveSymbolsAsync(stoppingToken);
 
-            foreach (var symbol in activeSymbols)
-            {
-                try
-                {
-                    await PublishIfDueAsync(symbol, stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    // A misconfiguration or a bug for one symbol must never take the rest of the
-                    // shop down — manual quotes and trading, and every other symbol's auto-quote,
-                    // are unrelated to this one failing (same rule already established for #73).
-                    _logger.LogError(ex, "Unexpected error auto-publishing a quote for {Symbol}.", symbol);
-                }
-            }
+            await PublishAllAsync(activeSymbols, stoppingToken);
 
             try
             {
@@ -130,6 +113,59 @@ public class AutoQuotePublisherService : BackgroundService
         }
 
         _logger.LogInformation("AutoQuotePublisherService stopped.");
+    }
+
+    /// <summary>
+    /// One tick's symbols, all at once.
+    ///
+    /// <para>
+    /// They used to be published one after another, which made a tick as long as the sum of its
+    /// symbols: every symbol fetches a reference price over the network, and with six sources to
+    /// try, four symbols and a hanging host, one tick could outlast the six-minute lease this
+    /// service holds — and a lease is renewed <b>between</b> ticks, not during one, so the second
+    /// instance would take over mid-tick and publish the same prices again (issue #317). Running
+    /// them together makes a tick as long as its slowest symbol instead of the sum of all of them,
+    /// and that stays true when a fifth and sixth symbol are added.
+    /// </para>
+    ///
+    /// <para>
+    /// Nothing is shared between two symbols' work: each takes its own DI scope, and so its own
+    /// database context, and writes its own symbol's rows. The one thing they do share is the
+    /// price sources, which is why <c>ReferencePriceDocumentCache</c> holds a source while one
+    /// symbol fetches it rather than letting all four fetch the same document at once.
+    /// </para>
+    ///
+    /// <para>internal so a test can drive one tick without waiting on the poll loop.</para>
+    /// </summary>
+    internal async Task PublishAllAsync(IReadOnlyList<string> symbols, CancellationToken ct)
+    {
+        // No cap on how many run together: the number of active symbols is a handful, set by an
+        // admin one at a time, and each costs one scope and one database connection while it runs.
+        await Task.WhenAll(symbols.Select(symbol => PublishSafelyAsync(symbol, ct)));
+    }
+
+    /// <summary>
+    /// One symbol's tick, with its failure kept to itself. A misconfiguration or a bug for one
+    /// symbol must never take the rest of the shop down — manual quotes and trading, and every
+    /// other symbol's auto-quote, are unrelated to this one failing (same rule already established
+    /// for #73). Under <see cref="Task.WhenAll(IEnumerable{Task})"/> that matters more than it did
+    /// in a loop: an exception escaping here would abandon the tick's other symbols as well.
+    /// </summary>
+    private async Task PublishSafelyAsync(string symbol, CancellationToken ct)
+    {
+        try
+        {
+            await PublishIfDueAsync(symbol, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Shutting down. The loop is ending anyway, and a half-finished tick is the expected
+            // shape of a stop.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error auto-publishing a quote for {Symbol}.", symbol);
+        }
     }
 
     /// <summary>

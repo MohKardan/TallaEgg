@@ -130,27 +130,28 @@ public class XausPriceProvider : IReferencePriceProvider
 
     private async Task<string?> DocumentAsync(CancellationToken cancellationToken)
     {
-        var cached = _cache.Get(Name);
-        if (cached is not null) return cached;
-
         try
         {
-            using var response = await _httpClient.GetAsync(Url, cancellationToken);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("xaus.com returned {StatusCode}.", (int)response.StatusCode);
-                return null;
-            }
-
-            _cache.Set(Name, body);
-            return body;
+            return await _cache.GetOrFetchAsync(Name, FetchDocumentAsync, cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "xaus.com request failed.");
             return null;
         }
+    }
+
+    private async Task<string?> FetchDocumentAsync(CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.GetAsync(Url, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("xaus.com returned {StatusCode}.", (int)response.StatusCode);
+            return null;
+        }
+
+        return body;
     }
 }

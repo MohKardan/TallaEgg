@@ -7,6 +7,7 @@ using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
 using Orders.Infrastructure;
+using Orders.Infrastructure.Clients;
 using Serilog;
 using System.Collections.Generic;
 using System.IO;
@@ -193,54 +194,9 @@ builder.Services.AddHostedService<Orders.Application.Services.OutboxProcessorSer
 // implementations share IReferencePriceProvider. Each now takes IConfiguration directly (not
 // just its own token/key) so it can also resolve a config-driven instrument mapping for a
 // symbol added without a code change — see NerkhPriceProvider/BrsApiPriceProvider.InstrumentFor.
-const string ReferencePriceUserAgent = "TallaEgg/1.0 (+https://github.com/MohKardan/TallaEgg)";
-
-builder.Services.AddHttpClient("NerkhPriceProvider");
-builder.Services.AddHttpClient("BrsApiPriceProvider");
-
-// tgju.org and bonbast.com need no credentials, and unlike the two above they answer from
-// outside Iran (issue #305). Both identify themselves rather than posing as a browser.
-//
-// The timeout is not HttpClient's 100-second default on purpose. A tick fetches a price per
-// symbol, in sequence, and the publisher holds a six-minute lease while it does (issue #160):
-// three symbols waiting out two defaults each would outlast the lease and let a second instance
-// start publishing the same prices. A reference price that has not arrived in fifteen seconds is
-// of no use to this tick anyway — the next one is two minutes away.
-var referencePriceTimeout = TimeSpan.FromSeconds(15);
-
-builder.Services.AddHttpClient("TgjuPriceProvider", client =>
-{
-    client.Timeout = referencePriceTimeout;
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
-});
-
-// xaus.com and Swissquote price the ounce in dollars (issue #304). Both answer from the
-// production VM, so XAU/USD is the one symbol whose feed works where the Iranian sources do not.
-builder.Services.AddHttpClient("XausPriceProvider", client =>
-{
-    client.Timeout = referencePriceTimeout;
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
-});
-
-builder.Services.AddHttpClient("SwissquotePriceProvider", client =>
-{
-    client.Timeout = referencePriceTimeout;
-    client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
-});
-
-// bonbast.com hands out a request token in a cookie alongside the one in its markup, so this
-// client keeps a cookie jar; the two requests it makes are a pair, not independent calls.
-builder.Services
-    .AddHttpClient("BonbastPriceProvider", client =>
-    {
-        client.Timeout = referencePriceTimeout;
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(ReferencePriceUserAgent);
-    })
-    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-    {
-        CookieContainer = new System.Net.CookieContainer(),
-        UseCookies = true
-    });
+// Every source's client, with one timeout for all of them (issue #317) — see
+// ReferencePriceClients for why the timeout is not HttpClient's 100-second default.
+builder.Services.AddReferencePriceClients();
 
 // One fetch per source per tick, rather than one per symbol: both sources answer with every
 // instrument in a single document, and neither publishes it as an API.
@@ -252,12 +208,12 @@ builder.Services.AddScoped<Orders.Core.IAutoQuoteSettingsRepository, Orders.Infr
 builder.Services.AddScoped<Orders.Core.ISymbolSettingsRepository, Orders.Infrastructure.SymbolSettingsRepository>();
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.NerkhPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("NerkhPriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.Nerkh),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.NerkhPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BrsApiPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BrsApiPriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.BrsApi),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BrsApiPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>()));
 
@@ -265,7 +221,7 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
 // on an Iranian host — the chain never reaches these, so the price a customer sees is unchanged.
 // They matter where those two are refused by IP, which is every foreign-hosted instance.
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.TgjuPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("TgjuPriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.Tgju),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.TgjuPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>(),
     sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
@@ -273,18 +229,18 @@ builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders
 // The ounce's two sources answer for XAU/USD alone and return null for every Toman symbol, so
 // their position in the chain costs the others nothing.
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.XausPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("XausPriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.Xaus),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.XausPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>(),
     sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.SwissquotePriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("SwissquotePriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.Swissquote),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.SwissquotePriceProvider>>(),
     sp.GetRequiredService<IConfiguration>()));
 
 builder.Services.AddScoped<Orders.Core.IReferencePriceProvider>(sp => new Orders.Infrastructure.Clients.BonbastPriceProvider(
-    sp.GetRequiredService<IHttpClientFactory>().CreateClient("BonbastPriceProvider"),
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient(Orders.Infrastructure.Clients.ReferencePriceClients.Bonbast),
     sp.GetRequiredService<ILogger<Orders.Infrastructure.Clients.BonbastPriceProvider>>(),
     sp.GetRequiredService<IConfiguration>(),
     sp.GetRequiredService<Orders.Infrastructure.Clients.ReferencePriceDocumentCache>()));

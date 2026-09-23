@@ -141,46 +141,50 @@ public class BonbastPriceProvider : IReferencePriceProvider
         return parsed;
     }
 
-    /// <summary>The page-then-JSON pair, or the body a recent pair already produced.</summary>
+    /// <summary>
+    /// The page-then-JSON pair, or the body a recent pair already produced. One document holds
+    /// every instrument and reaching it costs two requests, so the whole handshake happens once per
+    /// source per tick however many symbols ask and whether they ask at the same moment — see
+    /// <see cref="ReferencePriceDocumentCache"/>.
+    /// </summary>
     private async Task<JsonElement?> FetchAsync(CancellationToken cancellationToken)
     {
         try
         {
-            // One document holds every instrument, and reaching it costs two requests, so a tick
-            // asking about three symbols would otherwise repeat the whole handshake three times
-            // (see ReferencePriceDocumentCache).
-            var cached = _cache.Get(Name);
-            if (cached is not null) return Parse(cached);
-
-            var token = await FetchTokenAsync(cancellationToken);
-            if (token is null) return null;
-
-            using var request = new HttpRequestMessage(HttpMethod.Post, JsonUrl)
-            {
-                Content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("param", token) })
-            };
-            request.Headers.Referrer = new Uri(PageUrl);
-            request.Headers.Add("X-Requested-With", "XMLHttpRequest");
-
-            using var response = await _httpClient.SendAsync(request, cancellationToken);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("bonbast.com returned {StatusCode} for the price document.", (int)response.StatusCode);
-                return null;
-            }
-
-            var prices = Parse(body);
-            if (prices is not null) _cache.Set(Name, body);
-
-            return prices;
+            var body = await _cache.GetOrFetchAsync(Name, FetchDocumentAsync, cancellationToken);
+            return body is null ? null : Parse(body);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "bonbast.com request failed.");
             return null;
         }
+    }
+
+    private async Task<string?> FetchDocumentAsync(CancellationToken cancellationToken)
+    {
+        var token = await FetchTokenAsync(cancellationToken);
+        if (token is null) return null;
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, JsonUrl)
+        {
+            Content = new FormUrlEncodedContent(new[] { new KeyValuePair<string, string>("param", token) })
+        };
+        request.Headers.Referrer = new Uri(PageUrl);
+        request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("bonbast.com returned {StatusCode} for the price document.", (int)response.StatusCode);
+            return null;
+        }
+
+        // Only a document that parses is worth storing: a 200 carrying something else would
+        // otherwise be served to every other symbol in the tick.
+        return Parse(body) is null ? null : body;
     }
 
     /// <summary>
