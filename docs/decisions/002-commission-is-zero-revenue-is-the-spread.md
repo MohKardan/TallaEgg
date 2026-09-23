@@ -17,7 +17,9 @@ other gold shops.
 ## What this rules out
 
 - Deleting the fee fields, or the code that computes and stores them, as dead. They are dormant,
-  not dead: the fields are written on every trade and a future pricing model may use them.
+  not dead — and that is now more than a hedge: the owner expects to take up commission after
+  product-market fit ([`../product/DIRECTION.md`](../product/DIRECTION.md), 2026-09-23). Deleting
+  them would have to be undone.
 - Reading `0.00` in a fee column as a defect, a missing migration, or an unfinished feature.
 - "Fixing" a fee calculation that produces zero.
 

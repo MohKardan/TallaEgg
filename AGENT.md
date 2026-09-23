@@ -119,6 +119,48 @@ list is the index, so that a reader who only ever opens this file still knows th
 The second one matters as much as the first: code can look dead because a capability is paused
 rather than gone, and the dealer model has paused one.
 
+## Measurements that mislead
+
+Three places where a reasonable-looking measurement gives a confident wrong answer. Each one has
+produced a wrong conclusion at least once.
+
+- **A simulator run is not over when it says it is.** The simulator prints `errors 0` when the
+  *trading* phase ends; settlement is queued through the Orders outbox and lands tens of seconds
+  later. Anything that reads that summary line has measured the first half of a run.
+
+  `driver.ps1 smoke` handles this — since #185 (2026-09-01) `DataReset` waits for no `Status=0` row
+  before deleting, and the driver drains before and after, then asserts that no new `Status=2`
+  appeared **and** that `Status=1` grew. So trust the driver's closing line, not the simulator's.
+  Read a run whose settlement wait never reaches zero as proving nothing at all.
+
+- **The local `Orders` table is mostly simulator residue, so a count from it is not evidence about
+  the product.** Measured 2026-09-08 on a dev machine: 4,503 orders, of which **4,451 had no
+  `Trade` at all** while sitting `Completed` with `RemainingAmount = 0`, against 26 real trades.
+  4,460 of them belonged to one account — the market maker.
+
+  They are there because `DataReset` **used to** delete asymmetrically — trades where *either* side
+  was simulated, but orders only `WHERE UserId IN (simulated)`. The dealer is a real account with a
+  positive `TelegramId`, so it was never in that list, and every simulated fill left the dealer's
+  side of the pair behind with its trade deleted out from under it.
+
+  **That was fixed on 2026-09-09 in `fa89b85` (#257/#259)**, one day after the measurement above:
+  the reset now captures the counterparty orders before deleting the trades and removes them too.
+  So no *new* orphans are created — but the old ones are permanent, because they have no `Trade`
+  left to find them by and nothing sweeps them. The table on a machine that has ever run the
+  simulator still reads the way it does above, and a count from it still proves nothing. Dev
+  machines only; production never runs the simulator.
+
+- **An XML doc comment on a shared DTO never reaches the published schema.** All three APIs call
+  `IncludeXmlComments` with **only their own assembly's** file
+  (`Assembly.GetExecutingAssembly().GetName().Name`), and `TallaEgg.Core` — where `OrderDto`,
+  `TradeDto`, `WalletRequest` and the rest live — sets no `GenerateDocumentationFile` at all. So a
+  `<summary>` there is visible to a reader of the C# and invisible in `swagger.json`. Endpoint
+  descriptions written in an API project's own `Program.cs` do reach it.
+
+  Measured 2026-09-07 while working #237. The general rule it belongs to: **for anything about the
+  wire, measure the wire.** Casing, schema and request-shape defects are invisible in a C# diff,
+  and seven issues in this repository hid behind exactly that.
+
 ## Configuration
 
 All services and the bot read one shared file, `config/appsettings.global.json`, found by walking

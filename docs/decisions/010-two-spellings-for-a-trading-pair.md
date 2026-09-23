@@ -20,7 +20,9 @@ Wallet. `asset` versus `symbol` is a different name, not a different case, so th
 binding that carries ordinary DTO renames through a mixed deployment does not bridge it.
 
 Worth doing only before a browser client (#97) ships against the current shape, and only as its own
-piece of work.
+piece of work. **That window has an end now:** the owner sequenced the web and mobile clients after
+the first pilot contracts ([`../product/DIRECTION.md`](../product/DIRECTION.md), 2026-09-23), so
+this is cheap until then and expensive afterwards.
 
 ## What this rules out
 
