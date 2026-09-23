@@ -191,11 +191,11 @@ public class TgjuPriceProvider : IReferencePriceProvider
     /// One response carries every instrument, so pulling it per symbol would be the same ~180 KB
     /// three times a tick — see <see cref="ReferencePriceDocumentCache"/>.
     /// </summary>
-    private async Task<string?> DocumentAsync(CancellationToken cancellationToken)
-    {
-        var cached = _cache.Get(Name);
-        if (cached is not null) return cached;
+    private Task<string?> DocumentAsync(CancellationToken cancellationToken) =>
+        _cache.GetOrFetchAsync(Name, FetchDocumentAsync, cancellationToken);
 
+    private async Task<string?> FetchDocumentAsync(CancellationToken cancellationToken)
+    {
         using var response = await _httpClient.GetAsync(Url, cancellationToken);
         var body = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -206,7 +206,6 @@ public class TgjuPriceProvider : IReferencePriceProvider
             return null;
         }
 
-        _cache.Set(Name, body);
         return body;
     }
 
