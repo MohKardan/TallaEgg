@@ -74,8 +74,8 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// The customer a phone-number command names, or null with the operator already told why.
         ///
         /// <para>
-        /// Shared by every command that takes a number — ش, د, م, س, ن, ت, ر — because they all
-        /// face the same two ways of not finding one person: nobody holds the number, or two
+        /// Shared by every command that takes a number — ش, د, م, معامله, ن, ت, ر — because they
+        /// all face the same two ways of not finding one person: nobody holds the number, or two
         /// accounts do. The second used to be invisible here. The lookup answered whichever row
         /// the database returned first, so a credit charge could land on an account that had
         /// merely claimed the customer's number, and nothing said anything (issue #303).

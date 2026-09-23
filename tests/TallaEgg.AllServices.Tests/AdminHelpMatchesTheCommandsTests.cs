@@ -238,12 +238,17 @@ public class AdminHelpMatchesTheCommandsTests
         Assert.False(TheHelpDocuments("ب"), "the per-command search matches a letter the help never documents");
     }
 
-    // ── what the help says «س» does ─────────────────────────────────────────────
+    // ── what the help says the customer-lookup command does ─────────────────
 
     /// <summary>
-    /// The set checks cannot see this: «س» is handled and documented either way. What changed is
-    /// what it does — active orders became the customer's completed trades, because in the dealer
-    /// model an order exists only for the instant of a fill, so that list was always empty.
+    /// The set checks cannot see a wrong <i>description</i>, only a missing or unhandled command.
+    ///
+    /// <para>
+    /// The command that shows a customer's trades was «س», and the help called it their active
+    /// orders long after it had been repointed — handled and documented the whole time, and wrong.
+    /// The letter has since moved to «معامله» (#325), which the set checks do cover; this one
+    /// still guards the sentence around it, because a description can rot on its own.
+    /// </para>
     /// </summary>
     [Fact]
     public void TheHelpDescribesTheCustomerCommandAsTradesRatherThanActiveOrders()
