@@ -16,6 +16,12 @@ because nobody happened to open the right file.
 
 The rules that get skipped most often:
 
+- **Read [`docs/decisions/`](docs/decisions/README.md) and
+  [`docs/product/DIRECTION.md`](docs/product/DIRECTION.md) before proposing to delete anything, or
+  to finish something that looks unfinished.** Both exist because code here can look dead when a
+  capability is paused rather than gone, and can look broken when it is doing what was asked. An
+  agent removed an admin command in September 2026 on reasoning that was correct about the code and
+  wrong about the product; DIRECTION.md is what would have caught it.
 - **Work on a branch.** `feat/`, `fix/`, or `hotfix/` followed by a description. Never commit
   directly to `main`.
 - **Open a PR**, using `PR_TEMPLATE.md`. Peer review is thin on a two-person team, but the PR is
@@ -51,7 +57,8 @@ The rules that get skipped most often:
 - **Two things that look like bugs and are not:** the market maker may go arbitrarily negative
   with no ceiling (that balance is the shop's book — alerting is #124), and commission is
   deliberately `0.00` on every trade because the revenue model is the spread. Fee code is dormant,
-  not dead. Fuller list in [`AGENT.md`](AGENT.md) under "Business rules that look like bugs".
+  not dead. Fuller list in [`AGENT.md`](AGENT.md) under "Business rules that look like bugs",
+  and the reasoning behind each in [`docs/decisions/`](docs/decisions/README.md).
 - **Bot tokens in git history are not dead because a document says so.** No token is left in the
   working tree — the last literal, the Telegram error-logger registration in the bot's
   `Program.cs`, was removed together with the logger. Older tokens remain in git history,

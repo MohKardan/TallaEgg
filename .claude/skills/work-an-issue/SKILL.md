@@ -33,14 +33,32 @@ Stop again, mid-work, whenever a decision turns out to be the owner's (rule 4).
 
 In this order:
 
-1. `AGENT.md` — all of it. Especially **"Business rules that look like bugs"**: four things that
-   have each been reported as defects and are not. Reporting one of them again is the most common
-   way a session wastes a day here.
+1. `AGENT.md` — all of it. Especially **"Business rules that look like bugs"**, the index of
+   things that have each been reported as defects and are not. Reporting one of them again is the
+   most common way a session wastes a day here.
 2. `docs/process/STANDARDS.md` and `docs/process/PR_TEMPLATE.md`.
 3. `gh issue view <n>` — the whole issue, including any correction blocks and the sections at the
    end. Issues in this repository often carry a "what I deliberately did not do" section, and it
    is usually the most important part.
 4. Any issue or PR the issue links to. A lot of the reasoning lives there.
+5. **`docs/decisions/` and `docs/product/DIRECTION.md`** — whichever records touch what you are
+   about to change. The first says what was decided and why; the second says what the owner intends
+   later, which is what makes some of today's code temporary rather than wrong.
+
+   Read them **before writing the plan**, not while defending it. They are short, and the index in
+   each tells you which ones matter in a glance.
+
+   This step is mandatory, not optional, when your change would **delete something, or finish
+   something that looks unfinished**. That is exactly where an issue's reasoning has been wrong
+   before: #293 removed an admin command with a pull-request note saying removal was the answer
+   because "in the dealer model an order exists only for the instant of a fill". Correct about the
+   code, wrong about the product — customer-to-customer ordering may return, and nothing in the
+   repository said so. It does now.
+
+   If what you find contradicts the issue, **that is a finding** — say so at STOP 1 rather than
+   working around it. If you find nothing and the owner then tells you something that would have
+   belonged there, offer to add it before you move on: that is how the directory stays worth
+   reading.
 
 # 2. Verify before you believe
 
