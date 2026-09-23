@@ -103,8 +103,15 @@ public class UserHelpMatchesTheMenuTests
     // ── the operator help, same rule ────────────────────────────────────────────
 
     /// <summary>
-    /// Each operator command is a single letter followed by a space, so the help is the only
-    /// place an operator can learn they exist. All eight must appear.
+    /// An operator command is a word or a single letter followed by a space, and nothing in the
+    /// interface hints that any of them exist, so the help is the only place to learn them. Every
+    /// one below must appear.
+    ///
+    /// <para>
+    /// Most are one letter; اسپرد, اتومات and معامله are words. That matters here because the
+    /// check is a bare substring search — safe for a distinctive word, and safe for a single letter
+    /// only because each is pinned together with the bracket or space that follows it in the help.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("ت [")]   // approve
@@ -113,7 +120,7 @@ public class UserHelpMatchesTheMenuTests
     [InlineData("ش [")]   // credit
     [InlineData("د [")]   // debit
     [InlineData("م [")]   // balances
-    [InlineData("س [")]   // open orders
+    [InlineData("معامله [")]   // a customer's trades; was «س» until the letter was reserved for orders
     [InlineData("ک [")]   // list users
     [InlineData("اسپرد [")]     // auto-quote spread
     [InlineData("اتومات روشن")] // auto-quote on

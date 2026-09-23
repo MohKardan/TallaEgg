@@ -221,7 +221,7 @@ Preise gelten pro Mesghal; Goldmengen sind in Gramm. Zahlen können mit persisch
 | `ش <phone> <amount> <asset>` | Einem Konto gutschreiben, z. B. `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | Ein Konto belasten |
 | `م <phone>` | Guthaben anzeigen |
-| `س <phone>` | Die offenen Orders eines Nutzers anzeigen |
+| `معامله <phone>` | Die Trades eines Nutzers anzeigen |
 | `ک [search]` | Nutzer auflisten |
 
 ## Lokal ausführen

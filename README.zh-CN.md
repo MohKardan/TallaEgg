@@ -221,7 +221,7 @@ dotnet ef database update --project src/Order/Orders.Api/Orders.Api.csproj
 | `ش <phone> <amount> <asset>` | 为账户入账，例如 `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | 从账户扣款 |
 | `م <phone>` | 显示余额 |
-| `س <phone>` | 显示用户的未完成订单 |
+| `معامله <phone>` | 显示用户的成交记录 |
 | `ک [search]` | 列出用户 |
 
 ## 本地运行

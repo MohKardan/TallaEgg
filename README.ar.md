@@ -221,7 +221,7 @@ dotnet ef database update --project src/Order/Orders.Api/Orders.Api.csproj
 | `ش <phone> <amount> <asset>` | إضافة رصيد إلى حساب، مثل `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | خصم من حساب |
 | `م <phone>` | عرض الأرصدة |
-| `س <phone>` | عرض الأوامر المفتوحة لمستخدم |
+| `معامله <phone>` | عرض صفقات مستخدم |
 | `ک [search]` | عرض قائمة المستخدمين |
 
 ## التشغيل محليًا

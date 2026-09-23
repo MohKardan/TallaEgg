@@ -258,7 +258,7 @@ Prices are per mesghal; gold amounts are in grams. Numbers may be typed in Persi
 | `ش <phone> <amount> <asset>` | Credit an account, e.g. `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | Debit an account |
 | `م <phone>` | Show balances |
-| `س <phone>` | Show a user's open orders |
+| `معامله <phone>` | Show a user's trades |
 | `ک [search]` | List users |
 
 ## Running Locally

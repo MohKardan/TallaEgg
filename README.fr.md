@@ -221,7 +221,7 @@ Les prix sont exprimés par mesghal ; les quantités d'or sont en grammes. Les n
 | `ش <phone> <amount> <asset>` | Créditer un compte, par ex. `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | Débiter un compte |
 | `م <phone>` | Afficher les soldes |
-| `س <phone>` | Afficher les ordres ouverts d'un utilisateur |
+| `معامله <phone>` | Afficher les transactions d'un utilisateur |
 | `ک [search]` | Lister les utilisateurs |
 
 ## Exécution en local

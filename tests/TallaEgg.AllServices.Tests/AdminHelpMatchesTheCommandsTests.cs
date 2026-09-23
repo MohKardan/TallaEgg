@@ -42,7 +42,7 @@ public class AdminHelpMatchesTheCommandsTests
 
     /// <summary>
     /// The dispatch reads <c>msgText.StartsWith("…")</c>, one line per command. The trailing space
-    /// several of them carry ("م ", "س ") is part of the guard against matching a longer word, not
+    /// several of them carry ("م ", "نماد ") is part of the guard against matching a longer word, not
     /// part of the command, so it is trimmed away here.
     /// </summary>
     private static readonly Regex DispatchPrefix = new(@"msgText\.StartsWith\(""(?<cmd>[^""]+)""\)", RegexOptions.Compiled);
@@ -225,7 +225,7 @@ public class AdminHelpMatchesTheCommandsTests
         // The ones every reading must contain, so a regex that matched something unrelated still fails.
         Assert.Contains("نماد", handled);
         Assert.Contains("م", documented);
-        Assert.Contains("س", offered);
+        Assert.Contains("معامله", offered);
 
         // «نماد» specifically, out of the help: it is the one command written as two words, and the
         // first version of the help parser could not see that shape. Parsing it as nothing would
@@ -238,12 +238,17 @@ public class AdminHelpMatchesTheCommandsTests
         Assert.False(TheHelpDocuments("ب"), "the per-command search matches a letter the help never documents");
     }
 
-    // ── what the help says «س» does ─────────────────────────────────────────────
+    // ── what the help says the customer-lookup command does ─────────────────
 
     /// <summary>
-    /// The set checks cannot see this: «س» is handled and documented either way. What changed is
-    /// what it does — active orders became the customer's completed trades, because in the dealer
-    /// model an order exists only for the instant of a fill, so that list was always empty.
+    /// The set checks cannot see a wrong <i>description</i>, only a missing or unhandled command.
+    ///
+    /// <para>
+    /// The command that shows a customer's trades was «س», and the help called it their active
+    /// orders long after it had been repointed — handled and documented the whole time, and wrong.
+    /// The letter has since moved to «معامله» (#325), which the set checks do cover; this one
+    /// still guards the sentence around it, because a description can rot on its own.
+    /// </para>
     /// </summary>
     [Fact]
     public void TheHelpDescribesTheCustomerCommandAsTradesRatherThanActiveOrders()

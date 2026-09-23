@@ -44,11 +44,9 @@ It may not stay that way. The owner may bring back customer-chosen price and qua
 - **The command letter `س` is reserved for orders**, so that it means the same thing if open orders
   come back.
 
-  **Agreed on 2026-09-22, not yet implemented.** Today `س <phone>` still shows a customer's trades,
-  and there is no `معامله` command — `BotHandlerAdmin` routes `س ` to the trade history and #293
-  made the help and the user list say so deliberately. The agreed change is to move trades to
-  `معامله` and free `س`. Until that lands, the code is right and this line is the plan; do not
-  "correct" one to match the other.
+  **Agreed 2026-09-22, done 2026-09-23.** A customer's trades are `معامله <phone>`; `س` is handled
+  nowhere and is reserved, not free. Do not reuse the letter for a new command — that is the whole
+  point of having moved it.
 - No timeline, no commitment, and no design has been agreed. This is intent, not a plan.
 
 ---

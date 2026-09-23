@@ -221,7 +221,7 @@ Fiyatlar miskal (mesghal) başınadır; altın miktarları gram cinsindendir. Sa
 | `ش <phone> <amount> <asset>` | Bir hesaba alacak kaydet, ör. `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | Bir hesaba borç kaydet |
 | `م <phone>` | Bakiyeleri göster |
-| `س <phone>` | Bir kullanıcının açık emirlerini göster |
+| `معامله <phone>` | Bir kullanıcının işlemlerini göster |
 | `ک [search]` | Kullanıcıları listele |
 
 ## Yerelde Çalıştırma
