@@ -354,7 +354,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
                 }
                 return true;
             }
-            if (msgText.StartsWith("س "))
+            // Was «س», for سفارش — orders. That command was built when customers placed orders
+            // against each other and an open-order list was a real thing to inspect; the dealer
+            // model left it showing trades instead, so the letter no longer matched the work.
+            //
+            // «س» is now unused and is **reserved**, not free: customer-to-customer order placement
+            // may return (docs/product/DIRECTION.md), and it should mean orders again when it does.
+            // Do not reuse the letter for something else.
+            if (msgText.StartsWith("معامله "))
             {
                 var msgSplit = msgText.Split(" ");
                 string phone = "";

@@ -221,7 +221,7 @@ dotnet ef database update --project src/Order/Orders.Api/Orders.Api.csproj
 | `ش <phone> <amount> <asset>` | खाते में राशि जमा करें, जैसे `ش 09121234567 500000 تومان` |
 | `د <phone> <amount> <asset>` | खाते से राशि घटाएँ |
 | `م <phone>` | बैलेंस दिखाएँ |
-| `س <phone>` | किसी उपयोगकर्ता के खुले ऑर्डर दिखाएँ |
+| `معامله <phone>` | किसी उपयोगकर्ता के ट्रेड दिखाएँ |
 | `ک [search]` | उपयोगकर्ताओं की सूची दिखाएँ |
 
 ## स्थानीय रूप से चलाना

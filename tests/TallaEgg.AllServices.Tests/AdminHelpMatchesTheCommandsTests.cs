@@ -42,7 +42,7 @@ public class AdminHelpMatchesTheCommandsTests
 
     /// <summary>
     /// The dispatch reads <c>msgText.StartsWith("…")</c>, one line per command. The trailing space
-    /// several of them carry ("م ", "س ") is part of the guard against matching a longer word, not
+    /// several of them carry ("م ", "نماد ") is part of the guard against matching a longer word, not
     /// part of the command, so it is trimmed away here.
     /// </summary>
     private static readonly Regex DispatchPrefix = new(@"msgText\.StartsWith\(""(?<cmd>[^""]+)""\)", RegexOptions.Compiled);
@@ -225,7 +225,7 @@ public class AdminHelpMatchesTheCommandsTests
         // The ones every reading must contain, so a regex that matched something unrelated still fails.
         Assert.Contains("نماد", handled);
         Assert.Contains("م", documented);
-        Assert.Contains("س", offered);
+        Assert.Contains("معامله", offered);
 
         // «نماد» specifically, out of the help: it is the one command written as two words, and the
         // first version of the help parser could not see that shape. Parsing it as nothing would

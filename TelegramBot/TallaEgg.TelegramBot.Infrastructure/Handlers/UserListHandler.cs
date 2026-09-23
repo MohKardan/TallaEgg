@@ -48,19 +48,24 @@ namespace TallaEgg.TelegramBot.Infrastructure.Handlers
 
                 if (!string.IsNullOrWhiteSpace(u.PhoneNumber))
                 {
-                    // «س» shows the customer's completed trades, not their orders: in the dealer
-                    // model an order exists only for the instant of a fill, so the order list was
-                    // always empty and the command was repointed. The label said otherwise here
-                    // and in the admin help, which is half of issue #293.
+                    // «معامله» shows the customer's completed trades. It was «س» — سفارش, orders —
+                    // back when customers placed orders against each other and an open-order list
+                    // was a real thing to inspect. The dealer model left that command showing
+                    // trades, so the letter stopped matching the work, and «س» is now reserved
+                    // against order placement returning (docs/product/DIRECTION.md).
                     //
-                    // The «ف» line offered «سفارشات باز» and is gone. No dispatch for it has ever
-                    // existed — git log -S 'StartsWith("ف' finds nothing in the whole history —
-                    // so from the day it was added, 2025-09-10, an admin who typed it silently got
-                    // the main menu. Removing it beats implementing a list the dealer model keeps
-                    // empty, which is the same reasoning that repointed «س».
+                    // A third line offered «سفارشات باز» as «ف» and is gone (issue #293). No dispatch
+                    // for it had ever existed — git log -S 'StartsWith("ف' finds nothing in the whole
+                    // history — so from the day it was added, 2025-09-10, an admin who typed it
+                    // silently got the main menu.
+                    //
+                    // The reason first written here for removing it, that the dealer model keeps
+                    // such a list empty, was wrong in a way worth remembering: it is only true
+                    // while the dealer model is the whole product. The line went because it
+                    // advertised a command nobody had implemented, which is true either way.
                     sb.AppendLine("🔹 دستورات:");
                     sb.AppendLine($"   ▫️ موجودی → `م {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
-                    sb.AppendLine($"   ▫️ معامله‌ها → `س {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
+                    sb.AppendLine($"   ▫️ معامله‌ها → `معامله {Utils.EscapeMarkdownV2(u.PhoneNumber)}`");
                 }
 
                 sb.AppendLine("──────────────────────");

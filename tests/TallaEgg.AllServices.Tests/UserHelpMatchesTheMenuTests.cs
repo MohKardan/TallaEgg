@@ -1,4 +1,4 @@
-using TallaEgg.TelegramBot.Infrastructure;
+﻿using TallaEgg.TelegramBot.Infrastructure;
 
 namespace TallaEgg.AllServices.Tests;
 
@@ -113,7 +113,7 @@ public class UserHelpMatchesTheMenuTests
     [InlineData("ش [")]   // credit
     [InlineData("د [")]   // debit
     [InlineData("م [")]   // balances
-    [InlineData("س [")]   // open orders
+    [InlineData("معامله [")]   // a customer's trades; was «س» until the letter was reserved for orders
     [InlineData("ک [")]   // list users
     [InlineData("اسپرد [")]     // auto-quote spread
     [InlineData("اتومات روشن")] // auto-quote on
