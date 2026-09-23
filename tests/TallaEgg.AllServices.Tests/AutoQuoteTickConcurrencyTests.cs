@@ -65,12 +65,20 @@ public class AutoQuoteTickConcurrencyTests : IDisposable
 
         public string Name => "rendezvous";
 
+        public List<string> Asked { get; } = [];
+
         public async Task<ReferencePrice?> GetPriceAsync(string symbol, CancellationToken cancellationToken = default)
         {
+            lock (Asked) Asked.Add(symbol);
             if (Interlocked.Increment(ref _arrived) == expected) _allArrived.SetResult();
 
             await _allArrived.Task.WaitAsync(cancellationToken);
-            return new ReferencePrice(80_000_000m, null);
+
+            // No price, so no quote is written: this test is about the symbols being in flight
+            // together, and two publishes at once over one in-memory SQLite connection would be a
+            // nested transaction rather than a finding about concurrency. What happens after a
+            // price arrives has tests of its own in AutoQuotePublisherServiceTests.
+            return null;
         }
     }
 
@@ -86,11 +94,11 @@ public class AutoQuoteTickConcurrencyTests : IDisposable
             new AlwaysLeaderLease(),
             MigratedDatabase.Readiness());
 
+        // Sequentially this cannot finish at all: the first symbol waits for a second that has
+        // not started. The timeout is the failure, not a slow pass.
         await service.PublishAllAsync(Symbols, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(30));
 
-        using var db = new OrdersDbContext(Options());
-        foreach (var symbol in Symbols)
-            Assert.True(await db.Quotes.AnyAsync(q => q.Symbol == symbol && q.IsActive), $"{symbol} was not published.");
+        Assert.Equal(Symbols.OrderBy(s => s, StringComparer.Ordinal), _prices.Asked.OrderBy(s => s, StringComparer.Ordinal));
     }
 
     /// <summary>

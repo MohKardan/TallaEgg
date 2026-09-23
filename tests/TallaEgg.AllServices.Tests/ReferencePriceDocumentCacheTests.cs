@@ -19,40 +19,108 @@ public class ReferencePriceDocumentCacheTests
         new(duration ?? TimeSpan.FromSeconds(90));
 
     /// <summary>
-    /// Deterministic rather than timing-dependent: the fetch does not return until every caller
-    /// has arrived, so a cache that let them through one at a time could never finish this test
-    /// rather than finishing it slowly.
+    /// A fetch that has started and not finished, with a second caller arriving while it runs.
+    ///
+    /// <para>
+    /// The ordering is forced rather than hoped for: the fetch announces that it has begun and
+    /// then waits to be released, so the second call provably happens <i>during</i> it. Counting
+    /// callers into a barrier instead would prove less than it looks — a caller can announce
+    /// itself and then be descheduled until after the fetch has finished, at which point it is a
+    /// later call rather than a concurrent one, and a later call is supposed to fetch again.
+    /// </para>
+    /// </summary>
+    private sealed class HeldFetch
+    {
+        private readonly TaskCompletionSource _started = new();
+        private readonly TaskCompletionSource _release = new();
+        private readonly Func<string?> _result;
+
+        public HeldFetch(Func<string?> result) => _result = result;
+
+        public int Attempts;
+
+        public Task Started => _started.Task;
+
+        public void Release() => _release.SetResult();
+
+        public async Task<string?> RunAsync(CancellationToken ct)
+        {
+            Interlocked.Increment(ref Attempts);
+            _started.TrySetResult();
+            await _release.Task;
+
+            return _result();
+        }
+    }
+
+    private static async Task<(string? First, string? Second, int Attempts)> TwoCallersDuringOneFetchAsync(
+        ReferencePriceDocumentCache cache, Func<string?> result)
+    {
+        var fetch = new HeldFetch(result);
+
+        var first = cache.GetOrFetchAsync("tgju.org", fetch.RunAsync);
+        await fetch.Started.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // Started and not finished: whatever this second call does, it does while the first fetch
+        // is still running.
+        var second = cache.GetOrFetchAsync("tgju.org", fetch.RunAsync);
+
+        fetch.Release();
+
+        var bodies = await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10));
+        return (bodies[0], bodies[1], fetch.Attempts);
+    }
+
+    [Fact]
+    public async Task ASecondCallerDuringAFetch_SharesIt()
+    {
+        var (first, second, attempts) = await TwoCallersDuringOneFetchAsync(Cache(), () => "the document");
+
+        Assert.Equal(1, attempts);
+        Assert.Equal("the document", first);
+        Assert.Equal("the document", second);
+    }
+
+    /// <summary>
+    /// The finding that mattered from the review of PR #323: waiting for a fetch and then
+    /// repeating it when it fails is not single-flight. A shared source that hangs would hold each
+    /// symbol in turn — fifteen seconds each for tgju, thirty for bonbast's two requests — and a
+    /// tick would grow per symbol again, which is the property this change exists to remove.
     /// </summary>
     [Fact]
-    public async Task ConcurrentCallers_ShareOneFetch()
+    public async Task ASecondCallerDuringAFailingFetch_SharesTheFailureRatherThanRepeatingIt()
     {
-        const int callers = 4;
         var cache = Cache();
-        var arrived = 0;
-        var allArrived = new TaskCompletionSource();
-        var fetches = 0;
 
-        async Task<string?> Fetch(CancellationToken ct)
-        {
-            Interlocked.Increment(ref fetches);
-            await allArrived.Task;
-            return "the document";
-        }
+        var (first, second, attempts) = await TwoCallersDuringOneFetchAsync(cache, () => null);
 
-        var waiting = Enumerable.Range(0, callers)
-            .Select(_ => Task.Run(async () =>
-            {
-                // Every caller announces itself before asking, so "all four are in flight" is a
-                // fact rather than an assumption about scheduling.
-                if (Interlocked.Increment(ref arrived) == callers) allArrived.SetResult();
-                return await cache.GetOrFetchAsync("tgju.org", Fetch);
-            }))
-            .ToList();
+        Assert.Equal(1, attempts);
+        Assert.Null(first);
+        Assert.Null(second);
 
-        var bodies = await Task.WhenAll(waiting).WaitAsync(TimeSpan.FromSeconds(10));
+        // Shared, then forgotten: a later call has to be free to try again.
+        Assert.Equal("the document", await cache.GetOrFetchAsync("tgju.org", _ => Task.FromResult<string?>("the document")));
+    }
 
-        Assert.Equal(1, fetches);
-        Assert.All(bodies, body => Assert.Equal("the document", body));
+    /// <summary>
+    /// A fetch that throws is shared the same way. Each provider catches this itself, so what
+    /// reaches the chain is still a null rather than an exception.
+    /// </summary>
+    [Fact]
+    public async Task ASecondCallerDuringAThrowingFetch_SharesTheFailure()
+    {
+        var cache = Cache();
+        var fetch = new HeldFetch(() => throw new HttpRequestException("connection reset"));
+
+        var first = cache.GetOrFetchAsync("tgju.org", fetch.RunAsync);
+        await fetch.Started.WaitAsync(TimeSpan.FromSeconds(10));
+        var second = cache.GetOrFetchAsync("tgju.org", fetch.RunAsync);
+
+        fetch.Release();
+
+        await Assert.ThrowsAsync<HttpRequestException>(() => first);
+        await Assert.ThrowsAsync<HttpRequestException>(() => second);
+        Assert.Equal(1, fetch.Attempts);
     }
 
     [Fact]

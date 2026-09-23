@@ -48,10 +48,21 @@ public static class ReferencePriceClients
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     /// <summary>
-    /// Identifies this platform rather than posing as a browser. Three of the six sources publish
-    /// no API and are read as a courtesy; saying who is calling is part of that.
+    /// Identifies this platform rather than posing as a browser, on the sources that are read as a
+    /// courtesy rather than sold to us.
+    ///
+    /// <para>
+    /// Deliberately <b>not</b> sent to nerkh.io or brsapi.ir, which have never received one. They
+    /// are the two sources that answer on the production host, they authenticate by token, and a
+    /// filtering rule keyed on an unfamiliar User-Agent would take the whole toman feed out at
+    /// once. Their credentials answer 403 at the moment, so the change could not be tested against
+    /// them either — and an untested change to a working header is not worth the tidiness.
+    /// </para>
     /// </summary>
     public const string UserAgent = "TallaEgg/1.0 (+https://github.com/MohKardan/TallaEgg)";
+
+    /// <summary>The sources that receive <see cref="UserAgent"/>; see the note there.</summary>
+    private static readonly HashSet<string> Identifying = new(StringComparer.Ordinal) { Tgju, Xaus, Swissquote, Bonbast };
 
     /// <summary>Every source's client. The names are the ones the providers resolve.</summary>
     public static IEnumerable<string> Names => [Nerkh, BrsApi, Tgju, Xaus, Swissquote, Bonbast];
@@ -60,13 +71,13 @@ public static class ReferencePriceClients
     {
         foreach (var name in Names.Where(name => name != Bonbast))
         {
-            services.AddHttpClient(name, Configure);
+            services.AddHttpClient(name, client => Configure(name, client));
         }
 
         // bonbast.com hands out a request token in a cookie alongside the one in its markup, so
         // this client keeps a cookie jar; the two requests it makes are a pair, not independent
         // calls.
-        services.AddHttpClient(Bonbast, Configure)
+        services.AddHttpClient(Bonbast, client => Configure(Bonbast, client))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
             {
                 CookieContainer = new CookieContainer(),
@@ -76,9 +87,11 @@ public static class ReferencePriceClients
         return services;
     }
 
-    private static void Configure(HttpClient client)
+    private static void Configure(string name, HttpClient client)
     {
         client.Timeout = Timeout;
-        client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
+
+        if (Identifying.Contains(name))
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
     }
 }

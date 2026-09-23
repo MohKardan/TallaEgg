@@ -15,15 +15,17 @@ namespace Orders.Infrastructure.Clients;
 /// <para>
 /// Holding the last body was enough while a tick worked through its symbols in sequence: the first
 /// symbol fetched and stored, and the rest read what it stored. Once the symbols of a tick run
-/// concurrently (issue #317) they all find the cache empty at the same instant and all fetch, which
-/// is the waste this class was added to prevent. So a miss now also <b>holds the source</b>: the
-/// first caller fetches while the others wait for its result rather than starting requests of their
-/// own. That is the only way in, which is what makes the guarantee hold.
+/// concurrently (issue #317) they all find the cache empty at the same instant, so a miss now joins
+/// <b>the fetch already in flight</b> instead of starting another. Sharing the in-flight fetch
+/// rather than only its result is what keeps a tick as long as its slowest symbol: waiting for a
+/// fetch and then repeating it would put the symbols of a failing source back in single file, which
+/// is the shape this change exists to remove.
 /// </para>
 ///
 /// <para>
-/// A failed fetch is not stored. Caching a failure would turn one transient error into a whole
-/// tick's worth, and the retry costs one request on a source that is already answering badly.
+/// A failure is shared with whoever was waiting for it, and then forgotten. Nothing is stored, so
+/// the next tick tries again; and no caller waits out a second copy of a failure that has already
+/// happened. Caching failure would turn one transient error into a whole tick's worth.
 /// </para>
 ///
 /// <para>
@@ -37,7 +39,7 @@ public class ReferencePriceDocumentCache
     private readonly TimeSpan _duration;
     private readonly object _lock = new();
     private readonly Dictionary<string, (string Body, DateTimeOffset FetchedAt)> _entries = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, SemaphoreSlim> _gates = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Task<string?>> _inFlight = new(StringComparer.Ordinal);
 
     public ReferencePriceDocumentCache(TimeSpan duration) => _duration = duration;
 
@@ -47,8 +49,12 @@ public class ReferencePriceDocumentCache
     /// </summary>
     /// <param name="source">The source's name, which is what the one document belongs to.</param>
     /// <param name="fetch">
-    /// How to obtain the document. Called at most once per source at a time, and never at all when
-    /// a live copy is already cached.
+    /// How to obtain the document. Started at most once per source at a time, and not at all while
+    /// a live copy is cached.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Cancels <i>this caller's</i> wait. A fetch already in flight belongs to whoever started it
+    /// and keeps running for the callers still waiting on it.
     /// </param>
     public async Task<string?> GetOrFetchAsync(
         string source,
@@ -58,26 +64,22 @@ public class ReferencePriceDocumentCache
         var cached = Cached(source);
         if (cached is not null) return cached;
 
-        var gate = GateFor(source);
-        await gate.WaitAsync(cancellationToken);
+        var (inFlight, isOwner) = InFlightFor(source, fetch, cancellationToken);
 
         try
         {
-            // Whoever held the gate has just finished, so the document this caller wanted is
-            // probably already here. Without this second look the waiting callers would queue up
-            // and fetch one after another, which is the same number of requests spread over more
-            // time rather than fewer requests.
-            cached = Cached(source);
-            if (cached is not null) return cached;
-
-            var body = await fetch(cancellationToken);
-            if (body is not null) Store(source, body);
+            // WaitAsync, so one caller giving up does not cancel the fetch the others are waiting
+            // for. The fetch itself runs on the token of whoever started it.
+            var body = await inFlight.WaitAsync(cancellationToken);
+            if (isOwner && body is not null) Store(source, body);
 
             return body;
         }
         finally
         {
-            gate.Release();
+            // Only the caller that started it clears it: forgetting a fetch someone else owns
+            // would let a third caller start a second one alongside it.
+            if (isOwner) ClearInFlight(source);
         }
     }
 
@@ -106,22 +108,31 @@ public class ReferencePriceDocumentCache
     }
 
     /// <summary>
-    /// One gate per source, so a slow source holds up only the symbols that need it. Created under
-    /// the lock because two symbols reaching a source for the first time at the same instant would
-    /// otherwise each create their own gate and neither would wait for the other — the exact race
-    /// this class exists to remove.
+    /// The fetch for this source: the one already running, or a new one this caller owns. Started
+    /// under the lock because two symbols reaching a source at the same instant would otherwise
+    /// each start their own and neither would see the other — the exact race this class removes.
     /// </summary>
-    private SemaphoreSlim GateFor(string source)
+    private (Task<string?> Task, bool IsOwner) InFlightFor(
+        string source, Func<CancellationToken, Task<string?>> fetch, CancellationToken cancellationToken)
     {
         lock (_lock)
         {
-            if (!_gates.TryGetValue(source, out var gate))
-            {
-                gate = new SemaphoreSlim(1, 1);
-                _gates[source] = gate;
-            }
+            if (_inFlight.TryGetValue(source, out var existing)) return (existing, false);
 
-            return gate;
+            // Started inside the lock but not awaited here: the lock is held only long enough to
+            // record that this source is being fetched.
+            var started = fetch(cancellationToken);
+            _inFlight[source] = started;
+
+            return (started, true);
+        }
+    }
+
+    private void ClearInFlight(string source)
+    {
+        lock (_lock)
+        {
+            _inFlight.Remove(source);
         }
     }
 }

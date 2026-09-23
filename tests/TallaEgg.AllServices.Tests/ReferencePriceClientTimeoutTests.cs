@@ -48,8 +48,17 @@ public class ReferencePriceClientTimeoutTests
     /// <summary>
     /// The arithmetic the issue is actually about: one symbol tries every source in turn, so the
     /// worst case for a symbol is the sum of all six timeouts — and bonbast makes two requests for
-    /// its one document, so it counts twice. Symbols themselves now run concurrently, which is why
-    /// this is the whole worst case for a tick rather than the worst case per symbol.
+    /// its one document, so it counts twice.
+    ///
+    /// <para>
+    /// This is the worst case for a whole tick only because two things hold together: the symbols
+    /// of a tick run concurrently, and a symbol that finds a shared source already being fetched
+    /// waits for <i>that</i> fetch rather than starting and timing out on one of its own — failure
+    /// included. The second half is what
+    /// <c>ReferencePriceDocumentCacheTests.ConcurrentCallers_ShareOneFailedFetch</c> holds in
+    /// place; without it a failing shared source would put the tick's symbols back in single file
+    /// and this sum would be per symbol again.
+    /// </para>
     /// </summary>
     [Fact]
     public void TheSlowestPossibleSymbol_StillFinishesInsideTheLease()
