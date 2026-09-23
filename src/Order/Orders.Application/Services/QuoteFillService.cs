@@ -138,7 +138,7 @@ public class QuoteFillService
                 "Refusing quote fill for {UserId} on {Symbol}: balance check failed — {Message}",
                 customerUserId, symbol, checkMessage);
 
-            return (false, "بررسی موجودی انجام نشد. لطفاً دوباره تلاش کنید.", null);
+            return (false, OrderRefusalMessages.BalanceCheckFailed, null);
         }
 
         // A buy is paid for in the quote asset, a sell in the base asset.

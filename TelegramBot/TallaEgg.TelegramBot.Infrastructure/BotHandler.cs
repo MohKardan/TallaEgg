@@ -1494,21 +1494,51 @@ namespace TallaEgg.TelegramBot.Infrastructure
 
             var isAdmin = await IsOperatorAsync(chatId);
 
-            if (!isAdmin)    
-            if (!validateCreditAndBalance.Success || !hasSufficientBalance)
+            // An operator is exempt, the same way OrderService exempts the Admin role
+            // (docs/decisions/006-admin-role-bypasses-the-balance-check.md).
+            if (!isAdmin)
             {
+                // Two refusals, not one. The check failing and the check finding too little were
+                // joined in a single guard, reported with the wallet client's own Message pasted
+                // into an insufficient-funds sentence (issue #290, the same shape as #284 on the
+                // service's own endpoint). So an under-funded customer read a log status line as
+                // their reason, and a customer who hit a wallet outage was told their funds were
+                // short and to call the shop for more credit — for a failure that was ours.
+                //
+                // The wallet client's Message is a diagnostic either way and goes to the log.
+                // QuoteFillService.cs already splits it exactly like this; keep the two in step.
                 var backBtn = new KeyboardButton(BotBtns.BtnBack);
-                await _messenger.SendAsync(chatId,
-                    string.Format(BotMsgs.MsgInsufficientBalance, validateCreditAndBalance.Message),
-                    replyMarkup: new ReplyKeyboardMarkup(new[]
-                    {
-                            new KeyboardButton[] { backBtn }
-                    })
-                    {
-                        ResizeKeyboard = true
-                    });
-                _conversations.Clear(telegramId);
-                return;
+                var refusalKeyboard = new ReplyKeyboardMarkup(new[]
+                {
+                    new KeyboardButton[] { backBtn }
+                })
+                {
+                    ResizeKeyboard = true
+                };
+
+                if (!validateCreditAndBalance.Success)
+                {
+                    _logger.LogWarning(
+                        "Balance check for user {UserId} on {Symbol} did not complete, so no order was placed — {Message}",
+                        orderState.UserId, orderState.Asset, validateCreditAndBalance.Message);
+
+                    await _messenger.SendAsync(chatId, BotMsgs.MsgBalanceCheckFailed, replyMarkup: refusalKeyboard);
+                    _conversations.Clear(telegramId);
+                    return;
+                }
+
+                if (!hasSufficientBalance)
+                {
+                    _logger.LogInformation(
+                        "Refusing order for user {UserId}: not enough {Side} funds for {Amount} {Symbol} at {Price}.",
+                        orderState.UserId, orderState.OrderSide, orderState.Amount, orderState.Asset, orderState.Price);
+
+                    await _messenger.SendAsync(chatId,
+                        string.Format(BotMsgs.MsgInsufficientBalance, RefusalMessages.InsufficientFunds),
+                        replyMarkup: refusalKeyboard);
+                    _conversations.Clear(telegramId);
+                    return;
+                }
             }
 
             // The per-mesghal figure shown is the customer's own input, not one derived

@@ -13,9 +13,20 @@ namespace Orders.Application;
 /// line pasted onto a reason (issue #284). Naming the sentence once keeps the two paths from
 /// saying different things about the same refusal again.
 /// </para>
+///
+/// <para>
+/// The sentences themselves now live in <see cref="TallaEgg.Core.RefusalMessages"/>, because the
+/// bot refuses for the same causes before it ever submits an order and could not see this class:
+/// it is <c>internal</c>, and making it public was not an option because
+/// <c>Orders.Application</c> references the bot's Infrastructure project, so a reference back would
+/// be a cycle (issue #290). This class stays as the name its own callers use.
+/// </para>
 /// </remarks>
 internal static class OrderRefusalMessages
 {
     /// <summary>The customer's balance and credit together do not cover the order.</summary>
-    public const string InsufficientFunds = "موجودی یا اعتبار شما برای این معامله کافی نیست.";
+    public const string InsufficientFunds = TallaEgg.Core.RefusalMessages.InsufficientFunds;
+
+    /// <summary>The balance check did not complete, so nothing is known about the funds.</summary>
+    public const string BalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
 }

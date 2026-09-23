@@ -152,6 +152,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
                                                        "💵 مبلغ کل: {5} تومان\n\n" +
                                                        "آیا این سفارش را تأیید می‌کنید؟";
 
+        /// <summary>
+        /// The balance check did not run. Points at <see cref="TallaEgg.Core.RefusalMessages"/>
+        /// rather than repeating the sentence, so the bot and the services cannot drift apart
+        /// while refusing for the same cause (issues #284, #290).
+        /// </summary>
+        public const string MsgBalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
+
         /// <summary>{0} = the reason, if there is one.</summary>
         public const string MsgInsufficientBalance = "❌ موجودی شما برای این سفارش کافی نیست.\n\n" +
                                                      "{0}\n\n" +
