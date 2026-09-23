@@ -1,6 +1,6 @@
 # 005 — `Wallet.LockBalance` enforces no balance rule, and must not
 
-**Status:** accepted
+**Status:** accepted · **Confirmed with the product owner:** 6 Shahrivar 1405
 
 ## Decision
 

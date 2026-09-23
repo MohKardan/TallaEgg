@@ -19,9 +19,10 @@ The rules that get skipped most often:
 - **Read [`docs/decisions/`](docs/decisions/README.md) and
   [`docs/product/DIRECTION.md`](docs/product/DIRECTION.md) before proposing to delete anything, or
   to finish something that looks unfinished.** Both exist because code here can look dead when a
-  capability is paused rather than gone, and can look broken when it is doing what was asked. An
-  agent removed an admin command in September 2026 on reasoning that was correct about the code and
-  wrong about the product; DIRECTION.md is what would have caught it.
+  capability is paused rather than gone, and can look broken when it is doing what was asked. In
+  #293 the change was right and the justification written beside it was not — "removing it beats
+  implementing a list the dealer model keeps empty" is only true while the dealer model is the
+  whole product. DIRECTION.md is what would have caught that sentence.
 - **Work on a branch.** `feat/`, `fix/`, or `hotfix/` followed by a description. Never commit
   directly to `main`.
 - **Open a PR**, using `PR_TEMPLATE.md`. Peer review is thin on a two-person team, but the PR is

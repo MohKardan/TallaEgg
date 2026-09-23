@@ -2,12 +2,12 @@
 
 Where the product is going, and what is deliberately not built yet.
 
-This file exists because its absence cost something. In September 2026 an agent removed an admin
-command and wrote in the pull request that removing it was the answer, reasoning from the code:
-in the dealer model an order exists only for the instant of a fill, so a list of open orders is
-always empty. The code reading was right. The conclusion was wrong, because customer-to-customer
-order placement had existed before and may return — and nothing in the repository said so, so
-nothing could have corrected it.
+This file exists because its absence cost something. In #293 an admin command was removed and
+another relabelled — both correct, and the removal was the owner's own call. What was wrong was the
+sentence written beside them in the code: *"removing it beats implementing a list the dealer model
+keeps empty"*. That is only true while the dealer model is the whole product. Nothing in the
+repository said it might not be, so nothing could have corrected it, and the comment would have
+outlived everyone who knew better.
 
 **Owned by the product owner.** An agent may propose an entry and must not write one from
 inference. Every entry below says who confirmed it and when; an entry without that is a guess and
@@ -41,8 +41,14 @@ It may not stay that way. The owner may bring back customer-chosen price and qua
 - **Do not treat order-book code as dead** merely because the dealer model does not exercise it.
   Removing something because "orders never rest" is reasoning from a state that is intended to
   change. Report it and ask.
-- **The command letter `س` is reserved for orders**, not reused for anything else, so that it means
-  the same thing if open orders come back. Trades are `معامله`.
+- **The command letter `س` is reserved for orders**, so that it means the same thing if open orders
+  come back.
+
+  **Agreed on 2026-09-22, not yet implemented.** Today `س <phone>` still shows a customer's trades,
+  and there is no `معامله` command — `BotHandlerAdmin` routes `س ` to the trade history and #293
+  made the help and the user list say so deliberately. The agreed change is to move trades to
+  `معامله` and free `س`. Until that lands, the code is right and this line is the plan; do not
+  "correct" one to match the other.
 - No timeline, no commitment, and no design has been agreed. This is intent, not a plan.
 
 ---

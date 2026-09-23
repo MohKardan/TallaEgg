@@ -15,11 +15,19 @@ pull request, a code comment three files away, a conversation nobody wrote down.
 cost was the same: work proposed that contradicted a decision already taken, and an owner who had
 to catch it by hand.
 
-The clearest example is the one that prompted this directory. In September 2026 an agent removed an
-admin command and wrote that removing it was "the likely answer" because, in the dealer model, an
-order exists only for the instant of a fill. That was true of the code and wrong about the product:
-customer-to-customer order placement had existed before and may return. Nothing in the repository
-said so, so nothing could have corrected it. That intent is now [`../product/DIRECTION.md`](../product/DIRECTION.md).
+The clearest example is the one that prompted this directory, and it is subtler than "an agent broke
+something". In #293 an admin command was removed and another was relabelled. Both were right, and
+the owner approved the removal. What was wrong was the **justification written down beside them**:
+
+> Removing it beats implementing a list the dealer model keeps empty, which is the same reasoning
+> that repointed «س».
+
+That reads as permanent. It is not. Customer-to-customer order placement existed before the dealer
+model and may return, at which point an open-order list stops being empty and the sentence becomes
+an argument against restoring something the product wants. Nothing in the repository said so, so
+nothing could have corrected it, and the comment would have outlived everyone who knew better. The
+owner caught it by hand. That intent is now
+[`../product/DIRECTION.md`](../product/DIRECTION.md).
 
 ## What belongs here
 

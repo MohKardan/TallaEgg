@@ -1,7 +1,8 @@
 # 011 — One account holds the shop's book, and it is named `SuperAdmin`
 
-**Status:** accepted · **Confirmed with the product owner** (the rename was raised at the time and
-deliberately deferred)
+**Status:** accepted · **Confirmed with the product owner**, in a session whose date was not
+recorded. The other records here carry one; this does not, and saying so is better than inventing
+it. Treat the decision as settled and the date as unknown.
 
 ## Decision
 
@@ -17,6 +18,12 @@ A gold shop is run by one or two colleagues who cover for each other, so more th
 administrative powers. But the shop's position has to be one number. Splitting the book across
 whoever happened to publish a quote would make the shop's exposure
 ([003](003-market-maker-balance-is-the-shops-book.md)) unreadable.
+
+**"Staff hold no book" is the intent, not an enforced invariant.** Nothing stops an `Admin`
+account's balance moving; [006](006-admin-role-bypasses-the-balance-check.md) lets one place
+orders with no funds at all, so an `Admin` balance
+*can* go negative. When it does, read it as that person's own account and not as shop exposure —
+the shop's book is the `SuperAdmin` account and only that one.
 
 ## The name is known to be wrong
 

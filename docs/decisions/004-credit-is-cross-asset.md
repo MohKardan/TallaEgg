@@ -1,6 +1,7 @@
 # 004 — Credit is stored per asset but backs a position in either currency
 
-**Status:** accepted · **Related:** issue #36 (a different storage model, still open)
+**Status:** accepted · **Confirmed with the product owner:** 6 Shahrivar 1405 · **Related:** issue
+#36 (a different storage model, still open)
 
 ## Decision
 

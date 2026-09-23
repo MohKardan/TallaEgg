@@ -49,11 +49,12 @@ In this order:
    each tells you which ones matter in a glance.
 
    This step is mandatory, not optional, when your change would **delete something, or finish
-   something that looks unfinished**. That is exactly where an issue's reasoning has been wrong
-   before: #293 removed an admin command with a pull-request note saying removal was the answer
-   because "in the dealer model an order exists only for the instant of a fill". Correct about the
-   code, wrong about the product — customer-to-customer ordering may return, and nothing in the
-   repository said so. It does now.
+   something that looks unfinished**. Note what went wrong in #293, because it is not the obvious
+   thing: the removal was correct and the owner approved it. What was wrong was the justification
+   left in the code beside it — "removing it beats implementing a list the dealer model keeps
+   empty" — which reads as permanent about a capability that is paused. A sentence like that
+   outlives the person who knew better. So the rule is not only "do not delete the wrong thing",
+   it is **do not write a reason that will be wrong later**.
 
    If what you find contradicts the issue, **that is a finding** — say so at STOP 1 rather than
    working around it. If you find nothing and the owner then tells you something that would have

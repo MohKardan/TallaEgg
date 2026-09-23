@@ -46,6 +46,8 @@ TallaEgg/
 ├── config/                           # appsettings.global.json — shared by every service, git-ignored
 ├── scripts/                          # windows-services/ publish, install, uninstall; one data migration
 ├── docs/
+│   ├── decisions/                    # Decision records — what was decided, why, what it rules out
+│   ├── product/                      # DIRECTION.md — what the owner intends later
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
 │   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), BOT_USER_FLOW.md, ROADMAP.md
 │   ├── design/                       # API_REQUEST_VALIDATION.md — what the endpoints actually refuse
@@ -329,11 +331,25 @@ Steps to deploy or rollback if needed.
 
 ### Documentation Types & Locations
 
+#### Decision Records (`docs/decisions/`)
+- One file per decision, `NNN-short-slug.md`, numbered in the order recorded.
+- **Product decisions as well as architectural ones.** This directory replaces the
+  `docs/architecture/ADR-###-{title}.md` convention that stood here for a year and produced zero
+  files. The name changed because the records that were actually going missing were product
+  decisions, and nobody was going to file one under "architecture".
+- Every record states **what it rules out** — see
+  [`../decisions/README.md`](../decisions/README.md) for the format and for the test of what
+  deserves a record at all.
+
+#### Product Direction (`docs/product/`)
+- [`DIRECTION.md`](../product/DIRECTION.md) — what the owner intends later, which is what makes
+  some of today's code temporary rather than wrong. Owner-written; an agent proposes an entry and
+  does not write one from inference.
+
 #### Architecture Documentation (`docs/architecture/`)
-- Architecture Decision Records (ADRs): `ADR-###-{title}.md`
 - Component diagrams (Mermaid or images)
 - Data flow diagrams
-- Example: `ADR-001-microservices-with-database-per-service.md`
+- How a part of the system works today — e.g. `DEALER_QUOTE_MODEL.md`, `BOT_USER_FLOW.md`
 
 #### Design Documentation (`docs/design/`)
 - API contracts (OpenAPI/Swagger specs) — today:
