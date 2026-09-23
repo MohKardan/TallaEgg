@@ -99,37 +99,25 @@ minutes, so a human can drive the bot over real Telegram. It asserts nothing, an
 
 ## Business rules that look like bugs
 
-Each of these has been mistaken for a defect at least once, including by an audit. None of them
-is one. Confirmed with the product owner on 6 Shahrivar 1405.
+Each of these has been mistaken for a defect at least once, including by an audit. None of them is
+one. **The reasoning for each now lives in [`docs/decisions/`](docs/decisions/README.md)** — this
+list is the index, so that a reader who only ever opens this file still knows the trap is there.
 
-- **The market maker may go arbitrarily negative, on any asset, with no ceiling.** Its account
-  currently sits far below zero in IRT and holds no `CREDIT_IRT` ledger. That negative balance
-  *is* the shop's book — what customers are owed — and the market maker manages the exposure
-  themselves. A balance check that treats it as an overdraft is wrong. There is no alerting on
-  it yet; that gap is tracked in #124.
-- **Commission is deliberately zero.** `FeeBuyer`, `FeeSeller`, `MakerFee` and `TakerFee` are
-  `0.00` on every trade by design. The market maker's revenue is the spread between the published
-  buy and sell prices, not commission. Fee code is therefore dormant, not dead — do not delete it
-  as unused.
-- **Credit is cross-asset, not per-asset.** `ValidateCreditAndBalanceAsync` lets credit
-  denominated in the quote currency back a base-asset position (`creditQuote / price`) and vice
-  versa. A customer holding only `CREDIT_MAUA` can legitimately drive their IRT balance negative.
-  Any per-asset invariant would reject trades the business intends to allow — see the retracted
-  N-1 finding in `docs/audit/AUDIT_2026-08.md`.
-- **`Wallet.LockBalance` enforces no balance rule, and must not.** The credit ceiling for asset
-  `A` lives in a separate wallet row keyed `CREDIT_A`, so a single-asset entity cannot evaluate
-  the invariant. The check belongs where both rows are visible. The commented-out guard in that
-  method is wrong code, correctly disabled.
-- **The `Admin` role skips the balance and credit check on `POST /api/orders`, deliberately.**
-  `OrderService.CreateOrderAsync` wraps both refusals — the check itself failing, and the balance
-  being insufficient — in `if (!isadmin)`, where `isadmin` is `user?.Role == UserRole.Admin`
-  (`OrderService.cs:118-131`). An administrator can therefore place an order of any size with no
-  funds and no credit, and that is intended. Confirmed with the product owner on 17 Shahrivar 1405
-  (2026-09-08). Two things to know before touching it: the role is `Admin` specifically, not
-  `SuperAdmin`, so this is not the shop ledger exemption it looks like; and it is **not** what lets
-  the market maker take the other side of a quote fill — that path runs through
-  `CreateLockedAndConfirmedOrderForQuoteAsync`, which never reaches this check at all. So removing
-  the bypass would not break dealer trading, and it is still not to be removed.
+| It looks like | It is | Record |
+|---|---|---|
+| The market maker's account is far below zero with no ceiling | the shop's book — what customers are owed | [003](docs/decisions/003-market-maker-balance-is-the-shops-book.md) |
+| Commission is `0.00` on every trade | deliberate; the revenue is the spread | [002](docs/decisions/002-commission-is-zero-revenue-is-the-spread.md) |
+| A customer's balance goes negative while holding credit in another asset | credit is cross-asset — **never write a per-asset balance check** | [004](docs/decisions/004-credit-is-cross-asset.md) |
+| `Wallet.LockBalance` validates nothing, with a guard commented out | correct; the entity cannot see the `CREDIT_` row the rule needs | [005](docs/decisions/005-balance-rules-live-where-both-rows-are-visible.md) |
+| The `Admin` role skips the balance and credit check entirely | intended, and removing it would not break dealer trading | [006](docs/decisions/006-admin-role-bypasses-the-balance-check.md) |
+| An in-flight order is lost when the bot restarts | deliberate; prices move | [007](docs/decisions/007-conversation-state-is-not-persisted.md) |
+| No request schema declares a single constraint | deliberate; the endpoints enforce ~50 checks the document does not state | [009](docs/decisions/009-schemas-declare-nothing-endpoints-enforce.md) |
+| A trading pair is spelled two different ways across endpoints | real and pre-existing; unifying it is a data migration, not a rename | [010](docs/decisions/010-two-spellings-for-a-trading-pair.md) |
+
+**Before proposing to delete anything, or to "fix" something that looks unfinished, read
+[`docs/decisions/`](docs/decisions/README.md) and [`docs/product/DIRECTION.md`](docs/product/DIRECTION.md).**
+The second one matters as much as the first: code can look dead because a capability is paused
+rather than gone, and the dealer model has paused one.
 
 ## Configuration
 

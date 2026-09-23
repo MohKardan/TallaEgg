@@ -67,6 +67,11 @@ docs/
 │   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
 │   ├── BOT_USER_FLOW.md          ← What the Telegram bot shows customers and admins, step by step (Persian)
 │   └── ROADMAP.md                ← Direction for a future web app; not scheduled work
+├── decisions/
+│   ├── README.md                 ← Decision records: what was decided, why, and what it rules out
+│   └── NNN-*.md                  ← One record per decision, product as well as architectural
+├── product/
+│   └── DIRECTION.md              ← What the owner intends later; owner-written, agents propose only
 ├── design/
 │   └── API_REQUEST_VALIDATION.md ← What the published schemas declare vs. what the endpoints refuse
 ├── operations/
@@ -76,7 +81,6 @@ docs/
 
 ### Planned (not yet created — do not link to these until they exist)
 
-- `docs/architecture/ADR-###-*.md` — Architecture Decision Records
 - `docs/architecture/DIAGRAMS.md` — component, data flow, sequence diagrams. Write these as Mermaid inside the Markdown, the way `DEALER_QUOTE_MODEL.md` does: a root `SoftwareArchitecture/` folder of PNGs was deleted for being unmaintainable and a year out of date. Should also cover the `OrderStatus` lifecycle, which that folder documented and nothing replaced.
 - `docs/operations/DEPLOYMENT.md`, `docs/operations/RUNBOOK.md`, `docs/operations/INFRASTRUCTURE.md`
 - `docs/design/API_CONTRACT.md`, `docs/design/DATABASE_SCHEMA.md`
