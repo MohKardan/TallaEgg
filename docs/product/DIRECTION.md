@@ -54,7 +54,6 @@ It may not stay that way. The owner may bring back customer-chosen price and qua
   point of having moved it.
 - No timeline, no commitment, and no design has been agreed. This is intent, not a plan.
 
-
 ---
 
 ## Commission will not stay zero
