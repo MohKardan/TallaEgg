@@ -117,6 +117,11 @@ public class OrderService
             if (!isadmin)
             if (!balanceCheckSuccess)
             {
+                // The wallet's message is kept in the refusal deliberately — #289 decided that when
+                // the check itself fails, that message *is* the failure, and
+                // OrderCreationBalanceRefusalTests pins it. Left alone here, but see the note in
+                // this PR: that decision was taken while this branch was unreachable, and #290
+                // makes it live for the first time.
                 _logger.LogWarning("Balance validation failed for user {UserId}: {Message}", userId, balanceMessage);
                 throw new BusinessRuleException($"خطا در بررسی موجودی: {balanceMessage}");
             }

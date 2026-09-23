@@ -157,11 +157,21 @@ namespace TallaEgg.TelegramBot.Infrastructure
         /// rather than repeating the sentence, so the bot and the services cannot drift apart
         /// while refusing for the same cause (issues #284, #290).
         /// </summary>
-        public const string MsgBalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
+        public static readonly string MsgBalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
 
-        /// <summary>{0} = the reason, if there is one.</summary>
-        public const string MsgInsufficientBalance = "❌ موجودی شما برای این سفارش کافی نیست.\n\n" +
-                                                     "{0}\n\n" +
+        /// <summary>
+        /// Not enough funds, with what to do about it. {0} is the reason, and the only caller fills
+        /// it from <see cref="TallaEgg.Core.RefusalMessages"/>.
+        ///
+        /// <para>
+        /// The headline used to say the same thing the reason says, so the customer read it twice:
+        /// «موجودی شما برای این سفارش کافی نیست» followed by «موجودی یا اعتبار شما برای این
+        /// معامله کافی نیست». What this template adds is the part the shared sentence does not
+        /// carry: what the customer can do next. So it keeps that and nothing else, and the one
+        /// named sentence stays the one named sentence (issue #290).
+        /// </para>
+        /// </summary>
+        public const string MsgInsufficientBalance = "❌ {0}\n\n" +
                                                      "برای افزایش موجودی یا اعتبار، با طلافروشی خود تماس بگیرید.";
 
         /// <summary>

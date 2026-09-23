@@ -242,16 +242,41 @@ public class WalletApiClient : IWalletApiClient
     {
         try
         {
-            // Read the user's various balances.
-            var spotBaseAsset = await GetBalanceAsync(userId, symbol.Split('/')[0]);
-            var creditBaseAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[0]);
-            var spotQuoteAsset = await GetBalanceAsync(userId, symbol.Split('/')[1]);
-            var creditQuoteAsset = await GetBalanceAsync(userId, "CREDIT_" + symbol.Split('/')[1]);
+            var baseAsset = symbol.Split('/')[0];
+            var quoteAsset = symbol.Split('/')[1];
 
-            var spotBaseAssetBalance = spotBaseAsset.Success ? spotBaseAsset.balance : 0;
-            var creditBaseAssetBalance = creditBaseAsset.Success ? creditBaseAsset.balance : 0;
-            var spotQuoteAssetBalance = spotQuoteAsset.Success ? spotQuoteAsset.balance : 0;
-            var creditQuoteAssetBalance = creditQuoteAsset.Success ? creditQuoteAsset.balance : 0;
+            // Read the user's various balances.
+            var reads = new[]
+            {
+                await ReadBalanceAsync(userId, baseAsset),
+                await ReadBalanceAsync(userId, "CREDIT_" + baseAsset),
+                await ReadBalanceAsync(userId, quoteAsset),
+                await ReadBalanceAsync(userId, "CREDIT_" + quoteAsset)
+            };
+
+            // A balance we could not read is not a balance of zero (issue #290). Every one of these
+            // rows used to be written down as 0 when its read failed, and the method still answered
+            // Success — so a wallet outage arrived at every caller as "this customer has nothing",
+            // and the customer was told their funds were short and to go and top up.
+            //
+            // An absent wallet is different and stays zero: the customer really does hold none of
+            // that asset. Only IRT, MAUA and CREDIT_MAUA exist at registration, so refusing to
+            // decide whenever a row is missing would refuse every trade on every other symbol.
+            var unavailable = Array.Find(reads, r => r.Outcome == BalanceRead.Unavailable);
+
+            if (unavailable.Outcome == BalanceRead.Unavailable)
+            {
+                _logger?.LogWarning(
+                    "Balance check for user {UserId} on {Symbol} could not read a balance, so it reports nothing rather than zero — {Message}",
+                    userId, symbol, unavailable.Message);
+
+                return (false, "بررسی موجودی انجام نشد", false, false);
+            }
+
+            var spotBaseAssetBalance = reads[0].Balance;
+            var creditBaseAssetBalance = reads[1].Balance;
+            var spotQuoteAssetBalance = reads[2].Balance;
+            var creditQuoteAssetBalance = reads[3].Balance;
 
             return (
                 true,
@@ -299,17 +324,60 @@ public class WalletApiClient : IWalletApiClient
         }
     }
 
+    /// <summary>
+    /// What a single balance read produced. Three outcomes, not two, because "the customer holds
+    /// none of this asset" and "we could not find out" are different facts with different
+    /// consequences, and collapsing them is issue #290.
+    /// </summary>
+    private enum BalanceRead
+    {
+        /// <summary>The wallet answered with a balance.</summary>
+        Read,
+
+        /// <summary>
+        /// The customer has never held this asset, so the balance is genuinely zero. Only IRT,
+        /// MAUA and CREDIT_MAUA are seeded at registration; every other row appears when something
+        /// first writes to it, and reading one before that answers 400.
+        /// </summary>
+        NoWallet,
+
+        /// <summary>
+        /// The read did not happen — unreachable, timed out, a server error, an unreadable body.
+        /// Nothing is known about this balance, and nothing may be assumed about it.
+        /// </summary>
+        Unavailable
+    }
+
+    /// <summary>
+    /// One asset's balance, with a failed read and an absent wallet both reported as
+    /// <c>Success = false</c>.
+    /// </summary>
+    /// <remarks>
+    /// Kept at this shape because it is on <see cref="IWalletApiClient"/>. Callers that need to
+    /// tell "no wallet" from "could not read" must not use it —
+    /// <see cref="ValidateCreditAndBalanceAsync"/> uses <see cref="ReadBalanceAsync"/> for exactly
+    /// that reason (issue #290).
+    /// </remarks>
     public async Task<(bool Success, string Message, decimal? balance)> GetBalanceAsync(Guid userId, string asset)
+    {
+        var (outcome, message, balance) = await ReadBalanceAsync(userId, asset);
+
+        return outcome == BalanceRead.Read
+            ? (true, message, balance)
+            : (false, message, (decimal?)null);
+    }
+
+    private async Task<(BalanceRead Outcome, string Message, decimal Balance)> ReadBalanceAsync(Guid userId, string asset)
     {
         // Input validation
         if (userId == Guid.Empty)
         {
-            return (false, "شناسه کاربر نامعتبر است.", null);
+            return (BalanceRead.Unavailable, "شناسه کاربر نامعتبر است.", 0m);
         }
 
         if (string.IsNullOrWhiteSpace(asset))
         {
-            return (false, "نوع دارایی مشخص نشده است.", null);
+            return (BalanceRead.Unavailable, "نوع دارایی مشخص نشده است.", 0m);
         }
 
         HttpResponseMessage? response = null;
@@ -344,15 +412,15 @@ public class WalletApiClient : IWalletApiClient
                         _logger.LogError(
                             "Balance response for user {UserId}, asset {Asset} parsed but carried no wallet.",
                             userId, asset);
-                        return (false, "خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
+                        return (BalanceRead.Unavailable, "خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", 0m);
                     }
 
-                    return (true, "موجودی دریافت شد.", walletDto.Data.Balance);
+                    return (BalanceRead.Read, "موجودی دریافت شد.", walletDto.Data.Balance);
                 }
                 catch (JsonException jsonEx)
                 {
                     _logger.LogError(jsonEx, "Unreadable balance payload for user {UserId}, asset {Asset}.", userId, asset);
-                    return (false, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", null);
+                    return (BalanceRead.Unavailable, $"خطا در پردازش اطلاعات دریافتی: پاسخ سرور قابل تفسیر نیست.", 0m);
                 }
             }
             else
@@ -390,50 +458,59 @@ public class WalletApiClient : IWalletApiClient
                     }
                 }
 
-                return (false, errorMessage, null);
+                // 400 is how this endpoint says the customer has never held the asset: only IRT,
+                // MAUA and CREDIT_MAUA are seeded and every other row appears when something first
+                // writes to it. That is a real zero. Every other status means we did not learn the
+                // balance, and a balance we could not read is not a balance of zero (issue #290).
+                var outcome = response.StatusCode is System.Net.HttpStatusCode.BadRequest
+                                                  or System.Net.HttpStatusCode.NotFound
+                    ? BalanceRead.NoWallet
+                    : BalanceRead.Unavailable;
+
+                return (outcome, errorMessage, 0m);
             }
         }
         catch (HttpRequestException httpEx)
         {
             // Network-related errors
-            return (false, $"خطا در ارتباط شبکه: {httpEx.Message}", null);
+            return (BalanceRead.Unavailable, $"خطا در ارتباط شبکه: {httpEx.Message}", 0m);
         }
         catch (TaskCanceledException tcEx) when (tcEx.InnerException is TimeoutException)
         {
             // Request timeout
-            return (false, "زمان انتظار درخواست به پایان رسید. لطفاً مجدداً تلاش کنید.", null);
+            return (BalanceRead.Unavailable, "زمان انتظار درخواست به پایان رسید. لطفاً مجدداً تلاش کنید.", 0m);
         }
         catch (TaskCanceledException)
         {
             // Request was cancelled
-            return (false, "درخواست لغو شد.", null);
+            return (BalanceRead.Unavailable, "درخواست لغو شد.", 0m);
         }
         catch (OperationCanceledException)
         {
             // Operation was cancelled
-            return (false, "عملیات لغو شد.", null);
+            return (BalanceRead.Unavailable, "عملیات لغو شد.", 0m);
         }
         catch (JsonException jsonEx)
         {
             _logger.LogError(jsonEx, "Unreadable error payload for user {UserId}, asset {Asset}.", userId, asset);
             // JSON parsing errors
-            return (false, "خطا در پردازش اطلاعات دریافتی از سرور.", null);
+            return (BalanceRead.Unavailable, "خطا در پردازش اطلاعات دریافتی از سرور.", 0m);
         }
         catch (ArgumentException argEx)
         {
             // Invalid arguments
-            return (false, $"پارامتر نامعتبر: {argEx.Message}", null);
+            return (BalanceRead.Unavailable, $"پارامتر نامعتبر: {argEx.Message}", 0m);
         }
         catch (InvalidOperationException invOpEx)
         {
             // Invalid operation state
-            return (false, $"عملیات غیرمجاز: {invOpEx.Message}", null);
+            return (BalanceRead.Unavailable, $"عملیات غیرمجاز: {invOpEx.Message}", 0m);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Unexpected error while fetching a balance.");
             // Catch-all for any other unexpected exceptions
-            return (false, "خطای غیرمنتظره در ارتباط با سرور", null);
+            return (BalanceRead.Unavailable, "خطای غیرمنتظره در ارتباط با سرور", 0m);
         }
         finally
         {

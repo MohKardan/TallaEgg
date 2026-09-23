@@ -46,7 +46,19 @@ public class OrderBookBalanceRefusalTests
     private readonly InMemoryConversationStore _conversations = new();
     private readonly CapturingLogger<BotHandler> _logger = new();
 
-    /// <summary>The wallet's two distinguishable answers, and nothing else.</summary>
+    /// <summary>
+    /// The wallet's two distinguishable answers, and nothing else.
+    ///
+    /// <para>
+    /// <b>This stub is only trustworthy because the real client is pinned separately.</b> The first
+    /// version of these tests invented the outage tuple — <c>Success = false</c> — and the real
+    /// <c>WalletApiClient</c> never produced it: every failure was swallowed into "balance zero,
+    /// check succeeded". Three tests here were green against behaviour that did not exist.
+    /// <c>WalletUnreachableIsNotZeroBalanceTests</c> drives the real client over a stubbed
+    /// transport and is what makes the shape below true; if that file is ever deleted, these tests
+    /// go back to proving nothing.
+    /// </para>
+    /// </summary>
     private sealed class WalletStub : StubWalletApiClient
     {
         public bool CheckSucceeds { get; set; } = true;

@@ -25,8 +25,8 @@ namespace Orders.Application;
 internal static class OrderRefusalMessages
 {
     /// <summary>The customer's balance and credit together do not cover the order.</summary>
-    public const string InsufficientFunds = TallaEgg.Core.RefusalMessages.InsufficientFunds;
+    public static readonly string InsufficientFunds = TallaEgg.Core.RefusalMessages.InsufficientFunds;
 
     /// <summary>The balance check did not complete, so nothing is known about the funds.</summary>
-    public const string BalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
+    public static readonly string BalanceCheckFailed = TallaEgg.Core.RefusalMessages.BalanceCheckFailed;
 }
