@@ -37,15 +37,33 @@ agent that made a change is not independent evidence about it.
 | 2026-08-29 | 7.8 / 10 | ~65% | [v7.0](METHODOLOGY_v7.md) | GLM (Z.ai) / Cline | [`AUDIT_2026-08b.md`](AUDIT_2026-08b.md) |
 | 2026-09-12 | 7.0 / 10 | ~68% | [v8.0](METHODOLOGY_v8.md) | GLM-5.3-Flash (Z.ai) / ZCode | [`AUDIT_2026-09.md`](AUDIT_2026-09.md) |
 | 2026-09-26 | 8.0 / 10 | ~78% | [v9.0](METHODOLOGY_v9.md) | Gemini 3.8 Flash / Cline | [`AUDIT_2026-09b.md`](AUDIT_2026-09b.md) |
+| 2026-10-01 | 7.6 / 10 | ~72% | [v9.0](METHODOLOGY_v9.md) | DeepSeek V4.1 Flash / Cline | [`AUDIT_2026-10.md`](AUDIT_2026-10.md) (measured 2026-09-26 … 09-29) |
 
-**Read this column-by-column, not row-by-row.** The three runs used different methods and
-different models — the product owner supplied the model attribution for the first two rows in
-August 2026, and the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known
-for every run, and the method is readable for two of the three. A score that rises between
-runs may mean the code improved, or that a different reader weighted the same code
-differently. The comparison is only sound where the methodology and model columns match —
-which, so far, they never do. v7 requires both to be recorded, so the 2026-08-29 run is the
-first whose successor can be genuinely comparable to it.
+**The last two rows are the archive's first genuinely comparable pair, and they disagree.** Both were
+run under v9, both audited the same commit (`70df6a5`), and they differ in reader — 8.0 from Gemini 3.8
+Flash, 7.6 from DeepSeek V4.1 Flash. The code was identical between them; only the reader differed. That
+is what the caveat below is for, and this is the first time it can be applied to real data rather than
+asserted: read the two `AUDIT_2026-09b.md` and `AUDIT_2026-10.md` finding sets side by side, and note
+that the later one reports two Mediums the earlier one did not observe while agreeing with it about the
+one unresolved High. **[`AUDIT_2026-10.md`](AUDIT_2026-10.md) §4 carries an ID map**, because the two runs
+extended the same finding-ID space differently — `M-5` means rate limiting in one file and the
+launch-profile authentication gap in the other.
+
+**The newest row is dated after its own measurements.** That audit's working sessions ran on 2026-09-26
+and 2026-09-29 and it was written up on 2026-09-30, but it is dated **2026-10-01** — the day it was
+committed and archived, which is the date its file name (`AUDIT_2026-10.md`) carries. §3 of that file
+gives the measurement window session by session, and that section — not the file name and not this
+column — is the record of when the readings were taken.
+
+**Read this column-by-column, not row-by-row.** These runs used different methods and different
+models — the product owner supplied the model attribution for the first two rows in August 2026, and
+the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known for every run. The newest
+row's model was not visible to the session that ran it; it was read from Cline's own state on the
+machine afterwards, and §1 of that file says how and flags that it is the tool's record rather than a
+live read. The method is readable for four of the six. A score that rises between runs may mean the code
+improved, or that a different reader weighted the same code differently. The comparison is only sound
+where the methodology **and** the code column match, and until 2026-09-26 no two rows had ever shared a
+methodology version. v7 requires both to be recorded; v9 is the first version to have produced two runs.
 
 **The 2026-08-26 run had no methodology.** It was commissioned by two sentences inside a
 message about something else — audit the code, every service except Affiliate — and
