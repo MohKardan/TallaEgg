@@ -1,11 +1,9 @@
-# TallaEgg — MVP Risk Audit (v9)
+# TallaEgg — MVP Risk Audit (v10)
 
-**Methodology Version:** 9.0
-**Supersedes:** v8 (kept as `METHODOLOGY_v8.md`, since `AUDIT_2026-09.md` was run under it)
-**Status:** **superseded by [`METHODOLOGY_v10.md`](METHODOLOGY_v10.md)**. Do not run an audit
-from this file. It is kept because `AUDIT_2026-09b.md` and `AUDIT_2026-10.md` were conducted under
-it and cite it. v10 keeps every rule below and adds two, both from those two runs; its "Changes
-from v9" table says which and why.
+**Methodology Version:** 10.0
+**Supersedes:** v9 (kept as `METHODOLOGY_v9.md`, since `AUDIT_2026-09b.md` and `AUDIT_2026-10.md`
+were run under it)
+**Status:** current — use this file, not a pasted copy of an older prompt.
 
 ## WHAT THIS IS
 
@@ -363,7 +361,7 @@ than pad.
 | Recommendation | concrete and actionable — and, if it removes or changes existing code, what that code does today (see below) |
 | Confidence | High / Medium / Low |
 | Estimated Effort | Low / Medium / High |
-| Already Tracked | GitHub issue number, or "no" |
+| Already Tracked | Issue or PR number, and which row of the tracker table applies (tracked / fix in flight / regression of #N / new). "New" lists the search terms in the notes |
 
 **A recommendation to remove or change code must first say what that code does.** The
 reproduction requirement exempts Medium and Low findings, so their recommendations get the
@@ -380,19 +378,49 @@ The caps below are deliberately harsh; the correct response to a bad score is to
 it, not to reclassify the finding that caused it. If a cap feels wrong, say so in prose
 next to the score — that is a legitimate audit statement. Moving the severity is not.
 
-## Cross-reference open issues
+## Check the tracker before calling anything new
 
-After the findings are final and their severities fixed, run:
+**Do this after severities are fixed and before any finding is given an ID or called "new".**
+Doing it afterwards, as v9 did, gets the tracker into the roadmap but leaves the IDs and the
+"new" label already wrong. A finding that matches the tracker is not new work, and a report that
+calls it new sends the team to re-triage something they already decided.
+
+Listing open issue titles is not enough. Search **every state** of **both** issues and pull
+requests, for each finding, using its file, its method or type name, and one or two words from
+its failure:
 
 ```
-gh issue list --state open --limit 100
-gh issue list --label audit-finding --state all
+gh issue list --state all --search "<file or symbol or keyword>" --limit 50
+gh pr list    --state all --search "<file or symbol or keyword>" --limit 50
+gh issue list --label audit-finding --state all --limit 200
 ```
 
-Mark every finding that already has an issue with its number. This changes the
-**roadmap**, not the finding: something already filed is still a real risk, but the team
-needs to know it is not new work. Note that a finding's *status* is never assessed from
-the tracker — status always comes from current code.
+Open the body of anything that matches; a title alone does not settle it. Then classify the
+finding as one of these, and say which in its **Already Tracked** field:
+
+| What the search finds | What the finding is | What the report does |
+|---|---|---|
+| An **open issue** describing it | Tracked, not new | Cite the issue. Keep the ID the finding already carries (see the ID rule below). Put anything this run adds (new evidence, a corrected location, a recommendation that conflicts with a decision record) under the finding, marked *for the tracker*, so the team can copy it onto the issue |
+| An **open PR** addressing it | Tracked, fix in flight | Cite the PR. Status still comes from the code on the audited commit, not from the PR |
+| A **closed issue or merged PR** that fixed it, and the defect is back in the code | **Regression**, which is new | Report it as new, cite the fix it undid, and reproduce it if it is High or above. A regression is worth more attention than an ordinary new finding, not less |
+| A **closed issue** declined as by-design or won't-fix, or a decision record | Not a finding, unless the run argues against the decision | Drop it, or report it only as an explicit disagreement with the decision, naming it, as Section 0 requires |
+| Nothing, after the searches above | **New** | Report it as new, and list the search terms in the notes so "no match" is traceable |
+
+**"No match" is a claim like any other.** The unobserved-output rule applies: a search whose
+output did not come back is unchecked, not empty. The traceability rule applies too: Session 4
+may not write "not tracked" unless the notes contain the searches that found nothing.
+
+**IDs.** A finding that was already reported keeps the ID it was given in the most recent
+archived audit that defined it. Do not mint a second one. A genuinely new finding takes the next
+number above the **highest ID used in any archived audit**, not only the most recent one. Two runs
+from one baseline otherwise hand out the same IDs to different findings. `AUDIT_2026-09b.md` and
+`AUDIT_2026-10.md` did exactly that: "M-5" means rate limiting in one and the authentication-off
+launch profile in the other.
+
+This changes a finding's **newness and ID**, never its severity, which is already fixed, and never
+its status, which always comes from current code. The audit still writes nothing to GitHub. It may
+read the tracker but may not open, comment on or close issues; turning findings into issues is the
+team's work after the report is archived.
 
 ## Detect audit mode and compare
 
@@ -401,7 +429,8 @@ otherwise each file's `**Audit Date**` line. No prior file: initial audit. Prior
 exists: re-audit — check every open prior finding against *current code*, not tracker or
 issue status, and classify Resolved / Partial / Contained / Open. If a prior finding
 turns out to have been wrong, mark it **Corrected** with the real explanation rather than
-silently dropping it. Continue the ID sequence for genuinely new findings.
+silently dropping it. IDs follow the ID rule in "Check the tracker before calling anything
+new": a known finding keeps its ID, and a new one continues from the highest ID in the archive.
 
 **Before writing a single row, run this and read the output:**
 
@@ -446,7 +475,7 @@ Required sections, in this order:
    Audit Date: <real date>
    Commit / Branch: <real git output, or "unavailable">
    Audit ID: TALLAEGG-AUDIT-<YYYYMMDD>-<short id>
-   Methodology Version: 9.0
+   Methodology Version: 10.0
    ```
    Plus, once:
    > This audit was performed with the assistance of Artificial Intelligence, based on
@@ -511,7 +540,21 @@ Nothing else.
 
 ---
 
-## CHANGES FROM v8
+## CHANGES FROM v9
+
+Recorded so a future reader can tell whether a score moved because the code improved or
+because the method changed. Both changes come from the two v9 runs of commit `70df6a5`,
+`AUDIT_2026-09b.md` and `AUDIT_2026-10.md`, read side by side when their findings were turned
+into issues (#331, #332) and comments on the issues they duplicated.
+
+| # | Change | Why |
+|---|---|---|
+| M | The tracker is searched, in every state and for PRs as well as issues, **before** a finding is given an ID or called new, and each match is classified (tracked / fix in flight / regression / declined / new) | v9 cross-referenced only open issue titles, and only after the findings were final. `AUDIT_2026-09b.md` reported nothing that was not already filed (#36, #279, #280, #282), yet gave all four fresh IDs, so a reader could take them for new work. The check existed, but it ran too late and looked in too few places to change anything |
+| N | A known finding keeps its ID; a new one continues from the highest ID anywhere in the archive | The two runs started from the same baseline and handed out M-5, M-6 and L-2 to different findings. Every comment linking those findings to issues had to explain which M-5 it meant |
+
+Every rule below remains in force.
+
+## Inherited from v9 (changes from v8)
 
 Recorded so a future reader can tell whether a score moved because the code improved or
 because the method changed. Every one of these comes from a specific defect in the
@@ -527,8 +570,6 @@ because the method changed. Every one of these comes from a specific defect in t
 
 H, I and J were found reading the report; K and L while turning its findings into issues
 (#277–#282), which is where a finding's recommendation first meets the code it names.
-
-Every rule below remains in force.
 
 ## Inherited from v8 (changes from v7)
 

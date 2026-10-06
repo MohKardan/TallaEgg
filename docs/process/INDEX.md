@@ -48,7 +48,8 @@ opening a PR.
 docs/
 ├── audit/
 │   ├── README.md                  ← Archive index and score trend across all audits
-│   ├── METHODOLOGY_v9.md          ← How the next audit is run (current methodology)
+│   ├── METHODOLOGY_v10.md         ← How the next audit is run (current methodology)
+│   ├── METHODOLOGY_v9.md          ← Retired; kept because AUDIT_2026-09b.md and AUDIT_2026-10.md were run under it
 │   ├── METHODOLOGY_v8.md          ← Retired; kept because AUDIT_2026-09.md was run under it
 │   ├── METHODOLOGY_v7.md          ← Retired; kept because AUDIT_2026-08b.md was run under it
 │   ├── METHODOLOGY_v1.md          ← The original July prompt, archived for comparability
@@ -158,7 +159,7 @@ and says which audit is most recent.
 - [`AUDIT_2026-07.md`](../audit/AUDIT_2026-07.md) — 9 CRITICAL findings (C-1–C-9), 4 HIGH; 4.6/10, 30% prod-ready. Full Farsi report alongside it as `.html`
 - [`AUDIT_2026-08.md`](../audit/AUDIT_2026-08.md) — re-audit: 6.6/10, ~55%; also records which of its own findings were wrong
 - [`AUDIT_2026-08b.md`](../audit/AUDIT_2026-08b.md) — 7.8/10, ~65%; the first audit run by a model that did not write the code
-- [`METHODOLOGY_v9.md`](../audit/METHODOLOGY_v9.md) — how to run the next audit
+- [`METHODOLOGY_v10.md`](../audit/METHODOLOGY_v10.md) — how to run the next audit
 
 **When to use**:
 - To understand the "why" behind sprint priorities
