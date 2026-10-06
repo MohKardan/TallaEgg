@@ -714,7 +714,7 @@ bin/
 obj/
 /clean_build.bat
 
-# Disposable working notes from a risk audit (docs/audit/METHODOLOGY_v9.md).
+# Disposable working notes from a risk audit (docs/audit/METHODOLOGY_v10.md).
 # The archived deliverable is docs/audit/AUDIT_YYYY-MM.md; nothing in here is kept.
 .audit-work/
 
