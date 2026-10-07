@@ -41,7 +41,7 @@ agent that made a change is not independent evidence about it.
 | 2026-10-06 | 5.0 / 10 | ~50% | [v9.0](METHODOLOGY_v9.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10b.md`](AUDIT_2026-10b.md) |
 | 2026-10-06 | 5.0 / 10 | ~50% | [v10.0](METHODOLOGY_v10.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10c.md`](AUDIT_2026-10c.md) |
 
-**The last two rows are the archive's first genuinely comparable pair, and they disagree.** Both were
+**The 2026-09-26 and 2026-10-01 rows are the archive's first genuinely comparable pair, and they disagree.** Both were
 run under v9, both audited the same commit (`70df6a5`), and they differ in reader — 8.0 from Gemini 3.8
 Flash, 7.6 from DeepSeek V4.1 Flash. The code was identical between them; only the reader differed. That
 is what the caveat below is for, and this is the first time it can be applied to real data rather than
@@ -136,6 +136,12 @@ why it requires Critical and High findings to be reproduced rather than only rea
 
 Treat findings in the archive that were traced through an actual execution path as
 substantially more reliable than those reasoned from structure.
+
+**Errors found after publication are recorded in [`REVIEW_NOTES.md`](REVIEW_NOTES.md)**, one
+section per audit, because an archived audit is never edited. Read an audit's section there before
+acting on any of its findings. The two 2026-10-06 audits in particular: of the four distinct findings they
+report between them, one is real (#334). The other three are false as stated, and the real issues behind
+two of them were already filed (#36, #332).
 
 ## History of this directory
 
