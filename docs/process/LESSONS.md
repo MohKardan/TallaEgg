@@ -67,6 +67,25 @@ GitHub appends the PR number only when it composes the subject itself. With
 `gh pr merge --squash --subject "…"`, include `(#<n>)` yourself. #244 is the one commit in the log
 without it, and history is not rewritten to fix that.
 
+### A PR that links a file added by another open PR fails CI until that one merges
+
+The `check-doc-paths` step in CI fails on any link to a path that does not exist in the commit it
+checks. #336 linked `docs/audit/REVIEW_NOTES.md`, which #335 was adding at the same time, so #336 went
+red (2026-10-07). It was merged red anyway, and `main` stayed green only because #335 happened to be
+merged first.
+
+When one PR depends on another: say so at the top of the dependent PR's description, merge them in
+that order, then re-run the dependent PR's checks (`gh run rerun <run id>`) and merge it only once they
+are green. Or keep the link out until the first PR has merged.
+
+### Write GitHub text to a file, not inline from PowerShell
+
+A review posted from PowerShell on 2026-10-07 came out with every backtick replaced by a backslash
+(`\REVIEW_NOTES.md\`). The backtick is PowerShell's escape character, and text passed inline to
+`gh` goes through the shell first. Write the body to a file and pass `--body-file`, or use a
+single-quoted here-string, then read the posted text back (`gh pr view <n> --comments`) before
+moving on.
+
 ---
 
 ## Build

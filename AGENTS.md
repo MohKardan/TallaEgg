@@ -28,6 +28,15 @@ given so you can apply it where the wording does not quite reach.
   If a push to `main` ever succeeds, it bypassed that ruleset: say so rather than carry on.
 - **Merge only when the owner asks you to.** Squash-merge, then delete the branch locally as well as
   on GitHub. [`docs/process/LESSONS.md`](docs/process/LESSONS.md) has the mechanics that have gone wrong.
+- **Never merge while the `test` check is red or still running.** Being asked to merge does not cover a
+  failing check: stop and report it. The owner's account can merge past a red check, and agents act
+  with that account, so a merge going through proves nothing about whether it was allowed. On
+  2026-10-07, #336 was merged with its check red.
+- **A review records what was checked.** Read the diff and the CI result, then say what you verified
+  and what you did not, with a line comment wherever something is wrong. A review that only praises,
+  posted seconds before the merge, is not a review: #335 and #336 were each approved that way and
+  merged within a minute. If the PR judges your own earlier work, say so, because you are not an
+  independent reviewer of it.
 - **Never rewrite history**, including to remove a leaked secret
   ([decision 008](docs/decisions/008-git-history-is-not-rewritten.md)).
 - **Do not open, close or label GitHub issues unless asked.** The issue list is how the team decides
