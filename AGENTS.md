@@ -80,11 +80,27 @@ given so you can apply it where the wording does not quite reach.
   trailer on commits, and in the metadata of an audit. When the runtime does not tell you your model,
   say so rather than guess: the audit archive has had to correct a wrong attribution twice.
 
-**Shared memory**
+**Shared memory: every agent records what it learned**
 
-- **What the next agent needs to know goes into this repository, not only into your tool's private
-  memory.** Each tool's memory is invisible to every other tool. When you learn something durable,
-  propose it in a PR, in the right place:
+Several agents in several tools work here, and none can see another's private memory. A mistake one
+agent learned from will be repeated by the next unless it is written down where the next one reads.
+Each repeat costs the owner time and costs tokens, so recording is part of every task, not an extra.
+
+- **Before you start, read what others learned.** Skim the headings of
+  [`docs/process/LESSONS.md`](docs/process/LESSONS.md) and open the entries that touch your task. It
+  takes a minute and is far cheaper than rediscovering one of them.
+- **Before you report a task done, record what it taught you.** Ask yourself whether anything cost time:
+  a failed attempt, a wrong assumption, a tool or command that misbehaved, a rule you did not know, a
+  check that failed. If it would cost the next agent the same, write it down, in the same PR when the
+  task has one and in a small `docs/` PR when it does not.
+- **Your own mistakes count most.** An entry that says "I did X, it broke Y, do Z instead" is the most
+  useful kind there is. Write it plainly, without blame and without softening.
+- **Say so in your final report:** what you recorded and where, or that the task taught nothing worth
+  recording. Silence leaves the owner unable to tell whether you checked.
+- **Keep entries short and current.** Each says what happened (date, PR or issue), how it showed, and
+  what to do instead, in one screen at most. Search for an existing entry first, and update it rather
+  than adding a second one. Delete an entry that has stopped being true.
+- **Where it goes** depends on the kind of knowledge:
 
   | Kind of knowledge | Where it goes |
   |---|---|

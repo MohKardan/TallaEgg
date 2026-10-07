@@ -9,10 +9,12 @@ the import below, open `AGENTS.md` and read it before doing anything else.
 **Do not add rules to this file.** A rule here is invisible to every tool that is not Gemini. Put it in
 `AGENTS.md`.
 
-The three rules most often broken, repeated here so that they survive a failed import:
+The four rules most often broken, repeated here so that they survive a failed import:
 
 1. **Never commit or push to `main`.** Branch, then open a pull request. This applies to audit reports
    and documentation too.
 2. **Read `docs/decisions/` and `docs/product/DIRECTION.md` before recommending or deleting
    anything.**
 3. **Do not open GitHub issues unless the owner asks.**
+4. **Before you report a task done, record what it taught you** in `docs/process/LESSONS.md`,
+   including your own mistakes, so the next agent does not repeat them.

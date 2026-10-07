@@ -8,9 +8,16 @@ other agent could see it. It is for **how things behave**: git, the build, the l
 **Why the product is the way it is** belongs in [`../decisions/`](../decisions/README.md), and the
 rules every agent follows belong in [`../../AGENTS.md`](../../AGENTS.md).
 
-**Adding an entry:** open a PR. Say what happened, when, and the command or measurement that showed it.
-Re-check an entry before quoting it somewhere permanent, because the fix may have landed since it was
-written. Delete an entry once it no longer holds; a wrong lesson is worse than none.
+**Every agent adds to this file.** [`AGENTS.md`](../../AGENTS.md) → "Shared memory" makes it part of
+every task: read the headings before you start, and before you report the task done, add what it
+taught you, including your own mistakes. An entry here saves the next agent the session it cost you,
+and saves the owner the time and tokens of watching the same mistake twice.
+
+**Adding an entry:** in the task's own PR, or a small `docs/` PR. Put it under the right heading. Say
+what happened, when, and the command or measurement that showed it, then what to do instead; one screen
+at most. Search first and update an existing entry rather than adding a near-duplicate. Re-check an
+entry before quoting it somewhere permanent, because the fix may have landed since it was written.
+Delete an entry once it no longer holds; a wrong lesson is worse than none.
 
 ---
 
