@@ -8,6 +8,8 @@ the canonical source for coding standards and branch/commit/PR conventions
 `docs/process/CODE_REVIEW_GUIDE.md`). It applies equally to human developers and AI agents.
 **Live priorities are GitHub issues** — `gh issue list` — not any document in this repository.
 
+**Agent Identity and Attribution:** When an AI agent performs work (audits, commits, issue creation/comments, etc.), the agent **must** attribute the work to themselves using their full, specific identity and provider details (e.g. `Gemini 3.1 Pro High / Antigravity` or `DeepSeek V4.1 Flash / Cline`), rather than generic names (like `AI` or `Antigravity AI`). This ensures precise traceability of which model and orchestration framework produced the output.
+
 ## Build Commands
 - **Build entire solution:** `dotnet build TallaEgg.sln`
 - **Run tests:** `dotnet test TallaEgg.sln` (xUnit only — no Moq, no FluentAssertions)
