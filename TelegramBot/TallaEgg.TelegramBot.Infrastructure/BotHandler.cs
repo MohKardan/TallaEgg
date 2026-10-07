@@ -664,6 +664,11 @@ namespace TallaEgg.TelegramBot.Infrastructure
                         else
                             await RejectUser(targetTelegramId, telegramId, message);
                     }
+                    // orders_, trades_, cancel_order_ and users_ carry an account or order id in the
+                    // callback data, and none of them used to check that the person tapping may see
+                    // or act on it — the same hole approve_ had above, for the same reason. Issue
+                    // #334: any Telegram client can send any callback string, so each branch now
+                    // asks who is asking before it reads or changes anything.
                     else if (data.StartsWith("orders_"))
                     {
 
@@ -672,6 +677,12 @@ namespace TallaEgg.TelegramBot.Infrastructure
                             Guid.TryParse(parts[1], out var uid) &&
                             int.TryParse(parts[2], out var pageNum))
                         {
+                            if (await CallerWhoMayViewAsync(telegramId, uid) is null)
+                            {
+                                await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgNotAuthorized);
+                                return;
+                            }
+
                             var page = await _orderApi.GetUserOrdersAsync(uid, pageNum, pageSize: 5);
 
                             var text = await OrderListHandler.BuildOrdersListAsync(page.Data!, pageNum);
@@ -695,11 +706,21 @@ namespace TallaEgg.TelegramBot.Infrastructure
                             Guid.TryParse(parts[1], out var uid) &&
                             int.TryParse(parts[2], out var pageNum))
                         {
+                            // An operator pages a customer's trades from «معامله <phone>», so the id
+                            // is legitimately someone else's for them — and only for them.
+                            var pager = await CallerWhoMayViewAsync(telegramId, uid);
+                            if (pager is null)
+                            {
+                                await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgNotAuthorized);
+                                return;
+                            }
+
                             var page = await _orderApi.GetUserTradesAsync(uid, pageNum, pageSize: 5);
 
-                            // uid is the user viewing the list; it decides whether each trade was a
-                            // buy or a sell from their point of view.
-                            var pagerIsAdmin = await IsOperatorAsync(chatId);
+                            // uid is the account whose trades these are — the pager's own, or a
+                            // customer's when an operator pages them. It decides whether each trade
+                            // reads as a buy or a sell, from that account's point of view.
+                            var pagerIsAdmin = IsOperator(pager);
                             var pagerPhones = await ResolveCounterpartyPhonesAsync(page.Data, uid, pagerIsAdmin);
 
                             var text = await TradeListHandler.BuildTradesListAsync(page.Data!, pageNum, uid, pagerPhones);
@@ -750,6 +771,13 @@ namespace TallaEgg.TelegramBot.Infrastructure
                         var orderIdStr = data["cancel_order_".Length..];
                         if (Guid.TryParse(orderIdStr, out var orderId))
                         {
+                            var refusal = await WhyCannotCancelOrderAsync(telegramId, orderId);
+                            if (refusal is not null)
+                            {
+                                await _messenger.AnswerCallbackAsync(callbackQuery.Id, refusal);
+                                return;
+                            }
+
                             var result = await _orderApi.CancelOrderAsync(orderId);
                             if (result.success)
                             {
@@ -775,6 +803,18 @@ namespace TallaEgg.TelegramBot.Infrastructure
                         var parts = data.Split('_', 3); // users_{page}_{query}
                         if (parts.Length >= 2 && int.TryParse(parts[1], out int newPage))
                         {
+                            // The user list carries every customer's name, username and phone
+                            // number, and its page number needs no id to guess — so before this
+                            // check "users_1_", "users_2_", … listed the whole customer base to
+                            // anyone. It is an operator screen (BotHandlerAdmin), and only an
+                            // operator may page it.
+                            var pager = await _usersApi.GetUserAsync(telegramId);
+                            if (pager is null || !IsOperator(pager))
+                            {
+                                await _messenger.AnswerCallbackAsync(callbackQuery.Id, BotMsgs.MsgNotAuthorized);
+                                return;
+                            }
+
                             string? query = parts.Length == 3 ? parts[2] : null;
 
                             // Load the user data for the new page.
@@ -838,6 +878,45 @@ namespace TallaEgg.TelegramBot.Infrastructure
         private bool IsOperator(UserDto user) =>
             user.Role is UserRole.Admin or UserRole.SuperAdmin
             || _ownerTelegramIds.Contains(user.TelegramId);
+
+        /// <summary>
+        /// The account behind a callback, if it may see the orders or trades of
+        /// <paramref name="accountUserId"/> — its own account, or any account for an operator —
+        /// and null if it may not. Returned rather than a bool so a caller that also needs to know
+        /// whether it is an operator does not look the same person up a second time.
+        ///
+        /// Looks the caller up directly rather than through <see cref="IsOperatorAsync"/>, which
+        /// messages an unknown account and throws; an unknown caller is simply refused (issue #334).
+        /// </summary>
+        private async Task<UserDto?> CallerWhoMayViewAsync(long telegramId, Guid accountUserId)
+        {
+            var caller = await _usersApi.GetUserAsync(telegramId);
+            return caller is not null && (caller.Id == accountUserId || IsOperator(caller)) ? caller : null;
+        }
+
+        /// <summary>
+        /// Why the person behind a callback may not cancel <paramref name="orderId"/>, or null if
+        /// they may. Only one of their own active orders — the same set the cancel buttons are built
+        /// from (<see cref="Handlers.ActiveOrdersHandler"/>), which never gives an operator a cancel
+        /// button, so an operator gets no wider reach through a hand-sent callback either. Checked
+        /// against the caller's active orders, so it needs no new endpoint (issue #334).
+        ///
+        /// The refusal does not accuse: an order that filled since its button was drawn is no longer
+        /// active either, and its owner should be told that rather than that they lack permission.
+        /// A failed lookup says so, rather than dressing an outage up as a refusal.
+        /// </summary>
+        private async Task<string?> WhyCannotCancelOrderAsync(long telegramId, Guid orderId)
+        {
+            var caller = await _usersApi.GetUserAsync(telegramId);
+            if (caller is null)
+                return BotMsgs.MsgNotAuthorized;
+
+            var own = await _orderApi.GetUserActiveOrdersAsync(caller.Id);
+            if (!own.Success || own.Data is null)
+                return BotMsgs.MsgUnexpectedError;
+
+            return own.Data.Any(o => o.Id == orderId) ? null : BotMsgs.MsgOrderNotAmongYourActiveOrders;
+        }
 
         /// <summary>
         /// The same question asked when only the chat is at hand. In a private chat — the only
