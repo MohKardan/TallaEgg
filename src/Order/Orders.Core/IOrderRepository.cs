@@ -11,7 +11,11 @@ public interface IOrderRepository
     
     // Read
     Task<Order?> GetByIdAsync(Guid id);
-    Task<List<Order>> GetOrdersByAssetAsync(string asset);
+    /// <summary>
+    /// The open book for one symbol and market: the orders <see cref="Order.IsActive"/> would accept,
+    /// filtered by the database rather than loaded and discarded (issue #280).
+    /// </summary>
+    Task<List<Order>> GetActiveOrdersByAssetAsync(string asset, TradingType tradingType);
     Task<PagedResult<OrderHistoryDto>> GetOrdersByUserIdAsync(Guid userId, int pageNumber,int pageSize);
     Task<List<Order>> GetOrdersByStatusAsync(OrderStatus status);
     Task<List<Order>> GetOrdersByTypeAsync(OrderSide type);

@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Orders.Core;
 using Serilog;
 using TallaEgg.Core;
@@ -454,22 +453,16 @@ public class OrderService
             };
         }
 
-        var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
-
-        // The o.IsMaker() condition was removed.
+        // Only the open book, in that market, filtered by the database (issue #280). This used to
+        // load every order ever placed for the symbol, filter it here, and log the open set as
+        // indented JSON on every call — a cost that grew with history rather than with the book.
         //
-        // Order.Role is always Maker — no path sets it to anything else — so that condition was
-        // always true and filtered nothing, while looking as though it did. The danger was that if
-        // Role were ever set correctly, this method would silently drop taker orders from the
-        // best-price calculation and show the user a wrong price.
-        //
-        // What is actually needed is the two remaining conditions: an open order, in that market.
-        var activeOrders = orders.Where(o =>
-            o.IsActive() &&
-            o.TradingType == tradingType)
-            .ToList();
+        // There is deliberately no o.IsMaker() condition. Order.Role is always Maker — no path sets
+        // it to anything else — so it filtered nothing while looking as though it did, and would
+        // silently drop taker orders from the price the day Role is set correctly.
+        var activeOrders = await _orderRepository.GetActiveOrdersByAssetAsync(asset, tradingType);
 
-        Log.Information("activeOrders:\n" + JsonConvert.SerializeObject(activeOrders, Formatting.Indented));
+        Log.Debug("{Count} open {TradingType} orders for {Asset}.", activeOrders.Count, tradingType, asset);
 
         decimal? bestBid = null;
         decimal? bestAsk = null;
