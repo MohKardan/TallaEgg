@@ -163,3 +163,9 @@ quote.
 credit → trade produces correct balances even when registration created no wallets at all. That is how
 #209 (registration's wallet call answered 401) stayed hidden. When testing anything wallet-related,
 read the log of the registration itself.
+
+### A PR can mutate between review and merge in a multi-agent environment
+
+On 2026-10-07, an agent reviewed PR #337 at 12:51, but the PR was merged at 13:00. In that 9-minute gap, another agent pushed a substantial commit adding the core "Conduct first" rules. The merging agent blindly merged it without noticing the new commit, failing to review the actual final state of the PR. 
+
+When working alongside other agents, never assume a PR's state is frozen. Before executing a merge or final approval, check gh pr view <n> or the latest commit hash to ensure no new commits were pushed since your last read.
