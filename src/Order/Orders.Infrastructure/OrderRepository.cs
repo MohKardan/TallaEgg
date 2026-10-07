@@ -54,13 +54,14 @@ public class OrderRepository : IOrderRepository
         {
             // The status condition is Order.IsActive() restated for SQL, which cannot call it. Keep
             // the two in step: BestBidAskReadTests checks them against each other for every status.
+            // Read-only and unordered: the only caller takes a max and a min.
             return await _dbContext.Orders
+                .AsNoTracking()
                 .Where(o => o.Asset == asset
                     && o.TradingType == tradingType
                     && (o.Status == OrderStatus.Pending
                         || o.Status == OrderStatus.Confirmed
                         || o.Status == OrderStatus.Partially))
-                .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
         }
         catch (Exception ex)

@@ -38,6 +38,7 @@ public class BestBidAskReadTests : IDisposable
 
     private readonly SqliteConnection _connection;
     private readonly CommandCapture _commands = new();
+    private readonly List<OrdersDbContext> _contexts = [];
 
     public BestBidAskReadTests()
     {
@@ -48,7 +49,12 @@ public class BestBidAskReadTests : IDisposable
         setup.Database.EnsureCreated();
     }
 
-    public void Dispose() => _connection.Dispose();
+    public void Dispose()
+    {
+        foreach (var context in _contexts)
+            context.Dispose();
+        _connection.Dispose();
+    }
 
     /// <summary>
     /// Behaviour the change must keep: only open orders of the symbol set the price. The closed
@@ -104,11 +110,14 @@ public class BestBidAskReadTests : IDisposable
         var expected = (await db.Orders.AsNoTracking().ToListAsync())
             .Where(o => o.IsActive()).Select(o => o.Id).OrderBy(id => id).ToList();
 
-        var actual = (await new OrderRepository(NewContext(), NullLogger<OrderRepository>.Instance)
+        var actual = (await new OrderRepository(Tracked(NewContext()), NullLogger<OrderRepository>.Instance)
                 .GetActiveOrdersByAssetAsync(Gold, TradingType.Spot))
             .Select(o => o.Id).OrderBy(id => id).ToList();
 
         Assert.Equal(expected, actual);
+
+        // Guards the comparison against being vacuous: if every status, or none, were active, the
+        // equality above would hold without the filter excluding anything.
         Assert.NotEmpty(actual);
         Assert.NotEqual(idsByStatus.Count, actual.Count);
     }
@@ -151,9 +160,15 @@ public class BestBidAskReadTests : IDisposable
             .AddInterceptors(_commands)
             .Options);
 
+    private OrdersDbContext Tracked(OrdersDbContext context)
+    {
+        _contexts.Add(context);
+        return context;
+    }
+
     private OrderService BuildOrderService()
     {
-        var context = NewContext();
+        var context = Tracked(NewContext());
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
