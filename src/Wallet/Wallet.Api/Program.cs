@@ -82,17 +82,6 @@ TallaEgg.Core.CurrenciesConstant.Configure(builder.Configuration);
 // providers were ordered — the one override #159 could not reach. The file now supplies the
 // listen address only when the host has not already named one (issue #181).
 var urls = serviceSection.GetSection("Urls").Get<string[]>();
-
-// Authentication is registered only in Production (further down). A Development host listening
-// where other machines can reach it is therefore an open API, and nothing else would say so
-// (issue #332). It only warns; the address is applied by the block below as before.
-UnauthenticatedExposure.WarnIfExposed(
-    builder.Environment.EnvironmentName,
-    builder.Environment.IsProduction(),
-    builder.Configuration[WebHostDefaults.ServerUrlsKey] is { Length: > 0 } hostUrls
-        ? hostUrls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-        : urls ?? []);
-
 if (string.IsNullOrWhiteSpace(builder.Configuration[WebHostDefaults.ServerUrlsKey]) && urls is { Length: > 0 })
 {
     builder.WebHost.UseUrls(urls);
@@ -174,6 +163,10 @@ builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToke
 });
 
 var app = builder.Build();
+
+// Authentication is registered only in Production. A Development host bound where other machines
+// can reach it is therefore an open API, and nothing else would say so (issue #332).
+UnauthenticatedExposure.WarnOnceStartedIfExposed(app);
 
 app.UseTallaEggErrorHandling();
 

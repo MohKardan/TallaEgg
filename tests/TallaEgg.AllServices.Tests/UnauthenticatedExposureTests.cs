@@ -1,3 +1,9 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using TallaEgg.Core;
 
 namespace TallaEgg.AllServices.Tests;
@@ -6,7 +12,7 @@ namespace TallaEgg.AllServices.Tests;
 /// Issue #332: authentication is registered only in Production, and <c>dotnet run</c> forces
 /// Development whatever the shell exported. Harmless on loopback; an open API on any address another
 /// machine can reach. <see cref="UnauthenticatedExposure"/> picks out exactly that combination so the
-/// three services can warn about it at startup.
+/// services can warn about it once they have started.
 /// </summary>
 public class UnauthenticatedExposureTests
 {
@@ -16,8 +22,11 @@ public class UnauthenticatedExposureTests
     [InlineData("http://127.0.0.1:5140")]
     [InlineData("http://127.0.0.2:5140")]
     [InlineData("http://[::1]:5140")]
+    [InlineData("http://[::ffff:127.0.0.1]:5140")]
     [InlineData("https://localhost:7001/base/path")]
-    public void ExposedUrls_LoopbackAddressInDevelopment_IsNotReported(string url)
+    [InlineData("http://unix:/tmp/wallet.sock")]
+    [InlineData("http://pipe:/wallet")]
+    public void ExposedUrls_LocalOnlyAddressInDevelopment_IsNotReported(string url)
     {
         Assert.Empty(UnauthenticatedExposure.ExposedUrls(isProduction: false, [url]));
     }
@@ -56,10 +65,73 @@ public class UnauthenticatedExposureTests
         Assert.Equal(["http://0.0.0.0:60934"], exposed);
     }
 
-    /// <summary>The shared config binds every service to loopback today; that must stay silent.</summary>
-    [Fact]
-    public void ExposedUrls_NoAddressesConfigured_ReportsNothing()
+    /// <summary>
+    /// The services check the addresses Kestrel reports once it has bound, not the configuration, so
+    /// the classifier has to understand Kestrel's own spelling of them. A real server on a free port,
+    /// with <b>no endpoints mapped</b> — bound to every interface for a moment, it offers nothing.
+    /// (<c>localhost</c> is covered above only: Kestrel refuses a dynamic port on it.)
+    /// </summary>
+    [Theory]
+    [InlineData("http://0.0.0.0:0", true)]
+    [InlineData("http://127.0.0.1:0", false)]
+    public async Task ExposedUrls_OnTheAddressesKestrelReportsAfterBinding_ClassifiesThem(string listen, bool exposed)
     {
-        Assert.Empty(UnauthenticatedExposure.ExposedUrls(isProduction: false, []));
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
+        builder.WebHost.UseUrls(listen);
+        await using var app = builder.Build();
+
+        await app.StartAsync();
+        var bound = app.Urls.ToList();
+        await app.StopAsync();
+
+        Assert.NotEmpty(bound);
+        Assert.Equal(exposed, UnauthenticatedExposure.ExposedUrls(app.Environment.IsProduction(), bound).Count > 0);
+    }
+
+    /// <summary>
+    /// The wiring, end to end: the warning fires once the server has started, from the addresses it
+    /// bound — and stays silent in Production on the same address. The server maps no endpoints.
+    /// </summary>
+    [Theory]
+    [InlineData("Development", true)]
+    [InlineData("Production", false)]
+    public async Task WarnOnceStartedIfExposed_ServerOnEveryInterface_WarnsOnlyOutsideProduction(string environment, bool warns)
+    {
+        var sink = new CapturingSink();
+        var previous = Log.Logger;
+        Log.Logger = new LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
+        try
+        {
+            var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
+            builder.WebHost.UseUrls("http://0.0.0.0:0");
+            await using var app = builder.Build();
+
+            UnauthenticatedExposure.WarnOnceStartedIfExposed(app);
+
+            await app.StartAsync();
+            await app.StopAsync();
+        }
+        finally
+        {
+            Log.Logger = previous;
+        }
+
+        Assert.Equal(warns, sink.Events.Any(e =>
+            e.Level == LogEventLevel.Warning && e.MessageTemplate.Text.Contains("issue #332")));
+    }
+
+    private sealed class CapturingSink : ILogEventSink
+    {
+        private readonly List<LogEvent> _events = [];
+
+        public IReadOnlyList<LogEvent> Events
+        {
+            get { lock (_events) return _events.ToList(); }
+        }
+
+        public void Emit(LogEvent logEvent)
+        {
+            lock (_events) _events.Add(logEvent);
+        }
     }
 }
