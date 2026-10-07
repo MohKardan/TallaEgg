@@ -26,5 +26,5 @@ other gold shops.
 ## Evidence
 
 - Fee fields on the trade rows in the Orders service, written as `0.00` on every settlement.
-- `AGENT.md` → "Business rules that look like bugs", where this was first written down after being
+- `AGENTS.md` → "Business rules that look like bugs", where this was first written down after being
   reported as a defect.

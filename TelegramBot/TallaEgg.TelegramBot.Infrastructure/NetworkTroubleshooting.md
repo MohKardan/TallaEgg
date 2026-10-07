@@ -2,7 +2,7 @@
 
 The bot reaches Telegram by long polling: it dials **out** to `https://api.telegram.org` and
 Telegram never dials in. Every connectivity problem here is outbound, so no inbound port or
-firewall rule is part of the fix. (`AGENT.md` explains why nothing listens on the bot's
+firewall rule is part of the fix. (`AGENTS.md` explains why nothing listens on the bot's
 configured port.)
 
 ## What the bot actually does
@@ -140,7 +140,7 @@ firewall or antivirus.
 
 ## What is not the problem
 
-- **Inbound ports.** The bot runs as a plain generic host with no web server — see `AGENT.md`.
+- **Inbound ports.** The bot runs as a plain generic host with no web server — see `AGENTS.md`.
   Opening a port fixes nothing.
 - **The bot token**, when the failure is a timeout rather than a `401`. A bad token is rejected
   fast and clearly; a network problem hangs.

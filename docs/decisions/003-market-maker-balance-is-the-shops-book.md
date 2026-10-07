@@ -33,6 +33,6 @@ is real and is tracked in **#124**. It is a monitoring gap, not a reason to add 
 ## Evidence
 
 - The market maker's wallet rows in the Wallet service.
-- `AGENT.md` → "Business rules that look like bugs", written down after an audit reported this as a
+- `AGENTS.md` → "Business rules that look like bugs", written down after an audit reported this as a
   defect.
 - Issue #124 — the alerting that is missing.

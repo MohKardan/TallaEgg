@@ -13,7 +13,7 @@ not style preferences — every one of them is a mistake this repository has act
 ## The pipeline
 
 ```
-1  Read      AGENT.md, the process docs, the issue
+1  Read      AGENTS.md, the process docs, the issue
 2  Verify    check the issue's own claims against today's code
 3  Explain   the problem, in a few sentences        ─┐ STOP 1
 4  Plan      what you will do, as a short list      ─┘ wait for approval
@@ -33,7 +33,7 @@ Stop again, mid-work, whenever a decision turns out to be the owner's (rule 4).
 
 In this order:
 
-1. `AGENT.md` — all of it. Especially **"Business rules that look like bugs"**, the index of
+1. `AGENTS.md` — all of it. Especially **"Business rules that look like bugs"**, the index of
    things that have each been reported as defects and are not. Reporting one of them again is the
    most common way a session wastes a day here.
 2. `docs/process/STANDARDS.md` and `docs/process/PR_TEMPLATE.md`.

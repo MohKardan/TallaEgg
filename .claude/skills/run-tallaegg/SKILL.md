@@ -16,7 +16,7 @@ window, a conversation replayed through the actual handler code.
 
 All paths below are relative to the repo root (`TallaEgg.sln`'s directory), not to this skill
 directory. The driver is Windows PowerShell (`powershell.exe`, not `pwsh`) — this project's
-native dev environment is Windows with a local SQL Server Express instance, per `AGENT.md`.
+native dev environment is Windows with a local SQL Server Express instance, per `AGENTS.md`.
 
 ## Prerequisites
 
@@ -215,7 +215,7 @@ Invoke-RestMethod http://localhost:5140/api/symbols/active
 ## Run (human path)
 
 `dotnet run --project src/User/Users.Api/Users.Api.csproj` (etc., one per terminal) — the same
-thing `driver.ps1 start` does, but blocking and in the foreground. See `AGENT.md` for the full
+thing `driver.ps1 start` does, but blocking and in the foreground. See `AGENTS.md` for the full
 per-service list, including the bot itself (`TelegramBot/TallaEgg.TelegramBot.Infrastructure`),
 which `driver.ps1` deliberately does not launch — it needs a real, valid Telegram bot token and
 outbound access to `api.telegram.org`, neither of which this driver path requires.
@@ -237,7 +237,7 @@ Unit tests are a sanity check; `smoke` above is what actually proves the running
   PowerShell 5.1, not PowerShell Core. `pwsh -File driver.ps1 ...` fails with "term not
   recognized"; invoke the script directly (`& .claude/skills/run-tallaegg/driver.ps1 start`).
 - **`dotnet test` alone can run against a stale `bin`.** It only builds the test project's own
-  dependency graph — per `AGENT.md`, always `dotnet build TallaEgg.sln` (which `driver.ps1
+  dependency graph — per `AGENTS.md`, always `dotnet build TallaEgg.sln` (which `driver.ps1
   start` does) before relying on `--no-build` anywhere.
 - **The "User not found" 400 warnings during `smoke`'s registration phase are expected, not
   errors.** `UsersApiClient` logs a warning every time it looks up a Telegram id that doesn't

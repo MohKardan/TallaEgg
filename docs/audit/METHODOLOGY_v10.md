@@ -59,7 +59,7 @@ or local database.
 
 Read before writing a single finding.
 
-[`AGENT.md`](../../AGENT.md) has a section titled **"Business rules that look like
+[`AGENTS.md`](../../AGENTS.md) has a section titled **"Business rules that look like
 bugs"**. Every item in it has been reported as a defect at least once, including by a
 previous audit, and each was confirmed as intended by the product owner.
 [`CLAUDE.md`](../../CLAUDE.md) carries the same list in shorter form and is loaded
@@ -79,7 +79,7 @@ documentation is not a finding. It is the mistake the last audit made twice.
 audit's *score, findings, or conclusions* — see the rule below. It does not mean
 auditing while refusing to know what the product is for. Intent is evidence.
 
-The list as of this writing — verify each against `AGENT.md`, which is authoritative:
+The list as of this writing — verify each against `AGENTS.md`, which is authoritative:
 
 - The market maker may go arbitrarily negative on any asset, with no ceiling. That
   balance *is* the shop's book. Absence of alerting is tracked as #124.
@@ -235,7 +235,7 @@ A claim that cannot be traced is not dropped quietly. It is labelled.
 
 # SESSION 1 — Discovery & Architecture (~45–60 min)
 
-Read Section 0 first, then `AGENT.md` and `CLAUDE.md` in full.
+Read Section 0 first, then `AGENTS.md` and `CLAUDE.md` in full.
 
 Real commands only, record actual output:
 
