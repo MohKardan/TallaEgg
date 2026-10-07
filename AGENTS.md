@@ -222,6 +222,14 @@ dotnet run --no-build --project src/Order/Orders.Api/Orders.Api.csproj
 dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
 ```
 
+**These run in Development, with API-key authentication off, whatever `ASPNETCORE_ENVIRONMENT` your
+shell exports.** `dotnet run` applies `Properties/launchSettings.json`, which sets Development and
+overrides the exported value, and authentication is registered only in Production. That is what you
+want on a dev machine and only safe because the services bind loopback. For a Production run, use the
+installed services, or add `--no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production` and
+`TALLAEGG_API_KEY` set. A service in any other environment that listens on a non-loopback address logs
+a warning at startup (issue #332).
+
 `Affiliate.Api` is not normally run — the affiliate feature is dormant. `TallaEgg.Api` registers a
 DbContext and CORS but maps no endpoints, so running it achieves nothing today.
 

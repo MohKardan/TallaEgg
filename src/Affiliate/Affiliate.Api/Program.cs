@@ -127,6 +127,10 @@ builder.Services.AddTallaEggErrorHandling();
 
 var app = builder.Build();
 
+// Authentication is registered only in Production. A Development host bound where other machines
+// can reach it is therefore an open API, and nothing else would say so (issue #332).
+UnauthenticatedExposure.WarnOnceStartedIfExposed(app);
+
 app.UseTallaEggErrorHandling();
 
 // --- مایگریشن و سیید اولیه ---
