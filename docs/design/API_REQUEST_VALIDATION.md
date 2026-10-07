@@ -300,7 +300,7 @@ expressible as a stock DataAnnotation — the trap PR #236 named when it deleted
 **The `Admin` bypass on `POST /api/orders` is intended, not a defect.** An administrator placing an
 order with no funds and no credit is a business rule, confirmed with the product owner on
 17 Shahrivar 1405 (2026-09-08), and it is listed among the rules that look like bugs in
-[`AGENT.md`](../../AGENT.md). It is recorded here because a client cannot see it from the schema —
+[`AGENTS.md`](../../AGENTS.md). It is recorded here because a client cannot see it from the schema —
 the same request refused for one account succeeds for another — not as something to fix. Note it is
 not the dealer mechanism: a quote fill creates the market maker's side through
 `CreateLockedAndConfirmedOrderForQuoteAsync`, which never reaches this check.

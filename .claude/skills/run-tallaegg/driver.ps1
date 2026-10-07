@@ -78,7 +78,7 @@ function Get-ListeningPorts {
 
 function Get-OrdersConnectionString {
     # OutboxMessages lives in the Orders database. Every service reads one shared config file
-    # (AGENT.md — Configuration) and ConnectionStrings sits at its root, not under a service
+    # (AGENTS.md — Configuration) and ConnectionStrings sits at its root, not under a service
     # section.
     $configPath = Join-Path $repoRoot 'config/appsettings.global.json'
     if (-not (Test-Path $configPath)) {

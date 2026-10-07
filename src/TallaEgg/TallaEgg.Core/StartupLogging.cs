@@ -34,7 +34,7 @@ public static class StartupLogging
     /// </summary>
     /// <remarks>
     /// Every service throws before it can serve a request when configuration is missing — that
-    /// is the rule <c>AGENT.md</c> states and what <see cref="ConfigurationGuard"/> enforces.
+    /// is the rule <c>AGENTS.md</c> states and what <see cref="ConfigurationGuard"/> enforces.
     /// The message names the key and the file to edit, so it is written to be acted on by an
     /// operator with no debugger attached.
     ///

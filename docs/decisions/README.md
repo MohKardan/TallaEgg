@@ -41,7 +41,7 @@ C#; nobody is going to change those by accident, and neither needs a record. Tha
 What does **not** belong here:
 
 - **How to work in this repository** — build commands, test commands, code style, which project is
-  runnable. That is [`../../AGENT.md`](../../AGENT.md) and [`../../CLAUDE.md`](../../CLAUDE.md).
+  runnable. That is [`../../AGENTS.md`](../../AGENTS.md) and [`../../CLAUDE.md`](../../CLAUDE.md).
   Those files say *how the agent operates*; this directory says *what we are building and why*.
   Mixing the two is what let these decisions get lost: a reader looking for product intent does not
   open a file about build commands.

@@ -78,12 +78,12 @@ drive it over real Telegram. It asserts nothing, and it needs the `TELEGRAM_BOT_
 ## Conventions worth knowing
 
 Not process, but the things that most often go wrong for someone new to this repo — the full list
-is in [`AGENT.md`](../../AGENT.md) and [`CLAUDE.md`](../../CLAUDE.md):
+is in [`AGENTS.md`](../../AGENTS.md) and [`CLAUDE.md`](../../CLAUDE.md):
 
 - **Build the solution before running any service.** `dotnet test` only builds the test project's
   dependency graph, so an API's `bin` can be stale.
 - **Never commit `config/appsettings.global.json`.** It holds live credentials and this repo is
   public.
-- **Some code that looks dead is dormant by design.** `AGENT.md` → "Business rules that look like
+- **Some code that looks dead is dormant by design.** `AGENTS.md` → "Business rules that look like
   bugs" lists four of them, including zero commission and a balance guard that is correctly
   disabled. Check there before deleting anything as unused.

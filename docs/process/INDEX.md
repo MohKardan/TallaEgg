@@ -7,7 +7,7 @@
 This is the **single canonical source** for how work gets planned, built, and reviewed in this
 repository — for human developers and AI coding agents alike. If a document elsewhere in the repo
 conflicts with something here, this index (and the files it links to) wins; fix the conflicting
-document instead of trusting it. AI agents: the root [`AGENT.md`](../../AGENT.md) points here for
+document instead of trusting it. AI agents: the root [`AGENTS.md`](../../AGENTS.md) holds the rules every agent follows and points here for
 process/standards context — read `STANDARDS.md` before writing code and `PR_TEMPLATE.md` before
 opening a PR.
 
@@ -27,13 +27,13 @@ opening a PR.
 - **Why are we doing this?** → [`docs/audit/README.md`](../audit/README.md) — The audit archive: what each audit found, the score trend, and how the next one is run
 - **How should I write code?** → [`docs/process/STANDARDS.md`](STANDARDS.md) — Code style, naming, testing
 - **What will the API actually refuse?** → [`docs/design/API_REQUEST_VALIDATION.md`](../design/API_REQUEST_VALIDATION.md) — the published schemas declare no constraints; this is the list of what the endpoints enforce anyway, and what a client must therefore expect
-- **What's the architecture?** → [`AGENT.md`](../../AGENT.md) for services, ports and layout; [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today — *that one is in Persian, under the §1 exception in [`STANDARDS.md`](STANDARDS.md); it has no English summary yet*; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
+- **What's the architecture?** → [`AGENTS.md`](../../AGENTS.md) for services, ports and layout; [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) for how trading actually works today — *that one is in Persian, under the §1 exception in [`STANDARDS.md`](STANDARDS.md); it has no English summary yet*; [`docs/architecture/ROADMAP.md`](../architecture/ROADMAP.md) for where things are headed
 
 ### For Onboarding
 - **New to the team?** → Read in this order:
   1. This file (you're reading it)
   2. [`docs/process/STANDARDS.md`](STANDARDS.md) — how to write code here
-  3. [`AGENT.md`](../../AGENT.md) — build commands, services, and the business rules that look like bugs
+  3. [`AGENTS.md`](../../AGENTS.md) — build commands, services, and the business rules that look like bugs
   4. [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md) — how trading actually works *(Persian)*
   5. [`docs/process/WORKFLOW.md`](WORKFLOW.md) — how work flows
   6. `gh issue list` — what to pick up
@@ -63,6 +63,7 @@ docs/
 │   ├── STANDARDS.md              ← Code, naming, folder structure conventions
 │   ├── WORKFLOW.md               ← Branch, PR, review and merge flow
 │   ├── PR_TEMPLATE.md            ← Copy this for every PR (author side)
+│   ├── LESSONS.md                ← Git, build and local-data mechanics that cost a session once
 │   └── CODE_REVIEW_GUIDE.md      ← How to review a PR (reviewer side)
 ├── architecture/
 │   ├── DEALER_QUOTE_MODEL.md     ← How trading works today: quotes, fills, market modes (Persian)
@@ -277,7 +278,7 @@ This index & all standards documents should be reviewed:
 ## Onboarding (start here)
 
 1. Read this index + [`STANDARDS.md`](STANDARDS.md).
-2. Read [`AGENT.md`](../../AGENT.md) for build commands, services and the business rules that
+2. Read [`AGENTS.md`](../../AGENTS.md) for build commands, services and the business rules that
    look like bugs, and [`docs/architecture/DEALER_QUOTE_MODEL.md`](../architecture/DEALER_QUOTE_MODEL.md)
    for how trading works.
 3. Pick up work from GitHub issues — `gh issue list`. That, not any document here, is where

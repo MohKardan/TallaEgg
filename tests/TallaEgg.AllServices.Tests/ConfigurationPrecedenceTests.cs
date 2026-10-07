@@ -326,7 +326,7 @@ public class ConfigurationPrecedenceTests
     /// <c>config/appsettings.global.json</c>, and the https endpoints three of these profiles used
     /// to name would have to be bound wherever the stack runs — including a CI runner with no
     /// development certificate, where Kestrel refuses to start at all. The shared file is the
-    /// source of truth for where a service listens (<c>AGENT.md</c>); a profile repeating it is a
+    /// source of truth for where a service listens (<c>AGENTS.md</c>); a profile repeating it is a
     /// second one, free to drift.
     /// </para>
     /// </summary>
