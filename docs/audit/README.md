@@ -38,8 +38,8 @@ agent that made a change is not independent evidence about it.
 | 2026-09-12 | 7.0 / 10 | ~68% | [v8.0](METHODOLOGY_v8.md) | GLM-5.3-Flash (Z.ai) / ZCode | [`AUDIT_2026-09.md`](AUDIT_2026-09.md) |
 | 2026-09-26 | 8.0 / 10 | ~78% | [v9.0](METHODOLOGY_v9.md) | Gemini 3.8 Flash / Cline | [`AUDIT_2026-09b.md`](AUDIT_2026-09b.md) |
 | 2026-10-01 | 7.6 / 10 | ~72% | [v9.0](METHODOLOGY_v9.md) | DeepSeek V4.1 Flash / Cline | [`AUDIT_2026-10.md`](AUDIT_2026-10.md) (measured 2026-09-26 … 09-29) |
-| 2026-10-06 | 5.0 / 10 | ~50% | [v9.0](METHODOLOGY_v9.md) | Gemini Pro / Antigravity | [`AUDIT_2026-10b.md`](AUDIT_2026-10b.md) |
-| 2026-10-06 | 5.0 / 10 | ~50% | [v10.0](METHODOLOGY_v10.md) | Gemini Pro / Antigravity | [`AUDIT_2026-10c.md`](AUDIT_2026-10c.md) |
+| 2026-10-06 | 5.0 / 10 | ~50% | [v9.0](METHODOLOGY_v9.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10b.md`](AUDIT_2026-10b.md) |
+| 2026-10-06 | 5.0 / 10 | ~50% | [v10.0](METHODOLOGY_v10.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10c.md`](AUDIT_2026-10c.md) |
 
 **The last two rows are the archive's first genuinely comparable pair, and they disagree.** Both were
 run under v9, both audited the same commit (`70df6a5`), and they differ in reader — 8.0 from Gemini 3.8
