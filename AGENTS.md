@@ -161,6 +161,13 @@ keep its mechanics (branch names, commit format, PR template), not its ceremony.
 
 ## Other traps
 
+- **Callback data is text the client sends, not a token the bot issued.** A modified Telegram client
+  can send any string back on any message the bot sent it, whether or not that message had such a
+  button. So every callback branch that takes an account id, an order id or a page of someone else's
+  data must check who is asking, as `approve_`, `users_`, `orders_`, `trades_` and `cancel_order_` do.
+  Four branches did not until #340, and one of them, `users_`, needed no id and paged every customer's
+  name and phone number to anyone. Test such a branch by sending the string directly, as
+  `CallbackOwnershipTests` does.
 - **Dates shown to users are Jalali at a fixed +03:30 offset**, formatted through `PersianFormat`.
   Storage stays Gregorian UTC; the two are unrelated.
 - **Bot tokens in git history are not dead because a document says so.** None is left in the working

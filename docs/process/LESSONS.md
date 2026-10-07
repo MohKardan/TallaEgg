@@ -101,6 +101,42 @@ PowerShell does not expand. Then read the posted text back before moving on: run
 `gh api repos/MohKardan/TallaEgg/pulls/<n>/reviews --jq '.[].body'` and look for stray backslashes,
 tabs or missing backticks.
 
+### "Part of #N" in a PR means the issue is still open
+
+PR #256 fixed two of the three problems in #250 and said so in its description: "part of #250". Three
+weeks later an audit read `OrderTypeRecordedTests` passing and declared #250 resolved, and a review
+comment repeated it (2026-10-06). The third problem was still on `main`. Before calling an issue done,
+read the PR that touched it: passing tests prove what that PR fixed, not the issue.
+
+### `git checkout -- <file>` in the middle of an experiment throws away your edit
+
+To prove a guard test still goes red, a file was edited, the test run, and the file "restored" with
+`git checkout -- <file>` (2026-10-07, #342). That restores the **last commit**, and the edit being
+tested had not been committed yet, so the working change was silently replaced by an older version.
+It was recovered only because a copy had been taken first. Copy the file before the experiment and
+copy it back, or commit first and use `git stash`.
+
+---
+
+## Tests
+
+### Run a new test against the unfixed code, and make it assert the thing itself
+
+The first version of a test for #280 asserted that the SQL reading `Orders` contained `"Status"`, and
+it **passed against the unfixed code**, because `Status` is in every `SELECT` list. Only the `WHERE`
+clause was the point. It was caught because the procedure runs a new test before the fix (`git stash`
+the fix, build, run); it would have shipped otherwise. When an assertion matches text, scope it to the
+part that can only be right if the fix is there.
+
+### When a guard test goes red, find out why before moving code to make it green
+
+`ConfigurationPrecedenceTests` pins the #181 fix by finding the **last** mention of
+`WebHostDefaults.ServerUrlsKey` before `UseUrls`. A change for #332 added a mention after it and the test
+went red. Moving the new code above the block made it green again, and in doing so blinded it: the test
+now found the new mention, and deleting the real guard would have stayed green. `/code-review` caught it.
+After changing code near a source-scanning guard, delete what the guard protects and confirm it still
+fails.
+
 ---
 
 ## Build

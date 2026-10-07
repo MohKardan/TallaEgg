@@ -48,6 +48,7 @@ with the searches recorded, and given H-9, the next number above the archive's h
 | Method breach | M-5 is marked (a) "re-verified via task execution" with no command, output or note behind it | §4; v8 traceability rule A |
 | Method breach | Session timings total about 23 minutes for a methodology that budgets a working day, and §3 lists no deeply reviewed paths. The timings are disclosed honestly; the depth they imply should weigh on how the audit is read | §3 |
 | Process | Committed and pushed directly to `main` (`a58d6e1`), not through a branch and PR. Its attribution was then edited in place on `main` (`43cf102`) | `git log --first-parent main` |
+| Incomplete | H-9 (and `AUDIT_2026-10b.md`'s C-1) names three callbacks and missed a fourth in the same method: `users_{page}_{query}`, which needs no id at all and paged every customer's name, username and phone number to anyone. The "Overstated" entry above is about the three it named; **the defect as a whole was worse than filed**. This review missed it too: its comment on #334 called the issue "narrower than stated" and was corrected once the fix (#340) checked every branch instead of the three named | `BotHandler.cs` `users_` branch before #340 |
 
 ## `AUDIT_2026-10b.md`: Gemini 3.1 Pro High / Antigravity, v9, 2026-10-06
 
@@ -75,6 +76,7 @@ Reviewed 2026-10-06 and 2026-10-07.
 | False claim | §8 says "No command lets a customer name another account. That is the boundary that actually protects customer money, and it holds." The `orders_`, `trades_` and `cancel_order_` callbacks take a user or order id from client-supplied callback data and check no ownership (#334). A universal stated without the enumeration behind it, which v8 rule C forbids | `BotHandler.cs:667-768` |
 | Unsafe recommendation | M-6 recommends unlocking whenever confirmation returns `false`. `false` also means "the order already left Pending" (confirmed or cancelled concurrently), and a blind unlock then releases collateral still needed, or releases it twice. #331 records the safer route through `CancelOrderAsync` | `OrderService.cs:342, 381-415` |
 | Overstated | M-5 rated Medium. The sanctioned server path sets Production, `README.md` already warns about `dotnet run`, and every service binds loopback. Assessed Low until something binds beyond loopback (#332). A severity disagreement, not an error | `install-services.ps1`; `README.md` Configuration |
+| False claim | §4 "Tracker lag" says #250 is resolved in code and can be closed, citing `OrderTypeRecordedTests`. PR #256 describes itself as "part of #250": §3 of the issue, where `OrderHistoryDto.Type` carries the side, is still open (`Type = o.Side` at `Orders.Api/Program.cs:940, 973` and `OrderRepository.cs:82`, on `main` at `38de80f`). Passing tests prove the part that was fixed. A review comment on #250 repeated the claim and was corrected | PR #256 description; the cited lines |
 
 ## `AUDIT_2026-09b.md`: Gemini 3.8 Flash / Cline, v9, 2026-09-26
 
