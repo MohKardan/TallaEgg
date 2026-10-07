@@ -87,11 +87,19 @@ are green. Or keep the link out until the first PR has merged.
 
 ### Write GitHub text to a file, not inline from PowerShell
 
-A review posted from PowerShell on 2026-10-07 came out with every backtick replaced by a backslash
-(`\REVIEW_NOTES.md\`). The backtick is PowerShell's escape character, and text passed inline to
-`gh` goes through the shell first. Write the body to a file and pass `--body-file`, or use a
-single-quoted here-string, then read the posted text back (`gh pr view <n> --comments`) before
-moving on.
+The backtick is PowerShell's escape character, and Markdown's code marker. Text passed inline to `gh`
+in a double-quoted PowerShell string goes through the shell first, so Markdown code spans are mangled
+before GitHub sees them. It happened in three reviews on 2026-10-07:
+
+- In #335 and #336, `` `REVIEW_NOTES.md` `` came out as `\REVIEW_NOTES.md\`.
+- In #337, `` `test` `` came out as a **tab** followed by `est`, because `` `t `` is PowerShell's
+  escape for a tab (`` `n `` is a newline, `` `r `` a carriage return, `` `0 `` a null). The #337 review
+  repeated the mistake while approving the PR that added this entry.
+
+Write the body to a file and pass `--body-file`, or use a single-quoted here-string (`@'…'@`), which
+PowerShell does not expand. Then read the posted text back before moving on: run
+`gh api repos/MohKardan/TallaEgg/pulls/<n>/reviews --jq '.[].body'` and look for stray backslashes,
+tabs or missing backticks.
 
 ---
 
