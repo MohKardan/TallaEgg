@@ -48,13 +48,20 @@ public class OrderRepository : IOrderRepository
         }
     }
 
-    public async Task<List<Order>> GetOrdersByAssetAsync(string asset)
+    public async Task<List<Order>> GetActiveOrdersByAssetAsync(string asset, TradingType tradingType)
     {
         try
         {
+            // The status condition is Order.IsActive() restated for SQL, which cannot call it. Keep
+            // the two in step: BestBidAskReadTests checks them against each other for every status.
+            // Read-only and unordered: the only caller takes a max and a min.
             return await _dbContext.Orders
-                .Where(o => o.Asset == asset)
-                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .Where(o => o.Asset == asset
+                    && o.TradingType == tradingType
+                    && (o.Status == OrderStatus.Pending
+                        || o.Status == OrderStatus.Confirmed
+                        || o.Status == OrderStatus.Partially))
                 .ToListAsync();
         }
         catch (Exception ex)
