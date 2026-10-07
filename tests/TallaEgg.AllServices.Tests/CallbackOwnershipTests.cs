@@ -190,14 +190,77 @@ public class CallbackOwnershipTests
         Assert.Equal([ownOrder], _orderApi.CancelledOrders);
     }
 
+    /// <summary>
+    /// No screen gives an operator a cancel button — <c>ActiveOrdersHandler</c> draws none for an
+    /// admin — so an operator reaching another person's order this way could only have sent the
+    /// callback by hand. The guard gives them no more than the screens do.
+    /// </summary>
     [Fact]
-    public async Task CancelOrder_SentByAnOperator_IsCancelledWhoeverOwnsIt()
+    public async Task CancelOrder_SentByAnOperator_ForACustomersOrder_IsNotCancelled()
     {
         var customersOrder = Guid.NewGuid();
         _orderApi.ActiveOrdersByUser![CustomerId] = [new OrderHistoryDto { Id = customersOrder }];
 
         await SendCallbackAsync($"cancel_order_{customersOrder}", from: OperatorTelegramId);
 
-        Assert.Equal([customersOrder], _orderApi.CancelledOrders);
+        Assert.Empty(_orderApi.CancelledOrders);
+    }
+
+    /// <summary>
+    /// The honest version of the refused case: the customer's own order filled after its cancel
+    /// button was drawn. They must not be told they lack permission over their own order.
+    /// </summary>
+    [Fact]
+    public async Task CancelOrder_TheirOwnOrderNoLongerActive_SaysSoWithoutAccusingThem()
+    {
+        await SendCallbackAsync($"cancel_order_{Guid.NewGuid()}", from: CustomerTelegramId);
+
+        Assert.Empty(_orderApi.CancelledOrders);
+        Assert.Equal([BotMsgs.MsgOrderNotAmongYourActiveOrders], _messenger.CallbackAnswerTexts);
+    }
+
+    /// <summary>
+    /// An Orders outage during the ownership check is an outage, not a refusal — the customer is
+    /// told to try again, and nothing is cancelled on a guess.
+    /// </summary>
+    [Fact]
+    public async Task CancelOrder_WhenActiveOrdersCannotBeRead_ReportsAnErrorAndCancelsNothing()
+    {
+        var ownOrder = Guid.NewGuid();
+        _orderApi.ActiveOrdersByUser![CustomerId] = [new OrderHistoryDto { Id = ownOrder }];
+        _orderApi.ActiveOrdersUnavailable = true;
+
+        await SendCallbackAsync($"cancel_order_{ownOrder}", from: CustomerTelegramId);
+
+        Assert.Empty(_orderApi.CancelledOrders);
+        Assert.Equal([BotMsgs.MsgUnexpectedError], _messenger.CallbackAnswerTexts);
+    }
+
+    [Fact]
+    public async Task CancelOrder_SentBySomeoneWithNoAccount_IsNotCancelled()
+    {
+        var customersOrder = Guid.NewGuid();
+        _orderApi.ActiveOrdersByUser![CustomerId] = [new OrderHistoryDto { Id = customersOrder }];
+
+        await SendCallbackAsync($"cancel_order_{customersOrder}", from: StrangerTelegramId);
+
+        Assert.Empty(_orderApi.CancelledOrders);
+        Assert.Equal([BotMsgs.MsgNotAuthorized], _messenger.CallbackAnswerTexts);
+    }
+
+    [Fact]
+    public async Task TradesPage_SentBySomeoneWithNoAccount_IsRefused()
+    {
+        await SendCallbackAsync($"trades_{CustomerId}_2", from: StrangerTelegramId);
+
+        Assert.Empty(_orderApi.UserTradesRequested);
+    }
+
+    [Fact]
+    public async Task OrdersPage_SentBySomeoneWithNoAccount_IsRefused()
+    {
+        await SendCallbackAsync($"orders_{CustomerId}_2", from: StrangerTelegramId);
+
+        Assert.Empty(_orderApi.UserOrdersRequested);
     }
 }

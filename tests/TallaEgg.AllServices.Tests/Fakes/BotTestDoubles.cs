@@ -121,10 +121,16 @@ public sealed class FakeOrderApiClient : IOrderApiClient
     /// </summary>
     public Dictionary<Guid, List<OrderHistoryDto>>? ActiveOrdersByUser { get; set; }
 
+    /// <summary>When true, <see cref="GetUserActiveOrdersAsync"/> answers as the Orders service does when unreachable.</summary>
+    public bool ActiveOrdersUnavailable { get; set; }
+
     public Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId)
     {
         if (ActiveOrdersByUser is null)
             throw new NotSupportedException(nameof(GetUserActiveOrdersAsync));
+
+        if (ActiveOrdersUnavailable)
+            return Task.FromResult(ApiResponse<List<OrderHistoryDto>>.Fail("Orders service unreachable"));
 
         return Task.FromResult(ApiResponse<List<OrderHistoryDto>>.Ok(
             ActiveOrdersByUser.TryGetValue(userId, out var orders) ? orders : [], "ok"));
