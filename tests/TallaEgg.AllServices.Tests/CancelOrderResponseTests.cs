@@ -85,12 +85,15 @@ public class CancelOrderResponseTests
 
     /// <summary>
     /// The administrator's bulk cancel had the same fallback: an empty error body produced
-    /// «خطا در لغو سفارشات: » with nothing after it.
+    /// «خطا در لغو سفارشات: » with nothing after it, and an HTML one threw inside the JSON reader.
     /// </summary>
-    [Fact]
-    public async Task CancelAllUserActiveOrdersAsync_EmptyRefusal_SaysTheServiceDidNotAnswer()
+    [Theory]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "")]
+    [InlineData(HttpStatusCode.BadGateway, "<html><body>Bad Gateway</body></html>")]
+    public async Task CancelAllUserActiveOrdersAsync_UnreadableRefusal_SaysTheServiceDidNotAnswer(
+        HttpStatusCode status, string body)
     {
-        var client = ClientAnswering(HttpStatusCode.ServiceUnavailable, "");
+        var client = ClientAnswering(status, body);
 
         var (success, message, cancelledCount) = await client.CancelAllUserActiveOrdersAsync(Guid.NewGuid());
 
