@@ -124,6 +124,12 @@ weeks later an audit read `OrderTypeRecordedTests` passing and declared #250 res
 comment repeated it (2026-10-06). The third problem was still on `main`. Before calling an issue done,
 read the PR that touched it: passing tests prove what that PR fixed, not the issue.
 
+It misleads the other way too. On 2026-10-13 I recommended #316 as the open issue that mattered most to
+customers, from its title alone. #319 had done most of it three weeks earlier ("part of #316"), and what
+is left is blocked on two price sources. Before recommending or starting an open issue, run
+`git log --oneline -E --grep "#<n>([^0-9]|$)"` (bounded, so `#31` does not match #316) and read what the
+PRs it names left undone.
+
 ### Do not leave an edit uncommitted in the main working tree
 
 On 2026-10-13 an edit to `AGENTS.md` was found sitting uncommitted on `main`, last written six days

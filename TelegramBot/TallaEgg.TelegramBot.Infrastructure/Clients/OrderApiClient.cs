@@ -425,14 +425,7 @@ public class OrderApiClient : IOrderApiClient
             if (response.IsSuccessStatusCode)
                 return (true, "سفارش شما ثبت شد.");
 
-            // The refusal's sentence, not the body: the body is JSON, and this message is shown to
-            // the customer inside MsgOrderFailed (#345). AcceptQuoteAsync reads it the same way.
-            var refusal = TryReadMessage(respText);
-            if (refusal is null)
-                _logger.LogWarning("Submitting an order failed with {StatusCode} and no readable refusal.",
-                    (int)response.StatusCode);
-
-            return (false, refusal ?? TallaEgg.Core.RefusalMessages.OrderServiceUnavailable);
+            return (false, RefusalFrom(response, respText, "Submitting an order"));
         }
         catch (Exception ex)
         {
@@ -792,6 +785,21 @@ public class OrderApiClient : IOrderApiClient
         }
     }
 
+    /// <summary>
+    /// The sentence to show for a failed call: the refusal the server wrote, or, when the body
+    /// carries none, a plain statement that the service did not answer. Never the body itself,
+    /// which is JSON or a proxy's HTML page and used to reach customers verbatim (#345).
+    /// </summary>
+    private string RefusalFrom(HttpResponseMessage response, string body, string operation)
+    {
+        var refusal = TryReadMessage(body);
+        if (refusal is null)
+            _logger.LogWarning("{Operation} failed with {StatusCode} and no readable refusal.",
+                operation, (int)response.StatusCode);
+
+        return refusal ?? TallaEgg.Core.RefusalMessages.OrderServiceUnavailable;
+    }
+
     private static string? TryReadMessage(string body)
     {
         if (string.IsNullOrWhiteSpace(body)) return null;
@@ -816,7 +824,10 @@ public class OrderApiClient : IOrderApiClient
             var respText = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
                 return (true, "سفارش شما لغو شد.");
-            return (false, $"خطا در لغو سفارش: {respText}");
+
+            // The cancel_order_ callback adds its own «❌ خطا در لغو سفارش: », so this is the reason
+            // alone.
+            return (false, RefusalFrom(response, respText, "Cancelling an order"));
         }
         catch (Exception ex)
         {
@@ -872,8 +883,7 @@ public class OrderApiClient : IOrderApiClient
                 return (false, apiResponse?.Message ?? "خطا در پردازش پاسخ", 0);
             }
 
-            var errorResponse = JsonConvert.DeserializeObject<TallaEgg.Core.DTOs.ApiResponse<object>>(respText);
-            return (false, errorResponse?.Message ?? $"خطا در لغو سفارشات: {respText}", 0);
+            return (false, RefusalFrom(response, respText, "Cancelling a user's active orders"), 0);
         }
         catch (Exception ex)
         {
