@@ -150,6 +150,14 @@ now found the new mention, and deleting the real guard would have stayed green. 
 After changing code near a source-scanning guard, delete what the guard protects and confirm it still
 fails.
 
+### Follow a refusal all the way to the customer's screen
+
+When filing #345 I traced the server's wrong 200 to the bot's success branch and stopped there. The bot's
+*failure* branch, which the proposed fix would route customers into, pasted the raw JSON body into the
+message they read, and had done so for every refusal on that path. It surfaced only when planning the fix.
+When a change moves a case from one branch to another, read what the other branch shows the user before
+proposing it.
+
 ### A concurrent write from a second `DbContext` is invisible to a context that tracks the row
 
 For #331 a test simulated "another writer marked the order Failed" through a fresh context. The service's

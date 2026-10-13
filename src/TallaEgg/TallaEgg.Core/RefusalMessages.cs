@@ -56,4 +56,15 @@ public static class RefusalMessages
     /// </para>
     /// </summary>
     public const string BalanceCheckFailed = "بررسی موجودی انجام نشد. لطفاً دوباره تلاش کنید.";
+
+    /// <summary>
+    /// The order was saved and its collateral locked, but confirming it failed, so it was cancelled
+    /// (issues #331, #345). The customer did nothing wrong and can simply try again.
+    ///
+    /// <para>
+    /// It deliberately does not say the money was returned: when the database is still down the
+    /// cancellation cannot release the lock either, and this sentence is sent in both cases.
+    /// </para>
+    /// </summary>
+    public const string OrderNotPlaced = "تأیید سفارش در سیستم انجام نشد.";
 }
