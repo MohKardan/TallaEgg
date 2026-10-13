@@ -562,6 +562,14 @@ namespace TallaEgg.TelegramBot.Infrastructure
         public const string MsgNotAuthorized = "شما اجازهٔ این کار را ندارید.";
 
         /// <summary>
+        /// Reply when a cancel button names an order that is not among the caller's active orders —
+        /// someone else's, or their own that has filled or been cancelled since the button was
+        /// drawn. Worded so that the second, which is the honest case, is not told it lacks
+        /// permission (issue #334).
+        /// </summary>
+        public const string MsgOrderNotAmongYourActiveOrders = "❌ این سفارش در فهرست سفارش‌های فعال شما نیست.";
+
+        /// <summary>
         /// Reply when a button is pressed on a message Telegram no longer sends us — an inline
         /// message, or anything older than 48 hours. Every callback branch edits or deletes that
         /// message, so there is nothing to act on and the customer needs to start again.

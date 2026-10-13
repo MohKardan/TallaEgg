@@ -329,6 +329,10 @@ builder.Services.AddDatabaseMigrationAtStartup(async (services, cancellationToke
 
 var app = builder.Build();
 
+// Authentication is registered only in Production. A Development host bound where other machines
+// can reach it is therefore an open API, and nothing else would say so (issue #332).
+UnauthenticatedExposure.WarnOnceStartedIfExposed(app);
+
 app.UseTallaEggErrorHandling();
 
 // Requests are refused with 503 until the migration above has succeeded, so this service never

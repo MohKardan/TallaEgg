@@ -84,16 +84,73 @@ public sealed class FakeOrderApiClient : IOrderApiClient
         }, "ok"));
     }
 
-    public Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(Guid userId, int pageNumber = 1, int pageSize = 10) =>
-        throw new NotSupportedException(nameof(GetUserOrdersAsync));
-    public Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(Guid userId, int pageNumber = 1, int pageSize = 10) =>
-        throw new NotSupportedException(nameof(GetUserTradesAsync));
-    public Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId) =>
-        throw new NotSupportedException(nameof(GetUserActiveOrdersAsync));
+    // The four reads and the cancel below throw unless a test opts in, so that a conversation test
+    // which wanders onto these paths fails loudly instead of succeeding against an empty answer.
+    // A test that opts in gets a record of every call, which is what an authorization test
+    // asserts on: whose data was asked for, and which order was cancelled (issue #334).
+
+    /// <summary>When set, answers every <see cref="GetUserOrdersAsync"/>; otherwise it throws.</summary>
+    public PagedResult<OrderHistoryDto>? UserOrdersPage { get; set; }
+    public List<Guid> UserOrdersRequested { get; } = [];
+
+    public Task<ApiResponse<PagedResult<OrderHistoryDto>>> GetUserOrdersAsync(Guid userId, int pageNumber = 1, int pageSize = 10)
+    {
+        if (UserOrdersPage is null)
+            throw new NotSupportedException(nameof(GetUserOrdersAsync));
+
+        UserOrdersRequested.Add(userId);
+        return Task.FromResult(ApiResponse<PagedResult<OrderHistoryDto>>.Ok(UserOrdersPage, "ok"));
+    }
+
+    /// <summary>When set, answers every <see cref="GetUserTradesAsync"/>; otherwise it throws.</summary>
+    public PagedResult<TradeHistoryDto>? UserTradesPage { get; set; }
+    public List<Guid> UserTradesRequested { get; } = [];
+
+    public Task<ApiResponse<PagedResult<TradeHistoryDto>>> GetUserTradesAsync(Guid userId, int pageNumber = 1, int pageSize = 10)
+    {
+        if (UserTradesPage is null)
+            throw new NotSupportedException(nameof(GetUserTradesAsync));
+
+        UserTradesRequested.Add(userId);
+        return Task.FromResult(ApiResponse<PagedResult<TradeHistoryDto>>.Ok(UserTradesPage, "ok"));
+    }
+
+    /// <summary>
+    /// Each user's active orders. When null, <see cref="GetUserActiveOrdersAsync"/> throws; when
+    /// set, a user with no entry has none.
+    /// </summary>
+    public Dictionary<Guid, List<OrderHistoryDto>>? ActiveOrdersByUser { get; set; }
+
+    /// <summary>When true, <see cref="GetUserActiveOrdersAsync"/> answers as the Orders service does when unreachable.</summary>
+    public bool ActiveOrdersUnavailable { get; set; }
+
+    public Task<ApiResponse<List<OrderHistoryDto>>> GetUserActiveOrdersAsync(Guid userId)
+    {
+        if (ActiveOrdersByUser is null)
+            throw new NotSupportedException(nameof(GetUserActiveOrdersAsync));
+
+        if (ActiveOrdersUnavailable)
+            return Task.FromResult(ApiResponse<List<OrderHistoryDto>>.Fail("Orders service unreachable"));
+
+        return Task.FromResult(ApiResponse<List<OrderHistoryDto>>.Ok(
+            ActiveOrdersByUser.TryGetValue(userId, out var orders) ? orders : [], "ok"));
+    }
+
     public Task<ApiResponse<List<OrderHistoryDto>>> GetAllActiveOrdersAsync() =>
         throw new NotSupportedException(nameof(GetAllActiveOrdersAsync));
-    public Task<(bool success, string message)> CancelOrderAsync(Guid orderId) =>
-        throw new NotSupportedException(nameof(CancelOrderAsync));
+
+    /// <summary>When true, <see cref="CancelOrderAsync"/> succeeds and is recorded; otherwise it throws.</summary>
+    public bool AllowCancel { get; set; }
+    public List<Guid> CancelledOrders { get; } = [];
+
+    public Task<(bool success, string message)> CancelOrderAsync(Guid orderId)
+    {
+        if (!AllowCancel)
+            throw new NotSupportedException(nameof(CancelOrderAsync));
+
+        CancelledOrders.Add(orderId);
+        return Task.FromResult((true, "ok"));
+    }
     public Task<(bool success, string message, PendingQuoteDto? pending)> PublishQuoteAsync(
         string symbol, decimal buyPrice, decimal sellPrice, Guid publishedByUserId) =>
         throw new NotSupportedException(nameof(PublishQuoteAsync));
@@ -223,8 +280,21 @@ public sealed class FakeUsersApiClient : IUsersApiClient
         return Task.FromResult(RoleChangeResult);
     }
 
-    public Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? searchTerm = null) =>
-        throw new NotSupportedException(nameof(GetUsersAsync));
+    /// <summary>
+    /// When set, answers every <see cref="GetUsersAsync"/> and records the page asked for;
+    /// otherwise it throws, as it always did (issue #334).
+    /// </summary>
+    public PagedResult<UserDto>? UsersPage { get; set; }
+    public List<int> UsersPagesRequested { get; } = [];
+
+    public Task<ApiResponse<PagedResult<UserDto>>> GetUsersAsync(int pageNumber = 1, int pageSize = 10, string? searchTerm = null)
+    {
+        if (UsersPage is null)
+            throw new NotSupportedException(nameof(GetUsersAsync));
+
+        UsersPagesRequested.Add(pageNumber);
+        return Task.FromResult(ApiResponse<PagedResult<UserDto>>.Ok(UsersPage, "ok"));
+    }
     /// <summary>Every registration attempted, with the invitation code it was made under.</summary>
     public List<(long TelegramId, string InvitationCode)> Registrations { get; } = [];
 

@@ -424,7 +424,15 @@ public class OrderApiClient : IOrderApiClient
             var respText = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
                 return (true, "سفارش شما ثبت شد.");
-            return (false, $"خطا در ثبت سفارش: {respText}");
+
+            // The refusal's sentence, not the body: the body is JSON, and this message is shown to
+            // the customer inside MsgOrderFailed (#345). AcceptQuoteAsync reads it the same way.
+            var refusal = TryReadMessage(respText);
+            if (refusal is null)
+                _logger.LogWarning("Submitting an order failed with {StatusCode} and no readable refusal.",
+                    (int)response.StatusCode);
+
+            return (false, refusal ?? TallaEgg.Core.RefusalMessages.OrderServiceUnavailable);
         }
         catch (Exception ex)
         {

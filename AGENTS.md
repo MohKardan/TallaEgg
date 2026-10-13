@@ -113,9 +113,14 @@ given so you can apply it where the wording does not quite reach.
 **Attribution**
 
 - Credit your work with your full, specific model and tool, e.g. `Gemini 3.1 Pro High / Antigravity`
-  or `DeepSeek V4.1 Flash / Cline`, not a generic name like `AI`. Put it in a `Co-Authored-By:`
-  trailer on commits, and in the metadata of an audit. When the runtime does not tell you your model,
-  say so rather than guess: the audit archive has had to correct a wrong attribution twice.
+  or `DeepSeek V4.1 Flash / Cline`, not a generic name like `AI`:
+  - **commits:** in a `Co-Authored-By:` trailer;
+  - **PRs you open and issues you file:** in a closing line `🤖 Generated with <model> / <tool>`,
+    filled in with your own model and tool. Never copy the model from an example or from another
+    agent's PR;
+  - **audits:** in the audit's metadata.
+- When the runtime does not tell you your model, say so rather than guess: the audit archive has had
+  to correct a wrong attribution twice.
 
 **Shared memory: every agent records what it learned**
 
@@ -161,6 +166,13 @@ keep its mechanics (branch names, commit format, PR template), not its ceremony.
 
 ## Other traps
 
+- **Callback data is text the client sends, not a token the bot issued.** A modified Telegram client
+  can send any string back on any message the bot sent it, whether or not that message had such a
+  button. So every callback branch that takes an account id, an order id or a page of someone else's
+  data must check who is asking, as `approve_`, `users_`, `orders_`, `trades_` and `cancel_order_` do.
+  Four branches did not until #340, and one of them, `users_`, needed no id and paged every customer's
+  name and phone number to anyone. Test such a branch by sending the string directly, as
+  `CallbackOwnershipTests` does.
 - **Dates shown to users are Jalali at a fixed +03:30 offset**, formatted through `PersianFormat`.
   Storage stays Gregorian UTC; the two are unrelated.
 - **Bot tokens in git history are not dead because a document says so.** None is left in the working
@@ -221,6 +233,14 @@ dotnet run --no-build --project src/Wallet/Wallet.Api/Wallet.Api.csproj
 dotnet run --no-build --project src/Order/Orders.Api/Orders.Api.csproj
 dotnet run --no-build --project TelegramBot/TallaEgg.TelegramBot.Infrastructure/TallaEgg.TelegramBot.Infrastructure.csproj
 ```
+
+**These run in Development, with API-key authentication off, whatever `ASPNETCORE_ENVIRONMENT` your
+shell exports.** `dotnet run` applies `Properties/launchSettings.json`, which sets Development and
+overrides the exported value, and authentication is registered only in Production. That is what you
+want on a dev machine and only safe because the services bind loopback. For a Production run, use the
+installed services, or add `--no-launch-profile` with `ASPNETCORE_ENVIRONMENT=Production` and
+`TALLAEGG_API_KEY` set. A service in any other environment that listens on a non-loopback address logs
+a warning at startup (issue #332).
 
 `Affiliate.Api` is not normally run — the affiliate feature is dormant. `TallaEgg.Api` registers a
 DbContext and CORS but maps no endpoints, so running it achieves nothing today.

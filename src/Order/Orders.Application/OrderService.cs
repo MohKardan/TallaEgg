@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Orders.Core;
 using Serilog;
 using TallaEgg.Core;
@@ -340,9 +339,54 @@ public class OrderService
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
 
         if (!confirmSuccess)
-            _logger.LogWarning("Order {OrderId} was not confirmed.", createdOrder.Id);
+        {
+            _logger.LogWarning("Order {OrderId} was not confirmed; cancelling it to release its collateral.",
+                createdOrder.Id);
+            await CancelUnconfirmedOrderAsync(createdOrder.Id, command.UserId, collateralAsset, collateralAmount);
+        }
 
         return (createdOrder, confirmSuccess);
+    }
+
+    /// <summary>
+    /// Gives back the collateral of an order that was locked but never confirmed (issue #331).
+    /// Nothing else ever would: no hosted service touches a Pending order, and the reconciler only
+    /// releases the residue of a Completed one.
+    /// </summary>
+    /// <remarks>
+    /// This deliberately goes through <see cref="CancelOrderAsync"/> instead of unlocking
+    /// <paramref name="collateralAmount"/> directly. A failed confirmation also means the order has
+    /// already left Pending — confirmed, cancelled or failed by someone else — and an unconditional
+    /// unlock would then release collateral still in use, or release it twice. Cancellation refuses a
+    /// Completed or Failed order and releases only the residual worked out by the same formula as
+    /// the lock (#52).
+    ///
+    /// Its read of the order goes through this request's context, which already tracks the order,
+    /// so it sees what this request did and not what another one committed meanwhile. That leaves
+    /// one narrow case uncovered: a confirmation that committed but reported failure, and was then
+    /// filled by another scope before this runs. No such scope fills orders in dealer mode.
+    /// </remarks>
+    private async Task CancelUnconfirmedOrderAsync(Guid orderId, Guid userId, string collateralAsset, decimal collateralAmount)
+    {
+        try
+        {
+            if (!await CancelOrderAsync(orderId, "تایید سفارش انجام نشد"))
+                _logger.LogError(
+                    "Order {OrderId} was not confirmed and could not be found to cancel; up to {Amount} {Asset} may stay locked for user {UserId}.",
+                    orderId, collateralAmount, collateralAsset, userId);
+        }
+        catch (BusinessRuleException ex)
+        {
+            // Completed or Failed: whatever moved it there owns its collateral now.
+            _logger.LogWarning("Order {OrderId} was not confirmed and is no longer cancellable: {Reason}",
+                orderId, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "CRITICAL: Order {OrderId} was not confirmed and could not be cancelled; {Amount} {Asset} stays locked for user {UserId}.",
+                orderId, collateralAmount, collateralAsset, userId);
+        }
     }
 
     /// <summary>
@@ -362,14 +406,13 @@ public class OrderService
     {
         var (createdOrder, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
 
-        if (confirmed)
-        {
-            await _matchingEngine.ProcessOrderAsync(createdOrder);
-        }
-        else
-        {
-            _logger.LogWarning("Order {OrderId} was not confirmed, skipping matching engine", createdOrder.Id);
-        }
+        // An unconfirmed order has already been cancelled (#331). Returning it let POST /api/orders
+        // answer 200 «سفارش شما با موفقیت ثبت شد» for it, and the bot reads only the status code
+        // (#345). A refusal reaches the caller through the 400 every other refusal here uses.
+        if (!confirmed)
+            throw new BusinessRuleException(TallaEgg.Core.RefusalMessages.OrderNotPlaced);
+
+        await _matchingEngine.ProcessOrderAsync(createdOrder);
 
         return createdOrder;
     }
@@ -454,22 +497,16 @@ public class OrderService
             };
         }
 
-        var orders = await _orderRepository.GetOrdersByAssetAsync(asset);
-
-        // The o.IsMaker() condition was removed.
+        // Only the open book, in that market, filtered by the database (issue #280). This used to
+        // load every order ever placed for the symbol, filter it here, and log the open set as
+        // indented JSON on every call — a cost that grew with history rather than with the book.
         //
-        // Order.Role is always Maker — no path sets it to anything else — so that condition was
-        // always true and filtered nothing, while looking as though it did. The danger was that if
-        // Role were ever set correctly, this method would silently drop taker orders from the
-        // best-price calculation and show the user a wrong price.
-        //
-        // What is actually needed is the two remaining conditions: an open order, in that market.
-        var activeOrders = orders.Where(o =>
-            o.IsActive() &&
-            o.TradingType == tradingType)
-            .ToList();
+        // There is deliberately no o.IsMaker() condition. Order.Role is always Maker — no path sets
+        // it to anything else — so it filtered nothing while looking as though it did, and would
+        // silently drop taker orders from the price the day Role is set correctly.
+        var activeOrders = await _orderRepository.GetActiveOrdersByAssetAsync(asset, tradingType);
 
-        Log.Information("activeOrders:\n" + JsonConvert.SerializeObject(activeOrders, Formatting.Indented));
+        Log.Debug("{Count} open {TradingType} orders for {Asset}.", activeOrders.Count, tradingType, asset);
 
         decimal? bestBid = null;
         decimal? bestAsk = null;

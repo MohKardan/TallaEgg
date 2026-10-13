@@ -21,6 +21,9 @@ public sealed class FakeBotMessenger : IBotMessenger
 
     public List<SentMessage> Sent { get; } = [];
     public List<string> AnsweredCallbackIds { get; } = [];
+
+    /// <summary>The text of every callback answer that carried one — what the user saw pop up.</summary>
+    public List<string> CallbackAnswerTexts { get; } = [];
     public List<(long ChatId, int MessageId)> Deleted { get; } = [];
     public List<(long ChatId, int MessageId, string Text)> Edited { get; } = [];
 
@@ -58,6 +61,8 @@ public sealed class FakeBotMessenger : IBotMessenger
         string callbackQueryId, string? text = null, CancellationToken cancellationToken = default)
     {
         AnsweredCallbackIds.Add(callbackQueryId);
+        if (!string.IsNullOrEmpty(text))
+            CallbackAnswerTexts.Add(text);
         return Task.CompletedTask;
     }
 
