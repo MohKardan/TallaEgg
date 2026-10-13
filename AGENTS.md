@@ -113,9 +113,14 @@ given so you can apply it where the wording does not quite reach.
 **Attribution**
 
 - Credit your work with your full, specific model and tool, e.g. `Gemini 3.1 Pro High / Antigravity`
-  or `DeepSeek V4.1 Flash / Cline`, not a generic name like `AI`. Put it in a `Co-Authored-By:`
-  trailer on commits, and in the metadata of an audit. When the runtime does not tell you your model,
-  say so rather than guess: the audit archive has had to correct a wrong attribution twice.
+  or `DeepSeek V4.1 Flash / Cline`, not a generic name like `AI`:
+  - **commits:** in a `Co-Authored-By:` trailer;
+  - **PRs you open and issues you file:** in a closing line `🤖 Generated with <model> / <tool>`,
+    filled in with your own model and tool. Never copy the model from an example or from another
+    agent's PR;
+  - **audits:** in the audit's metadata.
+- When the runtime does not tell you your model, say so rather than guess: the audit archive has had
+  to correct a wrong attribution twice.
 
 **Shared memory: every agent records what it learned**
 

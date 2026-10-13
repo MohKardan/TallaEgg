@@ -112,6 +112,15 @@ weeks later an audit read `OrderTypeRecordedTests` passing and declared #250 res
 comment repeated it (2026-10-06). The third problem was still on `main`. Before calling an issue done,
 read the PR that touched it: passing tests prove what that PR fixed, not the issue.
 
+### Do not leave an edit uncommitted in the main working tree
+
+On 2026-10-13 an edit to `AGENTS.md` was found sitting uncommitted on `main`, last written six days
+earlier, with no branch, PR or note saying who made it or why. Every session in between started with it in
+its working tree, where one `git commit -a` would have put it on `main` unreviewed. Working out its intent
+and reviewing it took its own PR (the one that added this entry). Finish what you start in the main tree:
+move it to a branch and open a PR, or discard it, before you end the session. Better still, work in a
+worktree (above), where a half-done edit cannot leak into another session's commit.
+
 ### `git checkout -- <file>` in the middle of an experiment throws away your edit
 
 To prove a guard test still goes red, a file was edited, the test run, and the file "restored" with
