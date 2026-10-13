@@ -11,6 +11,7 @@ using Orders.Core;
 using Orders.Infrastructure;
 using TallaEgg.Core;
 using TallaEgg.Core.DTOs.Order;
+using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.Enums.Order;
 using TallaEgg.Infrastructure.Clients;
@@ -76,19 +77,27 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
     {
         _wallet.FailConfirmationAfterLockNumber = 1;
 
-        await BuildOrderService(NewContext()).CreateOrderAsync(new OrderDto
-        {
-            Asset = Symbol,
-            Amount = Quantity,
-            Price = BuyPrice,
-            UserId = _customer,
-            Side = OrderSide.Buy,
-            Type = OrderType.Limit,
-            TradingType = TradingType.Spot
-        });
+        await PostOrderAsync(BuildOrderService(NewContext()));
 
         Assert.True(_faults.Fired, "the injected fault never fired, so nothing was tested");
         Assert.Equal(0m, _wallet.LockedOf(_customer, CurrenciesConstant.Toman));
+    }
+
+    /// <summary>
+    /// The caller is told the order was not placed (issue #345). The endpoint answered 200 with
+    /// «سفارش شما با موفقیت ثبت شد» for an order it had just cancelled, and the bot, which reads only
+    /// the status code, told the customer it worked.
+    /// </summary>
+    [Fact]
+    public async Task CreateOrderAsync_ConfirmationFailsAfterTheLock_RefusesTheOrder()
+    {
+        _wallet.FailConfirmationAfterLockNumber = 1;
+
+        var refusal = await PostOrderAsync(BuildOrderService(NewContext()));
+
+        Assert.True(_faults.Fired, "the injected fault never fired, so nothing was tested");
+        Assert.NotNull(refusal);
+        Assert.Equal(TallaEgg.Core.RefusalMessages.OrderNotPlaced, refusal.Message);
     }
 
     [Fact]
@@ -96,16 +105,7 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
     {
         _wallet.FailConfirmationAfterLockNumber = 1;
 
-        await BuildOrderService(NewContext()).CreateOrderAsync(new OrderDto
-        {
-            Asset = Symbol,
-            Amount = Quantity,
-            Price = BuyPrice,
-            UserId = _customer,
-            Side = OrderSide.Buy,
-            Type = OrderType.Limit,
-            TradingType = TradingType.Spot
-        });
+        await PostOrderAsync(BuildOrderService(NewContext()));
 
         var order = Assert.Single(await OrdersOfAsync(_customer));
         Assert.Equal(OrderStatus.Cancelled, order.Status);
@@ -178,16 +178,7 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
         var context = NewContext();
         _wallet.OnLock = orderOwner => MarkOnlyOrderFailedAsync(context, orderOwner);
 
-        await BuildOrderService(context).CreateOrderAsync(new OrderDto
-        {
-            Asset = Symbol,
-            Amount = Quantity,
-            Price = BuyPrice,
-            UserId = _customer,
-            Side = OrderSide.Buy,
-            Type = OrderType.Limit,
-            TradingType = TradingType.Spot
-        });
+        await PostOrderAsync(BuildOrderService(context));
 
         Assert.Equal(OrderStatus.Failed, Assert.Single(await OrdersOfAsync(_customer)).Status);
         Assert.Empty(_wallet.Unlocks);
@@ -195,26 +186,18 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
 
     /// <summary>
     /// The database is still refusing writes when the cancellation runs. The lock cannot be given
-    /// back then, and nothing in this method can change that; what it must do is not turn the
-    /// failure into an exception for the caller, and leave a CRITICAL line that names the amount.
+    /// back then, and nothing in this method can change that; what it must do is answer with the
+    /// ordinary refusal rather than an infrastructure exception, and leave a CRITICAL line that
+    /// names the amount.
     /// </summary>
     [Fact]
-    public async Task CreateOrderAsync_CancellationAlsoFails_DoesNotThrowAndLogsTheStrandedLock()
+    public async Task CreateOrderAsync_CancellationAlsoFails_RefusesAndLogsTheStrandedLock()
     {
         _wallet.FailConfirmationAfterLockNumber = 1;
         _wallet.FailingSaves = 2;
         var logger = new CapturingLogger<OrderService>();
 
-        await BuildOrderService(NewContext(), logger).CreateOrderAsync(new OrderDto
-        {
-            Asset = Symbol,
-            Amount = Quantity,
-            Price = BuyPrice,
-            UserId = _customer,
-            Side = OrderSide.Buy,
-            Type = OrderType.Limit,
-            TradingType = TradingType.Spot
-        });
+        await PostOrderAsync(BuildOrderService(NewContext(), logger));
 
         Assert.Equal(0, _faults.Remaining);
         Assert.Equal(BuyPrice, _wallet.LockedOf(_customer, CurrenciesConstant.Toman));
@@ -223,6 +206,32 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
     }
 
     // ── harness ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>POST /api/orders</c> as the endpoint calls it. Returns the refusal the endpoint would turn
+    /// into a 400, or null when the order was accepted.
+    /// </summary>
+    private async Task<BusinessRuleException?> PostOrderAsync(OrderService service)
+    {
+        try
+        {
+            await service.CreateOrderAsync(new OrderDto
+            {
+                Asset = Symbol,
+                Amount = Quantity,
+                Price = BuyPrice,
+                UserId = _customer,
+                Side = OrderSide.Buy,
+                Type = OrderType.Limit,
+                TradingType = TradingType.Spot
+            });
+            return null;
+        }
+        catch (BusinessRuleException ex)
+        {
+            return ex;
+        }
+    }
 
     private static async Task MarkOnlyOrderFailedAsync(OrdersDbContext db, Guid userId)
     {

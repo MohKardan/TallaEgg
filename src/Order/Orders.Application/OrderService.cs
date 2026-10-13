@@ -406,14 +406,13 @@ public class OrderService
     {
         var (createdOrder, confirmed) = await CreateLockedAndConfirmedOrderAsync(command);
 
-        if (confirmed)
-        {
-            await _matchingEngine.ProcessOrderAsync(createdOrder);
-        }
-        else
-        {
-            _logger.LogWarning("Order {OrderId} was not confirmed, skipping matching engine", createdOrder.Id);
-        }
+        // An unconfirmed order has already been cancelled (#331). Returning it let POST /api/orders
+        // answer 200 «سفارش شما با موفقیت ثبت شد» for it, and the bot reads only the status code
+        // (#345). A refusal reaches the caller through the 400 every other refusal here uses.
+        if (!confirmed)
+            throw new BusinessRuleException(TallaEgg.Core.RefusalMessages.OrderNotPlaced);
+
+        await _matchingEngine.ProcessOrderAsync(createdOrder);
 
         return createdOrder;
     }
