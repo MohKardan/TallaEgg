@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orders.Application;
 using Orders.Application.Services;
@@ -139,18 +140,21 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
     /// this case; the dealer's own order was left Pending with the shop's collateral locked behind
     /// it, which cannot stop the shop trading (decision 003) but leaves a lock with no live order.
     /// </summary>
-    [Fact]
-    public async Task AcceptQuoteAsync_DealersSideFailsToConfirm_ReleasesBothLocks()
+    [Theory]
+    [InlineData(OrderSide.Buy, CurrenciesConstant.Toman, CurrenciesConstant.Maua)]
+    [InlineData(OrderSide.Sell, CurrenciesConstant.Maua, CurrenciesConstant.Toman)]
+    public async Task AcceptQuoteAsync_DealersSideFailsToConfirm_ReleasesBothLocks(
+        OrderSide customerSide, string customerCollateral, string dealerCollateral)
     {
         await PublishQuoteAsync();
         _wallet.FailConfirmationAfterLockNumber = 2;
 
-        var (success, _, _) = await BuildQuoteFillService().AcceptQuoteAsync(_customer, Symbol, OrderSide.Buy, Quantity);
+        var (success, _, _) = await BuildQuoteFillService().AcceptQuoteAsync(_customer, Symbol, customerSide, Quantity);
 
         Assert.False(success);
         Assert.True(_faults.Fired, "the injected fault never fired, so nothing was tested");
-        Assert.Equal(0m, _wallet.LockedOf(_customer, CurrenciesConstant.Toman));
-        Assert.Equal(0m, _wallet.LockedOf(_dealer, CurrenciesConstant.Maua));
+        Assert.Equal(0m, _wallet.LockedOf(_customer, customerCollateral));
+        Assert.Equal(0m, _wallet.LockedOf(_dealer, dealerCollateral));
         Assert.Equal(OrderStatus.Cancelled, Assert.Single(await OrdersOfAsync(_dealer)).Status);
     }
 
@@ -189,6 +193,35 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
         Assert.Empty(_wallet.Unlocks);
     }
 
+    /// <summary>
+    /// The database is still refusing writes when the cancellation runs. The lock cannot be given
+    /// back then, and nothing in this method can change that; what it must do is not turn the
+    /// failure into an exception for the caller, and leave a CRITICAL line that names the amount.
+    /// </summary>
+    [Fact]
+    public async Task CreateOrderAsync_CancellationAlsoFails_DoesNotThrowAndLogsTheStrandedLock()
+    {
+        _wallet.FailConfirmationAfterLockNumber = 1;
+        _wallet.FailingSaves = 2;
+        var logger = new CapturingLogger<OrderService>();
+
+        await BuildOrderService(NewContext(), logger).CreateOrderAsync(new OrderDto
+        {
+            Asset = Symbol,
+            Amount = Quantity,
+            Price = BuyPrice,
+            UserId = _customer,
+            Side = OrderSide.Buy,
+            Type = OrderType.Limit,
+            TradingType = TradingType.Spot
+        });
+
+        Assert.Equal(0, _faults.Remaining);
+        Assert.Equal(BuyPrice, _wallet.LockedOf(_customer, CurrenciesConstant.Toman));
+        Assert.Contains(logger.Entries, e =>
+            e.Level == LogLevel.Error && e.Message.StartsWith("CRITICAL") && e.Message.Contains("17000000"));
+    }
+
     // ── harness ─────────────────────────────────────────────────────────────────
 
     private static async Task MarkOnlyOrderFailedAsync(OrdersDbContext db, Guid userId)
@@ -212,23 +245,24 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
     }
 
     /// <summary>
-    /// Throws from the next <c>SaveChanges</c> once armed, then disarms: a transient fault, so the
-    /// cancellation that follows can succeed the way it would once the database answers again.
+    /// Once armed, throws from the next <paramref name="saves"/> <c>SaveChanges</c> calls, then lets
+    /// them through: a transient fault, so by default the cancellation that follows succeeds the way
+    /// it would once the database answers again.
     /// </summary>
     private sealed class FailNextSave : SaveChangesInterceptor
     {
-        private bool _armed;
+        public int Remaining { get; private set; }
 
         public bool Fired { get; private set; }
 
-        public void Arm() => _armed = true;
+        public void Arm(int saves) => Remaining = saves;
 
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
         {
-            if (_armed)
+            if (Remaining > 0)
             {
-                _armed = false;
+                Remaining--;
                 Fired = true;
                 throw new FakeDbException("injected: the database refused the save");
             }
@@ -251,6 +285,9 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
         /// <summary>Arm the database fault right after this lock (1-based) succeeds.</summary>
         public int? FailConfirmationAfterLockNumber { get; set; }
 
+        /// <summary>How many saves in a row the database refuses once the fault is armed.</summary>
+        public int FailingSaves { get; set; } = 1;
+
         public Func<Guid, Task>? OnLock { get; set; }
 
         public List<(Guid UserId, string Asset, decimal Amount)> Unlocks { get; } = new();
@@ -267,7 +304,7 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
             _locked[(userId, asset)] = LockedOf(userId, asset) + amount;
 
             if (++_locks == FailConfirmationAfterLockNumber)
-                faults.Arm();
+                faults.Arm(FailingSaves);
 
             if (OnLock is not null)
                 await OnLock(userId);
@@ -283,7 +320,7 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
         }
     }
 
-    private OrderService BuildOrderService(OrdersDbContext context)
+    private OrderService BuildOrderService(OrdersDbContext context, ILogger<OrderService>? logger = null)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -304,7 +341,7 @@ public class UnconfirmedOrderReleasesCollateralTests : IDisposable
 
         return new OrderService(
             orderRepository, _wallet, new NoOpMatchingEngine(),
-            NullLogger<OrderService>.Instance,
+            logger ?? NullLogger<OrderService>.Instance,
             usersApiClient,
             new OrderCollateralReconciler(orderRepository, tradeRepository, _wallet,
                 NullLogger<OrderCollateralReconciler>.Instance),

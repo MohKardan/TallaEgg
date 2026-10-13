@@ -357,9 +357,14 @@ public class OrderService
     /// This deliberately goes through <see cref="CancelOrderAsync"/> instead of unlocking
     /// <paramref name="collateralAmount"/> directly. A failed confirmation also means the order has
     /// already left Pending — confirmed, cancelled or failed by someone else — and an unconditional
-    /// unlock would then release collateral still in use, or release it twice. Cancellation re-reads
-    /// the order, refuses a Completed or Failed one, and releases only the residual worked out by
-    /// the same formula as the lock (#52).
+    /// unlock would then release collateral still in use, or release it twice. Cancellation refuses a
+    /// Completed or Failed order and releases only the residual worked out by the same formula as
+    /// the lock (#52).
+    ///
+    /// Its read of the order goes through this request's context, which already tracks the order,
+    /// so it sees what this request did and not what another one committed meanwhile. That leaves
+    /// one narrow case uncovered: a confirmation that committed but reported failure, and was then
+    /// filled by another scope before this runs. No such scope fills orders in dealer mode.
     /// </remarks>
     private async Task CancelUnconfirmedOrderAsync(Guid orderId, Guid userId, string collateralAsset, decimal collateralAmount)
     {
