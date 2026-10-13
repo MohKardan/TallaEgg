@@ -67,4 +67,11 @@ public static class RefusalMessages
     /// </para>
     /// </summary>
     public const string OrderNotPlaced = "تأیید سفارش در سیستم انجام نشد.";
+
+    /// <summary>
+    /// The bot asked the Orders service and got back a failure it could not read: no refusal
+    /// sentence, only a status (a 503 while the service starts, a 500, a proxy page). Nothing is
+    /// known except that the service did not answer properly, so that is all it says.
+    /// </summary>
+    public const string OrderServiceUnavailable = "سرویس سفارش در این لحظه پاسخ نداد.";
 }

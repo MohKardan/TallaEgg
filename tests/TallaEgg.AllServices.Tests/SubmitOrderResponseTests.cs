@@ -93,9 +93,9 @@ public class SubmitOrderResponseTests
         var (success, message) = await client.SubmitOrderAsync(AnOrder);
 
         Assert.False(success);
-        Assert.False(string.IsNullOrWhiteSpace(message));
-        Assert.DoesNotContain("<", message);
-        Assert.DoesNotContain(":", message);
+        Assert.Equal(RefusalMessages.OrderServiceUnavailable, message);
+        if (body.Length > 0)
+            Assert.DoesNotContain(body, message);
     }
 
     [Fact]
