@@ -339,9 +339,49 @@ public class OrderService
         var confirmSuccess = await ConfirmOrderIfPendingAsync(createdOrder.Id);
 
         if (!confirmSuccess)
-            _logger.LogWarning("Order {OrderId} was not confirmed.", createdOrder.Id);
+        {
+            _logger.LogWarning("Order {OrderId} was not confirmed; cancelling it to release its collateral.",
+                createdOrder.Id);
+            await CancelUnconfirmedOrderAsync(createdOrder.Id, command.UserId, collateralAsset, collateralAmount);
+        }
 
         return (createdOrder, confirmSuccess);
+    }
+
+    /// <summary>
+    /// Gives back the collateral of an order that was locked but never confirmed (issue #331).
+    /// Nothing else ever would: no hosted service touches a Pending order, and the reconciler only
+    /// releases the residue of a Completed one.
+    /// </summary>
+    /// <remarks>
+    /// This deliberately goes through <see cref="CancelOrderAsync"/> instead of unlocking
+    /// <paramref name="collateralAmount"/> directly. A failed confirmation also means the order has
+    /// already left Pending — confirmed, cancelled or failed by someone else — and an unconditional
+    /// unlock would then release collateral still in use, or release it twice. Cancellation re-reads
+    /// the order, refuses a Completed or Failed one, and releases only the residual worked out by
+    /// the same formula as the lock (#52).
+    /// </remarks>
+    private async Task CancelUnconfirmedOrderAsync(Guid orderId, Guid userId, string collateralAsset, decimal collateralAmount)
+    {
+        try
+        {
+            if (!await CancelOrderAsync(orderId, "تایید سفارش انجام نشد"))
+                _logger.LogError(
+                    "Order {OrderId} was not confirmed and could not be found to cancel; up to {Amount} {Asset} may stay locked for user {UserId}.",
+                    orderId, collateralAmount, collateralAsset, userId);
+        }
+        catch (BusinessRuleException ex)
+        {
+            // Completed or Failed: whatever moved it there owns its collateral now.
+            _logger.LogWarning("Order {OrderId} was not confirmed and is no longer cancellable: {Reason}",
+                orderId, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "CRITICAL: Order {OrderId} was not confirmed and could not be cancelled; {Amount} {Asset} stays locked for user {UserId}.",
+                orderId, collateralAmount, collateralAsset, userId);
+        }
     }
 
     /// <summary>

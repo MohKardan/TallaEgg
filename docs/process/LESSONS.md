@@ -60,6 +60,10 @@ This repository squash-merges, so a branch's own commits never appear in `main`.
 - After a merge, delete the branch locally as well as on GitHub, then `git fetch --prune origin` and
   `git branch -vv`. Only `main` should remain, with no `[gone]` rows. `/code-review <n>` leaves a
   `pr-<n>` branch behind; delete that too.
+- **Prune before you report a branch as left over.** `git branch -a` lists remote-tracking refs from the
+  last fetch, not what GitHub holds. On 2026-10-13 four branches were reported as undeleted after their
+  PRs merged; `git fetch --prune origin` removed all four, because GitHub had already deleted them. Ask
+  GitHub directly: `gh api repos/{owner}/{repo}/branches --jq '.[].name'`.
 
 ### `gh pr merge` can refuse a branch that is not behind
 
@@ -136,6 +140,14 @@ went red. Moving the new code above the block made it green again, and in doing 
 now found the new mention, and deleting the real guard would have stayed green. `/code-review` caught it.
 After changing code near a source-scanning guard, delete what the guard protects and confirm it still
 fails.
+
+### A concurrent write from a second `DbContext` is invisible to a context that tracks the row
+
+For #331 a test simulated "another writer marked the order Failed" through a fresh context. The service's
+own context had tracked the order since it saved it, so its next read returned the tracked instance, still
+`Pending`, so in that version the race could not happen (seen by reading the draft, not by running it). To make the code
+under test see a change, write it through **the same context** the service uses, and assert the
+precondition (the status it should have seen) as well as the outcome.
 
 ---
 
