@@ -65,6 +65,18 @@ This repository squash-merges, so a branch's own commits never appear in `main`.
   PRs merged; `git fetch --prune origin` removed all four, because GitHub had already deleted them. Ask
   GitHub directly: `gh api repos/{owner}/{repo}/branches --jq '.[].name'`.
 
+### A PR can change between review and merge
+
+On 2026-10-07 #337 gained a third commit, `112cd70` (the opening "how to conduct yourself" section), at
+09:27 UTC. Its only review was submitted at 09:30:39, and the merge followed seven seconds later. GitHub
+cannot show whether that review had read `112cd70`, and since every commit here is under one account it
+cannot show who pushed it either. Several agents push to shared branches, so the PR you reviewed may not
+be the PR you merge.
+
+Note the head SHA you reviewed, and merge with it:
+`gh pr merge <n> --squash --delete-branch --match-head-commit <sha>`. GitHub refuses the merge if the head
+has moved since; review the new commits, then merge with the new SHA.
+
 ### `gh pr merge` can refuse a branch that is not behind
 
 On #187 (2026-09-01), GraphQL's `mergePullRequest` answered "Head branch is out of date" with
@@ -228,9 +240,3 @@ quote.
 credit → trade produces correct balances even when registration created no wallets at all. That is how
 #209 (registration's wallet call answered 401) stayed hidden. When testing anything wallet-related,
 read the log of the registration itself.
-
-### A PR can mutate between review and merge in a multi-agent environment
-
-On 2026-10-07, an agent reviewed PR #337 at 12:51, but the PR was merged at 13:00. In that 9-minute gap, another agent pushed a substantial commit adding the core "Conduct first" rules. The merging agent blindly merged it without noticing the new commit, failing to review the actual final state of the PR. 
-
-When working alongside other agents, never assume a PR's state is frozen. Before executing a merge or final approval, check gh pr view <n> or the latest commit hash to ensure no new commits were pushed since your last read.
