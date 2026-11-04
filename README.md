@@ -281,10 +281,11 @@ Swagger UI is at `/api-docs` on Users, Wallet and Orders — for example `http:/
 ## Production Deployment
 
 On a server, the four deployed services (not Affiliate.Api or TallaEgg.Api — see above) run as
-native Windows services instead of a terminal per process, so they restart automatically after a
-crash or reboot. See
-[`docs/operations/WINDOWS_DEPLOYMENT.md`](docs/operations/WINDOWS_DEPLOYMENT.md) — issue #70 —
-for the one-time setup and the `scripts/windows-services/` install scripts.
+supervised services instead of a terminal per process, so they restart automatically after a
+crash or reboot — as native Windows services via `scripts/windows-services/` (issue #70, see
+[`docs/operations/WINDOWS_DEPLOYMENT.md`](docs/operations/WINDOWS_DEPLOYMENT.md)) or as systemd
+units via `scripts/linux/` on Ubuntu and other systemd distributions (issue #349, see
+[`docs/operations/LINUX_DEPLOYMENT.md`](docs/operations/LINUX_DEPLOYMENT.md)).
 
 ## Service Highlights
 
@@ -324,8 +325,9 @@ Long polling means the bot needs **no inbound ports**. KR1's deployment work
 steps. `Production` has been run and verified locally against SQL Server Express, not just
 Development — the note that used to be here about it never having executed is no longer true.
 
-Use `scripts/windows-services/` for publishing and installing the services — it's the only
-publish tooling in the repo now. An older `publish-all.ps1` at the repo root and a `publishes/`
+Use `scripts/windows-services/` (Windows) or `scripts/linux/` (Ubuntu and other systemd
+distributions) for publishing and installing the services. An older `publish-all.ps1` at the
+repo root and a `publishes/`
 folder predated #69/#70 and were removed: they published five services instead of four
 (including the two #69 decided not to deploy), still referenced the HTTPS bind addresses #69
 removed, and assumed manual `dotnet *.dll` startup instead of a supervised service.

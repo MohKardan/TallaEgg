@@ -142,3 +142,84 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload $env:TAG "$env:RUNNER_TEMP\artifacts\*.zip" --clobber
+
+  # The Linux counterparts of the assets above (issue #349): the same four services, published
+  # linux-x64 framework-dependent through scripts/linux/publish-all.sh — the same script an
+  # operator runs by hand, for the same reason the Windows job has no copy of its project list.
+  # The checks mirror the Windows job's one-for-one, because the same mistakes are available
+  # here: assemblies carrying the wrong version, and a credential file reaching a public
+  # release. Tarballs rather than zips — tar is on every distribution, unzip is not always.
+  publish-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve the release tag and the publish root
+        run: |
+          echo "TAG=${{ github.event.release.tag_name || inputs.tag }}" >> "$GITHUB_ENV"
+          echo "INSTALL_ROOT=$RUNNER_TEMP/TallaEgg" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Publish the four deployed services for linux-x64
+        run: ./scripts/linux/publish-all.sh --install-root "$INSTALL_ROOT"
+
+      - name: Verify the assemblies carry the tagged version
+        shell: pwsh
+        run: |
+          $expected = $env:TAG -replace '^v', ''
+          $assemblies = @{
+            'Wallet.Api'  = 'Wallet.Api.dll'
+            'Users.Api'   = 'Users.Api.dll'
+            'Orders.Api'  = 'Orders.Api.dll'
+            'Bot'         = 'TallaEgg.TelegramBot.Infrastructure.dll'
+          }
+
+          $failed = $false
+          foreach ($service in $assemblies.Keys) {
+            $path = Join-Path $env:INSTALL_ROOT "publish/$service/$($assemblies[$service])"
+            $info = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)
+
+            # ProductVersion is InformationalVersion: "1.3.0+<commit>" inside a checkout.
+            $actual = ($info.ProductVersion -split '\+')[0]
+
+            if ($actual -ne $expected) {
+              Write-Host "::error::$service reports $actual, but the release is tagged $env:TAG (expected $expected). Raise VersionPrefix in Directory.Build.props."
+              $failed = $true
+            } else {
+              Write-Host "$service $($info.ProductVersion)"
+            }
+          }
+
+          if ($failed) { exit 1 }
+
+      - name: Refuse to package a configuration file
+        run: |
+          found=$(find "$INSTALL_ROOT/publish" -name 'appsettings.global.json' -print -quit)
+          if [ -n "$found" ]; then
+            echo "::error::A shared configuration file reached the publish output: $found"
+            exit 1
+          fi
+          echo "No appsettings.global.json in the publish output."
+
+      - name: Package each service
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+
+          for service in Wallet.Api Users.Api Orders.Api Bot; do
+            tarball="$RUNNER_TEMP/artifacts/$service-$TAG-linux-x64.tar.gz"
+            tar -czf "$tarball" -C "$INSTALL_ROOT/publish/$service" .
+            echo "$tarball  $(( $(stat -c%s "$tarball") / 1024 / 1024 )) MB"
+          done
+
+      # --clobber so a re-run through workflow_dispatch replaces the assets instead of failing
+      # on a name that already exists.
+      - name: Attach the artifacts to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "$RUNNER_TEMP/artifacts/"*.tar.gz --clobber

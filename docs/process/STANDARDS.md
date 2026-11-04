@@ -51,7 +51,7 @@ TallaEgg/
 │   ├── audit/                        # Audit archive + current methodology (see audit/README.md)
 │   ├── architecture/                 # DEALER_QUOTE_MODEL.md (how trading works), BOT_USER_FLOW.md, ROADMAP.md
 │   ├── design/                       # API_REQUEST_VALIDATION.md — what the endpoints actually refuse
-│   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md)
+│   ├── operations/                   # Runbooks/deployment (WINDOWS_DEPLOYMENT.md, LINUX_DEPLOYMENT.md)
 │   ├── process/                      # This file, INDEX, WORKFLOW, PR_TEMPLATE, CODE_REVIEW_GUIDE
 │   ├── pull-requests/                # Archived PR records — never edited
 │   ├── business/                     # Business proposal
@@ -463,7 +463,8 @@ Example (BAD):
 ### Branching Strategy
 - Main branch: `main` (production-ready, deployed)
 - **There is no `staging` branch.** Branches are cut from `main` and squash-merged back to it, and
-  `main` is what ships. Deployment is manual — see `../operations/WINDOWS_DEPLOYMENT.md`.
+  `main` is what ships. Deployment is manual — see `../operations/WINDOWS_DEPLOYMENT.md` or
+  `../operations/LINUX_DEPLOYMENT.md`, depending on the host.
 - Feature/fix/hotfix branches: cut from `main`, merged back after CI is green and review is done
 
 ### Commit Guidelines

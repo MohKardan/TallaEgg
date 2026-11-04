@@ -231,7 +231,25 @@ simulated users' `Transactions` and `Wallets` are wiped. So:
 
 `AGENTS.md` → "Measurements that mislead" covers the residue in `Orders` itself.
 
-### Use realistic figures in tests and scripts
+## Emitting files
+
+### Generate near-identical files from one template; do not write each by hand
+
+Writing the four systemd unit files one after another produced a corrupted file on three of the
+four attempts (2026-11-04, issue #349) — a garbled `ExecStart` line, a duplicated `Group=` line
+with a different spelling of the same account, a mangled directive name — every one inside the
+parts that repeated a sibling's text with small substitutions, and every one caught only because
+a grep over the finished files ran before anything was committed. Nothing about the failures was
+subtle; they were transcription noise, and they concentrated exactly where the writing was
+repetitive.
+
+Do it mechanically instead: define the shared block once and emit the variants from it (a small
+generator script kept outside the repo, or one good file plus scripted substitutions), then
+verify with `grep`/`diff` over the fields that must differ across the set. The same applies to
+any batch of near-identical artifacts — per-environment config files, test data sets, tables of
+repeated rows in docs.
+
+## Local data
 
 An invented number does not stay in the test that wrote it. A script published a MAUA/IRT quote at
 33.4M/gram when the market was about 22.2M (2026-08-31). Once the plausibility band shipped (#158), that

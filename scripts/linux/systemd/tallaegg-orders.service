@@ -1,0 +1,76 @@
+# TallaEgg Orders API - systemd unit (issue #349).
+#
+# Installed by scripts/linux/install-services.sh, which copies this file into
+# /etc/systemd/system/ and writes /opt/tallaegg/config/tallaegg.env holding the inter-service
+# API key. Mirrors the Windows service TallaEggOrdersApi (scripts/windows-services/install-services.ps1);
+# the guards in LinuxSystemdUnitTests pin the two sides together.
+
+[Unit]
+Description=TallaEgg Orders API
+
+# Start once the network is up, after the local SQL Server when there is one, and after the
+# Wallet API - this service calls it on startup paths. All soft dependencies: a missing unit is
+# ignored with a warning (the remote-database case), where Requires= would refuse every start.
+# The database ordering is not a readiness promise - the application's own migration retry
+# (issue #230) waits out a database that is not answering yet.
+Wants=network-online.target mssql-server.service tallaegg-wallet.service
+After=network-online.target mssql-server.service tallaegg-wallet.service
+
+[Service]
+# Type=notify is what makes UseSystemd() active: systemd then sets NOTIFY_SOCKET, the host
+# points its content root at AppContext.BaseDirectory and reports READY=1 as soon as it has
+# started - the readiness the SCM gets from UseWindowsService() on Windows. Without it a
+# process that dies during construction looks "active" to the service manager.
+Type=notify
+NotifyAccess=main
+
+# A dedicated unprivileged account created by install-services.sh. The published binaries and
+# their logs are what this account can reach; it has no shell and no sudo.
+User=tallaegg
+Group=tallaegg
+
+# The content root, stated twice on purpose. UseSystemd() anchors it at the binary's folder
+# when systemd is PID 1, and the working directory backs that up when it is not - either way
+# the walk up from here for config/appsettings.global.json reaches /opt/tallaegg/config/
+# (issues #211 and #212; the walk is what makes the deployment root work).
+WorkingDirectory=/opt/tallaegg/publish/Orders.Api
+ExecStart=/usr/bin/dotnet /opt/tallaegg/publish/Orders.Api/Orders.Api.dll
+
+# Non-secret configuration lives in this unit. The inter-service API key never appears in a
+# unit file: a unit in /etc/systemd/system is world-readable, so install-services.sh writes
+# the key into the root-owned, mode-600 environment file below, which systemd reads before
+# dropping privileges.
+Environment=ASPNETCORE_ENVIRONMENT=Production
+EnvironmentFile=/opt/tallaegg/config/tallaegg.env
+
+# Crash recovery, mirroring the Windows installer's first restart policy (10s). "always", not
+# "on-failure": a service whose migration gave up after ten attempts stops itself with a clean
+# exit (DatabaseMigrationHostedService), and "on-failure" would leave it down. An operator's
+# explicit `systemctl stop` is not a crash and is never fought by the restart.
+Restart=always
+RestartSec=10s
+
+# Hardening, kept to the settings a .NET host is known to tolerate. Deliberately absent:
+# MemoryDenyWriteExecute=true (the JIT needs W^X and dies under it) and SystemCallFilter=
+# (this deployment cannot test it on every host it may land on). Tighten per host with
+# `systemd-analyze security tallaegg-orders`.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+RemoveIPC=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

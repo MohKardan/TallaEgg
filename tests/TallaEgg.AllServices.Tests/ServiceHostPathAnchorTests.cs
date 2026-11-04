@@ -139,6 +139,31 @@ public class ServiceHostPathAnchorTests
     }
 
     /// <summary>
+    /// The Linux counterpart of the test above (issue #349). <c>UseSystemd()</c> is what moves
+    /// the content root to the binary's folder when the host runs inside a systemd unit, the
+    /// same thing <c>UseWindowsService()</c> does under the SCM — and it is likewise a no-op
+    /// everywhere else, which is why a Linux deployment that relies on the unit file's
+    /// <c>WorkingDirectory=</c> still works when this call is missing, and why the gap is
+    /// invisible: the failure only shows on a host where <c>NOTIFY_SOCKET</c> is set and the
+    /// walk starts somewhere unexpected. Delete the call from a deployed host and a systemd
+    /// deployment that ever runs the binary from a different working directory than its folder
+    /// loses the shared configuration while every other assertion here stays green.
+    ///
+    /// <para>
+    /// Both calls are kept in every deployed host on purpose: the first is the anchor on
+    /// Windows, the second on Linux, and each is dead code on the other's platform.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(DeployedHostEntryPoints))]
+    public void EveryDeployedHost_CallsUseSystemdSoTheContentRootFollowsTheBinaryOnLinux(string relativePath)
+    {
+        Assert.Contains(
+            ReadLines(relativePath),
+            line => IsCode(line) && line.Contains("UseSystemd()", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// The one part of this that is behaviour rather than source shape.
     /// </summary>
     [Fact]

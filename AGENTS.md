@@ -222,7 +222,9 @@ be, and one level up that is every sibling repository on the machine.
 To bring the stack up in one command, use `.claude/skills/run-tallaegg/driver.ps1 start` — it
 builds the solution, launches Users/Wallet/Orders in the background and waits for all three to
 report healthy. On a server, `scripts/windows-services/install-services.ps1` installs and starts
-all four as Windows services (see `docs/operations/WINDOWS_DEPLOYMENT.md`).
+all four as Windows services (see `docs/operations/WINDOWS_DEPLOYMENT.md`), and
+`scripts/linux/install-services.sh` installs the same four as systemd units on Ubuntu and other
+systemd distributions (see `docs/operations/LINUX_DEPLOYMENT.md`).
 
 To run them in the foreground instead, one per terminal:
 
