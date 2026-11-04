@@ -216,6 +216,21 @@ After restoring a file, touch it (`(Get-Item <path>).LastWriteTime = Get-Date`) 
 `obj/`. When a measurement contradicts the source you can see, suspect the build before the measurement:
 compare the DLL's timestamp with the source file's.
 
+### NuGet rejects socks5h:// proxy scheme with NU1301
+
+When running `dotnet restore` in an environment where SOCKS proxies are exported via `HTTP_PROXY`,
+`HTTPS_PROXY` or `ALL_PROXY`, NuGet only accepts `'http'`, `'https'`, `'socks4'`, `'socks4a'`, and
+`'socks5'` schemes. The `'socks5h'` scheme (common in curl/ssh configs) causes NuGet restore to abort
+with `error NU1301: Only the 'http', 'https', 'socks4', 'socks4a' and 'socks5' schemes are allowed for proxies.`
+(encountered on 2026-11-04 while working on #97).
+
+**What to do instead:** ensure the scheme is rewritten to `socks5://` before invoking `dotnet restore`:
+```powershell
+$env:ALL_PROXY = $env:ALL_PROXY -replace '^socks5h://', 'socks5://'
+$env:HTTPS_PROXY = $env:HTTPS_PROXY -replace '^socks5h://', 'socks5://'
+dotnet restore
+```
+
 ---
 
 ## Local data
