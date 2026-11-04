@@ -20,7 +20,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\TelegramBot\TallaEgg.TelegramBot.Infrastructure\TallaEgg.TelegramBot.Infrastructure.csproj" />
+    <!-- No TallaEgg.TelegramBot.Infrastructure. The reference sat here dead — every client
+         this layer uses (IWalletApiClient, UsersApiClient) is defined in the shared
+         TallaEgg.Infrastructure below, and nothing in this project used a bot type — while
+         pointing an Orders service layer at the bot's executable assembly, the reverse of the
+         direction the bot's own csproj documents (#266). It also made `dotnet publish -r
+         linux-x64` of Orders.Api build the bot twice and fail NETSDK1152 (issue #349). Re-adding
+         it means the bot's executable has crossed a service boundary backwards; check that is
+         really what you want. -->
     <ProjectReference Include="..\..\TallaEgg\TallaEgg.Infrastructure\TallaEgg.Infrastructure.csproj" />
     <ProjectReference Include="..\Orders.Infrastructure\Orders.Infrastructure.csproj" />
     <ProjectReference Include="..\Orders.Core\Orders.Core.csproj" />

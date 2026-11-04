@@ -8,6 +8,9 @@ using TallaEgg.Core.Enums.Order;
 using TallaEgg.Core.Enums.User;
 using TallaEgg.Core.Responses.Order;
 using TallaEgg.Infrastructure.Clients;
+// Not a bot dependency: UsersApiClient is defined in the shared TallaEgg.Infrastructure
+// assembly but lives inside the namespace the bot's own clients use, so this using resolves
+// without any reference to the bot's project (see Orders.Application.csproj, issue #349).
 using TallaEgg.TelegramBot.Infrastructure.Clients;
 using TallaEgg.Core.ErrorHandling;
 using TallaEgg.Core.Utilties;

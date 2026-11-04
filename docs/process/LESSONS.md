@@ -188,6 +188,23 @@ precondition (the status it should have seen) as well as the outcome.
 
 ## Build
 
+### A namespace name can keep a dead project reference alive
+
+`Orders.Application` carried a ProjectReference on the Telegram bot's *executable* project.
+Nothing in the project used a bot type: the `UsersApiClient` it instantiates is declared in the
+shared `TallaEgg.Infrastructure` — but *inside the namespace `TallaEgg.TelegramBot.Infrastructure.Clients`*,
+whose name made the matching `using` line look like a bot dependency. Nothing flagged it until
+`dotnet publish -r linux-x64` built the bot twice during a single publish of Orders.Api and
+failed NETSDK1152 naming two copies of the bot's `deps.json` (2026-11-04, issue #349; measured
+twice, including once on a tree with all `bin`/`obj` deleted). The Windows publish, which passes
+no RID, never hit it, so the reference could sit dead for over a year.
+
+Before trusting any read of "which project provides this type", locate the **declaration**, not
+the namespace: `git grep -nE "(class|record|interface|struct|enum) <Name>\b"`. The namespace a
+file declares and the project it lives in are independent things, and here the shared assembly
+deliberately reuses the bot's namespace name — so the fix kept the `using` and removed only the
+reference.
+
 ### A restored file can make the build a silent no-op
 
 When comparing before and after by swapping a file for an older copy, the copy can carry a
