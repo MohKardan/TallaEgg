@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Wallet, LogIn, LogOut, Send, ShieldCheck } from "lucide-react";
+import { Wallet, LogIn, LogOut, Send, Menu, X } from "lucide-react";
 
 interface UserProfile {
   firstName?: string;
@@ -14,6 +14,7 @@ interface UserProfile {
 export default function Navbar() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -53,7 +54,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Center Nav Links */}
+        {/* Center Nav Links (Desktop) */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
           <Link href="/#rates" className="hover:text-amber-400 transition-colors">
             مظنه لحظه‌ای
@@ -69,7 +70,7 @@ export default function Navbar() {
           </Link>
         </nav>
 
-        {/* Action Buttons */}
+        {/* Action Buttons & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <a
             href="https://t.me/TallaEgg_Bot"
@@ -92,6 +93,7 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={handleLogout}
+                aria-label="خروج از حساب کاربری"
                 title="خروج از حساب کاربری"
                 className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-700/60 text-slate-400 hover:text-rose-400 hover:border-rose-500/30 transition-colors"
               >
@@ -107,8 +109,51 @@ export default function Navbar() {
               <span>ورود با تلگرام</span>
             </Link>
           )}
+
+          {/* Mobile menu toggle */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="باز کردن منوی موبایل"
+            className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border border-slate-700 text-slate-300 hover:text-white"
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile navigation drawer */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-b border-amber-500/15 bg-[#0a0d14] px-4 py-4 space-y-3">
+          <Link
+            href="/#rates"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm text-slate-300 hover:text-amber-400 py-1"
+          >
+            مظنه لحظه‌ای
+          </Link>
+          <Link
+            href="/#calculator"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm text-slate-300 hover:text-amber-400 py-1"
+          >
+            ماشین‌حساب طلا
+          </Link>
+          <Link
+            href="/#features"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm text-slate-300 hover:text-amber-400 py-1"
+          >
+            مزایای معامله
+          </Link>
+          <Link
+            href="/#guide"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block text-sm text-slate-300 hover:text-amber-400 py-1"
+          >
+            راهنمای شروع
+          </Link>
+        </div>
+      )}
     </header>
   );
 }

@@ -47,4 +47,17 @@ describe("Secure Session Token Management (AES-256-GCM)", () => {
     assert.strictEqual(unsealSessionToken("invalid-token-without-parts"), null);
     assert.strictEqual(unsealSessionToken(""), null);
   });
+
+  it("throws in production when SESSION_SECRET is missing", () => {
+    const origEnv = process.env.NODE_ENV;
+    const origSecret = process.env.SESSION_SECRET;
+    try {
+      (process.env as any).NODE_ENV = "production";
+      delete process.env.SESSION_SECRET;
+      assert.throws(() => sealSessionToken(sampleUser), /SESSION_SECRET environment variable is missing/);
+    } finally {
+      (process.env as any).NODE_ENV = origEnv;
+      process.env.SESSION_SECRET = origSecret;
+    }
+  });
 });

@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Send, Shield, AlertCircle, CheckCircle2, Lock, ArrowLeft } from "lucide-react";
+import { Send, Shield, AlertCircle, CheckCircle2, Lock, WifiOff } from "lucide-react";
 import Link from "next/link";
 
 declare global {
@@ -21,7 +21,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [userStatus, setUserStatus] = useState<string | null>(null);
-  const [botUsername, setBotUsername] = useState("TallaEgg_Bot");
+  const [widgetFailed, setWidgetFailed] = useState(false);
+
+  const botUsername =
+    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "TallaEgg_Bot";
 
   // Check if already authenticated
   useEffect(() => {
@@ -35,7 +38,7 @@ export default function LoginPage() {
       .catch(() => {});
   }, [router]);
 
-  // Set up Telegram widget callback
+  // Set up Telegram widget callback & script loader
   useEffect(() => {
     window.onTelegramAuth = async (user: any) => {
       setLoading(true);
@@ -81,7 +84,20 @@ export default function LoginPage() {
       script.setAttribute("data-onauth", "onTelegramAuth(user)");
       script.setAttribute("data-request-access", "write");
       script.async = true;
+      script.onerror = () => setWidgetFailed(true);
       widgetContainerRef.current.appendChild(script);
+
+      // Watchdog timeout: if widget iframe does not appear within 6s (e.g. filtered CDN)
+      const timer = setTimeout(() => {
+        if (!widgetContainerRef.current?.querySelector("iframe")) {
+          setWidgetFailed(true);
+        }
+      }, 6000);
+
+      return () => {
+        clearTimeout(timer);
+        delete window.onTelegramAuth;
+      };
     }
 
     return () => {
@@ -147,6 +163,18 @@ export default function LoginPage() {
                 {/* Telegram Script injected here */}
               </div>
 
+              {/* Script failure fallback for filtered networks */}
+              {widgetFailed && (
+                <div className="w-full rounded-xl bg-amber-500/10 border border-amber-500/30 p-4 text-xs text-amber-300 space-y-2 text-right">
+                  <div className="flex items-start gap-2.5">
+                    <WifiOff className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" />
+                    <p className="leading-relaxed font-light">
+                      دکمه تلگرام بارگذاری نشد؟ به دلیل محدودیت‌های شبکه اینترنت کشور روی دامنه تلگرام، لطفاً اتصال اینترنت خود یا ابزار گذر از تحریم را بررسی کنید، یا مستقیماً از طریق ربات تلگرام وارد شوید.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {loading && (
                 <div className="flex items-center gap-2 text-xs text-amber-400 pt-2 animate-pulse">
                   <div className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
@@ -172,13 +200,13 @@ export default function LoginPage() {
             <div className="mt-8 pt-6 border-t border-slate-800 text-center">
               <p className="text-xs text-slate-400 mb-3">هنوز در سامانه ثبت‌نام نکرده‌اید؟</p>
               <a
-                href="https://t.me/TallaEgg_Bot"
+                href={`https://t.me/${botUsername}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 w-full rounded-xl border border-amber-500/30 bg-amber-500/10 py-3 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
               >
                 <Send className="h-4 w-4" />
-                <span>ثبت‌نام از طریق ربات @TallaEgg_Bot</span>
+                <span>ثبت‌نام از طریق ربات @{botUsername}</span>
               </a>
             </div>
           </div>

@@ -37,6 +37,7 @@ export function formatNumberEn(
 
 /**
  * Formats a Gregorian ISO timestamp into a Jalali date string at Tehran offset (+03:30).
+ * Explicitly declares Persian calendar to prevent Gregorian fallback on minimal ICU environments.
  */
 export function formatJalaliDateTime(isoString: string): string {
   if (!isoString) return "-";
@@ -44,7 +45,7 @@ export function formatJalaliDateTime(isoString: string): string {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) return "-";
 
-    return new Intl.DateTimeFormat("fa-IR", {
+    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
       timeZone: "Asia/Tehran",
       year: "numeric",
       month: "long",
