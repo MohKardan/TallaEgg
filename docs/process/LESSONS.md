@@ -263,6 +263,24 @@ simulated users' `Transactions` and `Wallets` are wiped. So:
 
 `AGENTS.md` → "Measurements that mislead" covers the residue in `Orders` itself.
 
+### Use realistic figures in tests and scripts
+
+An invented number does not stay in the test that wrote it. A script published a MAUA/IRT quote at
+33.4M/gram when the market was about 22.2M (2026-08-31). Once the plausibility band shipped (#158), that
+quote became the reference, the real feed read as 33.7% out of band, and every real price was held for
+approval while the wrong one stayed in force. Check what the asset trades at before writing a price.
+Pick a deliberately absurd value only to test a rejection, and do not leave it standing as the active
+quote.
+
+### A working trade does not prove a wallet was created at registration
+
+`Wallet.Api` creates a wallet row the first time anything writes to it. So register → approve → grant
+credit → trade produces correct balances even when registration created no wallets at all. That is how
+#209 (registration's wallet call answered 401) stayed hidden. When testing anything wallet-related,
+read the log of the registration itself.
+
+---
+
 ## Emitting files
 
 ### Generate near-identical files from one template; do not write each by hand
@@ -280,19 +298,3 @@ generator script kept outside the repo, or one good file plus scripted substitut
 verify with `grep`/`diff` over the fields that must differ across the set. The same applies to
 any batch of near-identical artifacts — per-environment config files, test data sets, tables of
 repeated rows in docs.
-
-## Local data
-
-An invented number does not stay in the test that wrote it. A script published a MAUA/IRT quote at
-33.4M/gram when the market was about 22.2M (2026-08-31). Once the plausibility band shipped (#158), that
-quote became the reference, the real feed read as 33.7% out of band, and every real price was held for
-approval while the wrong one stayed in force. Check what the asset trades at before writing a price.
-Pick a deliberately absurd value only to test a rejection, and do not leave it standing as the active
-quote.
-
-### A working trade does not prove a wallet was created at registration
-
-`Wallet.Api` creates a wallet row the first time anything writes to it. So register → approve → grant
-credit → trade produces correct balances even when registration created no wallets at all. That is how
-#209 (registration's wallet call answered 401) stayed hidden. When testing anything wallet-related,
-read the log of the registration itself.
