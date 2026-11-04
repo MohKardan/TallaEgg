@@ -74,8 +74,21 @@ export async function getUserByTelegramId(
       cache: "no-store",
     });
 
-    if (res.status === 400 || res.status === 404) {
+    // 404: user truly does not exist in the database
+    if (res.status === 404) {
       return { user: null };
+    }
+
+    // 400: schema or validation error - do not silently mask as missing user
+    if (res.status === 400) {
+      const errJson = await res.json().catch(() => null);
+      if (errJson?.message?.includes("User not found") || errJson?.message?.includes("کاربر یافت نشد")) {
+        return { user: null };
+      }
+      return {
+        user: null,
+        error: `Users.Api rejected request (HTTP 400): ${errJson?.message || res.statusText}`,
+      };
     }
 
     if (!res.ok) {

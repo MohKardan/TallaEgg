@@ -23,14 +23,15 @@ import {
 export default function HomePage() {
   // Calculator state
   const [unit, setUnit] = useState<"gram" | "mesghal">("gram");
-  const [amount, setAmount] = useState<number>(5);
+  const [amountInput, setAmountInput] = useState<string>("5");
+  const numericAmount = Math.max(0, parseFloat(amountInput) || 0);
 
   // Representative live benchmark rates (Toman)
   const gramRate = 4350000; // 4,350,000 Toman per gram of 18k melted gold
   const mesghalRate = gramRate * 4.3318; // 1 mesghal = 4.3318 grams of 17k/18k
 
   const totalCalculated =
-    unit === "gram" ? amount * gramRate : amount * mesghalRate;
+    unit === "gram" ? numericAmount * gramRate : numericAmount * mesghalRate;
 
   return (
     <>
@@ -288,9 +289,9 @@ export default function HomePage() {
                     {[1, 5, 10, 20, 50].map((val) => (
                       <button
                         key={val}
-                        onClick={() => setAmount(val)}
+                        onClick={() => setAmountInput(String(val))}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          amount === val
+                          numericAmount === val
                             ? "bg-amber-500 text-slate-950 font-bold"
                             : "bg-slate-800/80 text-slate-300 hover:bg-slate-700"
                         }`}
@@ -330,20 +331,24 @@ export default function HomePage() {
 
                 {/* Amount Input */}
                 <div>
-                  <label className="block text-xs text-slate-400 mb-2">
+                  <label
+                    htmlFor="gold-calc-input"
+                    className="block text-xs text-slate-400 mb-2"
+                  >
                     مقدار وزن ({unit === "gram" ? "گرم" : "مثقال"}):
                   </label>
                   <div className="relative">
                     <input
+                      id="gold-calc-input"
                       type="number"
                       step="0.01"
-                      min="0.1"
-                      value={amount}
-                      onChange={(e) => setAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                      className="w-full rounded-xl bg-slate-900/90 border border-slate-700/80 px-4 py-3.5 text-lg font-bold text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 text-left"
+                      min="0.01"
+                      value={amountInput}
+                      onChange={(e) => setAmountInput(e.target.value)}
+                      className="w-full rounded-xl bg-slate-900/90 border border-slate-700/80 pl-24 pr-4 py-3.5 text-lg font-bold text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 text-left"
                       dir="ltr"
                     />
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium bg-slate-800/80 px-2 py-1 rounded">
                       {unit === "gram" ? "Gram" : "Mesghal"}
                     </span>
                   </div>

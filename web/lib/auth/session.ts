@@ -21,9 +21,23 @@ export interface SessionPayload extends SessionUser {
 }
 
 function getSecretKey(): Buffer {
-  const secret =
-    process.env.SESSION_SECRET ||
-    "c8e76a1f34928d1b54a019efbc782d6349a1b2c3d4e5f60718293a4b5c6d7e8f";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "FATAL: SESSION_SECRET environment variable is missing in production."
+      );
+    }
+    return crypto
+      .createHash("sha256")
+      .update("dev-only-ephemeral-key-do-not-use-in-prod")
+      .digest();
+  }
+  if (secret.length < 32) {
+    throw new Error(
+      "FATAL: SESSION_SECRET must be at least 32 characters long."
+    );
+  }
   return crypto.createHash("sha256").update(secret).digest();
 }
 

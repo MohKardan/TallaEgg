@@ -10,15 +10,16 @@ import { getUserByTelegramId } from "@/lib/api/users-client";
 export async function POST(req: NextRequest) {
   // 1. Rate limiting check (keyed by IP)
   const forwardedFor = req.headers.get("x-forwarded-for");
-  const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
-  const rateLimit = checkRateLimit(`auth:${ip}`, 5, 60);
+  const rawIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1";
+  const safeIp = /^[\da-f.:]+$/i.test(rawIp) ? rawIp : "unknown";
+  const rateLimit = checkRateLimit(`auth:ip:${safeIp}`, 10, 60);
 
   if (!rateLimit.success) {
     return NextResponse.json(
       {
         success: false,
         code: "RATE_LIMITED",
-        message: `تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً ${rateLimit.resetInSeconds} ثانیه دیگر دوباره امتحان کنید.`,
+        message: `تعداد تلاش‌ها بیش از حد مجاز است. لطفاً ${rateLimit.resetInSeconds} ثانیه دیگر دوباره امتحان کنید.`,
       },
       {
         status: 429,
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 2. Parse request body
+  // 2. Parse request body safely
   let body: any;
   try {
     body = await req.json();
@@ -42,7 +43,19 @@ export async function POST(req: NextRequest) {
 
   // 3. Cryptographic Telegram signature verification & replay check
   const botToken = process.env.TELEGRAM_BOT_TOKEN || "";
-  const verification = verifyTelegramAuth(body, botToken, 300);
+  let verification;
+  try {
+    verification = verifyTelegramAuth(body, botToken, 300);
+  } catch (err: any) {
+    return NextResponse.json(
+      {
+        success: false,
+        code: "VERIFICATION_ERROR",
+        message: "خطا در پردازش امضای تلگرام.",
+      },
+      { status: 400 }
+    );
+  }
 
   if (!verification.valid || !verification.telegramId) {
     return NextResponse.json(
@@ -57,7 +70,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Resolve user via Users.Api
+  // 4. Rate-limit per Telegram ID to prevent distributed credential stuffing
+  const idRateLimit = checkRateLimit(`auth:id:${verification.telegramId}`, 5, 60);
+  if (!idRateLimit.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        code: "RATE_LIMITED",
+        message: `تلاش بیش از حد برای این شناسه تلگرام. لطفاً ${idRateLimit.resetInSeconds} ثانیه دیگر دوباره امتحان کنید.`,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(idRateLimit.resetInSeconds),
+        },
+      }
+    );
+  }
+
+  // 5. Resolve user via Users.Api
   const { user, error } = await getUserByTelegramId(verification.telegramId);
 
   if (error) {
@@ -84,7 +115,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 5. Verification of active & approved status
+  // 6. Verification of active & approved status
   if (!user.isActive || user.status !== "Approved") {
     return NextResponse.json(
       {
@@ -100,7 +131,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 6. Issue short-lived, httpOnly, secure session cookie
+  // 7. Issue short-lived, httpOnly, secure session cookie
   // Acceptance criterion: Browser never holds or receives raw userId
   const sessionToken = sealSessionToken({
     userId: user.id,

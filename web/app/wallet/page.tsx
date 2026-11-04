@@ -315,7 +315,7 @@ export default function WalletPage() {
                 </div>
               </div>
 
-              {/* Card 2: Melted Gold (MAUA) */}
+              {/* Card 2: Precious Assets & Melted Gold */}
               {goldWallets.map((wallet) => (
                 <div
                   key={wallet.asset}
@@ -324,44 +324,44 @@ export default function WalletPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold">
-                        MAUA
+                        {wallet.asset.slice(0, 4)}
                       </div>
                       <div>
                         <h3 className="font-bold text-white text-base">
                           {wallet.persianLabel}
                         </h3>
                         <span className="text-[11px] text-slate-400">
-                          {wallet.asset} • عیار ۷۵۰
+                          {wallet.asset}
                         </span>
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/30">
-                      شمش / آبشده
+                      {wallet.asset === "MAUA" ? "شمش / آبشده" : "دارایی معتبر"}
                     </span>
                   </div>
 
                   <div className="space-y-3 pt-3">
                     <div>
                       <span className="text-xs text-slate-400 block mb-1">
-                        وزن طلا در دسترس:
+                        موجودی در دسترس:
                       </span>
                       <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-wide">
-                        {formatNumber(wallet.availableBalance, 3, 3)}{" "}
-                        <span className="text-xs font-normal text-slate-300">گرم</span>
+                        {formatNumber(wallet.availableBalance, 0, 4)}{" "}
+                        <span className="text-xs font-normal text-slate-300">{wallet.unit}</span>
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-slate-800 grid grid-cols-2 gap-2 text-xs">
                       <div>
-                        <span className="text-slate-400 block">موجودی کل وزن:</span>
+                        <span className="text-slate-400 block">موجودی کل:</span>
                         <span className="font-semibold text-slate-200">
-                          {formatNumber(wallet.balance, 3, 3)} گرم
+                          {formatNumber(wallet.balance, 0, 4)} {wallet.unit}
                         </span>
                       </div>
                       <div>
                         <span className="text-slate-400 block">بلوکه در سفارشات:</span>
                         <span className="font-semibold text-amber-300">
-                          {formatNumber(wallet.lockedBalance, 3, 3)} گرم
+                          {formatNumber(wallet.lockedBalance, 0, 4)} {wallet.unit}
                         </span>
                       </div>
                     </div>
@@ -369,7 +369,9 @@ export default function WalletPage() {
 
                   <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs">
                     <span className="text-slate-400">قابلیت تحویل:</span>
-                    <span className="text-amber-400 font-medium">شمش فیزیکی با انگ</span>
+                    <span className="text-amber-400 font-medium">
+                      {wallet.asset === "MAUA" ? "شمش فیزیکی با انگ" : "تحویل طبق ضوابط"}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -405,8 +407,8 @@ export default function WalletPage() {
                         سقف اعتبار فعال طلایی:
                       </span>
                       <div className="text-2xl sm:text-3xl font-black text-sky-300 tracking-wide">
-                        {formatNumber(wallet.balance, 3, 3)}{" "}
-                        <span className="text-xs font-normal text-slate-400">گرم</span>
+                        {formatNumber(wallet.balance, 0, 4)}{" "}
+                        <span className="text-xs font-normal text-slate-400">{wallet.unit}</span>
                       </div>
                     </div>
 
