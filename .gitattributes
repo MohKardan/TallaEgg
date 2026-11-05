@@ -4,3 +4,8 @@
 # Shell scripts must keep LF endings: bash reads a CRLF shebang line literally and fails with
 # "bad interpreter", so a Windows checkout would break scripts/check-doc-paths.sh (issue #196).
 *.sh text eol=lf
+
+# systemd unit files get the same pin (issue #349): install-services.sh copies them into
+# /etc/systemd/system/ verbatim, and systemd does not promise to tolerate CRLF — a unit
+# checked out on Windows must still be exactly what lands on the server.
+*.service text eol=lf

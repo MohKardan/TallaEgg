@@ -77,7 +77,8 @@ docs/
 ├── design/
 │   └── API_REQUEST_VALIDATION.md ← What the published schemas declare vs. what the endpoints refuse
 ├── operations/
-│   └── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
+│   ├── WINDOWS_DEPLOYMENT.md     ← Windows deployment notes
+│   └── LINUX_DEPLOYMENT.md       ← systemd deployment notes (Ubuntu and other systemd distributions)
 └── OKR.md                        ← The July–August 2026 cycle and its closing scores (Persian)
 ```
 

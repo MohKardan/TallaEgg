@@ -52,6 +52,13 @@ public class Program
             // `dotnet run`), so this is always safe to include. Lets `sc.exe create` manage
             // this process directly — no third-party supervisor needed (issue #70).
             .UseWindowsService()
+            // The Linux counterpart (issue #349), chained for the same reason: no-op unless a
+            // systemd session is detected (NOTIFY_SOCKET set — never on Windows, never under
+            // `dotnet run`). Inside a Type=notify unit it points the content root at
+            // AppContext.BaseDirectory — the same anchor UseWindowsService() provides under the
+            // SCM — and reports readiness to systemd once the host has started. Each call is
+            // the other platform's dead code, and both are guarded by ServiceHostPathAnchorTests.
+            .UseSystemd()
             .UseSerilog()
             .ConfigureAppConfiguration((context, configBuilder) =>
             {

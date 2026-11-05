@@ -31,6 +31,14 @@ var builder = WebApplication.CreateBuilder(args);
 // no third-party supervisor needed (issue #70).
 builder.Host.UseWindowsService();
 
+// The Linux counterpart (issue #349), chained for the same reason: no-op unless a systemd
+// session is detected (NOTIFY_SOCKET set — never on Windows, never under `dotnet run`). Inside
+// a Type=notify unit it points the content root at AppContext.BaseDirectory — the same anchor
+// UseWindowsService() provides under the SCM — and reports readiness to systemd once the host
+// has started. Each call is the other platform's dead code, and both are guarded by
+// ServiceHostPathAnchorTests.
+builder.Host.UseSystemd();
+
 // Serilog before anything that can throw. This configuration reads nothing from the shared file
 // — the sinks are fixed here — so it can be installed ahead of the file being located, which is
 // what lets a configuration failure reach the rolling log rather than a console no Windows
