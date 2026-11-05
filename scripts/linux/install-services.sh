@@ -59,14 +59,18 @@ for entry in "${services[@]}"; do
     fi
 done
 
-printf 'Enter the TallaEgg API key (input hidden): '
-read -rs API_KEY
-echo ""
+API_KEY="${TALLAEGG_API_KEY:-}"
 
-if [ -z "$API_KEY" ]; then
-    echo "No API key entered — every service throws at startup in Production if this is" >&2
-    echo "missing, by design (issue #214)." >&2
-    exit 1
+if [ -z "$API_KEY" ] && [ ! -f "$ENV_FILE" ]; then
+    printf 'Enter the TallaEgg API key (input hidden): '
+    read -rs API_KEY
+    echo ""
+
+    if [ -z "$API_KEY" ]; then
+        echo "No API key entered — every service throws at startup in Production if this is" >&2
+        echo "missing, by design (issue #214)." >&2
+        exit 1
+    fi
 fi
 
 # The service account. Home is the deployment root (systemd sets HOME from passwd; the .NET
@@ -91,9 +95,13 @@ chmod 640 "$INSTALL_ROOT/config/appsettings.global.json"
 
 # Write the environment file: root-owned, mode 600, so only systemd (reading it as root before
 # dropping to the service user) and an administrator can read the key.
-umask 077
-printf 'TALLAEGG_API_KEY=%s\n' "$API_KEY" > "$ENV_FILE"
-unset API_KEY
+if [ -n "$API_KEY" ]; then
+    umask 077
+    printf 'TALLAEGG_API_KEY="%s"\n' "$API_KEY" > "$ENV_FILE"
+    unset API_KEY
+else
+    echo "Keeping existing API key in $ENV_FILE."
+fi
 
 for entry in "${services[@]}"; do
     IFS='|' read -r unit _folder _dll <<< "$entry"
@@ -104,7 +112,7 @@ systemctl daemon-reload
 
 for entry in "${services[@]}"; do
     IFS='|' read -r unit _folder _dll <<< "$entry"
-    systemctl enable "$unit" >/dev/null 2>&1
+    systemctl enable "$unit" >/dev/null
 done
 
 # Start (or restart on a re-install, so unit-file changes take effect) in dependency order:

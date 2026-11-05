@@ -115,7 +115,7 @@ touches the configuration, which is the reason the layout is shaped this way.
 4. **Publish the four services** — from a release (preferred, see
    [Redeploying](#redeploying-a-new-version)) or by building on the server:
    ```bash
-   ./scripts/linux/publish-all.sh                       # -> /opt/tallaegg/publish/<Service>
+   sudo ./scripts/linux/publish-all.sh                  # -> /opt/tallaegg/publish/<Service>
    ```
 
 5. **Install the services:**
@@ -221,7 +221,7 @@ dependency, a rotated API key — which is also the only time the key is needed.
 ### Building on the server
 
 ```bash
-./scripts/linux/publish-all.sh
+sudo ./scripts/linux/publish-all.sh
 sudo ./scripts/linux/install-services.sh       # re-runs restart each running service
 ```
 
