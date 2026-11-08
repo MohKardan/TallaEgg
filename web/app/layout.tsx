@@ -1,19 +1,33 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { brandConfig } from "@/config/brand.config";
 
 export const metadata: Metadata = {
-  title: "طلااگ | TallaEgg — پلتفرم معاملات هوشمند و آنی طلای آبشده",
-  description:
-    "سامانه رسمی معاملات آنلاین طلای آبشده ۱۸ عیار با مدل بازارساز اختصاصی، کارمزد صفر درصد، تسویه لحظه‌ای و امنیت دفترکل بانکی.",
-  keywords: [
-    "طلااگ",
-    "TallaEgg",
-    "طلای آبشده",
-    "معاملات طلا",
-    "مظنه طلا",
-    "قیمت لحظه‌ای طلا",
-    "خرید طلای آبشده",
-  ],
+  metadataBase: new URL(`https://${brandConfig.domain.primary}`),
+  title: brandConfig.seo.title,
+  description: brandConfig.seo.description,
+  keywords: brandConfig.seo.keywords,
+  authors: [{ name: brandConfig.name.en, url: `https://${brandConfig.domain.primary}` }],
+  openGraph: {
+    title: brandConfig.seo.title,
+    description: brandConfig.seo.description,
+    url: `https://${brandConfig.domain.primary}`,
+    siteName: `${brandConfig.name.fa} | ${brandConfig.name.en}`,
+    locale: "fa_IR",
+    type: "website",
+    images: [
+      {
+        url: "/images/zarorbit-logo.jpg",
+        width: 800,
+        height: 800,
+        alt: `${brandConfig.name.fa} - ${brandConfig.slogan.en}`,
+      },
+    ],
+  },
+  icons: {
+    icon: "/images/zarorbit-logo.jpg",
+    apple: "/images/zarorbit-logo.jpg",
+  },
 };
 
 export default function RootLayout({

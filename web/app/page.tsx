@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useState } from "react";
+import { brandConfig } from "@/config/brand.config";
 import {
   Sparkles,
   ArrowRight,
@@ -49,7 +50,7 @@ export default function HomePage() {
             {/* Pill Badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-medium text-amber-300 backdrop-blur-md shadow-goldGlowSubtle">
               <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-              <span>پلتفرم تخصصی بازارساز طلای آبشده • کارمزد معامله ۰٪</span>
+              <span>{brandConfig.slogan.en} • کارمزد معامله ۰٪</span>
             </div>
 
             {/* Main Headline */}
@@ -62,7 +63,7 @@ export default function HomePage() {
 
             {/* Subhead with clear, honest value proposition */}
             <p className="text-base sm:text-lg md:text-xl text-slate-300 max-w-2xl font-light leading-relaxed">
-              خرید و فروش مستقیم با میز بازارساز اختصاصی طلااگ؛ بدون صف انتظار، بدون کارمزد مخفی، همراه با تحویل شمش معتبر و تسویه ریالی لحظه‌ای بر بستر امن دفترکل.
+              خرید و فروش مستقیم با میز بازارساز اختصاصی {brandConfig.name.fa}؛ بدون صف انتظار، بدون کارمزد مخفی، همراه با تحویل شمش معتبر و تسویه ریالی لحظه‌ای بر بستر امن دفترکل.
             </p>
 
             {/* Action Buttons */}
@@ -75,7 +76,7 @@ export default function HomePage() {
                 <span>ورود و مشاهده موجودی</span>
               </Link>
               <a
-                href="https://t.me/TallaEgg_Bot"
+                href={brandConfig.telegram.botUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl border border-amber-500/30 bg-[#121620]/90 px-8 py-4 text-base font-semibold text-amber-300 hover:bg-amber-500/10 active:scale-[0.98] transition-all backdrop-blur-md"
@@ -112,7 +113,7 @@ export default function HomePage() {
                   قیمت‌های زنده بازار
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mt-1">
-                  مظنه لحظه‌ای طلااگ
+                  مظنه لحظه‌ای {brandConfig.name.fa}
                 </h2>
               </div>
               <p className="text-xs text-slate-400 font-light">
@@ -160,7 +161,7 @@ export default function HomePage() {
 
                 <div className="mt-5 pt-3">
                   <a
-                    href="https://t.me/TallaEgg_Bot"
+                    href={brandConfig.telegram.botUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 py-2.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
@@ -210,7 +211,7 @@ export default function HomePage() {
 
                 <div className="mt-5 pt-3">
                   <a
-                    href="https://t.me/TallaEgg_Bot"
+                    href={brandConfig.telegram.botUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 py-2.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
@@ -279,7 +280,7 @@ export default function HomePage() {
                   ماشین‌حساب هوشمند ارزش طلای آبشده
                 </h2>
                 <p className="text-sm text-slate-300 font-light leading-relaxed">
-                  وزن مورد نظر خود را بر حسب گرم یا مثقال وارد کنید تا ارزش دقیق ریالی آن بر اساس نرخ لحظه‌ای محاسبه شود. در طلااگ، هیچ کارمزدی اضافه بر مظنه پرداخت نمی‌کنید.
+                  وزن مورد نظر خود را بر حسب گرم یا مثقال وارد کنید تا ارزش دقیق ریالی آن بر اساس نرخ لحظه‌ای محاسبه شود. در {brandConfig.name.fa}، هیچ کارمزدی اضافه بر مظنه پرداخت نمی‌کنید.
                 </p>
 
                 {/* Preset quick buttons */}
@@ -377,7 +378,7 @@ export default function HomePage() {
 
                 {/* CTA */}
                 <a
-                  href="https://t.me/TallaEgg_Bot"
+                  href={brandConfig.telegram.botUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 py-3.5 text-sm font-bold text-slate-950 shadow-goldGlowSubtle hover:brightness-110 transition-all"
@@ -394,10 +395,10 @@ export default function HomePage() {
         <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
             <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-              چرا طلااگ؟
+              چرا {brandConfig.name.fa}؟
             </span>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-              مزیت‌های ساختاری پلتفرم معاملات طلااگ
+              مزیت‌های ساختاری پلتفرم معاملات {brandConfig.name.fa}
             </h2>
             <p className="text-sm text-slate-400 font-light">
               طراحی‌شده بر اساس استانداردهای معامله‌گری بین‌المللی و نیازهای فعالان بازار سنتی طلا.
@@ -412,7 +413,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-lg font-bold text-white">مدل بازارساز اختصاصی</h3>
               <p className="text-xs leading-relaxed text-slate-300 font-light">
-                بدون صف و معطلی برای تطبیق سفارش با سایر کاربران؛ طرف حساب معامله همواره میز بازارساز متعهد طلااگ است و اجرای سفارش در کسر ثانیه صورت می‌گیرد.
+                بدون صف و معطلی برای تطبیق سفارش با سایر کاربران؛ طرف حساب معامله همواره میز بازارساز متعهد {brandConfig.name.fa} است و اجرای سفارش در کسر ثانیه صورت می‌گیرد.
               </p>
             </div>
 
@@ -459,7 +460,7 @@ export default function HomePage() {
                 مراحل ساده
               </span>
               <h2 className="text-3xl font-extrabold text-white">
-                چگونه در طلااگ معامله کنیم؟
+                چگونه در {brandConfig.name.fa} معامله کنیم؟
               </h2>
               <p className="text-xs text-slate-400 font-light">
                 در ۳ گام بدون نیاز به کاغذبازی و مراجعات حضوری فعالیت خود را آغاز کنید.
@@ -520,19 +521,19 @@ export default function HomePage() {
                 آماده معامله هوشمند طلای آبشده هستید؟
               </h2>
               <p className="text-sm text-slate-300 font-light leading-relaxed">
-                هم‌اکنون به شبکه معامله‌گران طلااگ بپیوندید و امنیت، سرعت و شفافیت را در معاملات روزانه خود تجربه کنید.
+                هم‌اکنون به شبکه معامله‌گران {brandConfig.name.fa} بپیوندید و امنیت، سرعت و شفافیت را در معاملات روزانه خود تجربه کنید.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <a
-                href="https://t.me/TallaEgg_Bot"
+                href={brandConfig.telegram.botUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-8 py-4 text-sm font-bold text-slate-950 shadow-goldGlow hover:brightness-110 transition-all"
               >
                 <Send className="h-4 w-4" />
-                <span>ورود به ربات معامله‌گری @TallaEgg_Bot</span>
+                <span>ورود به ربات معامله‌گری @{brandConfig.telegram.botUsername}</span>
               </a>
               <Link
                 href="/login"

@@ -721,3 +721,5 @@ obj/
 # Local gcloud credential store, when CLOUDSDK_CONFIG has been pointed inside the repo.
 # Holds an SSH private key, access tokens and credential databases (audit finding H-7).
 .gcloud-auth/
+
+!web/public/

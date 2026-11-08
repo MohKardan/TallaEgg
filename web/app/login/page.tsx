@@ -5,7 +5,8 @@ import Footer from "@/components/Footer";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Shield, AlertCircle, CheckCircle2, Lock, WifiOff } from "lucide-react";
-import Link from "next/link";
+import { brandConfig } from "@/config/brand.config";
+import BrandLogo from "@/components/BrandLogo";
 
 declare global {
   interface Window {
@@ -24,7 +25,8 @@ export default function LoginPage() {
   const [widgetFailed, setWidgetFailed] = useState(false);
 
   const botUsername =
-    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "TallaEgg_Bot";
+    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ||
+    brandConfig.telegram.botUsername;
 
   // Check if already authenticated
   useEffect(() => {
@@ -38,7 +40,7 @@ export default function LoginPage() {
       .catch(() => {});
   }, [router]);
 
-  // Set up Telegram widget callback & script loader
+  // Set up Telegram widget callback
   useEffect(() => {
     window.onTelegramAuth = async (user: any) => {
       setLoading(true);
@@ -80,22 +82,30 @@ export default function LoginPage() {
       script.src = "https://telegram.org/js/telegram-widget.js?22";
       script.setAttribute("data-telegram-login", botUsername);
       script.setAttribute("data-size", "large");
-      script.setAttribute("data-radius", "10");
+      script.setAttribute("data-radius", "12");
       script.setAttribute("data-onauth", "onTelegramAuth(user)");
       script.setAttribute("data-request-access", "write");
       script.async = true;
-      script.onerror = () => setWidgetFailed(true);
+
+      // Handle Telegram CDN load errors
+      script.onerror = () => {
+        setWidgetFailed(true);
+      };
+
       widgetContainerRef.current.appendChild(script);
 
-      // Watchdog timeout: if widget iframe does not appear within 6s (e.g. filtered CDN)
-      const timer = setTimeout(() => {
-        if (!widgetContainerRef.current?.querySelector("iframe")) {
+      // Watchdog timeout: if widget iframe does not appear within 6 seconds
+      const watchdogTimer = setTimeout(() => {
+        if (
+          widgetContainerRef.current &&
+          !widgetContainerRef.current.querySelector("iframe")
+        ) {
           setWidgetFailed(true);
         }
       }, 6000);
 
       return () => {
-        clearTimeout(timer);
+        clearTimeout(watchdogTimer);
         delete window.onTelegramAuth;
       };
     }
@@ -116,12 +126,15 @@ export default function LoginPage() {
           <div className="glass-card rounded-3xl p-8 sm:p-10 border border-amber-500/25 shadow-goldGlow">
             {/* Header */}
             <div className="text-center space-y-3 mb-8">
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mb-2">
-                <Lock className="h-7 w-7" />
+              <div className="flex justify-center mb-2">
+                <BrandLogo variant="minimal" size="lg" withLink={false} />
               </div>
               <h1 className="text-2xl font-extrabold text-white">
-                ورود به پورتال طلااگ
+                ورود به پورتال {brandConfig.name.fa}
               </h1>
+              <p className="text-xs text-amber-400/90 font-medium tracking-wide">
+                {brandConfig.slogan.en}
+              </p>
               <p className="text-xs text-slate-400 font-light leading-relaxed">
                 ورود امن و مستقیم از طریق حساب کاربری تلگرام بدون نیاز به رمز عبور
               </p>
@@ -187,10 +200,10 @@ export default function LoginPage() {
             <div className="border-t border-slate-800 pt-6 space-y-3 text-xs text-slate-400">
               <div className="flex items-center gap-2 font-medium text-slate-300">
                 <Shield className="h-4 w-4 text-amber-400" />
-                <span>فرآیند ورود امن به طلااگ:</span>
+                <span>فرآیند ورود امن به {brandConfig.name.fa}:</span>
               </div>
               <ul className="space-y-1.5 pr-6 list-disc list-outside text-[11px] text-slate-400 font-light">
-                <li>ورود تنها برای حساب‌های فعال و ثبت‌شده در ربات مجاز است.</li>
+                <li>ورود تنها برای حساب‌های فعال و تأییدشده در ربات مجاز است.</li>
                 <li>نشست کاربری به شکل کوکی فوق‌امنیتی (httpOnly) ذخیره می‌شود.</li>
                 <li>شناسه کاربری شما هرگز در مرورگر ذخیره یا افشا نمی‌گردد.</li>
               </ul>

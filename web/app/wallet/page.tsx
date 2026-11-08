@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { formatNumber, formatJalaliDateTime } from "@/lib/formatters";
+import { brandConfig } from "@/config/brand.config";
 
 interface WalletItem {
   asset: string;
@@ -199,7 +200,7 @@ export default function WalletPage() {
             </p>
             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
-                href="https://t.me/TallaEgg_Bot"
+                href={brandConfig.telegram.botUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3.5 text-xs font-bold text-slate-950 shadow-goldGlowSubtle hover:brightness-110 transition-all"
@@ -249,7 +250,7 @@ export default function WalletPage() {
                   </div>
                 </div>
                 <a
-                  href="https://t.me/TallaEgg_Bot"
+                  href={brandConfig.telegram.botUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-colors"
@@ -432,12 +433,12 @@ export default function WalletPage() {
                   ثبت سفارش خرید یا فروش لحظه‌ای طلا
                 </h4>
                 <p className="text-xs text-slate-400 font-light max-w-xl leading-relaxed">
-                  سفارش‌گذاری و اجرای مستقیم معاملات هم‌اکنون از طریق ربات تلگرام طلااگ انجام می‌شود. پس از هر معامله، تغییرات موجودی در این صفحه به صورت آنی منعکس خواهد شد.
+                  سفارش‌گذاری و اجرای مستقیم معاملات هم‌اکنون از طریق ربات تلگرام {brandConfig.name.fa} انجام می‌شود. پس از هر معامله، تغییرات موجودی در این صفحه به صورت آنی منعکس خواهد شد.
                 </p>
               </div>
 
               <a
-                href="https://t.me/TallaEgg_Bot"
+                href={brandConfig.telegram.botUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 px-6 py-3.5 text-xs font-bold text-slate-950 shadow-goldGlowSubtle hover:brightness-110 transition-all"

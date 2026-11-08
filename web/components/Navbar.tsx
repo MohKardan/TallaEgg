@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wallet, LogIn, LogOut, Send, Menu, X } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
+import { brandConfig } from "@/config/brand.config";
 
 interface UserProfile {
   firstName?: string;
@@ -38,21 +40,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-amber-500/10 bg-[#080a0f]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 via-amber-600 to-yellow-800 p-[1px] shadow-goldGlowSubtle group-hover:shadow-goldGlow transition-all">
-            <div className="flex h-full w-full items-center justify-center rounded-[11px] bg-[#0d1017]">
-              <span className="text-xl font-black text-amber-400 tracking-tighter">TE</span>
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xl font-bold tracking-tight text-white group-hover:text-amber-400 transition-colors">
-              طلااگ <span className="text-xs font-medium text-amber-500/80 mr-1">TallaEgg</span>
-            </span>
-            <span className="text-[11px] text-slate-400 -mt-1 font-light">
-              معاملات آنی طلای آبشده
-            </span>
-          </div>
-        </Link>
+        <BrandLogo variant="full" size="md" />
 
         {/* Center Nav Links (Desktop) */}
         <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
@@ -73,7 +61,7 @@ export default function Navbar() {
         {/* Action Buttons & Mobile Toggle */}
         <div className="flex items-center gap-3">
           <a
-            href="https://t.me/TallaEgg_Bot"
+            href={brandConfig.telegram.botUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center gap-2 rounded-lg border border-amber-500/30 px-3.5 py-2 text-xs font-medium text-amber-300 hover:bg-amber-500/10 transition-colors"
