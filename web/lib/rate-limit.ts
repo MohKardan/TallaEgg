@@ -4,6 +4,7 @@ interface RateLimitRecord {
 }
 
 const memoryStore = new Map<string, RateLimitRecord>();
+const MAX_STORE_ENTRIES = 5000;
 
 // Cleanup stale entries every 5 minutes
 if (typeof setInterval !== "undefined") {
@@ -25,7 +26,7 @@ export interface RateLimitResult {
 }
 
 /**
- * In-memory sliding window rate limiter.
+ * In-memory sliding window rate limiter with bounded memory size.
  * Mitigates brute-force attacks against sensitive endpoints like Telegram auth.
  */
 export function checkRateLimit(
@@ -38,6 +39,12 @@ export function checkRateLimit(
   const record = memoryStore.get(identifier);
 
   if (!record || record.resetTime <= now) {
+    // Prevent memory bloat/OOM under flooding attacks
+    if (memoryStore.size >= MAX_STORE_ENTRIES) {
+      const keysToEvict = Array.from(memoryStore.keys()).slice(0, 500);
+      keysToEvict.forEach((k) => memoryStore.delete(k));
+    }
+
     // New or expired window
     memoryStore.set(identifier, {
       count: 1,

@@ -69,6 +69,11 @@ export async function getUserWallets(
       cache: "no-store",
     });
 
+    // 404: User has no active wallet ledger records yet
+    if (res.status === 404) {
+      return { wallets: [] };
+    }
+
     if (!res.ok) {
       return {
         wallets: [],

@@ -52,7 +52,6 @@ describe("Telegram Authentication & Signature Verification", () => {
     };
 
     const payload = createValidPayload(rawData, mockBotToken);
-    // Tamper with username or id
     payload.id = 111111111;
 
     const result = verifyTelegramAuth(payload, mockBotToken);
@@ -60,8 +59,20 @@ describe("Telegram Authentication & Signature Verification", () => {
     assert.match(result.error || "", /Invalid cryptographic signature/);
   });
 
-  it("rejects payload when auth_date is older than maxAgeSeconds (Replay Attack)", () => {
-    // 10 minutes ago
+  it("rejects non-string or malformed hex hash without throwing an unhandled exception", () => {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    // Integer hash
+    const res1 = verifyTelegramAuth({ id: 123, auth_date: currentTimestamp, hash: 12345 }, mockBotToken);
+    assert.strictEqual(res1.valid, false);
+    assert.match(res1.error || "", /invalid cryptographic hash format/i);
+
+    // Non-64 hex string
+    const res2 = verifyTelegramAuth({ id: 123, auth_date: currentTimestamp, hash: "not-a-valid-hex" }, mockBotToken);
+    assert.strictEqual(res2.valid, false);
+    assert.match(res2.error || "", /invalid cryptographic hash format/i);
+  });
+
+  it("rejects payload when auth_date is older than maxAgeSeconds (Past Replay Attack)", () => {
     const oldTimestamp = Math.floor(Date.now() / 1000) - 600;
     const rawData = {
       id: 987654321,
@@ -74,6 +85,39 @@ describe("Telegram Authentication & Signature Verification", () => {
 
     assert.strictEqual(result.valid, false);
     assert.match(result.error || "", /Auth date expired/);
+  });
+
+  it("rejects payload when auth_date is in the future beyond allowed clock skew", () => {
+    const futureTimestamp = Math.floor(Date.now() / 1000) + 120; // 2 minutes ahead
+    const rawData = {
+      id: 987654321,
+      first_name: "Ali",
+      auth_date: futureTimestamp,
+    };
+
+    const payload = createValidPayload(rawData, mockBotToken);
+    const result = verifyTelegramAuth(payload, mockBotToken, 300);
+
+    assert.strictEqual(result.valid, false);
+    assert.match(result.error || "", /Auth date expired or out of allowed window/);
+  });
+
+  it("rejects immediate replay of the exact same valid payload", () => {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const rawData = {
+      id: 555666777,
+      first_name: "Saeed",
+      auth_date: currentTimestamp,
+    };
+
+    const payload = createValidPayload(rawData, mockBotToken);
+    const firstCheck = verifyTelegramAuth(payload, mockBotToken);
+    assert.strictEqual(firstCheck.valid, true);
+
+    // Immediate replay of identical hash
+    const secondCheck = verifyTelegramAuth(payload, mockBotToken);
+    assert.strictEqual(secondCheck.valid, false);
+    assert.match(secondCheck.error || "", /replay detected/);
   });
 
   it("handles missing bot token safely", () => {
