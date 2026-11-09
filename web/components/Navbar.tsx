@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Wallet, LogIn, LogOut, Send, Menu, X } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
+import LiveTicker from "@/components/LiveTicker";
 import { brandConfig } from "@/config/brand.config";
 
 interface UserProfile {
@@ -37,7 +38,9 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-amber-500/10 bg-[#080a0f]/80 backdrop-blur-xl">
+    <>
+      <LiveTicker />
+      <header className="sticky top-0 z-50 w-full border-b border-amber-500/10 bg-[#080a0f]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand Logo */}
         <BrandLogo variant="full" size="md" />
@@ -143,5 +146,6 @@ export default function Navbar() {
         </div>
       )}
     </header>
+    </>
   );
 }

@@ -2,6 +2,7 @@
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -129,6 +130,15 @@ export default function WalletPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-8 border-b border-amber-500/15 gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
+              <div className="h-9 w-9 rounded-xl overflow-hidden border border-amber-500/40 shadow-sm shrink-0">
+                <Image
+                  src={brandConfig.assets.iconNoOrbit}
+                  alt="Zarorbit Icon"
+                  width={36}
+                  height={36}
+                  className="object-cover"
+                />
+              </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
                 کیف پول و مدیریت دارایی
               </h1>

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/zarorbit-logo.jpg",
+        url: brandConfig.assets.logoLargeOrbit,
         width: 800,
         height: 800,
         alt: `${brandConfig.name.fa} - ${brandConfig.slogan.en}`,
@@ -25,8 +25,8 @@ export const metadata: Metadata = {
     ],
   },
   icons: {
-    icon: "/images/zarorbit-logo.jpg",
-    apple: "/images/zarorbit-logo.jpg",
+    icon: brandConfig.assets.iconNoOrbit,
+    apple: brandConfig.assets.iconNoOrbit,
   },
 };
 

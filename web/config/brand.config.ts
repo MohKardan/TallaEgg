@@ -33,6 +33,10 @@ export interface BrandConfig {
     goldAccent: string; // "#E5B80B"
     obsidianBg: string; // "#080a0f"
   };
+  assets: {
+    iconNoOrbit: string; // Falcon with Z medallion without orbits (for small icons, favicons, badges)
+    logoLargeOrbit: string; // Full Z with orbital binary rings (for large hero, banners, detailed showcases)
+  };
 }
 
 export const brandConfig: BrandConfig = {
@@ -84,5 +88,9 @@ export const brandConfig: BrandConfig = {
   theme: {
     goldAccent: "#E5B80B",
     obsidianBg: "#080a0f",
+  },
+  assets: {
+    iconNoOrbit: "/images/zarorbit-icon.jpg",
+    logoLargeOrbit: "/images/zarorbit-logo.jpg",
   },
 };
