@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="ZARORBIT Primary Symbol">
+  <g>
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="32" height="32" role="img" aria-label="ZARORBIT Favicon">
+  <rect width="128" height="128" rx="26" fill="#17191D"/>
+  <g transform="translate(3.84,3.84) scale(0.94)">
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.5" ry="15.5" fill="none" stroke="#C9A45A" stroke-width="11.5"/>
+  </g>
+  <path d="M 36 21 H 96 V 34.5 H 25 L 23 32 Z" fill="#C9A45A"/>
+  <path d="M 32 93.5 H 103 L 105 96 L 92 107 H 32 Z" fill="#C9A45A"/>
+</g>
+</svg>

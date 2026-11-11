@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZARORBIT Unified Asset Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+  :root {
+    --obsidian: #17191D;
+    --surface: #1F2329;
+    --elevated: #282D35;
+    --border: #2B303A;
+    --border-ctrl: #6B7485;
+    --gold: #C9A45A;
+    --gold-light-ui: #82611C;
+    --ivory: #F2EEE5;
+    --porcelain: #FAF8F3;
+    --teal: #286B63;
+    --teal-dark-ui: #4CB3A5;
+    --muted-dark: #9CA3AF;
+    --muted-light: #5B626E;
+    --success-dark: #48B884;
+    --warning-dark: #E2A93B;
+    --info-dark: #6BA4E8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+    background: var(--obsidian);
+    color: var(--ivory);
+    -webkit-font-smoothing: antialiased;
+  }
+  .en { font-family: 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .en-disp { font-family: 'Manrope', 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  }
+  .badge-beta { background: #192535; color: #6BA4E8; border: 1px solid #2D4D73; }
+  .badge-dev { background: #2B2416; color: #E2A93B; border: 1px solid #6B501D; }
+  .badge-plan { background: #1F2329; color: #9CA3AF; border: 1px solid #3A414D; }
+  .badge-live { background: #162A24; color: #48B884; border: 1px solid #286B63; }
+  .badge-concept { background: #1F2329; color: #C9A45A; border: 1px dashed #82611C; }
+
+</style>
+</head>
+<body>
+
+<div data-capture-root="true" style="width:1440px;background:#101215;padding:28px;">
+  <div style="display:grid;grid-template-columns:250px 1fr;background:#17191D;border:1px solid #2B303A;border-radius:22px;overflow:hidden;min-height:840px;">
+    <!-- Sidebar -->
+    <aside style="background:#131519;border-left:1px solid #2B303A;padding:24px 18px;display:flex;flex-direction:column;justify-content:space-between;">
+      <div>
+        <div style="padding:4px 8px 24px;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 88" width="175" height="48" role="img" aria-label="ZARORBIT Integrated Horizontal Logo Dark">
+  <g transform="translate(1.05,7.20) scale(0.5750)">
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+  <g transform="translate(63.20,22.00) scale(1.0000)" fill="#F2EEE5" fill-rule="evenodd">
+    <path transform="translate(0.00,0)" d="M 12.6 0 H 19.4 L 32 44 H 24.8 L 22.0 33.0 H 10.0 L 7.2 44 H 0 Z M 16 8.2 L 11.4 26.8 H 20.6 Z"/>
+    <path transform="translate(41.30,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(78.80,0)" d="M 17 0 A 17 22 0 1 1 16.99 0 Z M 17 6.5 A 10.4 15.5 0 1 0 17.01 6.5 Z"/>
+    <path transform="translate(121.80,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(159.90,0)" d="M 0 0 H 15.8 A 10.6 10.6 0 0 1 18.6 20.9 A 11.5 11.5 0 0 1 16.8 44 H 0 Z M 6.5 6.0 V 18.0 H 15.4 A 6.0 6.0 0 0 0 15.4 6.0 Z M 6.5 24.2 V 38.0 H 16.2 A 6.9 6.9 0 0 0 16.2 24.2 Z"/>
+    <path transform="translate(199.40,0)" d="M 0 0 H 6.8 V 44 H 0 Z"/>
+    <path transform="translate(213.90,0)" d="M 0 0 H 28 V 6.5 H 17.25 V 44 H 10.75 V 6.5 H 0 Z"/>
+  </g>
+</svg>
+</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+          <div style="padding:11px 14px;border-radius:10px;background:#1F2329;color:#C9A45A;font-weight:700;border:1px solid #3A414D;">نمای کلی اکوسیستم</div>
+          <div style="padding:11px 14px;border-radius:10px;color:#F2EEE5;display:flex;justify-content:space-between;"><span>دارایی‌های واقعی (RWA)</span><span class="badge badge-beta" style="font-size:9px;padding:1px 6px;">Beta</span></div>
+          <div style="padding:11px 14px;border-radius:10px;color:#9CA3AF;display:flex;justify-content:space-between;"><span>رمزارزها</span><span class="badge badge-dev" style="font-size:9px;padding:1px 6px;">Dev</span></div>
+          <div style="padding:11px 14px;border-radius:10px;color:#9CA3AF;display:flex;justify-content:space-between;"><span>توکن‌های NFT</span><span class="badge badge-plan" style="font-size:9px;padding:1px 6px;">Plan</span></div>
+          <div style="padding:11px 14px;border-radius:10px;color:#9CA3AF;display:flex;justify-content:space-between;"><span>حکمرانی جامعه DAO</span><span class="badge badge-dev" style="font-size:9px;padding:1px 6px;">Dev</span></div>
+          <div style="padding:11px 14px;border-radius:10px;color:#9CA3AF;">دفترکل و اسناد مالکیت</div>
+          <div style="padding:11px 14px;border-radius:10px;color:#9CA3AF;display:flex;justify-content:space-between;"><span>تعاملات XR / AI</span><span class="badge badge-concept" style="font-size:9px;padding:1px 6px;">Concept</span></div>
+        </div>
+      </div>
+      <div style="background:#1F2329;border:1px solid #2B303A;border-radius:12px;padding:14px;font-size:11px;color:#9CA3AF;line-height:1.6;">
+        <div style="color:#4CB3A5;font-weight:700;margin-bottom:4px;">شفافیت سطح بلوغ محصول</div>
+        نمایش جداگانه قابلیت‌های آزمایشی و در حال توسعه؛ دارایی دیجیتال به خودی خود سند مالکیت فیزیکی نیست.
+      </div>
+    </aside>
+
+    <!-- Main Dashboard -->
+    <div style="padding:28px 32px;display:flex;flex-direction:column;gap:22px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <h1 style="font-size:22px;font-weight:800;">داشبورد یکپارچه دارایی‌ها و مشارکت</h1>
+          <p style="font-size:13px;color:#9CA3AF;margin-top:3px;">پایش تفکیک‌شده سبد دارایی‌های واقعی (RWA)، دارایی‌های دیجیتال و وضعیت پیشنهادهای جامعه</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <span class="badge badge-live">سیستم تسویه دفترکل: نمونه آزمایشی</span>
+          <button style="padding:9px 16px;border-radius:10px;background:#286B63;color:#FFFFFF;border:none;font-family:inherit;font-size:13px;font-weight:600;">ثبت تعامل جدید</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#9CA3AF;"><span>ارزش کل برآوردی سبد (نمایشی)</span><span class="badge badge-beta" style="font-size:9px;">Sample</span></div>
+          <div class="num" style="font-size:24px;font-weight:800;margin-top:10px;color:#F2EEE5;">۱٬۴۸۲٬۵۰۰٬۰۰۰ <span style="font-size:12px;color:#9CA3AF;font-weight:500;">تومان</span></div>
+          <div style="font-size:11px;color:#48B884;margin-top:6px;">تفکیک‌شده بر اساس کلاس دارایی</div>
+        </div>
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#9CA3AF;"><span>سهم دارایی واقعی (RWA • طلا)</span><span style="color:#C9A45A;font-weight:700;">۵۲٪</span></div>
+          <div class="num" style="font-size:24px;font-weight:800;margin-top:10px;color:#C9A45A;">۱۲.۴۵۰ <span style="font-size:12px;color:#9CA3AF;font-weight:500;">گرم معادل</span></div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:6px;">نوع: تعهد قراردادی / فیزیکی مشخص</div>
+        </div>
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#9CA3AF;"><span>سهم دارایی دیجیتال (Crypto &amp; NFT)</span><span style="color:#4CB3A5;font-weight:700;">۴۸٪</span></div>
+          <div class="num" style="font-size:24px;font-weight:800;margin-top:10px;color:#4CB3A5;">۳ <span style="font-size:12px;color:#9CA3AF;font-weight:500;">رکورد مجزا</span></div>
+          <div style="font-size:11px;color:#9CA3AF;margin-top:6px;">رمزارزها + ۲ نشان عضویت NFT</div>
+        </div>
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#9CA3AF;"><span>وضعیت مشارکت DAO</span><span class="badge badge-dev" style="font-size:9px;">In Dev</span></div>
+          <div class="num" style="font-size:24px;font-weight:800;margin-top:10px;color:#F2EEE5;">۲ <span style="font-size:12px;color:#9CA3AF;font-weight:500;">پیشنهاد باز</span></div>
+          <div style="font-size:11px;color:#E2A93B;margin-top:6px;">رأی‌گیری آزمایشی غیرالزام‌آور</div>
+        </div>
+      </div>
+
+      <!-- Asset Allocation & Ledger Table -->
+      <div style="display:grid;grid-template-columns:1.35fr 0.65fr;gap:20px;">
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:16px;padding:22px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:16px;font-weight:700;">فهرست تفکیک‌شده دارایی‌ها (Asset Classification Matrix)</h2>
+            <span style="font-size:12px;color:#4CB3A5;">شفافیت حقوق و سطح دسترسی</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead>
+              <tr style="border-bottom:1px solid #2B303A;color:#9CA3AF;text-align:right;">
+                <th style="padding:10px 8px;">دارایی</th>
+                <th style="padding:10px 8px;">طبقه‌بندی</th>
+                <th style="padding:10px 8px;">ماهیت حقوقی</th>
+                <th style="padding:10px 8px;">وضعیت قابلیت</th>
+                <th style="padding:10px 8px;">مقدار / رکورد</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #242933;">
+                <td style="padding:14px 8px;"><div style="font-weight:700;color:#F2EEE5;">واحد طلای ۱۸ عیار</div><div class="en" style="color:#C9A45A;font-size:11px;margin-top:2px;">XAU18-RWA</div></td>
+                <td style="padding:14px 8px;">دارایی واقعی (نقطه شروع)</td>
+                <td style="padding:14px 8px;color:#9CA3AF;">مظنه بازارساز / تحویل مشروط</td>
+                <td style="padding:14px 8px;"><span class="badge badge-beta">Beta</span></td>
+                <td class="num" style="padding:14px 8px;font-weight:700;white-space:nowrap;">12.450 g</td>
+              </tr>
+              <tr style="border-bottom:1px solid #242933;">
+                <td style="padding:14px 8px;"><div style="font-weight:700;color:#F2EEE5;">دارایی دیجیتال شبکه‌ای</div><div class="en" style="color:#4CB3A5;font-size:11px;margin-top:2px;">CRYPTO</div></td>
+                <td style="padding:14px 8px;">رمزارز (شبکه منتخب)</td>
+                <td style="padding:14px 8px;color:#9CA3AF;">توکن بومی شبکه / غیراوراق</td>
+                <td style="padding:14px 8px;"><span class="badge badge-dev">In Development</span></td>
+                <td class="num" style="padding:14px 8px;font-weight:700;white-space:nowrap;">0.420 UNIT</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 8px;"><div style="font-weight:700;color:#F2EEE5;">توکن غیرمثلی جامعه</div><div class="en" style="color:#9CA3AF;font-size:11px;margin-top:2px;">NFT-PASS</div></td>
+                <td style="padding:14px 8px;">توکن غیرمثلی (NFT)</td>
+                <td style="padding:14px 8px;color:#9CA3AF;">رکورد مجزای دیجیتال (بدون حق کپی‌رایت)</td>
+                <td style="padding:14px 8px;"><span class="badge badge-plan">Planned</span></td>
+                <td class="num" style="padding:14px 8px;font-weight:700;white-space:nowrap;">#0048</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background:#1F2329;border:1px solid #2B303A;border-radius:16px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div>
+            <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;">نسبت تعادل سبد اکوسیستم</h2>
+            <div style="height:14px;border-radius:999px;background:#17191D;overflow:hidden;display:flex;margin:16px 0;border:1px solid #2B303A;">
+              <div style="width:52%;background:#C9A45A;"></div>
+              <div style="width:32%;background:#4CB3A5;"></div>
+              <div style="width:16%;background:#6BA4E8;"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;font-size:12px;">
+              <div style="display:flex;justify-content:space-between;"><span style="color:#C9A45A;">● دارایی واقعی (طلا)</span><span class="num">52%</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#4CB3A5;">● رمزارزها</span><span class="num">32%</span></div>
+              <div style="display:flex;justify-content:space-between;"><span style="color:#6BA4E8;">● توکن‌های NFT</span><span class="num">16%</span></div>
+            </div>
+          </div>
+          <div style="background:#17191D;border:1px solid #2B303A;border-radius:12px;padding:12px;font-size:11px;color:#9CA3AF;line-height:1.65;">
+            <strong style="color:#F2EEE5;">یادآوری شفافیت:</strong> مقادیر بالا داده‌های نمونه رابط کاربری هستند و نشان‌دهنده نقدشوندگی یا پشتیبانی زنده همه کلاس‌های دارایی در نسخه فعلی نیستند.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

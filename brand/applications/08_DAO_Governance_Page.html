@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZARORBIT DAO Governance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+  :root {
+    --obsidian: #17191D;
+    --surface: #1F2329;
+    --elevated: #282D35;
+    --border: #2B303A;
+    --border-ctrl: #6B7485;
+    --gold: #C9A45A;
+    --gold-light-ui: #82611C;
+    --ivory: #F2EEE5;
+    --porcelain: #FAF8F3;
+    --teal: #286B63;
+    --teal-dark-ui: #4CB3A5;
+    --muted-dark: #9CA3AF;
+    --muted-light: #5B626E;
+    --success-dark: #48B884;
+    --warning-dark: #E2A93B;
+    --info-dark: #6BA4E8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+    background: var(--obsidian);
+    color: var(--ivory);
+    -webkit-font-smoothing: antialiased;
+  }
+  .en { font-family: 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .en-disp { font-family: 'Manrope', 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  }
+  .badge-beta { background: #192535; color: #6BA4E8; border: 1px solid #2D4D73; }
+  .badge-dev { background: #2B2416; color: #E2A93B; border: 1px solid #6B501D; }
+  .badge-plan { background: #1F2329; color: #9CA3AF; border: 1px solid #3A414D; }
+  .badge-live { background: #162A24; color: #48B884; border: 1px solid #286B63; }
+  .badge-concept { background: #1F2329; color: #C9A45A; border: 1px dashed #82611C; }
+
+</style>
+</head>
+<body>
+
+<div data-capture-root="true" style="width:1360px;padding:40px;background:#101215;">
+  <div style="background:#17191D;border:1px solid #2B303A;border-radius:22px;padding:34px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2B303A;padding-bottom:18px;margin-bottom:24px;">
+      <div>
+        <div style="font-size:11px;color:#4CB3A5;font-weight:700;">APPLICATION 08 • COMMUNITY &amp; PROGRESSIVE DAO GOVERNANCE</div>
+        <h1 style="font-size:23px;font-weight:800;margin-top:4px;">حکمرانی جامعه و مسیر تدریجی به سوی <span class="en">DAO</span></h1>
+      </div>
+      <span class="badge badge-dev">In Development — Progressive Governance</span>
+    </div>
+
+    <!-- Progressive DAO Path -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+      <div style="background:#1F2329;border:1px solid #4CB3A5;border-radius:14px;padding:18px;">
+        <div style="font-size:11px;color:#4CB3A5;font-weight:700;">گام ۱ • اکنون</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px;">جامعه‌سازی و گفت‌وگوی باز</div>
+        <p style="font-size:12px;color:#9CA3AF;margin-top:6px;line-height:1.6;">شکل‌گیری کارگروه‌ها، دریافت بازخورد محصول و مستندسازی شفاف قوانین پیش از کدگذاری.</p>
+      </div>
+      <div style="background:#1F2329;border:1px solid #3A414D;border-radius:14px;padding:18px;">
+        <div style="font-size:11px;color:#E2A93B;font-weight:700;">گام ۲ • در حال توسعه</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px;">پیشنهاد و رأی‌گیری قابل ردیابی</div>
+        <p style="font-size:12px;color:#9CA3AF;margin-top:6px;line-height:1.6;">تعریف نصاب، شرایط واجد شرایط بودن، تعارض منافع و اثر مشورتی هر رأی‌گیری به زبان ساده.</p>
+      </div>
+      <div style="background:#1F2329;border:1px solid #2B303A;border-radius:14px;padding:18px;">
+        <div style="font-size:11px;color:#9CA3AF;font-weight:700;">گام ۳ • افق تدریجی</div>
+        <div style="font-size:15px;font-weight:800;margin-top:4px;">حکمرانی غیرمتمرکز مسئولیت‌پذیر</div>
+        <p style="font-size:12px;color:#9CA3AF;margin-top:6px;line-height:1.6;">تفکیک روشن میان تصمیمات خودکار کد، تصمیمات اعضا و مسئولیت قانونی اپراتورها.</p>
+      </div>
+    </div>
+
+    <!-- Active Proposal + Accountability Box -->
+    <div style="display:grid;grid-template-columns:1.25fr 0.75fr;gap:20px;">
+      <div style="background:#1F2329;border:1px solid #2B303A;border-radius:16px;padding:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span class="en" style="font-size:12px;font-weight:700;color:#C9A45A;">PROPOSAL #ZIP-004 • DRAFT</span>
+          <span class="badge badge-dev">مشورتی • غیرالزام‌آور</span>
+        </div>
+        <h2 style="font-size:18px;font-weight:800;">استاندارد انتشار دوره‌ای گزارش شفافیت دارایی‌های واقعی و دیجیتال</h2>
+        <p style="font-size:13px;color:#9CA3AF;margin-top:8px;line-height:1.75;">این پیشنهاد ساختار گزارش‌دهی فصلی شامل تعداد حساب‌های فعال، حدود فنی پشتیبانی رمزارزها و مستندات مرجع را جهت بررسی جامعه تعریف می‌کند.</p>
+        <div style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span>میزان مشارکت آزمایشی (۱٬۷۸۰ از ۲٬۵۰۰ حد نصاب)</span><span class="num" style="color:#4CB3A5;font-weight:700;">71%</span></div>
+          <div style="height:10px;border-radius:999px;background:#17191D;overflow:hidden;"><div style="width:71%;height:100%;background:#4CB3A5;"></div></div>
+        </div>
+      </div>
+
+      <div style="background:#1F2329;border:1px solid #2B303A;border-radius:16px;padding:24px;">
+        <h3 style="font-size:15px;font-weight:800;color:#C9A45A;margin-bottom:10px;">مرز پاسخگویی در مدل DAO</h3>
+        <ul style="font-size:12px;color:#9CA3AF;line-height:1.85;padding-right:16px;">
+          <li>داشتن توکن یا NFT به خودی خود حق حکمرانی ایجاد نمی‌کند مگر به صراحت تعریف شود.</li>
+          <li>ساختار DAO جایگزین تعهدات قانونی، انطباق مقرراتی یا پاسخگویی اپراتور نیست.</li>
+          <li>پیش از اجرایی شدن هر رأی‌گیری، مرجع اجرا (کد، تیم فنی یا نهاد حقوقی) اعلام می‌شود.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

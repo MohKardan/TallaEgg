@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 
-export const SESSION_COOKIE_NAME = "tallaegg_session";
+export const SESSION_COOKIE_NAME = "zarorbit_session";
 export const SESSION_MAX_AGE_SECONDS = 4 * 60 * 60; // 4 hours
 
 export interface SessionUser {

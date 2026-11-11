@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 752 512" width="752" height="512" role="img" aria-label="ZARORBIT Geometric Icon System v1.0">
+  <defs><symbol id="icon-ecosystem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(24 12 12)"/><circle cx="5" cy="9" r="1.2" fill="currentColor"/><circle cx="19" cy="15" r="1.2" fill="currentColor"/></symbol><symbol id="icon-real-asset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17h16l-2-8H6l-2 8z"/><path d="M8 9l1.5-3h5L16 9"/></symbol><symbol id="icon-gold-unit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16h12l-1.5-6h-9L6 16z"/><path d="M4 19h16"/><path d="M9 10V7h6v3"/></symbol><symbol id="icon-crypto-asset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M9 8.5h6l-6 7h6"/></symbol><symbol id="icon-nft-token" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 3 20 7.5 20 16.5 12 21 4 16.5 4 7.5"/><polygon points="12 8 16 10.5 16 14.5 12 17 8 14.5 8 10.5"/></symbol><symbol id="icon-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><circle cx="16.5" cy="14" r="1"/></symbol><symbol id="icon-swap-orbit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/><path d="M18 7v3M6 17v-3"/></symbol><symbol id="icon-dao-vote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V6l4-2 4 2v4"/><path d="M9 15l2 2 4-4"/></symbol><symbol id="icon-community" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="2.5"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="17.5" cy="16.5" r="2.5"/><path d="M10.4 9L8 14.3M13.6 9l2.4 5.3M9 16.5h6"/></symbol><symbol id="icon-transparency" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M8 9h8M8 13h5M8 17h3"/><circle cx="16" cy="16" r="1.5"/></symbol><symbol id="icon-security" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6l7-3z"/><path d="M9.5 12l1.8 1.8 3.5-3.8"/></symbol><symbol id="icon-interop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7.5" width="7" height="9" rx="2"/><rect x="13.5" y="7.5" width="7" height="9" rx="2"/><path d="M10.5 12h3"/></symbol><symbol id="icon-analytics" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 15l4-4 3.5 2.5L18 8"/><circle cx="18" cy="8" r="1.3" fill="currentColor"/></symbol><symbol id="icon-ai-assist" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><rect x="7.5" y="7.5" width="9" height="9" rx="2"/><circle cx="12" cy="12" r="1.5"/></symbol><symbol id="icon-xr-worlds" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3h-3.2l-1.8-2.2a1.3 1.3 0 0 0-2 0L9.2 17H6a3 3 0 0 1-3-3v-4z"/><circle cx="8" cy="12" r="1.2"/><circle cx="16" cy="12" r="1.2"/></symbol><symbol id="icon-rights-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l4 4v14H6V3z"/><path d="M15 3v4h4"/><path d="M9 12h6M9 16h4"/></symbol></defs>
+  <rect width="752" height="512" fill="#17191D"/>
+  
+  <g transform="translate(24,24)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-ecosystem" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Ecosystem Hub</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-ecosystem</text>
+  </g>
+  <g transform="translate(204,24)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-real-asset" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Real Asset (RWA)</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-real-asset</text>
+  </g>
+  <g transform="translate(384,24)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-gold-unit" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Gold Reserve</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-gold-unit</text>
+  </g>
+  <g transform="translate(564,24)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-crypto-asset" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Cryptocurrency</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-crypto-asset</text>
+  </g>
+  <g transform="translate(24,144)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-nft-token" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">NFT / Digital Proof</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-nft-token</text>
+  </g>
+  <g transform="translate(204,144)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-wallet" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Asset Account</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-wallet</text>
+  </g>
+  <g transform="translate(384,144)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-swap-orbit" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Asset Exchange</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-swap-orbit</text>
+  </g>
+  <g transform="translate(564,144)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-dao-vote" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">DAO Governance</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-dao-vote</text>
+  </g>
+  <g transform="translate(24,264)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-community" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Community Nodes</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-community</text>
+  </g>
+  <g transform="translate(204,264)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-transparency" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Traceable Ledger</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-transparency</text>
+  </g>
+  <g transform="translate(384,264)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-security" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Security &amp; Custody</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-security</text>
+  </g>
+  <g transform="translate(564,264)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-interop" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Interoperability</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-interop</text>
+  </g>
+  <g transform="translate(24,384)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-analytics" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Price &amp; Spread</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-analytics</text>
+  </g>
+  <g transform="translate(204,384)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-ai-assist" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">AI Intelligence</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-ai-assist</text>
+  </g>
+  <g transform="translate(384,384)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-xr-worlds" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">XR / Metaverse</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-xr-worlds</text>
+  </g>
+  <g transform="translate(564,384)">
+    <rect width="164" height="104" rx="12" fill="#1F2329" stroke="#2D333D" stroke-width="1"/>
+    <use href="#icon-rights-doc" x="64" y="20" width="36" height="36" color="#C9A45A"/>
+    <text x="82" y="78" text-anchor="middle" fill="#F2EEE5" font-family="Inter, Arial, sans-serif" font-size="11" font-weight="600">Ownership Terms</text>
+    <text x="82" y="93" text-anchor="middle" fill="#9CA3AF" font-family="monospace" font-size="9">icon-rights-doc</text>
+  </g>
+</svg>
