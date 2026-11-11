@@ -13,8 +13,8 @@ interface BrandLogoProps {
 
 /**
  * BrandEmblem:
- * - Small / Icon surfaces (sizePx < 80 or default): uses the Falcon with 'Z' coin and NO orbits (zarorbit-icon.jpg)
- * - Large / Showcase surfaces (useLargeLogo or sizePx >= 80): uses the full orbital binary rings logo (zarorbit-logo.jpg)
+ * - Small / Icon surfaces (sizePx < 80 or default): uses the brushed gold 'Z' without outer ring (zarorbit-icon.jpg)
+ * - Large / Showcase surfaces (useLargeLogo or sizePx >= 80): uses the circular gold 'Z' medallion logo (zarorbit-logo.jpg)
  */
 export const BrandEmblem: React.FC<{
   sizePx?: number;
@@ -30,14 +30,16 @@ export const BrandEmblem: React.FC<{
   return (
     <div
       style={{ width: sizePx, height: sizePx }}
-      className={`relative rounded-xl overflow-hidden shadow-goldGlowSubtle border border-amber-500/30 flex items-center justify-center shrink-0 bg-[#090C12] transition-transform duration-300 group-hover:scale-105 ${className}`}
+      className={`relative ${
+        isLarge ? "rounded-full" : "rounded-xl"
+      } overflow-hidden shadow-goldGlowSubtle border border-amber-500/35 flex items-center justify-center shrink-0 bg-[#14171c] transition-transform duration-300 group-hover:scale-105 ${className}`}
     >
       <Image
         src={imageSrc}
-        alt={isLarge ? "Zarorbit Flagship Orbital Logo" : "Zarorbit Icon Emblem"}
+        alt={isLarge ? "Zarorbit Official Logo" : "Zarorbit Icon Emblem"}
         width={sizePx}
         height={sizePx}
-        className="object-cover w-full h-full"
+        className="object-cover w-full h-full scale-[1.06]"
         priority={priority}
       />
     </div>
@@ -46,7 +48,7 @@ export const BrandEmblem: React.FC<{
 
 /**
  * BrandHeroShowcase:
- * High-impact luxury 3D card presentation for the large Zarorbit logo with orbital rings.
+ * High-impact luxury obsidian card presentation for the official Zarorbit circular Z logo.
  */
 export const BrandHeroShowcase: React.FC<{ className?: string }> = ({
   className = "",
@@ -59,22 +61,38 @@ export const BrandHeroShowcase: React.FC<{ className?: string }> = ({
       <div className="absolute -top-24 -right-24 w-56 h-56 bg-amber-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-amber-500/30 transition-all duration-700" />
       <div className="absolute -bottom-24 -left-24 w-56 h-56 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Large Orbital Logo Container */}
-      <div className="relative mx-auto w-64 h-64 sm:w-72 sm:h-72 rounded-2xl overflow-hidden border border-amber-500/40 shadow-2xl bg-[#090c12]">
-        <Image
-          src={brandConfig.assets.logoLargeOrbit}
-          alt="Zarorbit Physical & Digital Gold Official Emblem"
-          fill
-          sizes="(max-width: 640px) 256px, 288px"
-          className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
-          priority
+      {/* Main Official Logo Medallion Container */}
+      <div className="relative mx-auto w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center">
+        {/* Outer rotating dashed tech halo */}
+        <div
+          className="absolute inset-0 rounded-full border border-dashed border-amber-500/25 animate-[spin_28s_linear_infinite]"
+          aria-hidden="true"
         />
-        {/* Subtle glass reflection overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-amber-400/5 to-white/10 pointer-events-none" />
+        <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-2 border-amber-500/45 shadow-2xl bg-[#181b20]">
+          <Image
+            src={brandConfig.assets.logoLargeOrbit}
+            alt="Zarorbit Physical & Digital Gold Official Logo"
+            fill
+            sizes="(max-width: 640px) 192px, 224px"
+            className="object-cover w-full h-full scale-[1.08] transition-transform duration-700 group-hover:scale-[1.12]"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-amber-400/5 to-white/10 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Brand Wordmark inside showcase */}
+      <div className="mt-5 text-center space-y-1">
+        <div className="text-lg sm:text-xl font-black tracking-[0.28em] gold-gradient-text uppercase">
+          {brandConfig.name.en}
+        </div>
+        <div className="text-[11px] font-medium tracking-[0.18em] text-amber-400/80 uppercase">
+          {brandConfig.slogan.en}
+        </div>
       </div>
 
       {/* Floating Meta Pills */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-amber-500/20 pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-amber-500/20 pt-4">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-slate-300 font-medium">شبکه فعال بازارساز</span>

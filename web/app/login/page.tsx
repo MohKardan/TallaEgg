@@ -6,7 +6,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Shield, AlertCircle, CheckCircle2, Lock, WifiOff } from "lucide-react";
 import { brandConfig } from "@/config/brand.config";
-import BrandLogo from "@/components/BrandLogo";
+import { BrandEmblem } from "@/components/BrandLogo";
 
 declare global {
   interface Window {
@@ -126,8 +126,8 @@ export default function LoginPage() {
           <div className="glass-card rounded-3xl p-8 sm:p-10 border border-amber-500/25 shadow-goldGlow">
             {/* Header */}
             <div className="text-center space-y-3 mb-8">
-              <div className="flex justify-center mb-2">
-                <BrandLogo variant="minimal" size="lg" withLink={false} />
+              <div className="flex justify-center mb-3">
+                <BrandEmblem sizePx={88} useLargeLogo priority />
               </div>
               <h1 className="text-2xl font-extrabold text-white">
                 ورود به پورتال {brandConfig.name.fa}

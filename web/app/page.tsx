@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { brandConfig } from "@/config/brand.config";
 import { BrandEmblem, BrandHeroShowcase } from "@/components/BrandLogo";
+import ZarorbitOrbitalMotion from "@/components/ZarorbitOrbitalMotion";
 import {
   Sparkles,
   ArrowRight,
@@ -339,6 +340,53 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ----------------- DIGITAL GOLD ORBIT ANIMATION SECTION ----------------- */}
+        <section id="orbit-engine" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Right Column (RTL): Digital & Physical Architecture Narrative */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-right">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/35 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-300">
+                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>DIGITAL &amp; PHYSICAL GOLD CORE</span>
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+                پیوند طلای فیزیکی ۱۸ عیار با{" "}
+                <span className="gold-gradient-text">
+                  مدار دیجیتال دفترکل زَر اوربیت
+                </span>
+              </h2>
+
+              <p className="text-sm sm:text-base text-slate-300 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                در {brandConfig.name.fa} هر گرم طلای فیزیکی اصیل به صورت یکپارچه و دقیق بر بستر دفترکل باینری دوطرفه ثبت و پایش می‌شود. تراکنش‌های لحظه‌ای بدون صف، تسویه شفاف و قابلیت تبدیل مستقیم دارایی دیجیتال به شمش فیزیکی معتبر، هسته اصلی مدار نقدینگی ما را می‌سازد.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
+                  <div className="text-xs text-slate-400 mb-1">مدل اجرا</div>
+                  <div className="text-sm font-bold text-white">بازارساز مستقیم</div>
+                  <div className="text-[11px] text-amber-400 mt-0.5">بدون نیاز به صف انتظار</div>
+                </div>
+                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
+                  <div className="text-xs text-slate-400 mb-1">ثبت و حسابداری</div>
+                  <div className="text-sm font-bold text-white">دفترکل دوطرفه</div>
+                  <div className="text-[11px] text-emerald-400 mt-0.5">تراز ریاضیاتی تغییرناپذیر</div>
+                </div>
+                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
+                  <div className="text-xs text-slate-400 mb-1">پشتوانه دارایی</div>
+                  <div className="text-sm font-bold text-white">عیار ۷۵۰ استاندارد</div>
+                  <div className="text-[11px] text-amber-300 mt-0.5">تحویل فیزیکی معتبر</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Left Column (RTL): Animated 3D Spinning Z + Orbiting 0/1 Particles */}
+            <div className="lg:col-span-5 flex justify-center">
+              <ZarorbitOrbitalMotion className="w-full max-w-[430px]" />
             </div>
           </div>
         </section>
@@ -738,16 +786,8 @@ export default function HomePage() {
         <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="relative rounded-3xl p-10 sm:p-16 overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#151a26] via-[#10141e] to-[#090b10] text-center space-y-6 shadow-goldGlow">
             <div className="max-w-2xl mx-auto space-y-4">
-              <div className="flex justify-center mb-2">
-                <div className="h-14 w-14 rounded-2xl overflow-hidden border border-amber-500/40 shadow-goldGlow">
-                  <Image
-                    src={brandConfig.assets.iconNoOrbit}
-                    alt="Zarorbit Icon"
-                    width={56}
-                    height={56}
-                    className="object-cover"
-                  />
-                </div>
+              <div className="flex justify-center mb-3">
+                <BrandEmblem sizePx={88} useLargeLogo />
               </div>
               <h2 className="text-3xl sm:text-4xl font-black text-white">
                 آماده معامله هوشمند طلای آبشده در {brandConfig.name.fa} هستید؟

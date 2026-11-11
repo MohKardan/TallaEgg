@@ -34,8 +34,8 @@ export interface BrandConfig {
     obsidianBg: string; // "#080a0f"
   };
   assets: {
-    iconNoOrbit: string; // Falcon with Z medallion without orbits (for small icons, favicons, badges)
-    logoLargeOrbit: string; // Full Z with orbital binary rings (for large hero, banners, detailed showcases)
+    iconNoOrbit: string; // Brushed gold 'Z' mark without outer ring (small icons, favicons, badges)
+    logoLargeOrbit: string; // Brushed gold 'Z' inside circular gold ring bezel (hero, showcase, detailed banners)
   };
 }
 
