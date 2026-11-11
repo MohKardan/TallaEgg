@@ -3,20 +3,18 @@ import "./globals.css";
 import { brandConfig } from "@/config/brand.config";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(`https://${brandConfig.domain.primary}`),
+  metadataBase: new URL(brandConfig.domain.siteUrl),
   title: {
     default: brandConfig.seo.title,
     template: brandConfig.seo.titleTemplate,
   },
   description: brandConfig.seo.description,
   keywords: brandConfig.seo.keywords,
-  authors: [
-    { name: brandConfig.name.en, url: `https://${brandConfig.domain.primary}` },
-  ],
+  authors: [{ name: brandConfig.name.en, url: brandConfig.domain.siteUrl }],
   openGraph: {
     title: brandConfig.seo.title,
     description: brandConfig.seo.description,
-    url: `https://${brandConfig.domain.primary}`,
+    url: brandConfig.domain.siteUrl,
     siteName: `${brandConfig.name.en} | ${brandConfig.name.fa}`,
     locale: "fa_IR",
     type: "website",
@@ -34,7 +32,13 @@ export const metadata: Metadata = {
       { url: brandConfig.assets.favicon, type: "image/svg+xml" },
       { url: brandConfig.assets.symbol, type: "image/svg+xml", sizes: "128x128" },
     ],
-    apple: brandConfig.assets.appIcon,
+    apple: [
+      {
+        url: brandConfig.assets.appleTouchIcon,
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
 };
 

@@ -723,3 +723,5 @@ obj/
 .gcloud-auth/
 
 !web/public/
+web/public/*
+!web/public/images/

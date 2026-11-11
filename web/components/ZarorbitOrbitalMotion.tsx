@@ -89,9 +89,11 @@ export default function ZarorbitOrbitalMotion({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const prefersReducedMotion =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionQuery =
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia("(prefers-reduced-motion: reduce)")
+        : null;
+    let prefersReducedMotion = Boolean(motionQuery?.matches);
 
     const logicalSize = 420;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -341,11 +343,27 @@ export default function ZarorbitOrbitalMotion({
       if (prefersReducedMotion) renderFrame(performance.now());
     };
 
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      prefersReducedMotion = e.matches;
+      if (prefersReducedMotion) {
+        if (animId) {
+          cancelAnimationFrame(animId);
+          animId = 0;
+        }
+        renderFrame(performance.now());
+      } else if (!animId) {
+        lastTime = performance.now();
+        animId = requestAnimationFrame(renderFrame);
+      }
+    };
+
+    motionQuery?.addEventListener("change", onMotionChange);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerleave", onPointerLeave);
 
     return () => {
       if (animId) cancelAnimationFrame(animId);
+      motionQuery?.removeEventListener("change", onMotionChange);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", onPointerLeave);
     };
@@ -362,6 +380,7 @@ export default function ZarorbitOrbitalMotion({
 
       <canvas
         ref={canvasRef}
+        role="img"
         aria-label="نمودار تعاملی مونوگرام ۱-۰-۱ و مدار پیوند دارایی‌های واقعی و دیجیتال ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />

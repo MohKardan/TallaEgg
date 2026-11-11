@@ -32,6 +32,7 @@ export default function HomePage() {
   const numericAmount = Math.max(0, parseFloat(amountInput) || 0);
 
   // Illustrative benchmark rates for RWA calculator (not live exchange guarantees)
+  // Market mesghal equivalence factors in 17k/18k trade: 4.6083g * (705/750) ≈ 4.3318g of 18k gold
   const gramRate = 4350000;
   const mesghalRate = Math.round(gramRate * 4.3318);
   const totalCalculated =
@@ -657,7 +658,7 @@ export default function HomePage() {
                         : "text-[#9CA3AF] hover:text-[#F2EEE5]"
                     }`}
                   >
-                    مثقال طلا (۴.۳۳ گرم)
+                    مثقال بازار (معادل ۴.۳۳۱۸ گرم ۱۸ عیار)
                   </button>
                 </div>
 

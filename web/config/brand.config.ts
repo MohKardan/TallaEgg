@@ -13,7 +13,7 @@ export interface BrandConfig {
   };
   domain: {
     primary: string;
-    global: string;
+    siteUrl: string;
   };
   tagline: {
     en: string;
@@ -23,8 +23,6 @@ export interface BrandConfig {
   telegram: {
     botUsername: string;
     botUrl: string;
-    channelUrl: string;
-    supportUrl?: string;
   };
   seo: {
     title: string;
@@ -48,6 +46,7 @@ export interface BrandConfig {
     horizontalLight: string;
     favicon: string;
     appIcon: string;
+    appleTouchIcon: string;
     ogImage: string;
   };
 }
@@ -66,8 +65,8 @@ export const brandConfig: BrandConfig = {
     categoryFa: "زیست‌بوم غیرمتمرکز دارایی‌ها",
   },
   domain: {
-    primary: "zarorbit.ir",
-    global: "zarorbit.com",
+    primary: process.env.NEXT_PUBLIC_SITE_HOST || "zarorbit.ir",
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://zarorbit.ir",
   },
   tagline: {
     en: "A Community-Governed Ecosystem for Real and Digital Assets.",
@@ -80,8 +79,6 @@ export const brandConfig: BrandConfig = {
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "zarorbitbot",
     botUrl:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/zarorbitbot",
-    channelUrl: "https://t.me/zarorbit",
-    supportUrl: "https://t.me/zarorbit_support",
   },
   seo: {
     title: "ZARORBIT (زَر اوربیت) — زیست‌بوم دارایی‌های واقعی و دیجیتال",
@@ -117,6 +114,7 @@ export const brandConfig: BrandConfig = {
     horizontalLight: "/images/zarorbit-logo-light.svg",
     favicon: "/images/zarorbit-favicon.svg",
     appIcon: "/images/zarorbit-app-icon.svg",
+    appleTouchIcon: "/images/zarorbit-apple-touch-icon.png",
     ogImage: "/images/zarorbit-og.png",
   },
 };
