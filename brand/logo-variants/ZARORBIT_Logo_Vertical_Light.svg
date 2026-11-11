@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 192" width="320" height="192" role="img" aria-label="ZARORBIT Vertical Logo Light">
+  <g transform="translate(96,4)">
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#17191D" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#17191D"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#17191D"/>
+</g>
+  <g transform="translate(51.81,132.00) scale(0.7800)" fill="#17191D" fill-rule="evenodd">
+    <path transform="translate(0.00,0)" d="M 3.2 0 H 28 V 6.5 L 9.5 37.5 H 28 V 40.8 L 24.8 44.0 H 0 V 37.5 L 18.5 6.5 H 0 V 3.2 Z"/>
+    <path transform="translate(35.50,0)" d="M 12.6 0 H 19.4 L 32 44 H 24.8 L 22.0 33.0 H 10.0 L 7.2 44 H 0 Z M 16 8.2 L 11.4 26.8 H 20.6 Z"/>
+    <path transform="translate(76.80,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(114.30,0)" d="M 17 0 A 17 22 0 1 1 16.99 0 Z M 17 6.5 A 10.4 15.5 0 1 0 17.01 6.5 Z"/>
+    <path transform="translate(157.30,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(195.40,0)" d="M 0 0 H 15.8 A 10.6 10.6 0 0 1 18.6 20.9 A 11.5 11.5 0 0 1 16.8 44 H 0 Z M 6.5 6.0 V 18.0 H 15.4 A 6.0 6.0 0 0 0 15.4 6.0 Z M 6.5 24.2 V 38.0 H 16.2 A 6.9 6.9 0 0 0 16.2 24.2 Z"/>
+    <path transform="translate(234.90,0)" d="M 0 0 H 6.8 V 44 H 0 Z"/>
+    <path transform="translate(249.40,0)" d="M 0 0 H 28 V 6.5 H 17.25 V 44 H 10.75 V 6.5 H 0 Z"/>
+  </g>
+</svg>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZARORBIT Presentation Deck Template</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+  :root {
+    --obsidian: #17191D;
+    --surface: #1F2329;
+    --elevated: #282D35;
+    --border: #2B303A;
+    --border-ctrl: #6B7485;
+    --gold: #C9A45A;
+    --gold-light-ui: #82611C;
+    --ivory: #F2EEE5;
+    --porcelain: #FAF8F3;
+    --teal: #286B63;
+    --teal-dark-ui: #4CB3A5;
+    --muted-dark: #9CA3AF;
+    --muted-light: #5B626E;
+    --success-dark: #48B884;
+    --warning-dark: #E2A93B;
+    --info-dark: #6BA4E8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+    background: var(--obsidian);
+    color: var(--ivory);
+    -webkit-font-smoothing: antialiased;
+  }
+  .en { font-family: 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .en-disp { font-family: 'Manrope', 'Inter', sans-serif; direction: ltr; unicode-bidi: isolate; }
+  .num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  }
+  .badge-beta { background: #192535; color: #6BA4E8; border: 1px solid #2D4D73; }
+  .badge-dev { background: #2B2416; color: #E2A93B; border: 1px solid #6B501D; }
+  .badge-plan { background: #1F2329; color: #9CA3AF; border: 1px solid #3A414D; }
+  .badge-live { background: #162A24; color: #48B884; border: 1px solid #286B63; }
+  .badge-concept { background: #1F2329; color: #C9A45A; border: 1px dashed #82611C; }
+
+
+  @page { size: 1280px 720px; margin: 0; }
+  .slide {
+    width: 1280px; height: 720px; padding: 56px 64px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    page-break-after: always; position: relative; overflow: hidden;
+  }
+  .slide:last-child { page-break-after: auto; }
+  .slide-dark { background: #17191D; color: #F2EEE5; border-bottom: 1px solid #2B303A; }
+  .slide-light { background: #F2EEE5; color: #17191D; border-bottom: 1px solid #D0C8B8; }
+</style>
+</head>
+<body>
+
+<div data-capture-root="true">
+  <!-- Slide 1: Cover -->
+  <section class="slide slide-dark">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 88" width="220" height="61" role="img" aria-label="ZARORBIT Integrated Horizontal Logo Dark">
+  <g transform="translate(1.05,7.20) scale(0.5750)">
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+  <g transform="translate(63.20,22.00) scale(1.0000)" fill="#F2EEE5" fill-rule="evenodd">
+    <path transform="translate(0.00,0)" d="M 12.6 0 H 19.4 L 32 44 H 24.8 L 22.0 33.0 H 10.0 L 7.2 44 H 0 Z M 16 8.2 L 11.4 26.8 H 20.6 Z"/>
+    <path transform="translate(41.30,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(78.80,0)" d="M 17 0 A 17 22 0 1 1 16.99 0 Z M 17 6.5 A 10.4 15.5 0 1 0 17.01 6.5 Z"/>
+    <path transform="translate(121.80,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(159.90,0)" d="M 0 0 H 15.8 A 10.6 10.6 0 0 1 18.6 20.9 A 11.5 11.5 0 0 1 16.8 44 H 0 Z M 6.5 6.0 V 18.0 H 15.4 A 6.0 6.0 0 0 0 15.4 6.0 Z M 6.5 24.2 V 38.0 H 16.2 A 6.9 6.9 0 0 0 16.2 24.2 Z"/>
+    <path transform="translate(199.40,0)" d="M 0 0 H 6.8 V 44 H 0 Z"/>
+    <path transform="translate(213.90,0)" d="M 0 0 H 28 V 6.5 H 17.25 V 44 H 10.75 V 6.5 H 0 Z"/>
+  </g>
+</svg>
+
+      <span class="badge badge-concept">Strategic Deck Template • v1.0</span>
+    </div>
+    <div style="max-width:860px;">
+      <div style="font-size:14px;color:#C9A45A;font-weight:700;letter-spacing:0.08em;margin-bottom:14px;" class="en">DECENTRALIZED ASSET ECOSYSTEM</div>
+      <h1 style="font-size:48px;font-weight:800;line-height:1.25;">دارایی‌های واقعی و دیجیتال.<br/><span style="color:#C9A45A;">مالکیت و مشارکت جمعی.</span></h1>
+      <p style="font-size:18px;color:#9CA3AF;margin-top:18px;line-height:1.8;">اتصال تدریجی دارایی‌های دنیای واقعی (با نقطه شروع طلا) و دارایی‌های دیجیتال (رمزارزها و NFTها) در چهارچوب شفافیت و حرکت گام‌به‌گام به سوی حکمرانی جامعه.</p>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #2B303A;padding-top:18px;font-size:12px;color:#9CA3AF;">
+      <span>سند مرجع: ZARORBIT Brand Book v1.1 (نوامبر ۲۰۲۶)</span>
+      <span class="en">01 / 05 — Ecosystem Working Template</span>
+    </div>
+  </section>
+
+  <!-- Slide 2: Ecosystem Architecture -->
+  <section class="slide slide-dark">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:700;color:#C9A45A;">معماری کلان زیست‌بوم • ECOSYSTEM ARCHITECTURE</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="38" height="38" role="img" aria-label="ZARORBIT Primary Symbol">
+  <g>
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+</svg>
+
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;">
+      <div style="background:#1F2329;border:1px solid #C9A45A;border-radius:16px;padding:22px;">
+        <span class="badge badge-beta">Focus</span>
+        <h2 style="font-size:18px;font-weight:800;margin-top:12px;color:#C9A45A;">دارایی‌های واقعی (RWA)</h2>
+        <p style="font-size:13px;color:#9CA3AF;margin-top:8px;line-height:1.7;">طلا به عنوان نقطه شروع تجاری؛ امکان بررسی سایر فلزات و دارایی‌های فیزیکی پس از تایید حقوقی.</p>
+      </div>
+      <div style="background:#1F2329;border:1px solid #4CB3A5;border-radius:16px;padding:22px;">
+        <span class="badge badge-dev">In Dev</span>
+        <h2 style="font-size:18px;font-weight:800;margin-top:12px;color:#4CB3A5;">دارایی دیجیتال</h2>
+        <p style="font-size:13px;color:#9CA3AF;margin-top:8px;line-height:1.7;">رمزارزها و توکن‌های غیرمثلی (NFT) در چهارچوب استانداردهای باز و مرزهای قانونی روشن.</p>
+      </div>
+      <div style="background:#1F2329;border:1px solid #3A414D;border-radius:16px;padding:22px;">
+        <span class="badge badge-dev">Progressive</span>
+        <h2 style="font-size:18px;font-weight:800;margin-top:12px;">حکمرانی DAO</h2>
+        <p style="font-size:13px;color:#9CA3AF;margin-top:8px;line-height:1.7;">شروع با جامعه‌سازی، گفت‌وگو و پیشنهادهای قابل ردیابی به سوی مشارکت تدریجی.</p>
+      </div>
+      <div style="background:#1F2329;border:1px solid #2B303A;border-radius:16px;padding:22px;">
+        <span class="badge badge-concept">Long-term</span>
+        <h2 style="font-size:18px;font-weight:800;margin-top:12px;">متاورس، AI و XR</h2>
+        <p style="font-size:13px;color:#9CA3AF;margin-top:8px;line-height:1.7;">افق بلندمدت تعاملات تعاملی و کمک‌تصمیم هوشمند (نه قابلیت آماده امروز).</p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #2B303A;padding-top:18px;font-size:12px;color:#9CA3AF;">
+      <span>اصل راهبردی: تفکیک کامل وضعیت فعلی از چشم‌انداز بلندمدت</span>
+      <span class="en">02 / 05</span>
+    </div>
+  </section>
+
+  <!-- Slide 3: Light Mode Slide (Trust & Legal Boundaries) -->
+  <section class="slide slide-light">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:700;color:#286B63;">شفافیت، مالکیت و مدیریت ریسک • TRUST &amp; RISK</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 321 88" width="165" height="46" role="img" aria-label="ZARORBIT Integrated Horizontal Logo Light">
+  <g transform="translate(1.05,7.20) scale(0.5750)">
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#82611C" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#82611C"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#82611C"/>
+</g>
+  <g transform="translate(63.20,22.00) scale(1.0000)" fill="#17191D" fill-rule="evenodd">
+    <path transform="translate(0.00,0)" d="M 12.6 0 H 19.4 L 32 44 H 24.8 L 22.0 33.0 H 10.0 L 7.2 44 H 0 Z M 16 8.2 L 11.4 26.8 H 20.6 Z"/>
+    <path transform="translate(41.30,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(78.80,0)" d="M 17 0 A 17 22 0 1 1 16.99 0 Z M 17 6.5 A 10.4 15.5 0 1 0 17.01 6.5 Z"/>
+    <path transform="translate(121.80,0)" d="M 0 0 H 16.5 A 12.1 12.1 0 0 1 16.5 24.2 H 17.5 L 28.8 44 H 21.0 L 10.2 24.2 H 6.5 V 44 H 0 Z M 6.5 6.2 V 18.0 H 16.0 A 5.9 5.9 0 0 0 16.0 6.2 Z"/>
+    <path transform="translate(159.90,0)" d="M 0 0 H 15.8 A 10.6 10.6 0 0 1 18.6 20.9 A 11.5 11.5 0 0 1 16.8 44 H 0 Z M 6.5 6.0 V 18.0 H 15.4 A 6.0 6.0 0 0 0 15.4 6.0 Z M 6.5 24.2 V 38.0 H 16.2 A 6.9 6.9 0 0 0 16.2 24.2 Z"/>
+    <path transform="translate(199.40,0)" d="M 0 0 H 6.8 V 44 H 0 Z"/>
+    <path transform="translate(213.90,0)" d="M 0 0 H 28 V 6.5 H 17.25 V 44 H 10.75 V 6.5 H 0 Z"/>
+  </g>
+</svg>
+
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div style="background:#FAF8F3;border:1px solid #D0C8B8;border-radius:16px;padding:26px;">
+        <h2 style="font-size:20px;font-weight:800;color:#17191D;margin-bottom:12px;">تفکیک حقوقی دارایی‌ها</h2>
+        <p style="font-size:14px;color:#5B626E;line-height:1.85;">هیچ توکن، NFT یا ثبت دیجیتالی به خودی خود سند مالکیت دارایی فیزیکی یا حق کپی‌رایت محسوب نمی‌شود مگر قرارداد معتبر و سازوکار تحویل مشخص و مستند باشد.</p>
+      </div>
+      <div style="background:#FFFFFF;border:1px solid #D0C8B8;border-radius:16px;padding:26px;">
+        <h2 style="font-size:20px;font-weight:800;color:#82611C;margin-bottom:12px;">استاندارد ارتباطات صادقانه</h2>
+        <p style="font-size:14px;color:#5B626E;line-height:1.85;">تمام ادعاهای مربوط به پشتوانه، نگهداری، مجوزهای نظارتی، حسابرسی و بازدهی تنها با سند تاییدشده انسانی منتشر می‌شوند و هر ماژول با برچسب بلوغ دقیق <span class="en">(Live / Beta / In Dev / Planned / Conceptual)</span> مشخص می‌گردد.</p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #D0C8B8;padding-top:18px;font-size:12px;color:#5B626E;">
+      <span>نمونه اسلاید روشن (Ivory #F2EEE5) با کنتراست تاییدشده WCAG 2.2 AA</span>
+      <span class="en">03 / 05</span>
+    </div>
+  </section>
+
+  <!-- Slide 4: Brand System & Visual Consistency -->
+  <section class="slide slide-dark">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:700;color:#C9A45A;">هویت بصری و طراحی سیستم • DESIGN SYSTEM</span>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="38" height="38" role="img" aria-label="ZARORBIT Primary Symbol">
+  <g>
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+</svg>
+
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;">
+      <div>
+        <h2 style="font-size:28px;font-weight:800;line-height:1.35;">زبان بصری مستحکم، مهندسی‌شده و مقیاس‌پذیر</h2>
+        <p style="font-size:15px;color:#9CA3AF;margin-top:12px;line-height:1.8;">دوری آگاهانه از کلیشه‌های صرافی‌های پرزرق‌وبرق و طلافروشی‌های سنتی؛ ترکیب ابسیدین، طلای متالیک متعادل، عاج و سبزآبی عمیق با تایپوگرافی دوزبانه <span class="en">Vazirmatn + Manrope/Inter</span>.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="background:#17191D;border:1px solid #3A414D;padding:18px;border-radius:12px;"><div style="height:28px;background:#17191D;border:1px solid #3A414D;border-radius:6px;margin-bottom:8px;"></div><strong>Obsidian</strong><div class="en" style="font-size:11px;color:#9CA3AF;">#17191D</div></div>
+        <div style="background:#1F2329;border:1px solid #3A414D;padding:18px;border-radius:12px;"><div style="height:28px;background:#C9A45A;border-radius:6px;margin-bottom:8px;"></div><strong>Metallic Gold</strong><div class="en" style="font-size:11px;color:#9CA3AF;">#C9A45A</div></div>
+        <div style="background:#1F2329;border:1px solid #3A414D;padding:18px;border-radius:12px;"><div style="height:28px;background:#F2EEE5;border-radius:6px;margin-bottom:8px;"></div><strong>Ivory</strong><div class="en" style="font-size:11px;color:#9CA3AF;">#F2EEE5</div></div>
+        <div style="background:#1F2329;border:1px solid #3A414D;padding:18px;border-radius:12px;"><div style="height:28px;background:#286B63;border-radius:6px;margin-bottom:8px;"></div><strong>Deep Teal</strong><div class="en" style="font-size:11px;color:#9CA3AF;">#286B63 / #4CB3A5</div></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;border-top:1px solid #2B303A;padding-top:18px;font-size:12px;color:#9CA3AF;">
+      <span>پشتیبانی کامل از تم تیره، تم روشن، RTL فارسی و LTR انگلیسی</span>
+      <span class="en">04 / 05</span>
+    </div>
+  </section>
+
+  <!-- Slide 5: Closing -->
+  <section class="slide slide-dark" style="align-items:center;text-align:center;justify-content:center;gap:24px;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="84" height="84" role="img" aria-label="ZARORBIT Primary Symbol">
+  <g>
+  <g transform="rotate(-56 64 64)">
+    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  </g>
+  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
+  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
+</g>
+</svg>
+
+    <h2 style="font-size:38px;font-weight:800;">ساخت زیست‌بوم شفاف دارایی‌ها با همراهی جامعه</h2>
+    <p style="font-size:16px;color:#9CA3AF;max-width:620px;line-height:1.8;">برای بررسی مستندات فنی، طراحی رابط کاربری یا مشارکت در کارگروه‌های تخصصی، از کانال‌های رسمی پروژه استفاده کنید.</p>
+    <div class="en" style="padding:10px 22px;border-radius:999px;border:1px solid #3A414D;background:#1F2329;color:#C9A45A;font-size:14px;font-weight:700;">ZARORBIT • Real &amp; Digital Assets. Collective Ownership.</div>
+  </section>
+</div>
+
+</body>
+</html>

@@ -1,95 +1,83 @@
 "use client";
 
 import React from "react";
-import { TrendingUp, ShieldCheck, Zap, Activity } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { brandConfig } from "@/config/brand.config";
-import Image from "next/image";
+import { ZarorbitSymbolSvg } from "@/components/BrandLogo";
 
 export default function LiveTicker() {
   const tickerItems = [
     {
-      label: "آبشده ۱۸ عیار (MAUA)",
+      label: "نقطه شروع RWA (طلای ۱۸ عیار)",
       value: "۴,۳۵۰,۰۰۰ تومان",
-      change: "+۰.۳۵٪",
-      isUp: true,
+      status: "نمونه مرجع",
+      tone: "gold" as const,
     },
     {
-      label: "انس جهانی (XAU)",
-      value: "$2,745.80",
-      change: "+۰.۱۲٪",
-      isUp: true,
+      label: "دارایی‌های دیجیتال (Crypto & NFT)",
+      value: "در حال توسعه",
+      tone: "warning" as const,
     },
     {
-      label: "سکه بهار آزادی",
-      value: "۴۸,۲۰۰,۰۰۰ تومان",
-      change: "+۰.۴۵٪",
-      isUp: true,
+      label: "مدل کارمزد ماژول آزمایشی",
+      value: "۰.۰۰٪ (اسپرد شفاف)",
+      tone: "teal" as const,
     },
     {
-      label: "کارمزد معاملات",
-      value: "۰.۰۰٪ (رایگان)",
-      highlight: true,
-    },
-    {
-      label: "وضعیت تسویه دفترکل",
-      value: "آنلاین و لحظه‌ای",
-      online: true,
+      label: "مسیر حکمرانی",
+      value: "جامعه‌محور / Progressive DAO",
+      tone: "neutral" as const,
     },
   ];
 
   return (
-    <div className="w-full bg-[#05070a] border-b border-amber-500/15 py-1.5 px-4 text-xs overflow-hidden select-none">
+    <div className="w-full bg-[#101215] border-b border-[#2B303A] py-1.5 px-4 text-xs overflow-hidden select-none">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left Indicator */}
+        {/* Left Ecosystem Identifier */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="relative w-4 h-4 rounded-full overflow-hidden border border-amber-500/40">
-            <Image
-              src={brandConfig.assets.iconNoOrbit}
-              alt="Live"
-              width={16}
-              height={16}
-              className="object-cover"
-            />
-          </div>
-          <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider hidden sm:inline">
-            نرخ زنده {brandConfig.name.en}
+          <ZarorbitSymbolSvg sizePx={16} />
+          <span className="bidi-isolate text-[11px] font-bold text-[#C9A45A] tracking-wider hidden sm:inline">
+            {brandConfig.name.en} ECOSYSTEM
           </span>
-          <span className="flex h-2 w-2 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          <span className="inline-flex items-center rounded-full bg-[#192535] border border-[#2D4D73] px-2 py-0.5 text-[10px] font-semibold text-[#6BA4E8]">
+            Beta Focus
           </span>
         </div>
 
         {/* Ticker Items */}
-        <div className="flex items-center gap-6 overflow-x-auto no-scrollbar scroll-smooth text-[11px] text-slate-300">
+        <div className="flex items-center gap-6 overflow-x-auto no-scrollbar scroll-smooth text-[11px] text-[#9CA3AF]">
           {tickerItems.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
-              <span className="text-slate-400">{item.label}:</span>
+            <div
+              key={idx}
+              className="flex items-center gap-1.5 shrink-0 whitespace-nowrap"
+            >
+              <span>{item.label}:</span>
               <span
-                className={`font-semibold ${
-                  item.highlight
-                    ? "text-amber-400"
-                    : item.online
-                    ? "text-emerald-400"
-                    : "text-white"
+                className={`font-semibold tabular-nums ${
+                  item.tone === "gold"
+                    ? "text-[#C9A45A]"
+                    : item.tone === "teal"
+                    ? "text-[#4CB3A5]"
+                    : item.tone === "warning"
+                    ? "text-[#E2A93B]"
+                    : "text-[#F2EEE5]"
                 }`}
               >
                 {item.value}
               </span>
-              {item.change && (
-                <span className="text-emerald-400 text-[10px] font-mono flex items-center">
-                  <TrendingUp className="h-2.5 w-2.5 inline mr-0.5" />
-                  {item.change}
+              {item.status && (
+                <span className="text-[10px] text-[#9CA3AF]">
+                  ({item.status})
                 </span>
               )}
             </div>
           ))}
         </div>
 
-        {/* Right Help / Direct Link */}
-        <div className="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 shrink-0">
-          <ShieldCheck className="h-3.5 w-3.5 text-amber-400" />
-          <span>تضمین عیار ۷۵۰ با فاکتور و انگ رسمی</span>
+        {/* Right Transparency Note */}
+        <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#9CA3AF] shrink-0">
+          <ShieldCheck className="h-3.5 w-3.5 text-[#4CB3A5]" />
+          <span>تفکیک صریح وضعیت فعلی و نقشه راه</span>
         </div>
       </div>
     </div>

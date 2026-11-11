@@ -1,72 +1,104 @@
 @import url("https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #080a0f;
-  --foreground: #f3f4f6;
+/* ZARORBIT Visual Identity System — CSS Design Tokens v1.0 */
+:root,
+[data-theme="dark"] {
+  --zar-obsidian: #17191D;
+  --zar-gold: #C9A45A;
+  --zar-ivory: #F2EEE5;
+  --zar-teal: #286B63;
+
+  --zar-bg-canvas: #17191D;
+  --zar-bg-surface: #1F2329;
+  --zar-bg-elevated: #282D35;
+  --zar-bg-subtle: #101215;
+  --zar-text-primary: #F2EEE5;
+  --zar-text-secondary: #9CA3AF;
+  --zar-text-brand: #C9A45A;
+  --zar-text-accent: #4CB3A5;
+  --zar-border-subtle: #2B303A;
+  --zar-border-control: #6B7485;
+  --zar-border-focus: #C9A45A;
+
+  --zar-btn-primary-bg: #C9A45A;
+  --zar-btn-primary-fg: #17191D;
+  --zar-btn-secondary-bg: #286B63;
+  --zar-btn-secondary-fg: #FFFFFF;
+
+  --zar-success: #48B884;
+  --zar-success-bg: #162A24;
+  --zar-warning: #E2A93B;
+  --zar-warning-bg: #2B2416;
+  --zar-error: #F07F83;
+  --zar-error-bg: #2D1B1E;
+  --zar-info: #6BA4E8;
+  --zar-info-bg: #192535;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Vazirmatn, system-ui, -apple-system, sans-serif;
+  color: var(--zar-text-primary);
+  background-color: var(--zar-bg-canvas);
+  font-family: Vazirmatn, Inter, system-ui, -apple-system, sans-serif;
   direction: rtl;
   text-align: right;
   overflow-x: hidden;
 }
 
-/* Luxury 24K Gold Text Gradient */
-.gold-gradient-text {
-  background: linear-gradient(135deg, #fff7d6 0%, #fde047 25%, #e8c566 50%, #c99b27 75%, #aa8010 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+/* Bilingual BiDi isolation for Latin tokens, tickers, and codes */
+.bidi-isolate {
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
-.gold-border {
-  border: 1px solid rgba(212, 175, 55, 0.25);
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
-.gold-border-hover:hover {
-  border-color: rgba(212, 175, 55, 0.6);
-  box-shadow: 0 0 25px -3px rgba(212, 175, 55, 0.25);
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-.glass-card {
-  background: rgba(14, 18, 28, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.18);
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-.glass-card-interactive {
-  background: rgba(14, 18, 28, 0.8);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(212, 175, 55, 0.18);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+/* Architectural flat surfaces aligned with ZARORBIT Identity Guidelines §14 */
+.zar-card {
+  background-color: var(--zar-bg-surface);
+  border: 1px solid var(--zar-border-subtle);
+  border-radius: 20px;
 }
 
-.glass-card-interactive:hover {
-  border-color: rgba(212, 175, 55, 0.5);
-  transform: translateY(-3px);
-  box-shadow: 0 14px 35px -10px rgba(212, 175, 55, 0.2);
+.zar-card-interactive {
+  background-color: var(--zar-bg-surface);
+  border: 1px solid var(--zar-border-subtle);
+  border-radius: 20px;
+  transition: border-color 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
 }
 
-/* Bullion metallic 3D simulation */
-.gold-bullion-surface {
-  background: linear-gradient(135deg, #fef08a 0%, #eab308 30%, #ca8a04 60%, #854d0e 100%);
-  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.6), inset 0 -3px 6px rgba(0, 0, 0, 0.4), 0 10px 25px -5px rgba(234, 179, 8, 0.3);
+.zar-card-interactive:hover {
+  border-color: var(--zar-gold);
+  background-color: var(--zar-bg-elevated);
+  transform: translateY(-2px);
 }
 
-/* Subtle background glow effect */
-.ambient-glow {
-  position: absolute;
-  width: 550px;
-  height: 550px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0) 70%);
-  pointer-events: none;
-  z-index: 0;
+.zar-grid-backdrop {
+  background-image:
+    linear-gradient(to right, rgba(43, 48, 58, 0.38) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(43, 48, 58, 0.38) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zar-card-interactive,
+  .zar-card-interactive:hover {
+    transform: none;
+    transition: none;
+  }
 }

@@ -3,223 +3,358 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import Image from "next/image";
 import { useState } from "react";
 import { brandConfig } from "@/config/brand.config";
-import { BrandEmblem, BrandHeroShowcase } from "@/components/BrandLogo";
+import {
+  BrandHeroShowcase,
+  ZarorbitSymbolSvg,
+} from "@/components/BrandLogo";
 import ZarorbitOrbitalMotion from "@/components/ZarorbitOrbitalMotion";
 import {
-  Sparkles,
-  ArrowRight,
   Send,
   ShieldCheck,
   TrendingUp,
-  Zap,
-  Repeat,
-  Scale,
-  Award,
-  ChevronLeft,
-  CheckCircle2,
-  Lock,
-  Wallet,
+  Layers,
   Coins,
-  Flame,
-  Check,
-  X as CloseIcon,
-  HelpCircle,
-  Building2,
+  Gem,
+  Users,
+  Cpu,
+  ChevronLeft,
+  Wallet,
+  Scale,
+  FileCheck2,
+  Info,
 } from "lucide-react";
 
 export default function HomePage() {
-  // Calculator state
   const [unit, setUnit] = useState<"gram" | "mesghal">("gram");
   const [amountInput, setAmountInput] = useState<string>("10");
   const numericAmount = Math.max(0, parseFloat(amountInput) || 0);
 
-  // Representative live benchmark rates (Toman)
-  const gramRate = 4350000; // 4,350,000 Toman per gram of 18k melted gold
-  const mesghalRate = Math.round(gramRate * 4.3318); // 1 mesghal = 4.3318 grams of 17k/18k
-
+  // Illustrative benchmark rates for RWA calculator (not live exchange guarantees)
+  const gramRate = 4350000;
+  const mesghalRate = Math.round(gramRate * 4.3318);
   const totalCalculated =
     unit === "gram" ? numericAmount * gramRate : numericAmount * mesghalRate;
-
-  // Comparison savings calculation (traditional jewelry shops charge ~7% making fee + 9% tax on fee)
-  const traditionalFeeEst = Math.round(totalCalculated * 0.035);
+  const illustrativeSpreadEst = Math.round(totalCalculated * 0.0023);
 
   return (
     <>
       <Navbar />
 
       <main className="relative flex-1">
-        {/* Ambient atmospheric glows */}
-        <div className="ambient-glow top-0 right-1/4 -translate-y-1/2 opacity-70" />
-        <div className="ambient-glow top-[700px] left-[-150px] opacity-40" />
-        <div className="ambient-glow bottom-[400px] right-[-100px] opacity-50" />
-
         {/* ----------------- HERO SECTION ----------------- */}
-        <section className="relative pt-12 pb-20 md:pt-20 md:pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Right Column (Text & Value Proposition in RTL) */}
-            <div className="lg:col-span-7 space-y-8 text-center lg:text-right">
-              {/* Pill Badge */}
-              <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-500/40 bg-gradient-to-r from-amber-500/15 to-transparent px-4 py-1.5 text-xs font-semibold text-amber-300 backdrop-blur-md shadow-goldGlowSubtle">
-                <div className="h-4 w-4 rounded-full overflow-hidden border border-amber-400/40 shrink-0">
-                  <Image
-                    src={brandConfig.assets.iconNoOrbit}
-                    alt="Icon"
-                    width={16}
-                    height={16}
-                    className="object-cover"
-                  />
-                </div>
-                <span>{brandConfig.slogan.en} • کارمزد معامله ۰.۰۰٪</span>
+            {/* Text & Ecosystem Positioning */}
+            <div className="lg:col-span-7 space-y-7 text-center lg:text-right">
+              <div className="inline-flex items-center gap-2.5 rounded-full border border-[#2B303A] bg-[#1F2329] px-4 py-1.5 text-xs font-semibold text-[#C9A45A]">
+                <ZarorbitSymbolSvg sizePx={16} />
+                <span className="bidi-isolate">
+                  {brandConfig.slogan.categoryEn}
+                </span>
+                <span className="text-[#4CB3A5]">• Beta</span>
               </div>
 
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tight leading-[1.25] text-white">
-                مدار پیوسته و هوشمند{" "}
-                <span className="gold-gradient-text block mt-2">
-                  معاملات طلای آبشده ۱۸ عیار
+              <h1 className="text-4xl sm:text-5xl md:text-[52px] font-black tracking-tight leading-[1.25] text-[#F2EEE5]">
+                دارایی‌های واقعی و دیجیتال.{" "}
+                <span className="text-[#C9A45A] block mt-2">
+                  مالکیت و مشارکت جمعی.
                 </span>
               </h1>
 
-              {/* Subhead with clear, honest value proposition */}
-              <p className="text-base sm:text-lg text-slate-300 max-w-2xl font-light leading-relaxed mx-auto lg:mx-0">
-                خرید و فروش مستقیم در کسر ثانیه با میز بازارساز اختصاصی {brandConfig.name.fa}؛ بدون صف انتظار، بدون کارمزد مخفی و مالیات، همراه با تسویه آنی دفترکل و تضمین تحویل فیزیکی شمش معتبر.
+              <p className="text-base sm:text-lg text-[#9CA3AF] max-w-2xl font-light leading-relaxed mx-auto lg:mx-0">
+                <span className="text-[#F2EEE5] font-semibold bidi-isolate">
+                  {brandConfig.name.en}
+                </span>{" "}
+                یک زیست‌بوم روبه‌توسعه برای اتصال شفاف{" "}
+                <strong className="text-[#F2EEE5] font-medium">
+                  دارایی‌های دنیای واقعی (RWA با نقطه شروع طلای ۱۸ عیار)
+                </strong>{" "}
+                و{" "}
+                <strong className="text-[#F2EEE5] font-medium">
+                  دارایی‌های دیجیتال (رمزارزها و NFTها)
+                </strong>{" "}
+                است که با رویکرد جامعه‌محور و گام‌به‌گام به سوی حکمرانی{" "}
+                <span className="bidi-isolate">DAO</span> حرکت می‌کند.
               </p>
 
-              {/* Action Buttons */}
+              {/* CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
                 <Link
                   href="/login"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-8 py-4 text-base font-bold text-slate-950 shadow-goldGlow hover:brightness-110 active:scale-[0.98] transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-[10px] bg-[#C9A45A] px-7 py-3.5 text-sm font-bold text-[#17191D] hover:bg-[#D4B16A] transition-colors"
                 >
-                  <Wallet className="h-5 w-5" />
-                  <span>ورود به پورتال و مشاهده موجودی</span>
+                  <Wallet className="h-4 w-4" />
+                  <span>ورود به پورتال و دفترکل</span>
                 </Link>
                 <a
                   href={brandConfig.telegram.botUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl border border-amber-500/40 bg-[#121620]/90 px-8 py-4 text-base font-semibold text-amber-300 hover:bg-amber-500/10 active:scale-[0.98] transition-all backdrop-blur-md"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-[10px] bg-[#286B63] px-7 py-3.5 text-sm font-bold text-white hover:bg-[#328076] transition-colors"
                 >
-                  <Send className="h-5 w-5" />
-                  <span>معامله در ربات تلگرام</span>
+                  <Send className="h-4 w-4" />
+                  <span>دسترسی آزمایشی در تلگرام</span>
                 </a>
+                <Link
+                  href="/#ecosystem"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#6B7485] bg-[#1F2329] px-5 py-3.5 text-sm font-semibold text-[#F2EEE5] hover:border-[#C9A45A] transition-colors"
+                >
+                  <span>نقشه اکوسیستم</span>
+                  <ChevronLeft className="h-4 w-4" />
+                </Link>
               </div>
 
-              {/* Quick Guarantees (Small Falcon Icon on each) */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 text-xs text-slate-300 border-t border-slate-800/80 w-full max-w-xl mx-auto lg:mx-0">
+              {/* Three Principles Summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5 text-xs text-[#9CA3AF] border-t border-[#2B303A] max-w-2xl mx-auto lg:mx-0">
                 <div className="flex items-center gap-2 justify-center lg:justify-start">
-                  <div className="h-5 w-5 rounded-md overflow-hidden border border-amber-500/30 shrink-0">
-                    <Image
-                      src={brandConfig.assets.iconNoOrbit}
-                      alt="Icon"
-                      width={20}
-                      height={20}
-                      className="object-cover"
-                    />
-                  </div>
-                  <span>تسویه آنی دفترکل</span>
+                  <ShieldCheck className="h-4 w-4 text-[#48B884] shrink-0" />
+                  <span>تفکیک صریح دارایی و سند</span>
                 </div>
                 <div className="flex items-center gap-2 justify-center lg:justify-start">
-                  <div className="h-5 w-5 rounded-md overflow-hidden border border-amber-500/30 shrink-0">
-                    <Image
-                      src={brandConfig.assets.iconNoOrbit}
-                      alt="Icon"
-                      width={20}
-                      height={20}
-                      className="object-cover"
-                    />
-                  </div>
-                  <span>کارمزد معامله صفر</span>
+                  <Scale className="h-4 w-4 text-[#C9A45A] shrink-0" />
+                  <span>اسپرد شفاف؛ کارمزد تراکنش ۰٪</span>
                 </div>
-                <div className="col-span-2 sm:col-span-1 flex items-center gap-2 justify-center lg:justify-start">
-                  <div className="h-5 w-5 rounded-md overflow-hidden border border-amber-500/30 shrink-0">
-                    <Image
-                      src={brandConfig.assets.iconNoOrbit}
-                      alt="Icon"
-                      width={20}
-                      height={20}
-                      className="object-cover"
-                    />
-                  </div>
-                  <span>طلای با انگ و ری‌گیری رسمی</span>
+                <div className="flex items-center gap-2 justify-center lg:justify-start">
+                  <Users className="h-4 w-4 text-[#4CB3A5] shrink-0" />
+                  <span>مسیر تدریجی مشارکت جامعه</span>
                 </div>
               </div>
             </div>
 
-            {/* Left Column (Flagship 3D Showcase Card in RTL) */}
+            {/* Hero Architectural Card */}
             <div className="lg:col-span-5 flex justify-center">
-              <div className="relative w-full max-w-md">
-                {/* Large Orbital Binary Rings Logo Showcase */}
+              <div className="w-full max-w-md">
                 <BrandHeroShowcase />
               </div>
             </div>
           </div>
         </section>
 
-        {/* ----------------- LIVE BENCHMARK RATES ----------------- */}
-        <section id="rates" className="relative py-16 bg-[#0a0d14]/80 border-y border-amber-500/10">
+        {/* ----------------- ECOSYSTEM TAXONOMY (RWA + CRYPTO + NFT + DAO) ----------------- */}
+        <section
+          id="ecosystem"
+          className="py-20 bg-[#101215] border-y border-[#2B303A]"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+              <div>
+                <div className="text-xs font-bold text-[#C9A45A] bidi-isolate uppercase tracking-wider mb-1">
+                  ECOSYSTEM ARCHITECTURE &amp; ASSET TAXONOMY
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-[#F2EEE5]">
+                  معماری چندلایه دارایی‌ها و مرز بلوغ هر ماژول
+                </h2>
+              </div>
+              <p className="text-xs text-[#9CA3AF] max-w-md leading-relaxed">
+                در{" "}
+                <span className="bidi-isolate text-[#F2EEE5]">ZARORBIT</span>،
+                طلا تنها نقطه شروع تجاری است و هر کلاس دارایی با وضعیت بلوغ
+                واقعی خود تفکیک می‌شود.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* RWA Card */}
+              <div className="zar-card-interactive p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-[#2B2416] border border-[#82611C] flex items-center justify-center text-[#C9A45A]">
+                      <Coins className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#192535] border border-[#2D4D73] px-2.5 py-0.5 text-[11px] font-semibold text-[#6BA4E8]">
+                      Beta • Focus
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#F2EEE5]">
+                    دارایی‌های واقعی (RWA)
+                  </h3>
+                  <p className="text-xs text-[#9CA3AF] mt-2 leading-relaxed">
+                    نقطه ورود تجاری با تمرکز بر طلای آبشده ۱۸ عیار؛ با امکان
+                    توسعه مشروط به سایر فلزات و کالاهای فیزیکی.
+                  </p>
+                </div>
+                <div className="mt-5 pt-3 border-t border-[#2B303A] text-[11px] text-[#9CA3AF] space-y-1">
+                  <div>
+                    <strong className="text-[#F2EEE5]">ماهیت:</strong> تعهد
+                    قراردادی دفترکل
+                  </div>
+                  <div>
+                    <strong className="text-[#F2EEE5]">تحویل فیزیکی:</strong>{" "}
+                    مشروط به حداقل و ضوابط
+                  </div>
+                </div>
+              </div>
+
+              {/* Crypto Card */}
+              <div className="zar-card-interactive p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-[#162A24] border border-[#286B63] flex items-center justify-center text-[#4CB3A5]">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#2B2416] border border-[#6B501D] px-2.5 py-0.5 text-[11px] font-semibold text-[#E2A93B]">
+                      In Development
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#F2EEE5]">
+                    رمزارزها (Crypto)
+                  </h3>
+                  <p className="text-xs text-[#9CA3AF] mt-2 leading-relaxed">
+                    طراحی لایه پشتیبانی از دارایی‌های دیجیتال مجاز با اعلام صریح
+                    شبکه، کارمزد و مرز مسئولیت نگهداری.
+                  </p>
+                </div>
+                <div className="mt-5 pt-3 border-t border-[#2B303A] text-[11px] text-[#9CA3AF] space-y-1">
+                  <div>
+                    <strong className="text-[#F2EEE5]">وضعیت:</strong> در حال
+                    توسعه زیرساخت
+                  </div>
+                  <div>
+                    <strong className="text-[#F2EEE5]">تضمین بازدهی:</strong>{" "}
+                    ندارد (دارایی پرریسک)
+                  </div>
+                </div>
+              </div>
+
+              {/* NFT Card */}
+              <div className="zar-card-interactive p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-[#282D35] border border-[#3A414D] flex items-center justify-center text-[#F2EEE5]">
+                      <Gem className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#17191D] border border-[#3A414D] px-2.5 py-0.5 text-[11px] font-semibold text-[#9CA3AF]">
+                      Planned
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#F2EEE5]">
+                    توکن‌های غیرمثلی (NFT)
+                  </h3>
+                  <p className="text-xs text-[#9CA3AF] mt-2 leading-relaxed">
+                    اتصال خالقان و جوامع از طریق رکوردهای منحصربه‌فرد دیجیتال با
+                    بیان روشن مرز مالکیت فکری و فیزیکی.
+                  </p>
+                </div>
+                <div className="mt-5 pt-3 border-t border-[#2B303A] text-[11px] text-[#9CA3AF] space-y-1">
+                  <div>
+                    <strong className="text-[#F2EEE5]">کپی‌رایت:</strong>{" "}
+                    خودکار منتقل نمی‌شود
+                  </div>
+                  <div>
+                    <strong className="text-[#F2EEE5]">دارایی فیزیکی:</strong>{" "}
+                    نیازمند قرارداد مجزا
+                  </div>
+                </div>
+              </div>
+
+              {/* DAO + AI/XR Card */}
+              <div className="zar-card-interactive p-6 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-[#282D35] border border-[#3A414D] flex items-center justify-center text-[#C9A45A]">
+                      <Cpu className="h-5 w-5" />
+                    </div>
+                    <span className="rounded-full bg-[#17191D] border border-[#82611C] border-dashed px-2.5 py-0.5 text-[11px] font-semibold text-[#C9A45A]">
+                      In Dev / Conceptual
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-[#F2EEE5]">
+                    حکمرانی DAO و افق AI / XR
+                  </h3>
+                  <p className="text-xs text-[#9CA3AF] mt-2 leading-relaxed">
+                    حرکت تدریجی از مشارکت جامعه به سوی پیشنهادها و رأی‌گیری
+                    شفاف؛ افق بلندمدت متاورس تعامل‌پذیر و کمک‌تصمیم هوشمند.
+                  </p>
+                </div>
+                <div className="mt-5 pt-3 border-t border-[#2B303A] text-[11px] text-[#9CA3AF] space-y-1">
+                  <div>
+                    <strong className="text-[#F2EEE5]">مدل DAO:</strong> تدریجی
+                    و پاسخگو
+                  </div>
+                  <div>
+                    <strong className="text-[#F2EEE5]">XR / متاورس:</strong>{" "}
+                    چشم‌انداز آتی
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ----------------- RWA BENCHMARK RATES ----------------- */}
+        <section id="rates" className="py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="text-xs font-bold text-amber-400 tracking-wider uppercase">
-                    مظنه زنده بازار {brandConfig.name.en}
+                  <span className="h-2 w-2 rounded-full bg-[#4CB3A5]" />
+                  <span className="bidi-isolate text-xs font-bold text-[#4CB3A5] uppercase tracking-wider">
+                    INITIAL COMMERCIAL FOCUS • RWA BENCHMARKS
                   </span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white">
-                  نرخ لحظه‌ای بازارساز {brandConfig.name.fa}
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#F2EEE5]">
+                  نمایش ساختار قیمت‌گذاری ماژول طلای ۱۸ عیار (نمونه مرجع)
                 </h2>
               </div>
-              <p className="text-xs text-slate-400 font-light">
-                بروزرسانی مستقیم از هسته معاملات • بدون کارمزد خرید و فروش (کارمزد: ۰ تومان)
+              <p className="text-xs text-[#9CA3AF] font-light">
+                نرخ‌های زیر نمونه مرجع رابط کاربری هستند؛ نرخ اجرایی قطعی هنگام
+                ثبت سفارش توسط میز اعلام می‌شود.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Card 1: MAUA/IRT (Melted Gold 18k) */}
-              <div className="glass-card-interactive rounded-2xl p-6 relative overflow-hidden">
+              {/* Card 1: MAUA/IRT */}
+              <div className="zar-card-interactive p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-amber-500/40 shadow-sm shrink-0">
-                      <Image
-                        src={brandConfig.assets.iconNoOrbit}
-                        alt="MAUA"
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                      />
+                    <div className="h-10 w-10 rounded-xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center">
+                      <ZarorbitSymbolSvg sizePx={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-base">طلای آبشده ۱۸ عیار</h3>
-                      <span className="text-[11px] text-slate-400 font-mono">MAUA / IRT (گرم)</span>
+                      <h3 className="font-bold text-[#F2EEE5] text-base">
+                        طلای آبشده ۱۸ عیار
+                      </h3>
+                      <span className="bidi-isolate text-[11px] text-[#9CA3AF] font-mono">
+                        MAUA / IRT (1g)
+                      </span>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
+                  <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 rounded-full bg-[#162A24] px-2.5 py-0.5 text-[11px] font-medium text-[#48B884] border border-[#286B63]">
                     <TrendingUp className="h-3 w-3" />
-                    بازارساز فعال
+                    Beta Focus
                   </span>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">قیمت خرید شما (Ask):</span>
-                    <span className="font-bold text-white tracking-wide">
-                      ۴,۳۵۵,۰۰۰ <span className="text-xs font-normal text-slate-400">تومان</span>
+                <div className="space-y-3 pt-2 tabular-nums">
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">
+                      نرخ مرجع خرید از میز (Ask):
+                    </span>
+                    <span className="font-bold text-[#F2EEE5]">
+                      ۴,۳۵۵,۰۰۰{" "}
+                      <span className="text-xs font-normal text-[#9CA3AF]">
+                        تومان
+                      </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">قیمت فروش شما (Bid):</span>
-                    <span className="font-bold text-amber-400 tracking-wide">
-                      ۴,۳۴۵,۰۰۰ <span className="text-xs font-normal text-slate-400">تومان</span>
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">
+                      نرخ مرجع فروش به میز (Bid):
+                    </span>
+                    <span className="font-bold text-[#C9A45A]">
+                      ۴,۳۴۵,۰۰۰{" "}
+                      <span className="text-xs font-normal text-[#9CA3AF]">
+                        تومان
+                      </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span>اسپرد رقابتی بازارساز:</span>
-                    <span className="text-emerald-400 font-semibold">۱۰,۰۰۰ تومان (۰.۲٪)</span>
+                  <div className="flex items-center justify-between text-xs text-[#9CA3AF] pt-1">
+                    <span>اسپرد شفاف خرید/فروش:</span>
+                    <span className="text-[#4CB3A5] font-semibold">
+                      ۱۰,۰۰۰ تومان (کارمزد: ۰٪)
+                    </span>
                   </div>
                 </div>
 
@@ -228,54 +363,59 @@ export default function HomePage() {
                     href={brandConfig.telegram.botUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 py-2.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-[#6B7485] bg-[#17191D] py-2.5 text-xs font-semibold text-[#F2EEE5] hover:border-[#C9A45A] hover:text-[#C9A45A] transition-colors"
                   >
-                    <span>معامله آبشده در ربات</span>
+                    <span>مشاهده مظنه در ربات</span>
                     <ChevronLeft className="h-4 w-4" />
                   </a>
                 </div>
               </div>
 
-              {/* Card 2: SEKE_BAHAR (Coin) */}
-              <div className="glass-card-interactive rounded-2xl p-6 relative overflow-hidden">
+              {/* Card 2: SEKE_BAHAR */}
+              <div className="zar-card-interactive p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-amber-500/40 shadow-sm shrink-0">
-                      <Image
-                        src={brandConfig.assets.iconNoOrbit}
-                        alt="SEKE"
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                      />
+                    <div className="h-10 w-10 rounded-xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center">
+                      <ZarorbitSymbolSvg sizePx={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-base">تمام سکه بهار آزادی</h3>
-                      <span className="text-[11px] text-slate-400 font-mono">SEKE_BAHAR / IRT</span>
+                      <h3 className="font-bold text-[#F2EEE5] text-base">
+                        سکه بهار آزادی (نمونه RWA)
+                      </h3>
+                      <span className="bidi-isolate text-[11px] text-[#9CA3AF] font-mono">
+                        SEKE_BAHAR / IRT
+                      </span>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-400 border border-emerald-500/20">
-                    <TrendingUp className="h-3 w-3" />
-                    بازارساز فعال
+                  <span className="rounded-full bg-[#192535] px-2.5 py-0.5 text-[11px] font-medium text-[#6BA4E8] border border-[#2D4D73]">
+                    نمونه مرجع
                   </span>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">قیمت خرید شما:</span>
-                    <span className="font-bold text-white tracking-wide">
-                      ۴۸,۲۰۰,۰۰۰ <span className="text-xs font-normal text-slate-400">تومان</span>
+                <div className="space-y-3 pt-2 tabular-nums">
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">نرخ نمونه خرید:</span>
+                    <span className="font-bold text-[#F2EEE5]">
+                      ۴۸,۲۰۰,۰۰۰{" "}
+                      <span className="text-xs font-normal text-[#9CA3AF]">
+                        تومان
+                      </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">قیمت فروش شما:</span>
-                    <span className="font-bold text-amber-400 tracking-wide">
-                      ۴۷,۹۵۰,۰۰۰ <span className="text-xs font-normal text-slate-400">تومان</span>
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">نرخ نمونه فروش:</span>
+                    <span className="font-bold text-[#C9A45A]">
+                      ۴۷,۹۵۰,۰۰۰{" "}
+                      <span className="text-xs font-normal text-[#9CA3AF]">
+                        تومان
+                      </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span>اسپرد رقابتی سکه:</span>
-                    <span className="text-slate-300 font-semibold">۲۵۰,۰۰۰ تومان</span>
+                  <div className="flex items-center justify-between text-xs text-[#9CA3AF] pt-1">
+                    <span>تفکیک اسپرد:</span>
+                    <span className="text-[#F2EEE5] font-semibold">
+                      ۲۵۰,۰۰۰ تومان
+                    </span>
                   </div>
                 </div>
 
@@ -284,59 +424,57 @@ export default function HomePage() {
                     href={brandConfig.telegram.botUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/30 py-2.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/25 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 rounded-[10px] border border-[#6B7485] bg-[#17191D] py-2.5 text-xs font-semibold text-[#F2EEE5] hover:border-[#C9A45A] hover:text-[#C9A45A] transition-colors"
                   >
-                    <span>معامله سکه در ربات</span>
+                    <span>بررسی در ربات تلگرام</span>
                     <ChevronLeft className="h-4 w-4" />
                   </a>
                 </div>
               </div>
 
-              {/* Card 3: XAU/USD (Spot Gold) */}
-              <div className="glass-card-interactive rounded-2xl p-6 relative overflow-hidden">
+              {/* Card 3: XAU/USD */}
+              <div className="zar-card-interactive p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-amber-500/40 shadow-sm shrink-0">
-                      <Image
-                        src={brandConfig.assets.iconNoOrbit}
-                        alt="XAU"
-                        width={40}
-                        height={40}
-                        className="object-cover"
-                      />
+                    <div className="h-10 w-10 rounded-xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center">
+                      <ZarorbitSymbolSvg sizePx={24} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-base">انس جهانی طلا</h3>
-                      <span className="text-[11px] text-slate-400 font-mono">XAU / USD</span>
+                      <h3 className="font-bold text-[#F2EEE5] text-base">
+                        انس جهانی طلا (شاخص)
+                      </h3>
+                      <span className="bidi-isolate text-[11px] text-[#9CA3AF] font-mono">
+                        XAU / USD
+                      </span>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-400 border border-amber-500/20">
+                  <span className="rounded-full bg-[#2B2416] px-2.5 py-0.5 text-[11px] font-medium text-[#C9A45A] border border-[#82611C]">
                     شاخص مرجع
                   </span>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">نرخ جهانی لحظه‌ای:</span>
-                    <span className="font-bold text-white tracking-wide" dir="ltr">
+                <div className="space-y-3 pt-2 tabular-nums">
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">مقدار مرجع نمایشی:</span>
+                    <span className="bidi-isolate font-bold text-[#F2EEE5]">
                       $2,745.80
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-sm py-2 border-b border-slate-800">
-                    <span className="text-slate-400">معادل وزنی هر انس:</span>
-                    <span className="font-medium text-slate-200">
-                      ۳۱.۱۰۳۵ گرم طلای ۲۴ عیار
+                  <div className="flex items-center justify-between text-sm py-2 border-b border-[#2B303A]">
+                    <span className="text-[#9CA3AF]">معادل وزنی هر انس:</span>
+                    <span className="font-medium text-[#F2EEE5]">
+                      ۳۱.۱۰۳۵ گرم (خالص ۲۴ عیار)
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                    <span>منبع معتبر جهانی:</span>
-                    <span className="text-slate-300">Swissquote Data Feed</span>
+                  <div className="flex items-center justify-between text-xs text-[#9CA3AF] pt-1">
+                    <span>نقش در مدل:</span>
+                    <span className="text-[#4CB3A5]">پارامتر مرجع داخلی</span>
                   </div>
                 </div>
 
                 <div className="mt-5 pt-3">
-                  <div className="w-full text-center py-2.5 text-xs text-slate-400 bg-slate-900/60 rounded-xl border border-slate-800">
-                    پایه قیمت‌گذاری آبشده در بازار داخلی
+                  <div className="w-full text-center py-2.5 text-xs text-[#9CA3AF] bg-[#17191D] rounded-[10px] border border-[#2B303A]">
+                    داده‌های بالا صرفاً نمایشی هستند
                   </div>
                 </div>
               </div>
@@ -344,110 +482,123 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ----------------- DIGITAL GOLD ORBIT ANIMATION SECTION ----------------- */}
-        <section id="orbit-engine" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        {/* ----------------- ARCHITECTURAL 1-0-1 ORBIT & GOVERNANCE ----------------- */}
+        <section
+          id="governance"
+          className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+        >
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Right Column (RTL): Digital & Physical Architecture Narrative */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-right">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/35 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold text-amber-300">
-                <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                <span>DIGITAL &amp; PHYSICAL GOLD CORE</span>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#286B63] bg-[#162A24] px-4 py-1.5 text-xs font-semibold text-[#4CB3A5]">
+                <span className="bidi-isolate">
+                  OPEN INTEROPERABILITY • PROGRESSIVE DAO
+                </span>
               </div>
 
-              <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
-                پیوند طلای فیزیکی ۱۸ عیار با{" "}
-                <span className="gold-gradient-text">
-                  مدار دیجیتال دفترکل زَر اوربیت
+              <h2 className="text-3xl sm:text-4xl font-black text-[#F2EEE5] leading-tight">
+                زیرساخت دفترکل دوطرفه و{" "}
+                <span className="text-[#C9A45A]">
+                  شفافیت حقوق مالکیت دارایی
                 </span>
               </h2>
 
-              <p className="text-sm sm:text-base text-slate-300 font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
-                در {brandConfig.name.fa} هر گرم طلای فیزیکی اصیل به صورت یکپارچه و دقیق بر بستر دفترکل باینری دوطرفه ثبت و پایش می‌شود. تراکنش‌های لحظه‌ای بدون صف، تسویه شفاف و قابلیت تبدیل مستقیم دارایی دیجیتال به شمش فیزیکی معتبر، هسته اصلی مدار نقدینگی ما را می‌سازد.
+              <p className="text-sm sm:text-base text-[#9CA3AF] font-light leading-relaxed max-w-2xl mx-auto lg:mx-0">
+                در{" "}
+                <span className="bidi-isolate text-[#F2EEE5]">ZARORBIT</span>،
+                پیش از هر تعامل باید مشخص باشد که کاربر دقیقاً با چه دارایی
+                مواجه است: تعهد قراردادی طلا، دارایی شبکه‌ای (رمزارز) یا رکورد
+                NFT — و چه حقوق، هزینه‌ها و محدودیت‌هایی بر آن حاکم است.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
-                  <div className="text-xs text-slate-400 mb-1">مدل اجرا</div>
-                  <div className="text-sm font-bold text-white">بازارساز مستقیم</div>
-                  <div className="text-[11px] text-amber-400 mt-0.5">بدون نیاز به صف انتظار</div>
+              {/* Mandatory Brand Book §10.1 Checklist */}
+              <div className="zar-card p-5 text-right space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#C9A45A]">
+                  <FileCheck2 className="h-4 w-4" />
+                  <span>چک‌لیست شفافیت دارایی (Brand Book §10.1)</span>
                 </div>
-                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
-                  <div className="text-xs text-slate-400 mb-1">ثبت و حسابداری</div>
-                  <div className="text-sm font-bold text-white">دفترکل دوطرفه</div>
-                  <div className="text-[11px] text-emerald-400 mt-0.5">تراز ریاضیاتی تغییرناپذیر</div>
-                </div>
-                <div className="glass-card rounded-2xl p-4 border border-amber-500/20 text-right">
-                  <div className="text-xs text-slate-400 mb-1">پشتوانه دارایی</div>
-                  <div className="text-sm font-bold text-white">عیار ۷۵۰ استاندارد</div>
-                  <div className="text-[11px] text-amber-300 mt-0.5">تحویل فیزیکی معتبر</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-[#9CA3AF]">
+                  <div className="rounded-lg bg-[#17191D] border border-[#2B303A] p-3">
+                    <strong className="text-[#F2EEE5] block mb-1">
+                      ۱. تفکیک نوع رکورد
+                    </strong>
+                    ثبت دیجیتال به خودی خود سند قانونی ملک یا طلای فیزیکی نیست
+                    مگر شرط تحویل فعال باشد.
+                  </div>
+                  <div className="rounded-lg bg-[#17191D] border border-[#2B303A] p-3">
+                    <strong className="text-[#F2EEE5] block mb-1">
+                      ۲. پاسخگویی در مدل DAO
+                    </strong>
+                    توسعه DAO جایگزین تعهدات حقوقی، نگهداری و پاسخگویی اپراتور
+                    نمی‌شود.
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Left Column (RTL): Animated 3D Spinning Z + Orbiting 0/1 Particles */}
             <div className="lg:col-span-5 flex justify-center">
-              <ZarorbitOrbitalMotion className="w-full max-w-[430px]" />
+              <ZarorbitOrbitalMotion className="w-full max-w-[420px]" />
             </div>
           </div>
         </section>
 
-        {/* ----------------- INTERACTIVE 3D BULLION SIMULATOR & CALCULATOR ----------------- */}
-        <section id="calculator" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="glass-card rounded-3xl p-8 sm:p-12 relative overflow-hidden border border-amber-500/30 shadow-goldGlow">
+        {/* ----------------- RWA VALUATION CALCULATOR ----------------- */}
+        <section
+          id="calculator"
+          className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto"
+        >
+          <div className="zar-card p-8 sm:p-12 shadow-card">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-              {/* Left Column: Explanation & 3D Bullion Visualizer */}
               <div className="lg:col-span-6 space-y-6">
                 <div>
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
-                    محاسبه‌گر ارزش لحظه‌ای
+                  <span className="bidi-isolate text-xs font-bold text-[#C9A45A] uppercase tracking-wider">
+                    RWA BENCHMARK CALCULATOR • 18K GOLD
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">
-                    ماشین‌حساب هوشمند و پیش‌نمایش شمش طلای آبشده
+                  <h2 className="text-2xl sm:text-3xl font-black text-[#F2EEE5] mt-1">
+                    محاسبه‌گر برآورد ارزش (واحد طلای ۱۸ عیار)
                   </h2>
-                  <p className="text-sm text-slate-300 font-light leading-relaxed mt-2">
-                    وزن مورد نظر خود را انتخاب یا وارد کنید تا ارزش دقیق آن بر اساس مظنه لحظه‌ای بازار محاسبه شود.
+                  <p className="text-sm text-[#9CA3AF] font-light leading-relaxed mt-2">
+                    وزن دلخواه را برای مشاهده برآورد ارزش بر پایه نرخ نمونه و
+                    نحوه نمایش شفاف اسپرد و کارمزد وارد کنید.
                   </p>
                 </div>
 
-                {/* 3D Bullion Bar Interactive Simulation Preview */}
-                <div className="rounded-2xl bg-gradient-to-br from-[#0c0f18] to-[#07090e] border border-amber-500/30 p-6 relative overflow-hidden text-center">
-                  <div className="text-[11px] text-amber-400/90 font-medium mb-3">
-                    پیش‌نمایش شمش طلای فیزیکی استاندارد زَر اوربیت
+                {/* Clean Architectural Asset Card Preview */}
+                <div className="rounded-2xl bg-[#17191D] border border-[#2B303A] p-6 space-y-4">
+                  <div className="flex items-center justify-between text-[11px] text-[#9CA3AF] border-b border-[#2B303A] pb-3">
+                    <span className="bidi-isolate font-mono text-[#C9A45A] font-bold">
+                      XAU18-RWA • UNIT ESTIMATE
+                    </span>
+                    <span>عیار استاندارد ۱۸ (۷۵۰)</span>
                   </div>
-
-                  {/* Bullion Bar Simulation */}
-                  <div className="mx-auto w-56 sm:w-64 h-28 rounded-xl gold-bullion-surface flex flex-col items-center justify-between p-3.5 text-slate-950 font-bold select-none shadow-2xl border border-yellow-200/50 transform hover:scale-105 transition-all duration-300 cursor-default">
-                    <div className="flex items-center justify-between w-full text-[10px] uppercase tracking-wider border-b border-black/20 pb-1">
-                      <span>{brandConfig.name.en}</span>
-                      <span className="font-mono">999.9 PURE</span>
-                    </div>
-                    <div className="my-auto text-center">
-                      <div className="text-xl sm:text-2xl font-black tracking-tight">
-                        {numericAmount.toLocaleString("fa-IR")} {unit === "gram" ? "گرم" : "مثقال"}
-                      </div>
-                      <div className="text-[10px] text-slate-900 font-medium -mt-1">
-                        طلای ۱۸ عیار استاندارد (۷۵۰)
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between w-full text-[9px] text-slate-900 border-t border-black/20 pt-1">
-                      <span>انگ رسمی معتبر</span>
-                      <span>ASSAY GUARANTEED</span>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs text-[#9CA3AF]">
+                      مقدار انتخابی:
+                    </span>
+                    <div className="text-2xl sm:text-3xl font-black text-[#F2EEE5] tabular-nums">
+                      {numericAmount.toLocaleString("fa-IR")}{" "}
+                      <span className="text-sm font-semibold text-[#C9A45A]">
+                        {unit === "gram" ? "گرم" : "مثقال"}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Savings Comparison Note */}
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs text-emerald-300">
-                    <Sparkles className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <div className="rounded-lg bg-[#1F2329] border border-[#2B303A] p-3 flex items-start gap-2.5 text-xs text-[#9CA3AF]">
+                    <Info className="h-4 w-4 text-[#4CB3A5] shrink-0 mt-0.5" />
                     <span>
-                      صرفه‌جویی شما در {brandConfig.name.fa} نسبت به طلافروشی‌های سنتی:{" "}
-                      <strong>{traditionalFeeEst.toLocaleString("fa-IR")} تومان</strong> (معاف از مالیات و اجرت)
+                      در مدل بازارساز، کارمزد تراکنش برابر صفر است و مابه‌التفاوت
+                      خرید و فروش (اسپرد تقریبی{" "}
+                      <strong className="text-[#F2EEE5] tabular-nums">
+                        {illustrativeSpreadEst.toLocaleString("fa-IR")} تومان
+                      </strong>
+                      ) پیش از تایید نمایش داده می‌شود.
                     </span>
                   </div>
                 </div>
 
-                {/* Quick Presets */}
+                {/* Presets */}
                 <div>
-                  <span className="text-xs text-slate-400 block mb-2">وزن‌های پرکاربرد معامله‌گران:</span>
+                  <span className="text-xs text-[#9CA3AF] block mb-2">
+                    مقادیر نمونه پرکاربرد:
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {[1, 5, 10, 20, 50, 100].map((val) => (
                       <button
@@ -456,10 +607,10 @@ export default function HomePage() {
                           setUnit("gram");
                           setAmountInput(String(val));
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-[10px] text-xs font-medium border transition-colors ${
                           numericAmount === val && unit === "gram"
-                            ? "bg-amber-500 text-slate-950 font-bold shadow-md"
-                            : "bg-slate-800/80 text-slate-300 hover:bg-slate-700"
+                            ? "bg-[#C9A45A] text-[#17191D] border-[#C9A45A] font-bold"
+                            : "bg-[#17191D] text-[#F2EEE5] border-[#6B7485] hover:border-[#C9A45A]"
                         }`}
                       >
                         {val} گرم
@@ -472,10 +623,10 @@ export default function HomePage() {
                           setUnit("mesghal");
                           setAmountInput(String(val));
                         }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`px-3 py-1.5 rounded-[10px] text-xs font-medium border transition-colors ${
                           numericAmount === val && unit === "mesghal"
-                            ? "bg-amber-500 text-slate-950 font-bold shadow-md"
-                            : "bg-slate-800/80 text-slate-300 hover:bg-slate-700"
+                            ? "bg-[#C9A45A] text-[#17191D] border-[#C9A45A] font-bold"
+                            : "bg-[#17191D] text-[#F2EEE5] border-[#6B7485] hover:border-[#C9A45A]"
                         }`}
                       >
                         {val} مثقال
@@ -485,39 +636,37 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Right Column: Input & Live Calculation Results */}
-              <div className="lg:col-span-6 bg-[#0c0f17] rounded-2xl p-6 sm:p-8 border border-amber-500/30 space-y-6">
-                {/* Unit Switcher */}
-                <div className="flex rounded-xl bg-slate-900 p-1 border border-slate-800">
+              {/* Calculator Input Panel */}
+              <div className="lg:col-span-6 bg-[#17191D] rounded-2xl p-6 sm:p-8 border border-[#2B303A] space-y-6">
+                <div className="flex rounded-[10px] bg-[#101215] p-1 border border-[#2B303A]">
                   <button
                     onClick={() => setUnit("gram")}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-colors ${
                       unit === "gram"
-                        ? "bg-amber-500 text-slate-950 shadow-sm"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-[#C9A45A] text-[#17191D]"
+                        : "text-[#9CA3AF] hover:text-[#F2EEE5]"
                     }`}
                   >
                     گرم (عیار ۱۸ / ۷۵۰)
                   </button>
                   <button
                     onClick={() => setUnit("mesghal")}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                    className={`flex-1 py-2 text-xs font-bold rounded-[8px] transition-colors ${
                       unit === "mesghal"
-                        ? "bg-amber-500 text-slate-950 shadow-sm"
-                        : "text-slate-400 hover:text-white"
+                        ? "bg-[#C9A45A] text-[#17191D]"
+                        : "text-[#9CA3AF] hover:text-[#F2EEE5]"
                     }`}
                   >
                     مثقال طلا (۴.۳۳ گرم)
                   </button>
                 </div>
 
-                {/* Amount Input */}
                 <div>
                   <label
                     htmlFor="gold-calc-input"
-                    className="block text-xs text-slate-400 mb-2"
+                    className="block text-xs text-[#9CA3AF] mb-2"
                   >
-                    وزن طلا ({unit === "gram" ? "گرم" : "مثقال"}):
+                    وزن مورد نظر ({unit === "gram" ? "گرم" : "مثقال"}):
                   </label>
                   <div className="relative">
                     <input
@@ -527,57 +676,63 @@ export default function HomePage() {
                       min="0.01"
                       value={amountInput}
                       onChange={(e) => setAmountInput(e.target.value)}
-                      className="w-full rounded-xl bg-slate-900/90 border border-slate-700/80 pl-24 pr-4 py-3.5 text-lg font-bold text-white focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 text-left"
+                      className="w-full rounded-[10px] bg-[#1F2329] border border-[#6B7485] pl-24 pr-4 py-3.5 text-lg font-bold text-[#F2EEE5] focus:border-[#C9A45A] focus:outline-none focus:ring-1 focus:ring-[#C9A45A] text-left tabular-nums"
                       dir="ltr"
                     />
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium bg-slate-800/80 px-2.5 py-1 rounded">
+                    <span className="bidi-isolate absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF] font-medium bg-[#282D35] px-2.5 py-1 rounded">
                       {unit === "gram" ? "Gram" : "Mesghal"}
                     </span>
                   </div>
                 </div>
 
-                {/* Results breakdown */}
-                <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-5 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-300">
-                    <span>مظنه پایه محاسبه ({unit === "gram" ? "هر گرم ۱۸" : "هر مثقال"}):</span>
-                    <span className="font-semibold text-white">
-                      {(unit === "gram" ? gramRate : mesghalRate).toLocaleString("fa-IR")} تومان
+                <div className="rounded-xl bg-[#1F2329] border border-[#2B303A] p-5 space-y-3 tabular-nums">
+                  <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+                    <span>
+                      نرخ مرجع ({unit === "gram" ? "هر گرم ۱۸ عیار" : "هر مثقال"}
+                      ):
+                    </span>
+                    <span className="font-semibold text-[#F2EEE5]">
+                      {(unit === "gram" ? gramRate : mesghalRate).toLocaleString(
+                        "fa-IR"
+                      )}{" "}
+                      تومان
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-300">
-                    <span>کارمزد پلتفرم زَر اوربیت:</span>
-                    <span className="font-semibold text-emerald-400">۰ تومان (کاملاً رایگان)</span>
+                  <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+                    <span>کارمزد تراکنش در این فاز:</span>
+                    <span className="font-semibold text-[#48B884]">
+                      ۰ تومان (اسپرد قیمتی)
+                    </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-slate-300">
-                    <span>مالیات ارزش افزوده:</span>
-                    <span className="font-semibold text-emerald-400">۰ تومان (معاف)</span>
-                  </div>
-                  <div className="pt-3 border-t border-amber-500/20 flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">ارزش تقریبی معامله:</span>
-                    <span className="text-2xl sm:text-3xl font-black text-amber-400">
+                  <div className="pt-3 border-t border-[#2B303A] flex items-center justify-between">
+                    <span className="text-sm font-bold text-[#F2EEE5]">
+                      برآورد ارزش (نمایشی):
+                    </span>
+                    <span className="text-2xl sm:text-3xl font-black text-[#C9A45A]">
                       {Math.round(totalCalculated).toLocaleString("fa-IR")}{" "}
-                      <span className="text-xs font-normal text-slate-300">تومان</span>
+                      <span className="text-xs font-normal text-[#9CA3AF]">
+                        تومان
+                      </span>
                     </span>
                   </div>
                 </div>
 
-                {/* CTA Buttons */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <a
                     href={brandConfig.telegram.botUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-600 py-3.5 text-xs font-bold text-slate-950 shadow-goldGlowSubtle hover:brightness-110 transition-all"
+                    className="flex items-center justify-center gap-2 rounded-[10px] bg-[#C9A45A] py-3.5 text-xs font-bold text-[#17191D] hover:bg-[#D4B16A] transition-colors"
                   >
                     <Send className="h-4 w-4" />
-                    <span>ثبت سفارش در ربات</span>
+                    <span>ثبت تعامل در ربات</span>
                   </a>
                   <Link
                     href="/login"
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 py-3.5 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition-all"
+                    className="flex items-center justify-center gap-2 rounded-[10px] bg-[#286B63] py-3.5 text-xs font-bold text-white hover:bg-[#328076] transition-colors"
                   >
                     <Wallet className="h-4 w-4" />
-                    <span>ورود به کیف پول</span>
+                    <span>مشاهده کیف پول</span>
                   </Link>
                 </div>
               </div>
@@ -585,235 +740,46 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ----------------- COMPARISON TABLE: ZARORBIT VS TRADITIONAL BAZAAR ----------------- */}
-        <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
-            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-              شفافیت در معامله
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
-              چرا معامله در {brandConfig.name.fa} به صرفه‌تر است؟
-            </h2>
-            <p className="text-sm text-slate-400 font-light">
-              مقایسه بی‌طرفانه شرایط خرید و فروش طلای آبشده در پلتفرم زَر اوربیت در برابر بازار سنتی طلافروشان.
-            </p>
-          </div>
-
-          <div className="glass-card rounded-2xl overflow-hidden border border-amber-500/20 shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-right text-sm">
-                <thead>
-                  <tr className="bg-[#0e121c] border-b border-amber-500/20 text-slate-300">
-                    <th className="py-4 px-6 font-bold">شاخص معامله</th>
-                    <th className="py-4 px-6 font-bold text-amber-400 bg-amber-500/10">
-                      پلتفرم آنلاین {brandConfig.name.fa}
-                    </th>
-                    <th className="py-4 px-6 font-bold text-slate-400">بازار سنتی و طلافروشی‌ها</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">کارمزد خرید و فروش</td>
-                    <td className="py-4 px-6 font-bold text-emerald-400 bg-amber-500/5">
-                      ۰.۰۰٪ (بدون حتی ۱ ریال کارمزد)
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">۱.۵٪ تا ۳.۵٪ کارمزد معامله</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">اجرت ساخت مصنوعات</td>
-                    <td className="py-4 px-6 font-bold text-emerald-400 bg-amber-500/5">
-                      ۰ تومان (شمش و آبشده بدون اجرت)
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">۱۵٪ تا ۳۵٪ اجرت ساخت</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">مالیات بر ارزش افزوده</td>
-                    <td className="py-4 px-6 font-bold text-emerald-400 bg-amber-500/5">
-                      معاف از مالیات
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">۹٪ مالیات روی اجرت و سود</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">سرعت و مدل تطبیق سفارش</td>
-                    <td className="py-4 px-6 font-bold text-amber-400 bg-amber-500/5">
-                      آنی با میز بازارساز اختصاصی (بدون صف)
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">منوط به حضور فیزیکی یا توافق تلفنی</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">تضمین عیار و اصالت</td>
-                    <td className="py-4 px-6 font-bold text-emerald-400 bg-amber-500/5">
-                      انگ معتبر ری‌گیری رسمی + تحویل شمش
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">متغیر بسته به اعتبار طلافروش</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 font-medium text-white">تسویه مالی و ثبت سند</td>
-                    <td className="py-4 px-6 font-bold text-amber-400 bg-amber-500/5">
-                      تسویه آنی بر بستر دفترکل امن دوطرفه
-                    </td>
-                    <td className="py-4 px-6 text-slate-400">کارت‌به‌کارت با سقف محدود بانکی</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        {/* ----------------- FEATURES SECTION ----------------- */}
-        <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-              مزایای ساختاری
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white">
-              چهار ستون اعتماد و کارایی در {brandConfig.name.fa}
-            </h2>
-            <p className="text-sm text-slate-400 font-light">
-              ترکیب امنیت طلافروشی‌های اصیل با تکنولوژی پیشرفته فین‌تک برای خلق امن‌ترین بستر معاملات.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Feature 1 */}
-            <div className="glass-card-interactive rounded-2xl p-7 space-y-4">
-              <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Zap className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">مدل بازارساز اختصاصی</h3>
-              <p className="text-xs leading-relaxed text-slate-300 font-light">
-                بدون صف و معطلی برای تطبیق سفارش با سایر کاربران؛ طرف حساب معامله همواره میز بازارساز متعهد {brandConfig.name.fa} است و اجرای سفارش در کسر ثانیه صورت می‌گیرد.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="glass-card-interactive rounded-2xl p-7 space-y-4">
-              <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Sparkles className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">معاملات با کارمزد صفر</h3>
-              <p className="text-xs leading-relaxed text-slate-300 font-light">
-                هیچ درصد یا مبلغ ثابتی به عنوان کارمزد کسر نمی‌شود. درآمد پلتفرم صرفاً از اسپرد شفاف قیمت خرید و فروش حاصل می‌شود.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="glass-card-interactive rounded-2xl p-7 space-y-4">
-              <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Repeat className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">اعتبار معاملاتی چنددارایی</h3>
-              <p className="text-xs leading-relaxed text-slate-300 font-light">
-                امکان بهره‌مندی از اعتبار شناور بین‌دارایی (Cross-Asset Credit) که به شما اجازه می‌دهد متناسب با تضمینات، به حجم بالاتری از معاملات دسترسی پیدا کنید.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="glass-card-interactive rounded-2xl p-7 space-y-4">
-              <div className="h-12 w-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-white">دفترکل دوطرفه و امن</h3>
-              <p className="text-xs leading-relaxed text-slate-300 font-light">
-                معماری دفترکل مالی (Ledger-backed) هر تراکنش را به صورت دقیق و تراز ثبت می‌کند؛ داده‌ها ضد جعل، تغییرناپذیر و قابل ردیابی لحظه‌ای هستند.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ----------------- HOW IT WORKS (GUIDE) ----------------- */}
-        <section id="guide" className="py-20 bg-[#07090e]/80 border-t border-amber-500/10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-              <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-                مراحل ساده شروع
-              </span>
-              <h2 className="text-3xl font-extrabold text-white">
-                چگونه در {brandConfig.name.fa} معامله کنیم؟
-              </h2>
-              <p className="text-xs text-slate-400 font-light">
-                در ۳ گام بدون نیاز به کاغذبازی و مراجعات حضوری فعالیت خود را آغاز کنید.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-              {/* Step 1 */}
-              <div className="glass-card rounded-2xl p-8 relative space-y-4 text-center sm:text-right">
-                <div className="flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 font-black text-base border border-amber-500/40">
-                    ۱
-                  </div>
-                  <Send className="h-5 w-5 text-slate-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white">اتصال به ربات تلگرام یا وب</h3>
-                <p className="text-xs leading-relaxed text-slate-300 font-light">
-                  وارد ربات رسمی تلگرام @{brandConfig.telegram.botUsername} شوید و با یک کلیک شماره همراه خود را تأیید کنید تا حساب کاربری شما فعال شود.
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="glass-card rounded-2xl p-8 relative space-y-4 text-center sm:text-right">
-                <div className="flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 font-black text-base border border-amber-500/40">
-                    ۲
-                  </div>
-                  <Lock className="h-5 w-5 text-slate-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white">شارژ کیف پول یا تحویل طلای آبشده</h3>
-                <p className="text-xs leading-relaxed text-slate-300 font-light">
-                  کیف پول ریالی خود را از طریق درگاه یا پایا شارژ نمایید یا طلای آبشده فیزیکی را جهت سپرده‌گذاری در خزانه تحویل دهید.
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="glass-card rounded-2xl p-8 relative space-y-4 text-center sm:text-right">
-                <div className="flex items-center justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 font-black text-base border border-amber-500/40">
-                    ۳
-                  </div>
-                  <Wallet className="h-5 w-5 text-slate-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white">معامله آنلاین و تحویل شمش فیزیکی</h3>
-                <p className="text-xs leading-relaxed text-slate-300 font-light">
-                  در هر ساعت از شبانه‌روز با بهترین مظنه سفارش ثبت کنید، سود کسب کنید یا هر زمان که مایل بودید شمش طلای خود را فیزیکی تحویل بگیرید.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* ----------------- FINAL CTA SECTION ----------------- */}
-        <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <div className="relative rounded-3xl p-10 sm:p-16 overflow-hidden border border-amber-500/30 bg-gradient-to-br from-[#151a26] via-[#10141e] to-[#090b10] text-center space-y-6 shadow-goldGlow">
-            <div className="max-w-2xl mx-auto space-y-4">
-              <div className="flex justify-center mb-3">
-                <BrandEmblem sizePx={88} useLargeLogo />
+        <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="zar-card p-10 sm:p-14 text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="h-16 w-16 rounded-2xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center">
+                <ZarorbitSymbolSvg sizePx={44} />
               </div>
-              <h2 className="text-3xl sm:text-4xl font-black text-white">
-                آماده معامله هوشمند طلای آبشده در {brandConfig.name.fa} هستید؟
+            </div>
+            <div className="max-w-2xl mx-auto space-y-3">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#F2EEE5]">
+                همراهی در شکل‌گیری زیست‌بوم{" "}
+                <span className="bidi-isolate text-[#C9A45A]">ZARORBIT</span>
               </h2>
-              <p className="text-sm text-slate-300 font-light leading-relaxed">
-                هم‌اکنون به شبکه معامله‌گران {brandConfig.name.fa} بپیوندید و امنیت، سرعت و شفافیت را در معاملات روزانه خود تجربه کنید.
+              <p className="text-sm text-[#9CA3AF] font-light leading-relaxed">
+                از پورتال وب برای بررسی دفترکل دارایی‌ها استفاده کنید یا در
+                ربات تلگرام ماژول آزمایشی طلای ۱۸ عیار را تجربه نمایید.
               </p>
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <Link
+                href="/login"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[10px] bg-[#C9A45A] px-7 py-3.5 text-sm font-bold text-[#17191D] hover:bg-[#D4B16A] transition-colors"
+              >
+                <Wallet className="h-4 w-4" />
+                <span>ورود به پرتال وب</span>
+              </Link>
               <a
                 href={brandConfig.telegram.botUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 px-8 py-4 text-sm font-bold text-slate-950 shadow-goldGlow hover:brightness-110 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[10px] border border-[#6B7485] bg-[#17191D] px-7 py-3.5 text-sm font-semibold text-[#F2EEE5] hover:border-[#4CB3A5] hover:text-[#4CB3A5] transition-colors"
               >
-                <Send className="h-4 w-4" />
-                <span>ورود به ربات معامله‌گری @{brandConfig.telegram.botUsername}</span>
+                <Send className="h-4 w-4 text-[#4CB3A5]" />
+                <span>
+                  ربات رسمی{" "}
+                  <span className="bidi-isolate">
+                    @{brandConfig.telegram.botUsername}
+                  </span>
+                </span>
               </a>
-              <Link
-                href="/login"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 px-6 py-4 text-sm font-semibold text-slate-200 hover:bg-slate-700 transition-all"
-              >
-                <span>ورود به پرتال وب</span>
-                <ChevronLeft className="h-4 w-4" />
-              </Link>
             </div>
           </div>
         </section>

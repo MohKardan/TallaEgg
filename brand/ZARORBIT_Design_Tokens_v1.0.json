@@ -1,0 +1,730 @@
+{
+  "$schema": "https://tr.designtokens.org/format/",
+  "meta": {
+    "brand": "ZARORBIT",
+    "version": "1.0.0",
+    "brandBookSource": "ZARORBIT Brand Book v1.1 (2026-11-11)",
+    "logoDirection": "R1 — 1-0-1 Orbital Z Monogram (Owner Approved)",
+    "accessibilityStandard": "WCAG 2.2 AA",
+    "fontLicenses": {
+      "Inter": "SIL Open Font License 1.1",
+      "Manrope": "SIL Open Font License 1.1",
+      "Vazirmatn": "SIL Open Font License 1.1"
+    }
+  },
+  "color": {
+    "core": {
+      "obsidian": {
+        "$value": "#17191D",
+        "$type": "color",
+        "$description": "Primary dark canvas and light-mode primary mark/text"
+      },
+      "metallicGold": {
+        "$value": "#C9A45A",
+        "$type": "color",
+        "$description": "Primary dark-mode brand accent and value cue (7.49:1 on Obsidian; dark-bg or fill only)"
+      },
+      "ivory": {
+        "$value": "#F2EEE5",
+        "$type": "color",
+        "$description": "Primary light surface and dark-mode primary text (15.20:1 on Obsidian)"
+      },
+      "deepTeal": {
+        "$value": "#286B63",
+        "$type": "color",
+        "$description": "Supporting ecosystem accent for positive/interactive states (5.38:1 on Ivory, 6.23:1 with White text)"
+      }
+    },
+    "neutral": {
+      "950": {
+        "$value": "#101215",
+        "$type": "color"
+      },
+      "900": {
+        "$value": "#17191D",
+        "$type": "color"
+      },
+      "800": {
+        "$value": "#1F2329",
+        "$type": "color"
+      },
+      "700": {
+        "$value": "#282D35",
+        "$type": "color"
+      },
+      "600": {
+        "$value": "#3A414D",
+        "$type": "color"
+      },
+      "500": {
+        "$value": "#6B7485",
+        "$type": "color",
+        "$description": "Accessible dark-mode interactive border (>=3.2:1 on Obsidian 800)"
+      },
+      "400": {
+        "$value": "#9CA3AF",
+        "$type": "color",
+        "$description": "Muted text on Dark surfaces (>=5.4:1)"
+      },
+      "300": {
+        "$value": "#5B626E",
+        "$type": "color",
+        "$description": "Muted text on Light surfaces (>=5.3:1)"
+      },
+      "200": {
+        "$value": "#7C776B",
+        "$type": "color",
+        "$description": "Accessible light-mode interactive border (>=3.8:1 on Ivory)"
+      },
+      "150": {
+        "$value": "#D0C8B8",
+        "$type": "color"
+      },
+      "100": {
+        "$value": "#E7E1D4",
+        "$type": "color"
+      },
+      "50": {
+        "$value": "#F2EEE5",
+        "$type": "color"
+      },
+      "25": {
+        "$value": "#FAF8F3",
+        "$type": "color"
+      },
+      "0": {
+        "$value": "#FFFFFF",
+        "$type": "color"
+      }
+    },
+    "gold": {
+      "300": {
+        "$value": "#D8B772",
+        "$type": "color"
+      },
+      "400": {
+        "$value": "#C9A45A",
+        "$type": "color"
+      },
+      "500": {
+        "$value": "#B38E43",
+        "$type": "color"
+      },
+      "700": {
+        "$value": "#82611C",
+        "$type": "color",
+        "$description": "WCAG AA accessible Gold UI & icon on Ivory (4.93:1)"
+      },
+      "800": {
+        "$value": "#6B4F14",
+        "$type": "color"
+      }
+    },
+    "teal": {
+      "300": {
+        "$value": "#67C6B9",
+        "$type": "color"
+      },
+      "400": {
+        "$value": "#4CB3A5",
+        "$type": "color",
+        "$description": "WCAG AA accessible Teal accent on Dark (6.95:1 on Obsidian 900)"
+      },
+      "600": {
+        "$value": "#286B63",
+        "$type": "color"
+      },
+      "700": {
+        "$value": "#1E524C",
+        "$type": "color"
+      }
+    },
+    "semantic": {
+      "dark": {
+        "success": {
+          "$value": "#48B884",
+          "$type": "color"
+        },
+        "successBg": {
+          "$value": "#162A24",
+          "$type": "color"
+        },
+        "warning": {
+          "$value": "#E2A93B",
+          "$type": "color"
+        },
+        "warningBg": {
+          "$value": "#2B2416",
+          "$type": "color"
+        },
+        "error": {
+          "$value": "#F07F83",
+          "$type": "color"
+        },
+        "errorBg": {
+          "$value": "#2D1B1E",
+          "$type": "color"
+        },
+        "info": {
+          "$value": "#6BA4E8",
+          "$type": "color"
+        },
+        "infoBg": {
+          "$value": "#192535",
+          "$type": "color"
+        }
+      },
+      "light": {
+        "success": {
+          "$value": "#1D6F4B",
+          "$type": "color"
+        },
+        "successBg": {
+          "$value": "#E2EFE8",
+          "$type": "color"
+        },
+        "warning": {
+          "$value": "#8F5F0B",
+          "$type": "color"
+        },
+        "warningBg": {
+          "$value": "#F5ECD8",
+          "$type": "color"
+        },
+        "error": {
+          "$value": "#B4232C",
+          "$type": "color"
+        },
+        "errorBg": {
+          "$value": "#F7E2E3",
+          "$type": "color"
+        },
+        "info": {
+          "$value": "#1E5A9E",
+          "$type": "color"
+        },
+        "infoBg": {
+          "$value": "#E3ECF6",
+          "$type": "color"
+        }
+      }
+    }
+  },
+  "theme": {
+    "dark": {
+      "bgCanvas": {
+        "$value": "{color.neutral.900}",
+        "$type": "color"
+      },
+      "bgSurface": {
+        "$value": "{color.neutral.800}",
+        "$type": "color"
+      },
+      "bgElevated": {
+        "$value": "{color.neutral.700}",
+        "$type": "color"
+      },
+      "bgSubtle": {
+        "$value": "{color.neutral.950}",
+        "$type": "color"
+      },
+      "textPrimary": {
+        "$value": "{color.neutral.50}",
+        "$type": "color"
+      },
+      "textSecondary": {
+        "$value": "{color.neutral.400}",
+        "$type": "color"
+      },
+      "textBrand": {
+        "$value": "{color.gold.400}",
+        "$type": "color"
+      },
+      "textAccent": {
+        "$value": "{color.teal.400}",
+        "$type": "color"
+      },
+      "borderSubtle": {
+        "$value": "#2B303A",
+        "$type": "color"
+      },
+      "borderControl": {
+        "$value": "{color.neutral.500}",
+        "$type": "color"
+      },
+      "borderFocus": {
+        "$value": "{color.gold.400}",
+        "$type": "color"
+      },
+      "accentPrimary": {
+        "$value": "{color.gold.400}",
+        "$type": "color"
+      },
+      "accentPrimaryText": {
+        "$value": "{color.neutral.900}",
+        "$type": "color"
+      },
+      "accentSecondary": {
+        "$value": "{color.teal.600}",
+        "$type": "color"
+      },
+      "accentSecondaryText": {
+        "$value": "{color.neutral.0}",
+        "$type": "color"
+      }
+    },
+    "light": {
+      "bgCanvas": {
+        "$value": "{color.neutral.50}",
+        "$type": "color"
+      },
+      "bgSurface": {
+        "$value": "{color.neutral.25}",
+        "$type": "color"
+      },
+      "bgElevated": {
+        "$value": "{color.neutral.0}",
+        "$type": "color"
+      },
+      "bgSubtle": {
+        "$value": "{color.neutral.100}",
+        "$type": "color"
+      },
+      "textPrimary": {
+        "$value": "{color.neutral.900}",
+        "$type": "color"
+      },
+      "textSecondary": {
+        "$value": "{color.neutral.300}",
+        "$type": "color"
+      },
+      "textBrand": {
+        "$value": "{color.gold.700}",
+        "$type": "color"
+      },
+      "textAccent": {
+        "$value": "{color.teal.600}",
+        "$type": "color"
+      },
+      "borderSubtle": {
+        "$value": "{color.neutral.150}",
+        "$type": "color"
+      },
+      "borderControl": {
+        "$value": "{color.neutral.200}",
+        "$type": "color"
+      },
+      "borderFocus": {
+        "$value": "{color.teal.600}",
+        "$type": "color"
+      },
+      "accentPrimary": {
+        "$value": "{color.neutral.900}",
+        "$type": "color"
+      },
+      "accentPrimaryText": {
+        "$value": "{color.neutral.50}",
+        "$type": "color"
+      },
+      "accentSecondary": {
+        "$value": "{color.teal.600}",
+        "$type": "color"
+      },
+      "accentSecondaryText": {
+        "$value": "{color.neutral.0}",
+        "$type": "color"
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "enDisplay": {
+        "$value": [
+          "Manrope",
+          "Inter",
+          "system-ui",
+          "sans-serif"
+        ],
+        "$type": "fontFamily"
+      },
+      "enUi": {
+        "$value": [
+          "Inter",
+          "system-ui",
+          "sans-serif"
+        ],
+        "$type": "fontFamily"
+      },
+      "fa": {
+        "$value": [
+          "Vazirmatn",
+          "Tahoma",
+          "sans-serif"
+        ],
+        "$type": "fontFamily"
+      },
+      "mono": {
+        "$value": [
+          "JetBrains Mono",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace"
+        ],
+        "$type": "fontFamily"
+      }
+    },
+    "scale": {
+      "display": {
+        "fontSize": {
+          "$value": "48px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.15,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 700,
+          "$type": "fontWeight"
+        },
+        "letterSpacing": {
+          "$value": "-0.02em",
+          "$type": "dimension"
+        }
+      },
+      "h1": {
+        "fontSize": {
+          "$value": "36px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.22,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 700,
+          "$type": "fontWeight"
+        },
+        "letterSpacing": {
+          "$value": "-0.015em",
+          "$type": "dimension"
+        }
+      },
+      "h2": {
+        "fontSize": {
+          "$value": "28px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.28,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 600,
+          "$type": "fontWeight"
+        }
+      },
+      "h3": {
+        "fontSize": {
+          "$value": "20px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.35,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 600,
+          "$type": "fontWeight"
+        }
+      },
+      "bodyLg": {
+        "fontSize": {
+          "$value": "18px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.65,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 400,
+          "$type": "fontWeight"
+        }
+      },
+      "body": {
+        "fontSize": {
+          "$value": "16px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.65,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 400,
+          "$type": "fontWeight"
+        }
+      },
+      "bodySm": {
+        "fontSize": {
+          "$value": "14px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.55,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 400,
+          "$type": "fontWeight"
+        }
+      },
+      "caption": {
+        "fontSize": {
+          "$value": "12px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.45,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 500,
+          "$type": "fontWeight"
+        }
+      },
+      "micro": {
+        "fontSize": {
+          "$value": "11px",
+          "$type": "dimension"
+        },
+        "lineHeight": {
+          "$value": 1.35,
+          "$type": "number"
+        },
+        "fontWeight": {
+          "$value": 600,
+          "$type": "fontWeight"
+        }
+      }
+    }
+  },
+  "spacing": {
+    "0": {
+      "$value": "0px",
+      "$type": "dimension"
+    },
+    "1": {
+      "$value": "4px",
+      "$type": "dimension"
+    },
+    "2": {
+      "$value": "8px",
+      "$type": "dimension"
+    },
+    "3": {
+      "$value": "12px",
+      "$type": "dimension"
+    },
+    "4": {
+      "$value": "16px",
+      "$type": "dimension"
+    },
+    "5": {
+      "$value": "20px",
+      "$type": "dimension"
+    },
+    "6": {
+      "$value": "24px",
+      "$type": "dimension"
+    },
+    "8": {
+      "$value": "32px",
+      "$type": "dimension"
+    },
+    "10": {
+      "$value": "40px",
+      "$type": "dimension"
+    },
+    "12": {
+      "$value": "48px",
+      "$type": "dimension"
+    },
+    "16": {
+      "$value": "64px",
+      "$type": "dimension"
+    },
+    "20": {
+      "$value": "80px",
+      "$type": "dimension"
+    }
+  },
+  "borderRadius": {
+    "none": {
+      "$value": "0px",
+      "$type": "dimension"
+    },
+    "sm": {
+      "$value": "6px",
+      "$type": "dimension"
+    },
+    "md": {
+      "$value": "10px",
+      "$type": "dimension"
+    },
+    "lg": {
+      "$value": "14px",
+      "$type": "dimension"
+    },
+    "xl": {
+      "$value": "20px",
+      "$type": "dimension"
+    },
+    "2xl": {
+      "$value": "24px",
+      "$type": "dimension"
+    },
+    "full": {
+      "$value": "9999px",
+      "$type": "dimension"
+    }
+  },
+  "borderWidth": {
+    "hairline": {
+      "$value": "1px",
+      "$type": "dimension"
+    },
+    "control": {
+      "$value": "1.5px",
+      "$type": "dimension"
+    },
+    "focus": {
+      "$value": "2px",
+      "$type": "dimension"
+    }
+  },
+  "shadow": {
+    "dark": {
+      "card": {
+        "$value": "0 8px 24px -6px rgba(0, 0, 0, 0.45)",
+        "$type": "shadow"
+      },
+      "elevated": {
+        "$value": "0 18px 42px -12px rgba(0, 0, 0, 0.65)",
+        "$type": "shadow"
+      },
+      "focusRing": {
+        "$value": "0 0 0 3px rgba(201, 164, 90, 0.35)",
+        "$type": "shadow"
+      }
+    },
+    "light": {
+      "card": {
+        "$value": "0 4px 16px -4px rgba(23, 25, 29, 0.08)",
+        "$type": "shadow"
+      },
+      "elevated": {
+        "$value": "0 14px 32px -8px rgba(23, 25, 29, 0.12)",
+        "$type": "shadow"
+      },
+      "focusRing": {
+        "$value": "0 0 0 3px rgba(40, 107, 99, 0.30)",
+        "$type": "shadow"
+      }
+    }
+  },
+  "component": {
+    "button": {
+      "heightMd": {
+        "$value": "42px",
+        "$type": "dimension"
+      },
+      "heightLg": {
+        "$value": "48px",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "{spacing.5}",
+        "$type": "dimension"
+      },
+      "radius": {
+        "$value": "{borderRadius.md}",
+        "$type": "dimension"
+      },
+      "primaryDarkBg": {
+        "$value": "{color.core.metallicGold}",
+        "$type": "color"
+      },
+      "primaryDarkFg": {
+        "$value": "{color.core.obsidian}",
+        "$type": "color"
+      },
+      "primaryLightBg": {
+        "$value": "{color.core.obsidian}",
+        "$type": "color"
+      },
+      "primaryLightFg": {
+        "$value": "{color.core.ivory}",
+        "$type": "color"
+      },
+      "secondaryActionBg": {
+        "$value": "{color.core.deepTeal}",
+        "$type": "color"
+      },
+      "secondaryActionFg": {
+        "$value": "{color.neutral.0}",
+        "$type": "color"
+      }
+    },
+    "card": {
+      "padding": {
+        "$value": "{spacing.6}",
+        "$type": "dimension"
+      },
+      "radius": {
+        "$value": "{borderRadius.xl}",
+        "$type": "dimension"
+      },
+      "borderWidth": {
+        "$value": "{borderWidth.hairline}",
+        "$type": "dimension"
+      }
+    },
+    "input": {
+      "height": {
+        "$value": "44px",
+        "$type": "dimension"
+      },
+      "radius": {
+        "$value": "{borderRadius.md}",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "{spacing.4}",
+        "$type": "dimension"
+      }
+    },
+    "maturityBadge": {
+      "radius": {
+        "$value": "{borderRadius.full}",
+        "$type": "dimension"
+      },
+      "paddingX": {
+        "$value": "{spacing.3}",
+        "$type": "dimension"
+      },
+      "paddingY": {
+        "$value": "{spacing.1}",
+        "$type": "dimension"
+      },
+      "states": [
+        "Live",
+        "Beta",
+        "In Development",
+        "Planned",
+        "Conceptual"
+      ]
+    }
+  }
+}

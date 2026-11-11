@@ -1,26 +1,29 @@
 export interface BrandConfig {
   name: {
-    fa: string; // "زَر اوربیت"
-    en: string; // "Zarorbit"
-    monogram: string; // "Z"
-    legalFa: string; // "سامانه معاملات آنلاین طلای فیزیکی و دیجیتال زَر اوربیت"
+    fa: string;
+    en: "ZARORBIT";
+    monogram: string;
+    ecosystemFa: string;
   };
   slogan: {
-    en: string; // "Physical & Digital Gold"
-    fa: string; // "طلای فیزیکی و دیجیتال"
+    en: string;
+    fa: string;
+    categoryEn: string;
+    categoryFa: string;
   };
   domain: {
-    primary: string; // "zarorbit.ir"
-    global: string; // "zarorbit.com"
+    primary: string;
+    global: string;
   };
   tagline: {
+    en: string;
     fa: string;
     subFa: string;
   };
   telegram: {
-    botUsername: string; // "zarorbitbot"
-    botUrl: string; // "https://t.me/zarorbitbot"
-    channelUrl: string; // "https://t.me/zarorbit"
+    botUsername: string;
+    botUrl: string;
+    channelUrl: string;
     supportUrl?: string;
   };
   seo: {
@@ -30,67 +33,90 @@ export interface BrandConfig {
     keywords: string[];
   };
   theme: {
-    goldAccent: string; // "#E5B80B"
-    obsidianBg: string; // "#080a0f"
+    obsidianBg: string;
+    surfaceBg: string;
+    elevatedBg: string;
+    goldAccent: string;
+    bronzeGoldLight: string;
+    ivoryText: string;
+    deepTeal: string;
+    orbitTeal: string;
   };
   assets: {
-    iconNoOrbit: string; // Brushed gold 'Z' mark without outer ring (small icons, favicons, badges)
-    logoLargeOrbit: string; // Brushed gold 'Z' inside circular gold ring bezel (hero, showcase, detailed banners)
+    symbol: string;
+    horizontalDark: string;
+    horizontalLight: string;
+    favicon: string;
+    appIcon: string;
+    ogImage: string;
   };
 }
 
 export const brandConfig: BrandConfig = {
   name: {
     fa: "زَر اوربیت",
-    en: "Zarorbit",
-    monogram: "Z",
-    legalFa: "سامانه هوشمند معاملات آنلاین طلای فیزیکی و دیجیتال زَر اوربیت",
+    en: "ZARORBIT",
+    monogram: "R1 (1–0–1)",
+    ecosystemFa: "زیست‌بوم دارایی‌های واقعی و دیجیتال ZARORBIT",
   },
   slogan: {
-    en: "PHYSICAL & DIGITAL GOLD",
-    fa: "طلای فیزیکی و دیجیتال",
+    en: "Real & Digital Assets. Collective Ownership.",
+    fa: "دارایی‌های واقعی و دیجیتال. مالکیت و مشارکت جمعی.",
+    categoryEn: "DECENTRALIZED ASSET ECOSYSTEM",
+    categoryFa: "زیست‌بوم غیرمتمرکز دارایی‌ها",
   },
   domain: {
     primary: "zarorbit.ir",
     global: "zarorbit.com",
   },
   tagline: {
-    fa: "مدار پیوسته نقدینگی و معاملات آنلاین طلای آبشده",
-    subFa: "معاملات مستقیم با میز بازارساز، کارمزد صفر درصد، تسویه لحظه‌ای و دفترکل امن",
+    en: "A Community-Governed Ecosystem for Real and Digital Assets.",
+    fa: "دارایی‌های واقعی و دیجیتال. مالکیت و مشارکت جمعی.",
+    subFa:
+      "اتصال شفاف دارایی‌های دنیای واقعی (با نقطه شروع طلا) و دارایی‌های دیجیتال شامل رمزارزها و NFTها در مسیری جامعه‌محور به سوی حکمرانی DAO.",
   },
   telegram: {
     botUsername:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "zarorbitbot",
     botUrl:
-      process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL ||
-      "https://t.me/zarorbitbot",
+      process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/zarorbitbot",
     channelUrl: "https://t.me/zarorbit",
     supportUrl: "https://t.me/zarorbit_support",
   },
   seo: {
-    title: "زَر اوربیت | Zarorbit — سامانه معاملات آنلاین طلای فیزیکی و دیجیتال",
-    titleTemplate: "%s | زَر اوربیت",
+    title: "ZARORBIT (زَر اوربیت) — زیست‌بوم دارایی‌های واقعی و دیجیتال",
+    titleTemplate: "%s | ZARORBIT",
     description:
-      "سامانه رسمی معاملات آنلاین طلای آبشده ۱۸ عیار با مدل بازارساز اختصاصی، کارمزد صفر، تسویه آنی دفترکل بانکی و اتصال به ربات معاملاتی تلگرام.",
+      "زیست‌بوم روبه‌توسعه ZARORBIT برای اتصال شفاف دارایی‌های دنیای واقعی (RWA با نقطه شروع طلای ۱۸ عیار) و دارایی‌های دیجیتال (رمزارزها و NFTها) با مسیر تدریجی حکمرانی جامعه (DAO).",
     keywords: [
+      "ZARORBIT",
       "زَر اوربیت",
-      "زر اوربیت",
-      "Zarorbit",
+      "زیست‌بوم دارایی",
+      "Real-World Assets",
+      "RWA",
       "طلای آبشده",
-      "طلای فیزیکی",
-      "طلای دیجیتال",
-      "معاملات طلا",
-      "مظنه طلا",
-      "قیمت لحظه‌ای طلا",
-      "خرید طلای آبشده",
+      "رمزارز",
+      "NFT",
+      "حکمرانی DAO",
+      "مالکیت جمعی",
     ],
   },
   theme: {
-    goldAccent: "#E5B80B",
-    obsidianBg: "#080a0f",
+    obsidianBg: "#17191D",
+    surfaceBg: "#1F2329",
+    elevatedBg: "#282D35",
+    goldAccent: "#C9A45A",
+    bronzeGoldLight: "#82611C",
+    ivoryText: "#F2EEE5",
+    deepTeal: "#286B63",
+    orbitTeal: "#4CB3A5",
   },
   assets: {
-    iconNoOrbit: "/images/zarorbit-icon.jpg",
-    logoLargeOrbit: "/images/zarorbit-logo.jpg",
+    symbol: "/images/zarorbit-symbol.svg",
+    horizontalDark: "/images/zarorbit-logo-dark.svg",
+    horizontalLight: "/images/zarorbit-logo-light.svg",
+    favicon: "/images/zarorbit-favicon.svg",
+    appIcon: "/images/zarorbit-app-icon.svg",
+    ogImage: "/images/zarorbit-og.png",
   },
 };

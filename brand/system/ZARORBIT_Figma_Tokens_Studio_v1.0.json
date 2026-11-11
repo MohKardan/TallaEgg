@@ -1,0 +1,154 @@
+{
+  "core": {
+    "obsidian": {
+      "value": "#17191D",
+      "type": "color"
+    },
+    "metallic-gold": {
+      "value": "#C9A45A",
+      "type": "color"
+    },
+    "ivory": {
+      "value": "#F2EEE5",
+      "type": "color"
+    },
+    "deep-teal": {
+      "value": "#286B63",
+      "type": "color"
+    },
+    "gold-700": {
+      "value": "#82611C",
+      "type": "color"
+    },
+    "teal-400": {
+      "value": "#4CB3A5",
+      "type": "color"
+    }
+  },
+  "dark": {
+    "bg-canvas": {
+      "value": "#17191D",
+      "type": "color"
+    },
+    "bg-surface": {
+      "value": "#1F2329",
+      "type": "color"
+    },
+    "bg-elevated": {
+      "value": "#282D35",
+      "type": "color"
+    },
+    "text-primary": {
+      "value": "#F2EEE5",
+      "type": "color"
+    },
+    "text-secondary": {
+      "value": "#9CA3AF",
+      "type": "color"
+    },
+    "text-brand": {
+      "value": "#C9A45A",
+      "type": "color"
+    },
+    "text-accent": {
+      "value": "#4CB3A5",
+      "type": "color"
+    },
+    "border-subtle": {
+      "value": "#2B303A",
+      "type": "color"
+    },
+    "border-control": {
+      "value": "#6B7485",
+      "type": "color"
+    },
+    "success": {
+      "value": "#48B884",
+      "type": "color"
+    },
+    "warning": {
+      "value": "#E2A93B",
+      "type": "color"
+    },
+    "error": {
+      "value": "#F07F83",
+      "type": "color"
+    },
+    "info": {
+      "value": "#6BA4E8",
+      "type": "color"
+    }
+  },
+  "light": {
+    "bg-canvas": {
+      "value": "#F2EEE5",
+      "type": "color"
+    },
+    "bg-surface": {
+      "value": "#FAF8F3",
+      "type": "color"
+    },
+    "bg-elevated": {
+      "value": "#FFFFFF",
+      "type": "color"
+    },
+    "text-primary": {
+      "value": "#17191D",
+      "type": "color"
+    },
+    "text-secondary": {
+      "value": "#5B626E",
+      "type": "color"
+    },
+    "text-brand": {
+      "value": "#82611C",
+      "type": "color"
+    },
+    "text-accent": {
+      "value": "#286B63",
+      "type": "color"
+    },
+    "border-subtle": {
+      "value": "#D0C8B8",
+      "type": "color"
+    },
+    "border-control": {
+      "value": "#7C776B",
+      "type": "color"
+    },
+    "success": {
+      "value": "#1D6F4B",
+      "type": "color"
+    },
+    "warning": {
+      "value": "#8F5F0B",
+      "type": "color"
+    },
+    "error": {
+      "value": "#B4232C",
+      "type": "color"
+    },
+    "info": {
+      "value": "#1E5A9E",
+      "type": "color"
+    }
+  },
+  "$themes": [
+    {
+      "id": "zarorbit-dark",
+      "name": "ZARORBIT Dark",
+      "selectedTokenSets": {
+        "core": "enabled",
+        "dark": "enabled"
+      }
+    },
+    {
+      "id": "zarorbit-light",
+      "name": "ZARORBIT Light",
+      "selectedTokenSets": {
+        "core": "enabled",
+        "light": "enabled"
+      }
+    }
+  ]
+}
