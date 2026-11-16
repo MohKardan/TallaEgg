@@ -12,7 +12,7 @@
 #
 # Deliberately not here: deployment. One server and two developers is better served by
 # `git pull` and a restart than by a pipeline, and a half-working deploy pipeline three weeks
-# before the science-park review would be a pure loss. Revisit after it.
+# before the initial milestone review would be a pure loss. Revisit after it.
 
 name: build-and-test
 

@@ -1,7 +1,7 @@
 ---
 proposal_id: T-2025-0001
 title: "Upgrade to Smart Contract Governance Module"
-author: "Mohammad Kardan (@mmdkardan)"
+author: "Contributor Name (@username)"
 created: 2025-10-05
 status: Draft
 type: Technical

@@ -31,7 +31,7 @@ namespace TallaEgg.AllServices.Tests;
 /// </summary>
 public class PhoneNumberUniquenessTests
 {
-    private const string SharedPhone = "09158527483";
+    private const string SharedPhone = "09120000002";
 
     /// <summary>
     /// Holds the users the test set up. Everything the paths under test do not touch throws,

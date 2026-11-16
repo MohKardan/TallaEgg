@@ -16,7 +16,7 @@ namespace TallaEgg.AllServices.Tests;
 
 /// <summary>
 /// <c>ش [تلفن] [مقدار] [نوع]</c> — the admin charge command. Hit live after #111/#112 added the
-/// coin and Bitcoin as tradable symbols: "ش 09158527483 100 سکه" answered "نوع شناسایی نشد", and
+/// coin and Bitcoin as tradable symbols: "ش 09120000002 100 سکه" answered "نوع شناسایی نشد", and
 /// the full Persian name ("سکه تمام بهار آزادی") didn't even parse, because the currency slot
 /// only ever accepted one whitespace-free token and matched it against an exact code or the full
 /// Persian name — never the short alias the quote commands already accept.
@@ -37,7 +37,7 @@ public class AdminChargeCommandTests
             Id = AdminId,
             TelegramId = AdminTelegramId,
             FirstName = "مدیر",
-            PhoneNumber = "09158527483",
+            PhoneNumber = "09120000002",
             Status = UserStatus.Approved,
             Role = UserRole.Admin
         };
@@ -67,7 +67,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         var deposit = Assert.Single(_walletApi.Deposits);
         Assert.Equal("CREDIT_SEKE_BAHAR", deposit.Asset);
@@ -80,7 +80,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه تمام بهار آزادی");
+        await SayAsync(handler, "ش 09120000002 100 سکه تمام بهار آزادی");
 
         var deposit = Assert.Single(_walletApi.Deposits);
         Assert.Equal("CREDIT_SEKE_BAHAR", deposit.Asset);
@@ -91,7 +91,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 بیت‌کوین");
+        await SayAsync(handler, "ش 09120000002 100 بیت‌کوین");
 
         Assert.Equal("CREDIT_BTC", Assert.Single(_walletApi.Deposits).Asset);
     }
@@ -101,7 +101,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100");
+        await SayAsync(handler, "ش 09120000002 100");
 
         Assert.Equal("CREDIT_MAUA", Assert.Single(_walletApi.Deposits).Asset);
     }
@@ -111,7 +111,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 نقره");
+        await SayAsync(handler, "ش 09120000002 100 نقره");
 
         Assert.Empty(_walletApi.Deposits);
         Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
@@ -132,7 +132,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         var deposit = Assert.Single(_walletApi.Deposits);
         Assert.False(string.IsNullOrWhiteSpace(deposit.ReferenceId));
@@ -149,8 +149,8 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         Assert.Equal(2, _walletApi.Deposits.Count);
         Assert.Equal(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
@@ -161,8 +161,8 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
-        await SayAsync(handler, "ش 09158527483 200 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
+        await SayAsync(handler, "ش 09120000002 200 سکه");
 
         Assert.NotEqual(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
     }
@@ -173,8 +173,8 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
-        await SayAsync(handler, "ش 09158527483 100 بیت‌کوین");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 بیت‌کوین");
 
         Assert.NotEqual(_walletApi.Deposits[0].ReferenceId, _walletApi.Deposits[1].ReferenceId);
     }
@@ -184,7 +184,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 آبشده");
+        await SayAsync(handler, "د 09120000002 100 آبشده");
 
         var withdrawal = Assert.Single(_walletApi.Withdrawals);
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
@@ -201,7 +201,7 @@ public class AdminChargeCommandTests
         var handler = Build();
         _walletApi.ReportAlreadyApplied = true;
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         Assert.Contains(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("اعتبار حساب شما افزایش یافت"));
@@ -213,7 +213,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         Assert.Contains(_messenger.Texts, t => t.Contains("افزایش اعتبار انجام شد"));
         Assert.Contains(_messenger.Texts, t => t.Contains("اعتبار حساب شما افزایش یافت"));
@@ -233,7 +233,7 @@ public class AdminChargeCommandTests
         _walletApi.ReportAlreadyApplied = true;
         _walletApi.CurrentBalance = 700m;          // the wallet has moved on since
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
         Assert.Contains(PersianFormat.Amount(700m, "CREDIT_SEKE_BAHAR"), reply);
@@ -248,7 +248,7 @@ public class AdminChargeCommandTests
         _walletApi.ReportAlreadyApplied = true;
         _walletApi.CurrentBalance = 4_200m;
 
-        await SayAsync(handler, "د 09158527483 500 آبشده");
+        await SayAsync(handler, "د 09120000002 500 آبشده");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
         Assert.Contains(PersianFormat.Amount(4_200m, "CREDIT_MAUA"), reply);
@@ -265,7 +265,7 @@ public class AdminChargeCommandTests
         var handler = Build();
         _walletApi.CurrentBalance = 999m;          // must not appear: this charge was applied
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("افزایش اعتبار انجام شد"));
         Assert.Contains(PersianFormat.Amount(100m, "CREDIT_SEKE_BAHAR"), reply);
@@ -285,7 +285,7 @@ public class AdminChargeCommandTests
         _walletApi.ReportAlreadyApplied = true;
         _walletApi.OmitCurrentBalance = true;
 
-        await SayAsync(handler, "ش 09158527483 100 سکه");
+        await SayAsync(handler, "ش 09120000002 100 سکه");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("پیش‌تر ثبت شده بود"));
         // Anchored to its label: a bare PersianFormat.Amount(0) is "۰", which also sits inside "۱۰۰".
@@ -306,7 +306,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 سکه");
+        await SayAsync(handler, "د 09120000002 100 سکه");
 
         Assert.Equal("CREDIT_SEKE_BAHAR", Assert.Single(_walletApi.Withdrawals).Asset);
     }
@@ -322,8 +322,8 @@ public class AdminChargeCommandTests
         var handler = Build();
         var suffix = asset.Length == 0 ? "" : " " + asset;
 
-        await SayAsync(handler, "ش 09158527483 100" + suffix);
-        await SayAsync(handler, "د 09158527483 100" + suffix);
+        await SayAsync(handler, "ش 09120000002 100" + suffix);
+        await SayAsync(handler, "د 09120000002 100" + suffix);
 
         Assert.Equal(Assert.Single(_walletApi.Deposits).Asset, Assert.Single(_walletApi.Withdrawals).Asset);
     }
@@ -337,7 +337,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100");
+        await SayAsync(handler, "د 09120000002 100");
 
         Assert.Equal("CREDIT_MAUA", Assert.Single(_walletApi.Withdrawals).Asset);
     }
@@ -354,7 +354,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, command + " 09158527483 100 اعتبار آبشده");
+        await SayAsync(handler, command + " 09120000002 100 اعتبار آبشده");
 
         Assert.Empty(_walletApi.Deposits);
         Assert.Empty(_walletApi.Withdrawals);
@@ -382,7 +382,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, command + " 09158527483 500 تومان");
+        await SayAsync(handler, command + " 09120000002 500 تومان");
 
         Assert.Empty(_walletApi.Deposits);
         Assert.Empty(_walletApi.Withdrawals);
@@ -398,7 +398,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 نقره");
+        await SayAsync(handler, "ش 09120000002 100 نقره");
 
         Assert.Empty(_walletApi.Deposits);
         Assert.Contains(_messenger.Texts, t => t.Contains("شناسایی نشد"));
@@ -413,7 +413,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 سکه");
+        await SayAsync(handler, "د 09120000002 100 سکه");
 
         Assert.Contains(_messenger.Texts, t => t.Contains("اعتبار حساب شما کاهش یافت"));
         Assert.DoesNotContain(_messenger.Texts, t => t.Contains("از موجودی حساب شما کسر شد"));
@@ -425,7 +425,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 سکه");
+        await SayAsync(handler, "د 09120000002 100 سکه");
 
         Assert.Contains(_messenger.Texts, t => t.Contains("کسر از اعتبار انجام شد"));
     }
@@ -439,7 +439,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "د 09158527483 100 سکه");
+        await SayAsync(handler, "د 09120000002 100 سکه");
 
         var withdrawal = Assert.Single(_walletApi.Withdrawals);
         Assert.StartsWith("admin-withdrawal:", withdrawal.ReferenceId);
@@ -478,7 +478,7 @@ public class AdminChargeCommandTests
     {
         var handler = Build();
 
-        await SayAsync(handler, "ش 09158527483 100 نقره");
+        await SayAsync(handler, "ش 09120000002 100 نقره");
 
         var reply = Assert.Single(_messenger.Texts, t => t.Contains("شناسایی نشد"));
         Assert.DoesNotContain("تومان", reply);

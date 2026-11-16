@@ -231,6 +231,14 @@ $env:HTTPS_PROXY = $env:HTTPS_PROXY -replace '^socks5h://', 'socks5://'
 dotnet restore
 ```
 
+### Test fixture sanitization must sync with locale-specific assertions
+
+When replacing sensitive or real phone numbers and usernames in test fixtures with dummy synthetic numbers (`09120000001`), check for assertions verifying Persian or localized digit conversions (e.g. Assert.Contains("۰۹۱۲۰۰۰۰۰۰۱", card)). Replacing only the ASCII string in the setup will cause localized formatting tests to fail on the mismatch.
+
+### In-place byte-for-byte patching of tracked binary PDFs avoids xref corruption
+
+When tracked binary artifacts (such as legacy PDF proposals) contain sensitive author or organization metadata that must be redacted without regeneration, ensure byte lengths match exactly (padding with spaces if necessary) before writing. Standard string replacing on raw bytes with equal length preserves PDF cross-reference (`xref`) byte offsets and stream lengths, preventing file corruption or viewer errors.
+
 ---
 
 ## Local data

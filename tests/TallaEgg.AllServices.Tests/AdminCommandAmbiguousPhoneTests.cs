@@ -28,7 +28,7 @@ public class AdminCommandAmbiguousPhoneTests
 {
     private const long AdminTelegramId = 5001;
     private const long CustomerTelegramId = 7002;
-    private const string AmbiguousPhone = "09158527483";
+    private const string AmbiguousPhone = "09120000002";
     private const string Refusal = "این شماره روی بیش از یک حساب ثبت شده است و تا اصلاح آن، دستور روی هیچ حسابی اجرا نمی‌شود.";
 
     private readonly FakeBotMessenger _messenger = new();
@@ -60,7 +60,7 @@ public class AdminCommandAmbiguousPhoneTests
             Id = Guid.NewGuid(),
             TelegramId = AdminTelegramId,
             FirstName = "مدیر",
-            PhoneNumber = "09209698569",
+            PhoneNumber = "09120000001",
             Status = UserStatus.Approved,
             Role = UserRole.Admin
         };

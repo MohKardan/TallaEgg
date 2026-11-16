@@ -22,8 +22,8 @@ public class TradeListCounterpartyTests
     private static readonly Guid CustomerA = Guid.NewGuid();
     private static readonly Guid CustomerB = Guid.NewGuid();
 
-    private const string PhoneA = "09158527483";
-    private const string PhoneB = "09037212111";
+    private const string PhoneA = "09120000002";
+    private const string PhoneB = "09120000003";
 
     private static PagedResult<TradeHistoryDto> Page(params TradeHistoryDto[] trades) => new()
     {

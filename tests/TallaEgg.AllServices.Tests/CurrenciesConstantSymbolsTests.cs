@@ -147,7 +147,7 @@ public class CurrenciesConstantSymbolsTests
     // ── ResolveCurrencyCode — the شارژ/deduct commands' resolver, not the quote commands' ──
 
     /// <summary>
-    /// Hit live: "ش 09158527483 100 سکه" failed with "نوع شناسایی نشد" because this resolver
+    /// Hit live: "ش 09120000002 100 سکه" failed with "نوع شناسایی نشد" because this resolver
     /// only matched an exact code or the full Persian name ("سکه تمام بهار آزادی"), never the
     /// short alias the quote commands already accept. It now falls back to the same alias list.
     /// </summary>
