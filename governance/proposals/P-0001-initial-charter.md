@@ -2,7 +2,7 @@
 
 **وضعیت:** Draft → Under Review  
 **تاریخ ایجاد:** 2025-09-09  
-**نویسنده:** mmdkrd 
+**نویسنده:** کارگروه حاکمیت (Governance Working Group) 
 
 ---
 

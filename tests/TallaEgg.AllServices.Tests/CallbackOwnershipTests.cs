@@ -51,11 +51,11 @@ public class CallbackOwnershipTests
     public CallbackOwnershipTests()
     {
         _usersApi.UsersByTelegramId[CustomerTelegramId] =
-            Person(CustomerId, CustomerTelegramId, "09158527483", UserRole.RegularUser);
+            Person(CustomerId, CustomerTelegramId, "09120000002", UserRole.RegularUser);
         _usersApi.UsersByTelegramId[OtherCustomerTelegramId] =
             Person(OtherCustomerId, OtherCustomerTelegramId, "09121234567", UserRole.RegularUser);
         _usersApi.UsersByTelegramId[OperatorTelegramId] =
-            Person(OperatorId, OperatorTelegramId, "09209698569", UserRole.Admin);
+            Person(OperatorId, OperatorTelegramId, "09120000001", UserRole.Admin);
         _usersApi.UsersPage = new PagedResult<UserDto> { PageNumber = 1, PageSize = 5 };
     }
 

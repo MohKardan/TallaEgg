@@ -65,7 +65,7 @@ public class AdminCommandForeignPhoneTests
             Id = Guid.NewGuid(),
             TelegramId = AdminTelegramId,
             FirstName = "مدیر",
-            PhoneNumber = "09209698569",
+            PhoneNumber = "09120000001",
             Status = UserStatus.Approved,
             Role = UserRole.Admin
         };

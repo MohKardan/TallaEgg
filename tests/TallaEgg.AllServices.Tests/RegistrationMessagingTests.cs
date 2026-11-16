@@ -136,7 +136,7 @@ public class RegistrationMessagingTests
 
         var handler = Build(owners: [OwnerTelegramId]);
 
-        await ShareContactAsync(handler, OwnerTelegramId, "09209698569");
+        await ShareContactAsync(handler, OwnerTelegramId, "09120000001");
 
         var change = Assert.Single(_usersApi.StatusChanges);
         Assert.Equal(OwnerTelegramId, change.TelegramId);
@@ -174,7 +174,7 @@ public class RegistrationMessagingTests
 
         var handler = Build(owners: [OwnerTelegramId]);
 
-        await ShareContactAsync(handler, OwnerTelegramId, "09209698569");
+        await ShareContactAsync(handler, OwnerTelegramId, "09120000001");
 
         var change = Assert.Single(_usersApi.RoleChanges);
         Assert.Equal(ownerId, change.UserId);
@@ -196,7 +196,7 @@ public class RegistrationMessagingTests
 
         var handler = Build(owners: [OwnerTelegramId]);
 
-        await ShareContactAsync(handler, OwnerTelegramId, "09209698569");
+        await ShareContactAsync(handler, OwnerTelegramId, "09120000001");
 
         Assert.Empty(_usersApi.RoleChanges);
     }
@@ -249,8 +249,8 @@ public class RegistrationMessagingTests
         TelegramId = OwnerTelegramId,
         FirstName = first,
         LastName = last,
-        Username = "KardanMohammad",
-        PhoneNumber = "09209698569",
+        Username = "TestApplicant",
+        PhoneNumber = "09120000001",
         Status = UserStatus.Pending,
         CreatedAt = new DateTime(2026, 7, 31, 8, 36, 0, DateTimeKind.Utc)
     };
@@ -345,39 +345,39 @@ public class RegistrationMessagingTests
 
         var card = Assert.Single(_messenger.Texts);
 
-        Assert.Contains("۰۹۲۰۹۶۹۸۵۶۹", card);
+        Assert.Contains("۰۹۱۲۰۰۰۰۰۰۱", card);
         Assert.Contains("۶۳۸۹۴۴۹۳۰۸", card);
 
         // Ordinal on purpose. xUnit's default string comparison is culture-sensitive, and a
         // linguistic comparison treats U+06F0-U+06F9 as equal to ASCII 0-9 — so the negative
         // assertion below passes for the wrong reason without it, reporting Latin digits in a
         // card that provably contains none. Verified by dumping the code points.
-        Assert.DoesNotContain("09209698569", card, StringComparison.Ordinal);
+        Assert.DoesNotContain("09120000001", card, StringComparison.Ordinal);
     }
 
     /// <summary>
     /// A missing surname must not become a dash. <c>EscapeHtml</c> turns an empty value into
     /// "-", and the two parts were concatenated unconditionally, so somebody with only a first
-    /// name was announced as "Mohammad -".
+    /// name was announced as "User -".
     /// </summary>
     [Fact]
     public async Task AMissingSurnameDoesNotLeaveADanglingDash()
     {
         await _messenger.SendApproveOrRejectUserToAdminsKeyboard(
-            new[] { StrangerTelegramId }, Applicant(first: "محمد", last: null));
+            new[] { StrangerTelegramId }, Applicant(first: "علی", last: null));
 
         var card = Assert.Single(_messenger.Texts);
 
-        Assert.Contains("نام: محمد\n", card);
+        Assert.Contains("نام: علی\n", card);
     }
 
     [Fact]
     public async Task BothPartsOfAFullNameAreShown()
     {
         await _messenger.SendApproveOrRejectUserToAdminsKeyboard(
-            new[] { StrangerTelegramId }, Applicant(first: "محمد", last: "کاردان"));
+            new[] { StrangerTelegramId }, Applicant(first: "علی", last: "رضایی"));
 
-        Assert.Contains("نام: محمد کاردان\n", Assert.Single(_messenger.Texts));
+        Assert.Contains("نام: علی رضایی\n", Assert.Single(_messenger.Texts));
     }
 
     /// <summary>Somebody with no name at all still produces a readable card.</summary>

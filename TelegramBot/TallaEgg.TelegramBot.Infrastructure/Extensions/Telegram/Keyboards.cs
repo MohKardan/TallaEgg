@@ -171,7 +171,7 @@ namespace TallaEgg.TelegramBot.Infrastructure.Extensions.Telegram
             UserDto user)
         {
             // Joined from the parts that are actually present. EscapeHtml turns an empty value
-            // into "-", so a person with no surname used to be announced as "Mohammad -".
+            // into "-", so a person with no surname used to be announced as "User -".
             var fullName = string.Join(' ', new[] { user.FirstName, user.LastName }
                 .Where(part => !string.IsNullOrWhiteSpace(part))
                 .Select(part => Utils.EscapeHtml(part)));

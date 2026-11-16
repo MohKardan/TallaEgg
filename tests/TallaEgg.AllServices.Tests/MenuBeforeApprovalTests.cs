@@ -38,8 +38,8 @@ public class MenuBeforeApprovalTests
 {
     private const long OwnerTelegramId = 6389449308;
     private const long CustomerTelegramId = 262176247;
-    private const string OwnerPhone = "09209698569";
-    private const string CustomerPhone = "09158527483";
+    private const string OwnerPhone = "09120000001";
+    private const string CustomerPhone = "09120000002";
 
     private readonly FakeBotMessenger _messenger = new();
     private readonly FakeUsersApiClient _usersApi = new();

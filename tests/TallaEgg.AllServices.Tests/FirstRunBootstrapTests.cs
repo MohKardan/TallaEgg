@@ -40,7 +40,7 @@ public class FirstRunBootstrapTests
 {
     private const long OwnerTelegramId = 6389449308;
     private const long CustomerTelegramId = 262176247;
-    private const string CustomerPhone = "09158527483";
+    private const string CustomerPhone = "09120000002";
 
     private static readonly Guid OwnerId = Guid.NewGuid();
     private static readonly Guid CustomerId = Guid.NewGuid();
@@ -119,7 +119,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task APendingOwnerCanStillAppointTheFirstAdministrator()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.RegularUser, UserStatus.Pending);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.RegularUser, UserStatus.Pending);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Approved);
 
@@ -153,7 +153,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task ASuspendedAdministratorIsNotExempt()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Suspended);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Suspended);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Approved);
 
@@ -176,7 +176,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task AnOperatorCanApproveACustomerWithACommand()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
 
@@ -192,7 +192,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task AnOperatorCanRejectACustomerWithACommand()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
 
@@ -207,7 +207,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task TheApprovedCustomerIsNotified()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
 
@@ -238,7 +238,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task AnAccountWithNoTelegramIdIsRefusedRatherThanSentAsZero()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone["09000000001"] =
             Person(BootstrapConstant.RootAdminUserId, 0, "09000000001", UserRole.SuperAdmin, UserStatus.Pending);
 
@@ -253,7 +253,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task ApprovingSomebodyAlreadyApprovedChangesNothing()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Approved);
 
@@ -268,7 +268,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task AnUnknownPhoneNumberIsReported()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
 
@@ -290,7 +290,7 @@ public class FirstRunBootstrapTests
     [InlineData("تایید")]
     public async Task AWordStartingWithTheSameLetterIsNotTreatedAsACommand(string text)
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
 
         var handler = Build();
 
@@ -348,7 +348,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task AnOperatorTappingTheButtonStillApproves()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.Admin, UserStatus.Approved);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.Admin, UserStatus.Approved);
 
         // The button now skips a customer who is already approved (issue #291), so the customer has
         // to exist as pending; with a single fake user every id would answer as the approved owner.
@@ -375,7 +375,7 @@ public class FirstRunBootstrapTests
     [Fact]
     public async Task TheCompleteFirstRunSucceeds()
     {
-        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09209698569", UserRole.RegularUser, UserStatus.Pending);
+        _usersApi.User = Person(OwnerId, OwnerTelegramId, "09120000001", UserRole.RegularUser, UserStatus.Pending);
         _usersApi.UsersByPhone[CustomerPhone] =
             Person(CustomerId, CustomerTelegramId, CustomerPhone, UserRole.RegularUser, UserStatus.Pending);
 

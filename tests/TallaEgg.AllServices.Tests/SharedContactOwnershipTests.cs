@@ -32,7 +32,7 @@ public class SharedContactOwnershipTests
 {
     private const long CustomerTelegramId = 262176247;
     private const long ImpostorTelegramId = 555000111;
-    private const string SomebodyElsesPhone = "09158527483";
+    private const string SomebodyElsesPhone = "09120000002";
 
     private readonly FakeBotMessenger _messenger = new();
     private readonly FakeUsersApiClient _usersApi = new();
