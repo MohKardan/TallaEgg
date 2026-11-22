@@ -329,7 +329,7 @@ verify with `grep`/`diff` over the fields that must differ across the set. The s
 any batch of near-identical artifacts — per-environment config files, test data sets, tables of
 repeated rows in docs.
 
-### Re-read cited files after context compaction, and check paths in `AUDIT_*` directly
+### Re-read cited files after context compaction, and do not assume `check-doc-paths.sh` checks inline code paths
 
 In the initial commit of PR #355 (2026-11-22), Session 4 wrote the November audit report after an
 automatic context compaction had replaced earlier file reads with a summary. Relying on that summary
@@ -337,9 +337,11 @@ instead of re-opening the files introduced shifted line numbers, three non-exist
 list, a misstated return envelope (`ApiResponse<TradeDto>` instead of `ApiResponse<Guid?>`), and wrong
 subfolder prefixes on `src/TallaEgg/TallaEgg.Core/UnauthenticatedExposure.cs` and
 `src/TallaEgg/TallaEgg.Core/Cors/CorsExtensions.cs`. Both wrong paths passed CI because
-`scripts/check-doc-paths.sh` excludes `docs/audit/AUDIT_*` so frozen historical audits do not break when
-code moves later.
+`scripts/check-doc-paths.sh` strips inline code spans (`strip_code_spans`) and checks **only Markdown
+`[label](path)` link destinations** in every file, and `EXCLUDED_GLOBS` additionally excludes
+`docs/audit/AUDIT_*` from Markdown link checking so frozen historical audits do not break when code moves.
 
 After any context compaction, re-read the exact lines and raw command outputs before citing them in an
-archived document, and check inline paths in a newly written `docs/audit/` report directly against the
-working tree rather than assuming `scripts/check-doc-paths.sh` covered it.
+archived document. Check bare inline-code paths in any file, and Markdown links in a newly written
+`docs/audit/AUDIT_*` report, directly against the working tree rather than assuming
+`scripts/check-doc-paths.sh` covered them.
