@@ -147,6 +147,15 @@ tested had not been committed yet, so the working change was silently replaced b
 It was recovered only because a copy had been taken first. Copy the file before the experiment and
 copy it back, or commit first and use `git stash`.
 
+### Redacting personal identity from files while naming it in the PR body leaks it anyway
+
+PR #354 (2026-11-16) replaced personal names, institutional names and real phone numbers across tracked
+files and PDF metadata, then quoted the exact removed name and phone numbers inside the public GitHub
+PR description to explain what changed. A public repository's PR descriptions and commit messages are
+as public as its working tree. Describe redacted values by category and file location ("replaced three
+real applicant phone numbers in test fixtures with `09120000001-3`"), never by repeating the removed
+values.
+
 ---
 
 ## Tests
@@ -286,6 +295,19 @@ quote.
 credit → trade produces correct balances even when registration created no wallets at all. That is how
 #209 (registration's wallet call answered 401) stayed hidden. When testing anything wallet-related,
 read the log of the registration itself.
+
+### Local `sqlcmd` needs `-C`, and `Orders.Status` is `nvarchar` while `OutboxMessages.Status` is `int`
+
+Two read-only queries failed on the first try during the 2026-11-22 audit:
+
+- `sqlcmd -S "localhost\SQLEXPRESS" -E` under Microsoft ODBC Driver 18 aborts with `SSL Provider: The
+  certificate chain was issued by an authority that is not trusted`. Always pass `-C` (trust the local
+  self-signed server certificate) on developer SQL Express connections.
+- `SELECT ... FROM TallaEggOrders.dbo.Orders WHERE Status IN (0, 1, 2)` fails with `Conversion failed
+  when converting the nvarchar value 'Completed' to data type int`. `OrderConfigurations` stores
+  `Orders.Status` with `HasConversion<string>()` (`'Pending'`, `'Confirmed'`, `'Completed'`,
+  `'Cancelled'`, `'Failed'`), whereas `OutboxMessages.Status` is stored as an integer (`0..3`). Query
+  `Orders.Status` with string literals.
 
 ---
 
