@@ -40,6 +40,7 @@ agent that made a change is not independent evidence about it.
 | 2026-10-01 | 7.6 / 10 | ~72% | [v9.0](METHODOLOGY_v9.md) | DeepSeek V4.1 Flash / Cline | [`AUDIT_2026-10.md`](AUDIT_2026-10.md) (measured 2026-09-26 … 09-29) |
 | 2026-10-06 | 5.0 / 10 | ~50% | [v9.0](METHODOLOGY_v9.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10b.md`](AUDIT_2026-10b.md) |
 | 2026-10-06 | 5.0 / 10 | ~50% | [v10.0](METHODOLOGY_v10.md) | Gemini 3.1 Pro High / Antigravity | [`AUDIT_2026-10c.md`](AUDIT_2026-10c.md) |
+| 2026-11-22 | 6.0 / 10 | ~58% | [v10.0](METHODOLOGY_v10.md) | Gemini (High) / Antigravity | [`AUDIT_2026-11.md`](AUDIT_2026-11.md) |
 
 **The 2026-09-26 and 2026-10-01 rows are the archive's first genuinely comparable pair, and they disagree.** Both were
 run under v9, both audited the same commit (`70df6a5`), and they differ in reader — 8.0 from Gemini 3.8
@@ -51,7 +52,7 @@ one unresolved High. **[`AUDIT_2026-10.md`](AUDIT_2026-10.md) §4 carries an ID 
 extended the same finding-ID space differently — `M-5` means rate limiting in one file and the
 launch-profile authentication gap in the other.
 
-**The newest row is dated after its own measurements.** That audit's working sessions ran on 2026-09-26
+**The 2026-10-01 row is dated after its own measurements.** That audit's working sessions ran on 2026-09-26
 and 2026-09-29 and it was written up on 2026-09-30, but it is dated **2026-10-01** — the day it was
 committed and archived, which is the date its file name (`AUDIT_2026-10.md`) carries. §3 of that file
 gives the measurement window session by session, and that section — not the file name and not this
@@ -59,7 +60,7 @@ column — is the record of when the readings were taken.
 
 **Read this column-by-column, not row-by-row.** These runs used different methods and different
 models — the product owner supplied the model attribution for the first two rows in August 2026, and
-the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known for every run. The newest
+the July prompt itself in `METHODOLOGY_v1.md`, so the column is now known for every run. The 2026-10-01
 row's model was not visible to the session that ran it; it was read from Cline's own state on the
 machine afterwards, and §1 of that file says how and flags that it is the tool's record rather than a
 live read. The method is readable for four of the six. A score that rises between runs may mean the code
