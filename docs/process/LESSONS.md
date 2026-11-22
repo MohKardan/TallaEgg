@@ -305,7 +305,7 @@ Two read-only queries failed on the first try during the 2026-11-22 audit:
   self-signed server certificate) on developer SQL Express connections.
 - `SELECT ... FROM TallaEggOrders.dbo.Orders WHERE Status IN (0, 1, 2)` fails with `Conversion failed
   when converting the nvarchar value 'Completed' to data type int`. `OrderConfigurations` stores
-  `Orders.Status` with `HasConversion<string>()` (`'Pending'`, `'Confirmed'`, `'Completed'`,
+  `Orders.Status` with `HasConversion<string>()` (`'Pending'`, `'Confirmed'`, `'Partially'`, `'Completed'`,
   `'Cancelled'`, `'Failed'`), whereas `OutboxMessages.Status` is stored as an integer (`0..3`). Query
   `Orders.Status` with string literals.
 
@@ -328,3 +328,18 @@ generator script kept outside the repo, or one good file plus scripted substitut
 verify with `grep`/`diff` over the fields that must differ across the set. The same applies to
 any batch of near-identical artifacts — per-environment config files, test data sets, tables of
 repeated rows in docs.
+
+### Re-read cited files after context compaction, and check paths in `AUDIT_*` directly
+
+In the initial commit of PR #355 (2026-11-22), Session 4 wrote the November audit report after an
+automatic context compaction had replaced earlier file reads with a summary. Relying on that summary
+instead of re-opening the files introduced shifted line numbers, three non-existent GHSA IDs in a prose
+list, a misstated return envelope (`ApiResponse<TradeDto>` instead of `ApiResponse<Guid?>`), and wrong
+subfolder prefixes on `src/TallaEgg/TallaEgg.Core/UnauthenticatedExposure.cs` and
+`src/TallaEgg/TallaEgg.Core/Cors/CorsExtensions.cs`. Both wrong paths passed CI because
+`scripts/check-doc-paths.sh` excludes `docs/audit/AUDIT_*` so frozen historical audits do not break when
+code moves later.
+
+After any context compaction, re-read the exact lines and raw command outputs before citing them in an
+archived document, and check inline paths in a newly written `docs/audit/` report directly against the
+working tree rather than assuming `scripts/check-doc-paths.sh` covered it.
