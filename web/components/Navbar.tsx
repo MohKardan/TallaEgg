@@ -46,28 +46,28 @@ export default function Navbar() {
 
           <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[#9CA3AF]">
             <Link
-              href="/#ecosystem"
+              href="/#platform"
               className="hover:text-[#F2EEE5] transition-colors"
             >
-              اکوسیستم دارایی‌ها
+              زیرساخت معاملات
             </Link>
             <Link
-              href="/#rates"
+              href="/#transparency"
               className="hover:text-[#F2EEE5] transition-colors"
             >
-              نرخ مرجع طلا (RWA)
+              شفافیت و دفترکل
             </Link>
             <Link
               href="/#calculator"
               className="hover:text-[#F2EEE5] transition-colors"
             >
-              محاسبه‌گر ارزش
+              محاسبه‌گر وزن و ارزش
             </Link>
             <Link
-              href="/#governance"
-              className="hover:text-[#F2EEE5] transition-colors"
+              href="/vision"
+              className="hover:text-[#C9A45A] transition-colors"
             >
-              شفافیت و DAO
+              چشم‌انداز و نقشه راه
             </Link>
           </nav>
 
@@ -127,32 +127,32 @@ export default function Navbar() {
         {mobileMenuOpen && (
           <div className="md:hidden border-b border-[#2B303A] bg-[#1F2329] px-4 py-4 space-y-3">
             <Link
-              href="/#ecosystem"
+              href="/#platform"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm text-[#F2EEE5] hover:text-[#C9A45A] py-1"
             >
-              اکوسیستم دارایی‌ها
+              زیرساخت معاملات
             </Link>
             <Link
-              href="/#rates"
+              href="/#transparency"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm text-[#F2EEE5] hover:text-[#C9A45A] py-1"
             >
-              نرخ مرجع طلا (RWA)
+              شفافیت و دفترکل
             </Link>
             <Link
               href="/#calculator"
               onClick={() => setMobileMenuOpen(false)}
               className="block text-sm text-[#F2EEE5] hover:text-[#C9A45A] py-1"
             >
-              محاسبه‌گر ارزش
+              محاسبه‌گر وزن و ارزش
             </Link>
             <Link
-              href="/#governance"
+              href="/vision"
               onClick={() => setMobileMenuOpen(false)}
-              className="block text-sm text-[#F2EEE5] hover:text-[#C9A45A] py-1"
+              className="block text-sm text-[#C9A45A] font-medium py-1"
             >
-              شفافیت و DAO
+              چشم‌انداز و نقشه راه
             </Link>
           </div>
         )}

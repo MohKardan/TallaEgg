@@ -2,9 +2,20 @@
   "$schema": "https://tr.designtokens.org/format/",
   "meta": {
     "brand": "ZARORBIT",
-    "version": "1.0.0",
+    "brandFa": "زَر اوربیت",
+    "version": "1.1.0",
     "brandBookSource": "ZARORBIT Brand Book v1.1 (2026-11-11)",
-    "logoDirection": "R1 — 1-0-1 Orbital Z Monogram (Owner Approved)",
+    "logoDirection": "D3 — Suspended-Core Orbital Z (Owner Approved, 2026-11-23)",
+    "lockupSystem": "Separated [Symbol] ZARORBIT with Manrope Bold (SIL OFL-1.1) outlines (fill-rule=nonzero)",
+    "domains": [
+      "zarorbit.ir",
+      "zarorbit.com"
+    ],
+    "telegram": {
+      "bot": "@zarorbitbot",
+      "channel": "@zarorbit",
+      "botCopyPolicy": "White-label for partner gold shops in pilot phase"
+    },
     "accessibilityStandard": "WCAG 2.2 AA",
     "fontLicenses": {
       "Inter": "SIL Open Font License 1.1",
@@ -36,64 +47,64 @@
       }
     },
     "neutral": {
-      "950": {
-        "$value": "#101215",
-        "$type": "color"
-      },
-      "900": {
-        "$value": "#17191D",
-        "$type": "color"
-      },
-      "800": {
-        "$value": "#1F2329",
-        "$type": "color"
-      },
-      "700": {
-        "$value": "#282D35",
-        "$type": "color"
-      },
-      "600": {
-        "$value": "#3A414D",
-        "$type": "color"
-      },
-      "500": {
-        "$value": "#6B7485",
-        "$type": "color",
-        "$description": "Accessible dark-mode interactive border (>=3.2:1 on Obsidian 800)"
-      },
-      "400": {
-        "$value": "#9CA3AF",
-        "$type": "color",
-        "$description": "Muted text on Dark surfaces (>=5.4:1)"
-      },
-      "300": {
-        "$value": "#5B626E",
-        "$type": "color",
-        "$description": "Muted text on Light surfaces (>=5.3:1)"
-      },
-      "200": {
-        "$value": "#7C776B",
-        "$type": "color",
-        "$description": "Accessible light-mode interactive border (>=3.8:1 on Ivory)"
-      },
-      "150": {
-        "$value": "#D0C8B8",
-        "$type": "color"
-      },
-      "100": {
-        "$value": "#E7E1D4",
-        "$type": "color"
-      },
-      "50": {
-        "$value": "#F2EEE5",
+      "0": {
+        "$value": "#FFFFFF",
         "$type": "color"
       },
       "25": {
         "$value": "#FAF8F3",
         "$type": "color"
       },
-      "0": {
-        "$value": "#FFFFFF",
+      "50": {
+        "$value": "#F2EEE5",
+        "$type": "color"
+      },
+      "100": {
+        "$value": "#E7E1D4",
+        "$type": "color"
+      },
+      "150": {
+        "$value": "#D0C8B8",
+        "$type": "color"
+      },
+      "200": {
+        "$value": "#7C776B",
+        "$type": "color",
+        "$description": "Accessible light-mode interactive border (>=3.8:1 on Ivory)"
+      },
+      "300": {
+        "$value": "#5B626E",
+        "$type": "color",
+        "$description": "Muted text on Light surfaces (>=5.3:1)"
+      },
+      "400": {
+        "$value": "#9CA3AF",
+        "$type": "color",
+        "$description": "Muted text on Dark surfaces (>=5.4:1)"
+      },
+      "500": {
+        "$value": "#6B7485",
+        "$type": "color",
+        "$description": "Accessible dark-mode interactive border (>=3.2:1 on Obsidian 800)"
+      },
+      "600": {
+        "$value": "#3A414D",
+        "$type": "color"
+      },
+      "700": {
+        "$value": "#282D35",
+        "$type": "color"
+      },
+      "800": {
+        "$value": "#1F2329",
+        "$type": "color"
+      },
+      "900": {
+        "$value": "#17191D",
+        "$type": "color"
+      },
+      "950": {
+        "$value": "#101215",
         "$type": "color"
       }
     },

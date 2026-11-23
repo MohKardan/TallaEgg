@@ -345,3 +345,16 @@ After any context compaction, re-read the exact lines and raw command outputs be
 archived document. Check bare inline-code paths in any file, and Markdown links in a newly written
 `docs/audit/AUDIT_*` report, directly against the working tree rather than assuming
 `scripts/check-doc-paths.sh` covered them.
+
+### Render SVG brand masters in Chromium, and use `fill-rule="nonzero"` for TrueType font outlines
+
+Reading SVG XML alone missed two defects in the v1.0 logo masters (#353) that were immediately
+obvious once rendered in headless Chromium (2026-11-22): an un-expanded `<ellipse stroke>` layered
+under `<path>` bars created a 0.76-unit step notch at the corners and a hard cut line across the
+metallic campaign gradient. Separately, when converting Google Fonts TrueType outlines (`Manrope`
+via `opentype.js`) to SVG `<path>` elements, applying `fill-rule="evenodd"` punches hollow holes
+where variable-origin strokes overlap (visible in `A`, `R`, and `B`).
+
+Emit SVG logo masters from one script as closed filled paths (no un-expanded strokes), always set
+`fill-rule="nonzero"` on TrueType-derived wordmark paths, and visually inspect a real headless
+Chromium screenshot across dark, light, monochrome, metallic, and 16px/32px sizes before committing.
