@@ -2,7 +2,7 @@ export interface BrandConfig {
   name: {
     fa: string;
     en: "ZARORBIT";
-    monogram: string;
+    symbolName: string;
     ecosystemFa: string;
   };
   slogan: {
@@ -13,6 +13,7 @@ export interface BrandConfig {
   };
   domain: {
     primary: string;
+    secondary: string;
     siteUrl: string;
   };
   tagline: {
@@ -23,6 +24,8 @@ export interface BrandConfig {
   telegram: {
     botUsername: string;
     botUrl: string;
+    channelUsername: string;
+    channelUrl: string;
   };
   seo: {
     title: string;
@@ -55,47 +58,51 @@ export const brandConfig: BrandConfig = {
   name: {
     fa: "زَر اوربیت",
     en: "ZARORBIT",
-    monogram: "R1 (1–0–1)",
-    ecosystemFa: "زیست‌بوم دارایی‌های واقعی و دیجیتال ZARORBIT",
+    symbolName: "Suspended-Core Orbital Z",
+    ecosystemFa: "زیرساخت شفاف معاملات طلا و دارایی‌ها — زَر اوربیت",
   },
   slogan: {
     en: "Real & Digital Assets. Collective Ownership.",
-    fa: "دارایی‌های واقعی و دیجیتال. مالکیت و مشارکت جمعی.",
-    categoryEn: "DECENTRALIZED ASSET ECOSYSTEM",
-    categoryFa: "زیست‌بوم غیرمتمرکز دارایی‌ها",
+    fa: "زیرساخت شفاف معاملات طلا و دارایی‌ها.",
+    categoryEn: "TRANSPARENT GOLD & ASSET INFRASTRUCTURE",
+    categoryFa: "زیرساخت شفاف معاملات طلا",
   },
   domain: {
     primary: process.env.NEXT_PUBLIC_SITE_HOST || "zarorbit.ir",
+    secondary: "zarorbit.com",
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://zarorbit.ir",
   },
   tagline: {
-    en: "A Community-Governed Ecosystem for Real and Digital Assets.",
-    fa: "دارایی‌های واقعی و دیجیتال. مالکیت و مشارکت جمعی.",
+    en: "Transparent Gold Trading Infrastructure, Built to Evolve Into a Multi-Asset Ecosystem.",
+    fa: "زیرساخت شفاف معاملات طلای آبشده برای بازار و مشتریان.",
     subFa:
-      "اتصال شفاف دارایی‌های دنیای واقعی (با نقطه شروع طلا) و دارایی‌های دیجیتال شامل رمزارزها و NFTها در مسیری جامعه‌محور به سوی حکمرانی DAO.",
+      "اتصال مستقیم مظنه لحظه‌ای طلافروشی، دفترکل دقیق با کارمزد ۰٪ و تسویه شفاف روی تلگرام؛ با نقشه راه تدریجی به سوی زیست‌بوم دارایی‌های واقعی و دیجیتال.",
   },
   telegram: {
     botUsername:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "zarorbitbot",
     botUrl:
       process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL || "https://t.me/zarorbitbot",
+    channelUsername:
+      process.env.NEXT_PUBLIC_TELEGRAM_CHANNEL_USERNAME || "zarorbit",
+    channelUrl:
+      process.env.NEXT_PUBLIC_TELEGRAM_CHANNEL_URL || "https://t.me/zarorbit",
   },
   seo: {
-    title: "ZARORBIT (زَر اوربیت) — زیست‌بوم دارایی‌های واقعی و دیجیتال",
+    title: "ZARORBIT (زَر اوربیت) — زیرساخت شفاف معاملات طلا و دارایی‌ها",
     titleTemplate: "%s | ZARORBIT",
     description:
-      "زیست‌بوم روبه‌توسعه ZARORBIT برای اتصال شفاف دارایی‌های دنیای واقعی (RWA با نقطه شروع طلای ۱۸ عیار) و دارایی‌های دیجیتال (رمزارزها و NFTها) با مسیر تدریجی حکمرانی جامعه (DAO).",
+      "زَر اوربیت (ZARORBIT) زیرساخت معاملاتی و دفترکل دقیق برای معاملات شفاف طلای آبشده با اسپرد روشن و کارمزد ۰٪، همراه با چشم‌انداز بلندمدت زیست‌بوم دارایی‌های واقعی و دیجیتال.",
     keywords: [
       "ZARORBIT",
       "زَر اوربیت",
-      "زیست‌بوم دارایی",
+      "معاملات طلای آبشده",
+      "زیرساخت معاملات طلا",
+      "دفترکل معاملات طلا",
       "Real-World Assets",
       "RWA",
-      "طلای آبشده",
-      "رمزارز",
-      "NFT",
-      "حکمرانی DAO",
-      "مالکیت جمعی",
+      "طلای ۱۸ عیار",
+      "مظنه طلا",
     ],
   },
   theme: {

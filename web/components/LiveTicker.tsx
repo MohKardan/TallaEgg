@@ -1,73 +1,80 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { brandConfig } from "@/config/brand.config";
 import { ZarorbitSymbolSvg } from "@/components/BrandLogo";
 
 export default function LiveTicker() {
-  const tickerItems = [
+  const statusItems = [
     {
-      label: "نقطه شروع RWA (طلای ۱۸ عیار)",
-      value: "۴,۳۵۰,۰۰۰ تومان",
-      status: "نمونه مرجع",
+      label: "کانال معاملاتی فعال",
+      value: `@${brandConfig.telegram.botUsername}`,
       tone: "gold" as const,
+      ltr: true,
     },
     {
-      label: "دارایی‌های دیجیتال (Crypto & NFT)",
-      value: "در حال توسعه",
-      tone: "warning" as const,
-    },
-    {
-      label: "مدل کارمزد ماژول آزمایشی",
-      value: "۰.۰۰٪ (اسپرد شفاف)",
+      label: "کارمزد معاملاتی",
+      value: "۰.۰۰٪ (درآمد از اسپرد شفاف)",
       tone: "teal" as const,
+      ltr: false,
     },
     {
-      label: "مسیر حکمرانی",
-      value: "جامعه‌محور / Progressive DAO",
+      label: "تسویه و اعتبار",
+      value: "دفترکل دقیق بازارگردان (Dealer Book)",
       tone: "neutral" as const,
+      ltr: false,
+    },
+    {
+      label: "چشم‌انداز آتی",
+      value: "زیست‌بوم دارایی‌های واقعی و دیجیتال",
+      tone: "neutral" as const,
+      ltr: false,
+      href: "/vision",
     },
   ];
 
   return (
     <div className="w-full bg-[#101215] border-b border-[#2B303A] py-1.5 px-4 text-xs overflow-hidden select-none">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-        {/* Left Ecosystem Identifier */}
+        {/* Platform Identifier */}
         <div className="flex items-center gap-2 shrink-0">
           <ZarorbitSymbolSvg sizePx={16} />
           <span className="bidi-isolate text-[11px] font-bold text-[#C9A45A] tracking-wider hidden sm:inline">
-            {brandConfig.name.en} ECOSYSTEM
+            {brandConfig.name.en}
           </span>
-          <span className="inline-flex items-center rounded-full bg-[#192535] border border-[#2D4D73] px-2 py-0.5 text-[10px] font-semibold text-[#6BA4E8]">
-            Beta Focus
+          <span className="inline-flex items-center rounded-full bg-[#162A24] border border-[#286B63] px-2 py-0.5 text-[10px] font-semibold text-[#48B884]">
+            پایلوت طلا
           </span>
         </div>
 
-        {/* Ticker Items */}
+        {/* Truthful Operational Status Items (no hardcoded fake prices) */}
         <div className="flex items-center gap-6 overflow-x-auto no-scrollbar scroll-smooth text-[11px] text-[#9CA3AF]">
-          {tickerItems.map((item, idx) => (
+          {statusItems.map((item, idx) => (
             <div
               key={idx}
               className="flex items-center gap-1.5 shrink-0 whitespace-nowrap"
             >
               <span>{item.label}:</span>
-              <span
-                className={`font-semibold tabular-nums ${
-                  item.tone === "gold"
-                    ? "text-[#C9A45A]"
-                    : item.tone === "teal"
-                    ? "text-[#4CB3A5]"
-                    : item.tone === "warning"
-                    ? "text-[#E2A93B]"
-                    : "text-[#F2EEE5]"
-                }`}
-              >
-                {item.value}
-              </span>
-              {item.status && (
-                <span className="text-[10px] text-[#9CA3AF]">
-                  ({item.status})
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="font-semibold text-[#C9A45A] hover:underline"
+                >
+                  {item.value}
+                </Link>
+              ) : (
+                <span
+                  className={`font-semibold ${item.ltr ? "bidi-isolate" : ""} ${
+                    item.tone === "gold"
+                      ? "text-[#C9A45A]"
+                      : item.tone === "teal"
+                      ? "text-[#4CB3A5]"
+                      : "text-[#F2EEE5]"
+                  }`}
+                >
+                  {item.value}
                 </span>
               )}
             </div>
@@ -77,7 +84,7 @@ export default function LiveTicker() {
         {/* Right Transparency Note */}
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-[#9CA3AF] shrink-0">
           <ShieldCheck className="h-3.5 w-3.5 text-[#4CB3A5]" />
-          <span>تفکیک صریح وضعیت فعلی و نقشه راه</span>
+          <span>مظنه زنده از طریق طلافروشی در ربات</span>
         </div>
       </div>
     </div>

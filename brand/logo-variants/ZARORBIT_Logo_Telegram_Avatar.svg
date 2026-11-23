@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="ZARORBIT Telegram Avatar">
+  <rect width="128" height="128" fill="#17191D"/>
+  <g transform="translate(16.64,16.64) scale(0.74)">
+    <path d="M 6.00 64 A 58 58 0 1 1 122.00 64 A 58 58 0 1 1 6.00 64 Z M 112.00 64 A 48 48 0 1 0 16.00 64 A 48 48 0 1 0 112.00 64 Z M 32.64 34.00 H 95.36 V 44.60 L 59.64 83.40 H 95.36 V 94.00 H 32.64 V 83.40 L 68.36 44.60 H 32.64 Z M 78.76 44.60 L 43.04 83.40 L 49.24 83.40 L 84.96 44.60 Z" fill="#C9A45A" fill-rule="nonzero"/>
+  </g>
+</svg>

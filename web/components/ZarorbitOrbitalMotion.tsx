@@ -58,12 +58,10 @@ function rotatePoint3D(
 }
 
 /**
- * Restrained architectural 1-0-1 orbital visualization aligned with
- * ZARORBIT Brand Book §8.2 & Visual Identity Guidelines v1.0 §11:
- * - Approved R1 (1–0–1) monogram centerpiece without Zcash stems
- * - Maximum of 2 clean orbital paths (Gold RWA axis + Orbit Teal interoperability axis)
- * - Minimal network participant nodes (no scattered 0/1 binary particles)
- * - Honors `prefers-reduced-motion: reduce`
+ * Restrained architectural orbital visualization featuring the owner-approved
+ * Suspended-Core Orbital Z (D3) centerpiece and a maximum of two orbital tracks
+ * (Gold asset axis + Orbit Teal settlement/interoperability axis).
+ * Honors `prefers-reduced-motion: reduce`.
  */
 export default function ZarorbitOrbitalMotion({
   className = "",
@@ -104,21 +102,20 @@ export default function ZarorbitOrbitalMotion({
     const cy = logicalSize / 2;
     const fov = 680;
 
-    // Maximum two restrained orbital paths per Brand Book §8.2
     const orbits: OrbitDef[] = [
       {
-        rx: 156,
-        ry: 148,
+        rx: 158,
+        ry: 150,
         tiltX: 1.12,
         tiltY: 0.22,
         tiltZ: -0.44,
         precessSpeed: 0.08,
         strokeRgb: "201, 164, 90", // Metallic Gold #C9A45A
-        alpha: 0.58,
+        alpha: 0.55,
       },
       {
-        rx: 132,
-        ry: 126,
+        rx: 134,
+        ry: 128,
         tiltX: 0.92,
         tiltY: -0.34,
         tiltZ: 0.54,
@@ -129,7 +126,6 @@ export default function ZarorbitOrbitalMotion({
       },
     ];
 
-    // Minimal participant nodes along the two orbital paths
     const nodes: NetworkNode[] = [
       { orbitIdx: 0, angle: 0.4, speed: 0.28, color: "#C9A45A", radius: 4.5 },
       { orbitIdx: 0, angle: 3.54, speed: 0.28, color: "#F2EEE5", radius: 3.2 },
@@ -150,73 +146,73 @@ export default function ZarorbitOrbitalMotion({
     let lastTime = performance.now();
     let elapsed = 0;
 
-    const drawR1Monogram = (rotX: number, rotY: number) => {
-      // Scale factor puts 128x128 R1 artwork neatly centered around origin (64,64)
-      const s = 1.48;
+    const drawD3Medallion = (rotX: number, rotY: number) => {
+      const s = 1.42;
       const project2D = (gx: number, gy: number) => {
         const v = rotatePoint3D((gx - 64) * s, (gy - 64) * s, 0, rotX, rotY, 0);
         return project(v);
       };
 
-      // 1. Central tilted elliptical "0" orbit (-56 deg) sampled in 3D space
-      const ellPts: { sx: number; sy: number }[] = [];
-      const steps = 64;
-      const radAngle = (-56 * Math.PI) / 180;
-      const cosA = Math.cos(radAngle);
-      const sinA = Math.sin(radAngle);
-      for (let i = 0; i <= steps; i++) {
-        const t = (i / steps) * Math.PI * 2;
-        const ex = 38.0 * Math.cos(t);
-        const ey = 14.5 * Math.sin(t);
-        const gx = 64 + ex * cosA - ey * sinA;
-        const gy = 64 + ex * sinA + ey * cosA;
-        ellPts.push(project2D(gx, gy));
-      }
+      const goldGrad = ctx.createLinearGradient(cx - 82, cy - 82, cx + 82, cy + 82);
+      goldGrad.addColorStop(0, "#EBD391");
+      goldGrad.addColorStop(0.5, "#C9A45A");
+      goldGrad.addColorStop(1, "#9B7834");
 
       ctx.save();
+
+      // 1. Closed outer bullion ring (R_out=58, R_in=48) using nonzero opposite winding
       ctx.beginPath();
-      ellPts.forEach((pt, idx) => {
-        if (idx === 0) ctx.moveTo(pt.sx, pt.sy);
-        else ctx.lineTo(pt.sx, pt.sy);
+      const ringSteps = 72;
+      for (let i = 0; i <= ringSteps; i++) {
+        const a = (i / ringSteps) * Math.PI * 2;
+        const p = project2D(64 + 58 * Math.cos(a), 64 + 58 * Math.sin(a));
+        if (i === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      }
+      ctx.closePath();
+      for (let i = ringSteps; i >= 0; i--) {
+        const a = (i / ringSteps) * Math.PI * 2;
+        const p = project2D(64 + 48 * Math.cos(a), 64 + 48 * Math.sin(a));
+        if (i === ringSteps) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      }
+      ctx.closePath();
+
+      // 2. Suspended Double-Rail Z core (outer polygon CW + diagonal slit CCW)
+      const zOuter: [number, number][] = [
+        [32.64, 34.0],
+        [95.36, 34.0],
+        [95.36, 44.6],
+        [59.64, 83.4],
+        [95.36, 83.4],
+        [95.36, 94.0],
+        [32.64, 94.0],
+        [32.64, 83.4],
+        [68.36, 44.6],
+        [32.64, 44.6],
+      ];
+      zOuter.forEach(([x, y], i) => {
+        const p = project2D(x, y);
+        if (i === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
       });
       ctx.closePath();
-      ctx.strokeStyle = "#C9A45A";
-      ctx.lineWidth = 10.5 * s;
-      ctx.stroke();
 
-      // Subtle inner Ivory highlight along orbital core
-      ctx.strokeStyle = "rgba(242, 238, 229, 0.22)";
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-
-      // 2. Top chamfered horizontal "1" bar: M 37 24 H 94 V 36 H 28 L 26 34 Z
-      const topBar: [number, number][] = [
-        [37, 24],
-        [94, 24],
-        [94, 36],
-        [28, 36],
-        [26, 34],
+      const zSlitCCW: [number, number][] = [
+        [78.76, 44.6],
+        [43.04, 83.4],
+        [49.24, 83.4],
+        [84.96, 44.6],
       ];
-      // Bottom chamfered horizontal "1" bar: M 34 92 H 100 L 102 94 L 91 104 H 34 Z
-      const botBar: [number, number][] = [
-        [34, 92],
-        [100, 92],
-        [102, 94],
-        [91, 104],
-        [34, 104],
-      ];
+      zSlitCCW.forEach(([x, y], i) => {
+        const p = project2D(x, y);
+        if (i === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      });
+      ctx.closePath();
 
-      ctx.fillStyle = "#C9A45A";
-      for (const bar of [topBar, botBar]) {
-        ctx.beginPath();
-        bar.forEach(([x, y], i) => {
-          const p = project2D(x, y);
-          if (i === 0) ctx.moveTo(p.sx, p.sy);
-          else ctx.lineTo(p.sx, p.sy);
-        });
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.fillStyle = goldGrad;
+      ctx.fill("evenodd");
       ctx.restore();
     };
 
@@ -233,7 +229,6 @@ export default function ZarorbitOrbitalMotion({
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, logicalSize, logicalSize);
 
-      // Restrained Obsidian radial depth (no heavy neon aura)
       const bgGlow = ctx.createRadialGradient(cx, cy, 16, cx, cy, 180);
       bgGlow.addColorStop(0, "rgba(201, 164, 90, 0.08)");
       bgGlow.addColorStop(0.55, "rgba(76, 179, 165, 0.04)");
@@ -314,7 +309,7 @@ export default function ZarorbitOrbitalMotion({
 
       const rotY = prefersReducedMotion ? 0.14 : Math.sin(elapsed * 0.5) * 0.18 + ptr.x * 0.22;
       const rotX = prefersReducedMotion ? 0.08 : Math.cos(elapsed * 0.4) * 0.08 + ptr.y * 0.18;
-      drawR1Monogram(rotX, rotY);
+      drawD3Medallion(rotX, rotY);
 
       frontJobs.sort((a, b) => a.z - b.z);
       for (const j of frontJobs) j.draw();
@@ -381,16 +376,16 @@ export default function ZarorbitOrbitalMotion({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="نمودار تعاملی مونوگرام ۱-۰-۱ و مدار پیوند دارایی‌های واقعی و دیجیتال ZARORBIT"
+        aria-label="نمودار تعاملی مدالیون مداری ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />
 
       <div className="absolute bottom-3 inset-x-4 flex items-center justify-between text-[10px] font-mono text-[#9CA3AF] pointer-events-none z-20 px-2 bidi-isolate">
         <span className="flex items-center gap-1.5 text-[#4CB3A5]">
           <span className="h-1.5 w-1.5 rounded-full bg-[#4CB3A5]" />
-          ZARORBIT // 1–0–1 ORBIT
+          ZARORBIT // ORBITAL CORE
         </span>
-        <span>RWA • DIGITAL • DAO</span>
+        <span>GOLD LEDGER • MULTI-ASSET VISION</span>
       </div>
     </div>
   );

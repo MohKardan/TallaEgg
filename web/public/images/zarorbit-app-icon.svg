@@ -1,11 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="ZARORBIT App Icon Dark">
   <rect width="128" height="128" rx="28" fill="#17191D"/>
-  <rect x="1" y="1" width="126" height="126" rx="27" fill="none" stroke="#2D323B" stroke-width="2"/>
-  <g transform="translate(6.4,6.4) scale(0.9)">
-  <g transform="rotate(-56 64 64)">
-    <ellipse cx="64" cy="64" rx="38.0" ry="14.5" fill="none" stroke="#C9A45A" stroke-width="10.5"/>
+  <rect x="2" y="2" width="124" height="124" rx="26" fill="none" stroke="#2B303A" stroke-width="2"/>
+  <g transform="translate(11.52,11.52) scale(0.82)">
+    <path d="M 6.00 64 A 58 58 0 1 1 122.00 64 A 58 58 0 1 1 6.00 64 Z M 112.00 64 A 48 48 0 1 0 16.00 64 A 48 48 0 1 0 112.00 64 Z M 32.64 34.00 H 95.36 V 44.60 L 59.64 83.40 H 95.36 V 94.00 H 32.64 V 83.40 L 68.36 44.60 H 32.64 Z M 78.76 44.60 L 43.04 83.40 L 49.24 83.40 L 84.96 44.60 Z" fill="#C9A45A" fill-rule="nonzero"/>
   </g>
-  <path d="M 37 24 H 94 V 36 H 28 L 26 34 Z" fill="#C9A45A"/>
-  <path d="M 34 92 H 100 L 102 94 L 91 104 H 34 Z" fill="#C9A45A"/>
-</g>
 </svg>
