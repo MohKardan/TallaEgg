@@ -59,9 +59,9 @@ function rotatePoint3D(
 
 /**
  * Restrained architectural orbital visualization featuring the owner-approved
- * Suspended-Core Orbital Z (D3) centerpiece and a maximum of two orbital tracks
- * (Gold asset axis + Orbit Teal settlement/interoperability axis).
- * Honors `prefers-reduced-motion: reduce`.
+ * Suspended-Core Orbital Z (D3) centerpiece where both the outer bullion ring
+ * and the suspended double-rail Z rotate continuously around the vertical (Y) axis
+ * inside two restrained orbital tracks. Honors `prefers-reduced-motion: reduce`.
  */
 export default function ZarorbitOrbitalMotion({
   className = "",
@@ -142,77 +142,117 @@ export default function ZarorbitOrbitalMotion({
       };
     };
 
+    const zOuter: [number, number][] = [
+      [32.64, 34.0],
+      [95.36, 34.0],
+      [95.36, 44.6],
+      [59.64, 83.4],
+      [95.36, 83.4],
+      [95.36, 94.0],
+      [32.64, 94.0],
+      [32.64, 83.4],
+      [68.36, 44.6],
+      [32.64, 44.6],
+    ];
+
+    const zSlitCCW: [number, number][] = [
+      [78.76, 44.6],
+      [43.04, 83.4],
+      [49.24, 83.4],
+      [84.96, 44.6],
+    ];
+
     let animId = 0;
     let lastTime = performance.now();
     let elapsed = 0;
 
-    const drawD3Medallion = (rotX: number, rotY: number) => {
+    // Extruded metallic shading helper so spinning bullion shapes retain depth even edge-on
+    const makeGoldGradient = (rotY: number, isEdgeLayer: boolean) => {
+      const facing = Math.abs(Math.cos(rotY));
+      const grad = ctx.createLinearGradient(cx - 84, cy - 84, cx + 84, cy + 84);
+      if (isEdgeLayer) {
+        grad.addColorStop(0, "#8B6926");
+        grad.addColorStop(0.5, "#6E511B");
+        grad.addColorStop(1, "#4D3711");
+      } else if (facing > 0.35) {
+        grad.addColorStop(0, "#F3DFA6");
+        grad.addColorStop(0.45, "#C9A45A");
+        grad.addColorStop(1, "#94702C");
+      } else {
+        grad.addColorStop(0, "#DFC078");
+        grad.addColorStop(0.5, "#B1893B");
+        grad.addColorStop(1, "#7B5B20");
+      }
+      return grad;
+    };
+
+    const drawRingLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
       const s = 1.42;
-      const project2D = (gx: number, gy: number) => {
-        const v = rotatePoint3D((gx - 64) * s, (gy - 64) * s, 0, rotX, rotY, 0);
-        return project(v);
-      };
-
-      const goldGrad = ctx.createLinearGradient(cx - 82, cy - 82, cx + 82, cy + 82);
-      goldGrad.addColorStop(0, "#EBD391");
-      goldGrad.addColorStop(0.5, "#C9A45A");
-      goldGrad.addColorStop(1, "#9B7834");
-
-      ctx.save();
-
-      // 1. Closed outer bullion ring (R_out=58, R_in=48) using nonzero opposite winding
-      ctx.beginPath();
       const ringSteps = 72;
+      const proj = (gx: number, gy: number) =>
+        project(rotatePoint3D((gx - 64) * s, (gy - 64) * s, zDepth, rotX, rotY, 0));
+
+      ctx.beginPath();
       for (let i = 0; i <= ringSteps; i++) {
         const a = (i / ringSteps) * Math.PI * 2;
-        const p = project2D(64 + 58 * Math.cos(a), 64 + 58 * Math.sin(a));
+        const p = proj(64 + 58 * Math.cos(a), 64 + 58 * Math.sin(a));
         if (i === 0) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       }
       ctx.closePath();
       for (let i = ringSteps; i >= 0; i--) {
         const a = (i / ringSteps) * Math.PI * 2;
-        const p = project2D(64 + 48 * Math.cos(a), 64 + 48 * Math.sin(a));
+        const p = proj(64 + 48 * Math.cos(a), 64 + 48 * Math.sin(a));
         if (i === ringSteps) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       }
       ctx.closePath();
-
-      // 2. Suspended Double-Rail Z core (outer polygon CW + diagonal slit CCW)
-      const zOuter: [number, number][] = [
-        [32.64, 34.0],
-        [95.36, 34.0],
-        [95.36, 44.6],
-        [59.64, 83.4],
-        [95.36, 83.4],
-        [95.36, 94.0],
-        [32.64, 94.0],
-        [32.64, 83.4],
-        [68.36, 44.6],
-        [32.64, 44.6],
-      ];
-      zOuter.forEach(([x, y], i) => {
-        const p = project2D(x, y);
-        if (i === 0) ctx.moveTo(p.sx, p.sy);
-        else ctx.lineTo(p.sx, p.sy);
-      });
-      ctx.closePath();
-
-      const zSlitCCW: [number, number][] = [
-        [78.76, 44.6],
-        [43.04, 83.4],
-        [49.24, 83.4],
-        [84.96, 44.6],
-      ];
-      zSlitCCW.forEach(([x, y], i) => {
-        const p = project2D(x, y);
-        if (i === 0) ctx.moveTo(p.sx, p.sy);
-        else ctx.lineTo(p.sx, p.sy);
-      });
-      ctx.closePath();
-
-      ctx.fillStyle = goldGrad;
+      ctx.fillStyle = makeGoldGradient(rotY, isEdge);
       ctx.fill("evenodd");
+    };
+
+    const drawZLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
+      const s = 1.42;
+      const proj = (gx: number, gy: number) =>
+        project(rotatePoint3D((gx - 64) * s, (gy - 64) * s, zDepth, rotX, rotY, 0));
+
+      ctx.beginPath();
+      zOuter.forEach(([x, y], i) => {
+        const p = proj(x, y);
+        if (i === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      });
+      ctx.closePath();
+      zSlitCCW.forEach(([x, y], i) => {
+        const p = proj(x, y);
+        if (i === 0) ctx.moveTo(p.sx, p.sy);
+        else ctx.lineTo(p.sx, p.sy);
+      });
+      ctx.closePath();
+      ctx.fillStyle = makeGoldGradient(rotY, isEdge);
+      ctx.fill("evenodd");
+    };
+
+    const drawSpinningD3Medallion = (rotX: number, ringRotY: number, zRotY: number) => {
+      ctx.save();
+      // Draw subtle extruded bullion thickness layers back-to-front along each piece's own local normal
+      const ringSign = Math.cos(ringRotY) >= 0 ? 1 : -1;
+      const zSign = Math.cos(zRotY) >= 0 ? 1 : -1;
+      const depths = [-3.2, -1.6, 0, 1.6, 3.2];
+
+      // Outer bullion ring spinning around the vertical (Y) axis
+      for (let i = 0; i < depths.length; i++) {
+        const d = depths[i] * ringSign;
+        const isFrontFace = i === depths.length - 1;
+        drawRingLayer(rotX, ringRotY, d, !isFrontFace);
+      }
+
+      // Suspended double-rail Z core spinning independently around the vertical (Y) axis
+      for (let i = 0; i < depths.length; i++) {
+        const d = depths[i] * zSign;
+        const isFrontFace = i === depths.length - 1;
+        drawZLayer(rotX, zRotY, d, !isFrontFace);
+      }
       ctx.restore();
     };
 
@@ -307,9 +347,11 @@ export default function ZarorbitOrbitalMotion({
       backJobs.sort((a, b) => a.z - b.z);
       for (const j of backJobs) j.draw();
 
-      const rotY = prefersReducedMotion ? 0.14 : Math.sin(elapsed * 0.5) * 0.18 + ptr.x * 0.22;
-      const rotX = prefersReducedMotion ? 0.08 : Math.cos(elapsed * 0.4) * 0.08 + ptr.y * 0.18;
-      drawD3Medallion(rotX, rotY);
+      // Continuous vertical-axis (Y) spin for both the outer ring and suspended Z core
+      const rotX = prefersReducedMotion ? 0.06 : Math.cos(elapsed * 0.35) * 0.06 + ptr.y * 0.16;
+      const ringRotY = prefersReducedMotion ? 0.18 : elapsed * 0.55 + ptr.x * 0.4;
+      const zRotY = prefersReducedMotion ? -0.14 : -elapsed * 0.8 + ptr.x * 0.5;
+      drawSpinningD3Medallion(rotX, ringRotY, zRotY);
 
       frontJobs.sort((a, b) => a.z - b.z);
       for (const j of frontJobs) j.draw();
@@ -376,7 +418,7 @@ export default function ZarorbitOrbitalMotion({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="نمودار تعاملی مدالیون مداری ZARORBIT"
+        aria-label="نمودار تعاملی مدالیون مداری چرخان ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />
 

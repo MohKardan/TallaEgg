@@ -143,43 +143,16 @@ export const BrandHeroShowcase: React.FC<{ className?: string }> = ({
         </span>
       </div>
 
-      {/* Central Vector Orbital Medallion */}
+      {/* Central Vector Orbital Medallion (clean Obsidian stage, no extra orbit rings behind the mark) */}
       <div className="relative z-10 my-6 flex items-center justify-center">
-        <div className="relative w-56 h-56 rounded-2xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center">
-          <svg
-            viewBox="0 0 224 224"
-            width="224"
-            height="224"
-            className="absolute inset-0 pointer-events-none"
-            aria-hidden="true"
-          >
-            <ellipse
-              cx="112"
-              cy="112"
-              rx="88"
-              ry="34"
-              transform="rotate(-24 112 112)"
-              fill="none"
-              stroke="#C9A45A"
-              strokeWidth="1.2"
-              strokeOpacity="0.4"
-            />
-            <ellipse
-              cx="112"
-              cy="112"
-              rx="70"
-              ry="26"
-              transform="rotate(28 112 112)"
-              fill="none"
-              stroke="#4CB3A5"
-              strokeWidth="1.2"
-              strokeDasharray="4 4"
-              strokeOpacity="0.5"
-            />
-            <circle cx="36" cy="144" r="3.8" fill="#C9A45A" />
-            <circle cx="172" cy="80" r="3.8" fill="#4CB3A5" />
-          </svg>
-          <ZarorbitSymbolSvg sizePx={104} className="relative z-10" />
+        <div
+          className="relative w-56 h-56 rounded-2xl border border-[#2B303A] flex items-center justify-center"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 42%, #22262E 0%, #17191D 72%, #131519 100%)",
+          }}
+        >
+          <ZarorbitSymbolSvg sizePx={136} className="relative z-10" />
         </div>
       </div>
 
