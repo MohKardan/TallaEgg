@@ -1,6 +1,21 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
 import { brandConfig } from "@/config/brand.config";
+
+const vazirmatn = localFont({
+  src: "./fonts/Vazirmatn-Variable.woff2",
+  variable: "--font-vazirmatn",
+  weight: "100 900",
+  display: "swap",
+});
+
+const inter = localFont({
+  src: "./fonts/Inter-Variable.woff2",
+  variable: "--font-inter",
+  weight: "100 900",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(brandConfig.domain.siteUrl),
@@ -48,8 +63,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fa" dir="rtl" data-theme="dark">
+    <html
+      lang="fa"
+      dir="rtl"
+      data-theme="dark"
+      className={`${vazirmatn.variable} ${inter.variable}`}
+    >
       <body className="min-h-screen bg-[#17191D] text-[#F2EEE5] antialiased selection:bg-[#C9A45A]/25 selection:text-[#F2EEE5]">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:right-3 focus:z-[100] focus:rounded-[10px] focus:bg-[#C9A45A] focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-[#17191D]"
+        >
+          پرش به محتوای اصلی
+        </a>
         <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
           {children}
         </div>

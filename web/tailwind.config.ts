@@ -13,12 +13,12 @@ const config: Config = {
         ivory: "#F2EEE5",
         obsidian: "#17191D",
         surface: {
-          50: "#282D35",
+          50: "#252A32",
           100: "#1F2329",
           200: "#17191D",
           300: "#101215",
           border: "#2B303A",
-          borderControl: "#6B7485",
+          borderControl: "#525B6B",
           borderHover: "#C9A45A",
         },
         gold: {
@@ -50,16 +50,16 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Vazirmatn", "Inter", "Tahoma", "system-ui", "sans-serif"],
-        display: ["Manrope", "Inter", "Vazirmatn", "sans-serif"],
-        ui: ["Inter", "Vazirmatn", "sans-serif"],
+        sans: ["var(--font-vazirmatn)", "var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-inter)", "var(--font-vazirmatn)", "sans-serif"],
+        ui: ["var(--font-inter)", "var(--font-vazirmatn)", "sans-serif"],
       },
       borderRadius: {
-        card: "20px",
+        card: "16px",
         control: "10px",
       },
       boxShadow: {
-        card: "0 12px 32px -12px rgba(0, 0, 0, 0.55)",
+        card: "0 12px 32px -16px rgba(0, 0, 0, 0.55)",
         subtle: "0 4px 16px -4px rgba(0, 0, 0, 0.35)",
       },
     },
