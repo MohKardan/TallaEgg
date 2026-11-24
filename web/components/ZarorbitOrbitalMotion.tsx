@@ -357,10 +357,30 @@ export default function ZarorbitOrbitalMotion({
       for (const j of frontJobs) j.draw();
 
       ctx.restore();
-      if (!prefersReducedMotion) {
+      if (!prefersReducedMotion && isVisible) {
         animId = requestAnimationFrame(renderFrame);
       }
     };
+
+    let isVisible = true;
+    const observer =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (entries) => {
+              const visible = Boolean(entries[0]?.isIntersecting);
+              isVisible = visible;
+              if (!visible && animId) {
+                cancelAnimationFrame(animId);
+                animId = 0;
+              } else if (visible && !prefersReducedMotion && !animId) {
+                lastTime = performance.now();
+                animId = requestAnimationFrame(renderFrame);
+              }
+            },
+            { threshold: 0.05 }
+          )
+        : null;
+    observer?.observe(canvas);
 
     renderFrame(performance.now());
 
@@ -399,6 +419,7 @@ export default function ZarorbitOrbitalMotion({
     canvas.addEventListener("pointerleave", onPointerLeave);
 
     return () => {
+      observer?.disconnect();
       if (animId) cancelAnimationFrame(animId);
       motionQuery?.removeEventListener("change", onMotionChange);
       canvas.removeEventListener("pointermove", onPointerMove);
@@ -408,7 +429,7 @@ export default function ZarorbitOrbitalMotion({
 
   return (
     <div
-      className={`relative flex items-center justify-center rounded-[20px] bg-[#1F2329] border border-[#2B303A] shadow-card overflow-hidden p-4 ${className}`}
+      className={`relative flex items-center justify-center zar-panel overflow-hidden p-4 ${className}`}
     >
       <div
         className="absolute inset-0 zar-grid-backdrop opacity-30 pointer-events-none"
@@ -418,7 +439,7 @@ export default function ZarorbitOrbitalMotion({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="نمودار تعاملی نشان مداری چرخان ZARORBIT"
+        aria-label="انیمیشن مداری نماد ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />
 
