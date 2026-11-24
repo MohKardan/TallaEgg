@@ -59,8 +59,8 @@ function rotatePoint3D(
 
 /**
  * Restrained architectural orbital visualization featuring the owner-approved
- * Suspended-Core Orbital Z (D3) centerpiece where both the outer bullion ring
- * and the suspended double-rail Z rotate continuously around the vertical (Y) axis
+ * Zero-Interrupt Orbital Z (S1) centerpiece where both the twin Z arms and the
+ * suspended central orbital 0 ring rotate continuously around the vertical (Y) axis
  * inside two restrained orbital tracks. Honors `prefers-reduced-motion: reduce`.
  */
 export default function ZarorbitOrbitalMotion({
@@ -142,24 +142,25 @@ export default function ZarorbitOrbitalMotion({
       };
     };
 
-    const zOuter: [number, number][] = [
-      [32.64, 34.0],
-      [95.36, 34.0],
-      [95.36, 44.6],
-      [59.64, 83.4],
-      [95.36, 83.4],
-      [95.36, 94.0],
-      [32.64, 94.0],
-      [32.64, 83.4],
-      [68.36, 44.6],
-      [32.64, 44.6],
+    // Exact S1 (Zero-Interrupt Orbital Z) coordinates on 128x128 master grid
+    const s1UpperZ: [number, number][] = [
+      [12.0, 12.0],
+      [116.0, 12.0],
+      [116.0, 23.82],
+      [93.1, 46.72],
+      [81.28, 34.9],
+      [87.78, 28.4],
+      [12.0, 28.4],
     ];
 
-    const zSlitCCW: [number, number][] = [
-      [78.76, 44.6],
-      [43.04, 83.4],
-      [49.24, 83.4],
-      [84.96, 44.6],
+    const s1LowerZ: [number, number][] = [
+      [116.0, 116.0],
+      [12.0, 116.0],
+      [12.0, 104.18],
+      [34.9, 81.28],
+      [46.72, 93.1],
+      [40.22, 99.6],
+      [116.0, 99.6],
     ];
 
     let animId = 0;
@@ -186,23 +187,23 @@ export default function ZarorbitOrbitalMotion({
       return grad;
     };
 
-    const drawRingLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
-      const s = 1.42;
-      const ringSteps = 72;
+    const drawCoreRingLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
+      const s = 1.48;
+      const ringSteps = 56;
       const proj = (gx: number, gy: number) =>
         project(rotatePoint3D((gx - 64) * s, (gy - 64) * s, zDepth, rotX, rotY, 0));
 
       ctx.beginPath();
       for (let i = 0; i <= ringSteps; i++) {
         const a = (i / ringSteps) * Math.PI * 2;
-        const p = proj(64 + 58 * Math.cos(a), 64 + 58 * Math.sin(a));
+        const p = proj(64 + 24.3 * Math.cos(a), 64 + 24.3 * Math.sin(a));
         if (i === 0) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       }
       ctx.closePath();
       for (let i = ringSteps; i >= 0; i--) {
         const a = (i / ringSteps) * Math.PI * 2;
-        const p = proj(64 + 48 * Math.cos(a), 64 + 48 * Math.sin(a));
+        const p = proj(64 + 11.3 * Math.cos(a), 64 + 11.3 * Math.sin(a));
         if (i === ringSteps) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       }
@@ -211,47 +212,46 @@ export default function ZarorbitOrbitalMotion({
       ctx.fill("evenodd");
     };
 
-    const drawZLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
-      const s = 1.42;
+    const drawZArmsLayer = (rotX: number, rotY: number, zDepth: number, isEdge: boolean) => {
+      const s = 1.48;
       const proj = (gx: number, gy: number) =>
         project(rotatePoint3D((gx - 64) * s, (gy - 64) * s, zDepth, rotX, rotY, 0));
 
       ctx.beginPath();
-      zOuter.forEach(([x, y], i) => {
+      s1UpperZ.forEach(([x, y], i) => {
         const p = proj(x, y);
         if (i === 0) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       });
       ctx.closePath();
-      zSlitCCW.forEach(([x, y], i) => {
+      s1LowerZ.forEach(([x, y], i) => {
         const p = proj(x, y);
         if (i === 0) ctx.moveTo(p.sx, p.sy);
         else ctx.lineTo(p.sx, p.sy);
       });
       ctx.closePath();
       ctx.fillStyle = makeGoldGradient(rotY, isEdge);
-      ctx.fill("evenodd");
+      ctx.fill("nonzero");
     };
 
-    const drawSpinningD3Medallion = (rotX: number, ringRotY: number, zRotY: number) => {
+    const drawSpinningS1Mark = (rotX: number, armsRotY: number, coreRotY: number) => {
       ctx.save();
-      // Draw subtle extruded bullion thickness layers back-to-front along each piece's own local normal
-      const ringSign = Math.cos(ringRotY) >= 0 ? 1 : -1;
-      const zSign = Math.cos(zRotY) >= 0 ? 1 : -1;
+      const armsSign = Math.cos(armsRotY) >= 0 ? 1 : -1;
+      const coreSign = Math.cos(coreRotY) >= 0 ? 1 : -1;
       const depths = [-3.2, -1.6, 0, 1.6, 3.2];
 
-      // Outer bullion ring spinning around the vertical (Y) axis
+      // Twin Z arms spinning around the vertical (Y) axis
       for (let i = 0; i < depths.length; i++) {
-        const d = depths[i] * ringSign;
+        const d = depths[i] * armsSign;
         const isFrontFace = i === depths.length - 1;
-        drawRingLayer(rotX, ringRotY, d, !isFrontFace);
+        drawZArmsLayer(rotX, armsRotY, d, !isFrontFace);
       }
 
-      // Suspended double-rail Z core spinning independently around the vertical (Y) axis
+      // Suspended central orbital 0 ring counter-spinning around the vertical (Y) axis
       for (let i = 0; i < depths.length; i++) {
-        const d = depths[i] * zSign;
+        const d = depths[i] * coreSign;
         const isFrontFace = i === depths.length - 1;
-        drawZLayer(rotX, zRotY, d, !isFrontFace);
+        drawCoreRingLayer(rotX, coreRotY, d, !isFrontFace);
       }
       ctx.restore();
     };
@@ -347,11 +347,11 @@ export default function ZarorbitOrbitalMotion({
       backJobs.sort((a, b) => a.z - b.z);
       for (const j of backJobs) j.draw();
 
-      // Continuous vertical-axis (Y) spin for both the outer ring and suspended Z core
+      // Continuous vertical-axis (Y) spin for both the twin Z arms and suspended orbital 0 core
       const rotX = prefersReducedMotion ? 0.06 : Math.cos(elapsed * 0.35) * 0.06 + ptr.y * 0.16;
-      const ringRotY = prefersReducedMotion ? 0.18 : elapsed * 0.55 + ptr.x * 0.4;
-      const zRotY = prefersReducedMotion ? -0.14 : -elapsed * 0.8 + ptr.x * 0.5;
-      drawSpinningD3Medallion(rotX, ringRotY, zRotY);
+      const armsRotY = prefersReducedMotion ? 0.14 : elapsed * 0.55 + ptr.x * 0.4;
+      const coreRotY = prefersReducedMotion ? -0.18 : -elapsed * 0.85 + ptr.x * 0.5;
+      drawSpinningS1Mark(rotX, armsRotY, coreRotY);
 
       frontJobs.sort((a, b) => a.z - b.z);
       for (const j of frontJobs) j.draw();
@@ -418,7 +418,7 @@ export default function ZarorbitOrbitalMotion({
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="نمودار تعاملی مدالیون مداری چرخان ZARORBIT"
+        aria-label="نمودار تعاملی نشان مداری چرخان ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />
 

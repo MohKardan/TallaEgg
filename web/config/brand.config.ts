@@ -58,7 +58,7 @@ export const brandConfig: BrandConfig = {
   name: {
     fa: "زَر اوربیت",
     en: "ZARORBIT",
-    symbolName: "Suspended-Core Orbital Z",
+    symbolName: "Zero-Interrupt Orbital Z",
     ecosystemFa: "زیرساخت شفاف معاملات طلا و دارایی‌ها — زَر اوربیت",
   },
   slogan: {

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="ZARORBIT Favicon">
   <rect width="128" height="128" rx="28" fill="#17191D"/>
-  <g transform="translate(8.96,8.96) scale(0.86)">
-    <path d="M 4.00 64 A 60 60 0 1 1 124.00 64 A 60 60 0 1 1 4.00 64 Z M 112.50 64 A 48.5 48.5 0 1 0 15.50 64 A 48.5 48.5 0 1 0 112.50 64 Z M 32.70 33.50 H 95.30 V 45.00 L 60.90 83.00 H 95.30 V 94.50 H 32.70 V 83.00 L 67.10 45.00 H 32.70 Z M 77.70 45.00 L 43.30 83.00 L 50.30 83.00 L 84.70 45.00 Z" fill="#C9A45A" fill-rule="nonzero"/>
+  <g transform="translate(11.52,11.52) scale(0.82)">
+    <path d="M 10 10 L 118 10 L 118 22.72 L 94.26 46.46 L 81.54 33.74 L 87.28 28 L 10 28 Z M 118 118 L 10 118 L 10 105.28 L 33.74 81.54 L 46.46 94.26 L 40.72 100 L 118 100 Z M 38.8 64 A 25.2 25.2 0 1 1 89.2 64 A 25.2 25.2 0 1 1 38.8 64 Z M 53.4 64 A 10.6 10.6 0 1 0 74.6 64 A 10.6 10.6 0 1 0 53.4 64 Z" fill="#C9A45A" fill-rule="nonzero"/>
   </g>
 </svg>
