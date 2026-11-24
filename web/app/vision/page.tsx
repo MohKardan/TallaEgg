@@ -98,7 +98,7 @@ export default function VisionPage() {
     <>
       <Navbar />
 
-      <main className="relative flex-1 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <main id="main-content" className="relative flex-1 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         {/* Back link & Header */}
         <div className="mb-12 space-y-5">
           <Link

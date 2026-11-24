@@ -116,7 +116,7 @@ export default function LoginPage() {
     <>
       <Navbar />
 
-      <main className="relative flex-1 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+      <main id="main-content" className="relative flex-1 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
         <div
           className="absolute inset-0 zar-grid-backdrop opacity-25 pointer-events-none"
           aria-hidden="true"

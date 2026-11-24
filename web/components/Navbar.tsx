@@ -37,6 +37,17 @@ export default function Navbar() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileMenuOpen]);
+
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
@@ -113,21 +124,25 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="باز کردن منوی موبایل"
+            aria-label={mobileMenuOpen ? "بستن منوی موبایل" : "باز کردن منوی موبایل"}
             aria-expanded={mobileMenuOpen}
-            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/[0.12] text-[#F2EEE5] hover:border-[#C9A45A]"
+            aria-controls="mobile-nav"
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#6B7485] text-[#F2EEE5] hover:border-[#C9A45A]"
           >
             {mobileMenuOpen ? (
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" aria-hidden="true" />
             ) : (
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5" aria-hidden="true" />
             )}
           </button>
         </div>
       </div>
 
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-white/[0.08] bg-[#1F2329] px-4 py-4 space-y-2">
+        <div
+          id="mobile-nav"
+          className="md:hidden border-b border-white/[0.08] bg-[#1F2329] px-4 py-4 space-y-2"
+        >
           {NAV_LINKS.map((item) => (
             <Link
               key={item.href}

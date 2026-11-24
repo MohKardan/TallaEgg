@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
-import { Calculator, Check, Copy } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { AlertCircle, Calculator, Check, Copy } from "lucide-react";
 import {
   MESGHAL_TO_18K_GRAM,
   convertGoldWeight,
   formatIntegerInput,
+  isValidNonNegativeDecimalInput,
   type GoldUnit,
 } from "@/lib/gold-math";
 
@@ -20,12 +21,32 @@ export default function GoldCalculator() {
   const [unit, setUnit] = useState<GoldUnit>("gram");
   const [amountInput, setAmountInput] = useState<string>("10");
   const [mesghalPriceInput, setMesghalPriceInput] = useState<string>("");
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
+  const isAmountValid = isValidNonNegativeDecimalInput(amountInput);
   const result = convertGoldWeight(amountInput, unit, mesghalPriceInput);
 
   const handlePriceChange = (raw: string) => {
     setMesghalPriceInput(formatIntegerInput(raw));
+  };
+
+  const scheduleCopyReset = () => {
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = setTimeout(() => {
+      setCopyStatus("idle");
+      copyTimerRef.current = null;
+    }, 2200);
   };
 
   const handleCopySummary = async () => {
@@ -42,12 +63,18 @@ export default function GoldCalculator() {
 
     try {
       await navigator.clipboard.writeText(summary);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      setCopyStatus("copied");
+      scheduleCopyReset();
     } catch {
-      // Clipboard API unavailable in restricted context
+      setCopyStatus("error");
+      scheduleCopyReset();
     }
   };
+
+  const liveAnnouncement =
+    result.estimatedTotalToman > 0
+      ? `معادل ${result.grams18k.toLocaleString("fa-IR", { maximumFractionDigits: 3 })} گرم ۱۸ عیار، ${result.mesghals.toLocaleString("fa-IR", { maximumFractionDigits: 4 })} مثقال، برآورد ارزش ${result.estimatedTotalToman.toLocaleString("fa-IR")} تومان`
+      : `معادل ${result.grams18k.toLocaleString("fa-IR", { maximumFractionDigits: 3 })} گرم ۱۸ عیار و ${result.mesghals.toLocaleString("fa-IR", { maximumFractionDigits: 4 })} مثقال`;
 
   return (
     <section id="calculator" className="py-20 sm:py-24">
@@ -101,17 +128,19 @@ export default function GoldCalculator() {
                     <button
                       key={preset.label}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => {
                         setUnit(preset.unit);
                         setAmountInput(preset.amount);
                       }}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors ${
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold border transition-colors ${
                         active
                           ? "bg-[#C9A45A]/15 border-[#C9A45A] text-[#C9A45A]"
-                          : "bg-[#17191D] border-white/[0.08] text-[#F2EEE5]/75 hover:border-white/[0.2]"
+                          : "bg-[#17191D] border-[#6B7485]/60 text-[#F2EEE5]/80 hover:border-white/[0.35]"
                       }`}
                     >
-                      {preset.label}
+                      {active && <Check className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                      <span>{preset.label}</span>
                     </button>
                   );
                 })}
@@ -127,49 +156,67 @@ export default function GoldCalculator() {
                 >
                   مقدار طلا
                 </label>
-                <div className="flex rounded-[10px] overflow-hidden border border-[#525B6B] bg-[#17191D] focus-within:border-[#4CB3A5]">
+                <div
+                  className={`flex rounded-[10px] overflow-hidden border bg-[#17191D] transition-shadow focus-within:ring-2 focus-within:ring-offset-1 focus-within:ring-offset-[#1F2329] ${
+                    isAmountValid
+                      ? "border-[#6B7485] focus-within:border-[#4CB3A5] focus-within:ring-[#4CB3A5]"
+                      : "border-[#F07F83] focus-within:border-[#F07F83] focus-within:ring-[#F07F83]"
+                  }`}
+                >
                   <input
                     id="gold-amount-input"
                     type="text"
                     inputMode="decimal"
                     value={amountInput}
+                    aria-invalid={!isAmountValid}
+                    aria-describedby={!isAmountValid ? "gold-amount-error" : undefined}
                     onChange={(e) => setAmountInput(e.target.value)}
                     className="w-full bg-transparent px-3.5 py-3 text-base font-semibold text-[#F2EEE5] tabular-nums focus:outline-none"
                     placeholder="مثلاً ۱۰"
                   />
                   <div
-                    role="radiogroup"
+                    role="group"
                     aria-label="واحد وزن طلا"
-                    className="flex border-r border-white/[0.08] shrink-0"
+                    className="flex border-r border-[#6B7485]/50 shrink-0"
                   >
                     <button
                       type="button"
-                      role="radio"
-                      aria-checked={unit === "gram"}
+                      aria-pressed={unit === "gram"}
                       onClick={() => setUnit("gram")}
-                      className={`px-3.5 text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1 px-3 text-xs font-bold transition-colors ${
                         unit === "gram"
                           ? "bg-[#C9A45A] text-[#17191D]"
                           : "text-[#9CA3AF] hover:text-[#F2EEE5]"
                       }`}
                     >
-                      گرم
+                      {unit === "gram" && <Check className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                      <span>گرم</span>
                     </button>
                     <button
                       type="button"
-                      role="radio"
-                      aria-checked={unit === "mesghal"}
+                      aria-pressed={unit === "mesghal"}
                       onClick={() => setUnit("mesghal")}
-                      className={`px-3.5 text-xs font-bold transition-colors ${
+                      className={`inline-flex items-center gap-1 px-3 text-xs font-bold transition-colors ${
                         unit === "mesghal"
                           ? "bg-[#C9A45A] text-[#17191D]"
                           : "text-[#9CA3AF] hover:text-[#F2EEE5]"
                       }`}
                     >
-                      مثقال
+                      {unit === "mesghal" && <Check className="h-3 w-3 shrink-0" aria-hidden="true" />}
+                      <span>مثقال</span>
                     </button>
                   </div>
                 </div>
+                {!isAmountValid && (
+                  <p
+                    id="gold-amount-error"
+                    role="alert"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#F07F83]"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    <span>لطفاً فقط عدد مثبت وارد کنید (مثلاً ۱۰ یا ۱۲٫۵)</span>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -186,17 +233,17 @@ export default function GoldCalculator() {
                   dir="ltr"
                   value={mesghalPriceInput}
                   onChange={(e) => handlePriceChange(e.target.value)}
-                  className="w-full rounded-[10px] border border-[#525B6B] bg-[#17191D] px-3.5 py-3 text-base font-num font-semibold text-[#F2EEE5] text-right focus:outline-none focus:border-[#4CB3A5]"
+                  className="w-full rounded-[10px] border border-[#6B7485] bg-[#17191D] px-3.5 py-3 text-base font-num font-semibold text-[#F2EEE5] text-right focus:outline-none focus:border-[#4CB3A5] focus:ring-2 focus:ring-[#4CB3A5] focus:ring-offset-1 focus:ring-offset-[#1F2329]"
                   placeholder="مظنه فعلی بازار را وارد کنید"
                 />
               </div>
             </div>
 
-            {/* Live Accessible Output Grid */}
-            <div
-              aria-live="polite"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-3.5"
-            >
+            {/* Single Concise Screen-Reader Status + Visual Output Grid */}
+            <p className="sr-only" role="status" aria-live="polite">
+              {liveAnnouncement}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               <div className="rounded-[12px] bg-[#17191D] border border-white/[0.07] p-4">
                 <div className="text-xs text-[#9CA3AF] mb-1.5">
                   معادل گرم (۱۸ عیار)
@@ -264,23 +311,37 @@ export default function GoldCalculator() {
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleCopySummary}
-                className="inline-flex items-center gap-1.5 rounded-[10px] border border-white/[0.1] bg-[#17191D] px-3.5 py-2 text-xs font-semibold text-[#F2EEE5] hover:border-[#C9A45A]/60 hover:text-[#C9A45A] transition-colors"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-[#48B884]" />
-                    <span className="text-[#48B884]">کپی شد</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>کپی خلاصه محاسبه</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopySummary}
+                  className="inline-flex items-center gap-1.5 rounded-[10px] border border-[#6B7485] bg-[#17191D] px-3.5 py-2 text-xs font-semibold text-[#F2EEE5] hover:border-[#C9A45A] hover:text-[#C9A45A] transition-colors"
+                >
+                  {copyStatus === "copied" ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-[#48B884]" aria-hidden="true" />
+                      <span className="text-[#48B884]">کپی شد</span>
+                    </>
+                  ) : copyStatus === "error" ? (
+                    <>
+                      <AlertCircle className="h-3.5 w-3.5 text-[#F07F83]" aria-hidden="true" />
+                      <span className="text-[#F07F83]">کپی در دسترس نیست</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>کپی خلاصه محاسبه</span>
+                    </>
+                  )}
+                </button>
+                <span className="sr-only" role="status" aria-live="polite">
+                  {copyStatus === "copied"
+                    ? "خلاصه محاسبه در حافظه کپی شد"
+                    : copyStatus === "error"
+                    ? "امکان دسترسی به کلیپ‌بورد مرورگر وجود ندارد"
+                    : ""}
+                </span>
+              </div>
             </div>
           </div>
         </div>

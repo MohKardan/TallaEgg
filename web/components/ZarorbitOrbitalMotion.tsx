@@ -438,7 +438,8 @@ export default function ZarorbitOrbitalMotion({
 
       <canvas
         ref={canvasRef}
-        aria-hidden="true"
+        role="img"
+        aria-label="انیمیشن مداری نماد ZARORBIT"
         className="w-full max-w-[390px] aspect-square block cursor-grab active:cursor-grabbing relative z-10"
       />
 

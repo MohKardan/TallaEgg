@@ -18,7 +18,7 @@ const config: Config = {
           200: "#17191D",
           300: "#101215",
           border: "#2B303A",
-          borderControl: "#525B6B",
+          borderControl: "#6B7485",
           borderHover: "#C9A45A",
         },
         gold: {

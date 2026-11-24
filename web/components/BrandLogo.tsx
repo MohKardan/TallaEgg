@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { brandConfig } from "@/config/brand.config";
 
 interface BrandLogoProps {
@@ -110,89 +109,6 @@ export const BrandEmblem: React.FC<{
       className={`rounded-xl bg-[#17191D] border border-[#2B303A] flex items-center justify-center shrink-0 transition-colors duration-200 hover:border-[#C9A45A] ${className}`}
     >
       <ZarorbitSymbolSvg sizePx={iconPx} />
-    </div>
-  );
-};
-
-/**
- * Institutional Hero Card highlighting today's active gold trading infrastructure
- * alongside a clean entry point to the long-term ecosystem vision.
- */
-export const BrandHeroShowcase: React.FC<{ className?: string }> = ({
-  className = "",
-}) => {
-  return (
-    <div
-      className={`relative rounded-[20px] p-6 sm:p-8 bg-[#1F2329] border border-[#2B303A] shadow-card overflow-hidden ${className}`}
-    >
-      {/* Subtle architectural coordinate hairlines */}
-      <div
-        className="absolute inset-0 zar-grid-backdrop opacity-35 pointer-events-none"
-        aria-hidden="true"
-      />
-
-      {/* Top Bar */}
-      <div className="relative z-10 flex items-center justify-between border-b border-[#2B303A] pb-4">
-        <span className="bidi-isolate text-[11px] font-bold tracking-[0.12em] text-[#C9A45A] uppercase">
-          ZARORBIT • GOLD LEDGER
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#162A24] border border-[#286B63] px-2.5 py-0.5 text-[11px] font-semibold text-[#48B884]">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#48B884]" />
-          پایلوت فعال
-        </span>
-      </div>
-
-      {/* Central Vector Minimalist Monogram (clean Obsidian stage, no extra orbit rings behind the mark) */}
-      <div className="relative z-10 my-6 flex items-center justify-center">
-        <div
-          className="relative w-56 h-56 rounded-2xl border border-[#2B303A] flex items-center justify-center"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 42%, #22262E 0%, #17191D 72%, #131519 100%)",
-          }}
-        >
-          <ZarorbitSymbolSvg sizePx={136} className="relative z-10" />
-        </div>
-      </div>
-
-      {/* Horizontal Lockup & Positioning */}
-      <div className="relative z-10 text-center space-y-2 mb-5">
-        <div className="flex justify-center">
-          <ZarorbitHorizontalLockupSvg heightPx={30} />
-        </div>
-        <p className="text-xs font-medium text-[#9CA3AF]">
-          زیرساخت شفاف معاملات طلای آبشده و دفترکل متقابل
-        </p>
-      </div>
-
-      {/* Real Active Capabilities Today */}
-      <div className="relative z-10 space-y-2 border-t border-[#2B303A] pt-4 text-xs">
-        <div className="flex items-center justify-between rounded-lg bg-[#17191D] px-3 py-2 border border-[#2B303A]">
-          <span className="text-[#F2EEE5] font-medium">
-            معاملات نقدی طلا روی تلگرام
-          </span>
-          <span className="bidi-isolate text-[#4CB3A5] font-semibold">
-            @{brandConfig.telegram.botUsername}
-          </span>
-        </div>
-        <div className="flex items-center justify-between rounded-lg bg-[#17191D] px-3 py-2 border border-[#2B303A]">
-          <span className="text-[#F2EEE5] font-medium">
-            کارمزد معاملاتی فعلی
-          </span>
-          <span className="text-[#C9A45A] font-semibold">
-            ۰٪ (اسپرد شفاف)
-          </span>
-        </div>
-        <Link
-          href="/vision"
-          className="flex items-center justify-between rounded-lg bg-[#17191D] px-3 py-2 border border-[#2B303A] hover:border-[#C9A45A]/60 transition-colors group"
-        >
-          <span className="text-[#9CA3AF] group-hover:text-[#F2EEE5] transition-colors">
-            چشم‌انداز اکوسیستم چنددارایی و DAO
-          </span>
-          <ChevronLeft className="h-4 w-4 text-[#C9A45A]" />
-        </Link>
-      </div>
     </div>
   );
 };

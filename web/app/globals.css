@@ -26,7 +26,7 @@
 
   --zar-border-hairline: rgba(242, 238, 229, 0.08);
   --zar-border-subtle: #2B303A;
-  --zar-border-control: #525B6B;
+  --zar-border-control: #6B7485;
   --zar-border-focus: #4CB3A5;
 
   --zar-success: #48B884;
@@ -41,6 +41,10 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+section[id] {
+  scroll-margin-top: 88px;
 }
 
 body {

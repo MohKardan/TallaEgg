@@ -111,7 +111,7 @@ export default function WalletPage() {
     <>
       <Navbar />
 
-      <main className="relative flex-1 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+      <main id="main-content" className="relative flex-1 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         {/* Header with user greeting & refresh button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-8 mb-8 border-b border-[#2B303A] gap-4">
           <div>
