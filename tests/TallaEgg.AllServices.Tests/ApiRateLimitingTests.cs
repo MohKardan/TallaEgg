@@ -149,7 +149,53 @@ public class ApiRateLimitingTests
     }
 
     [Fact]
-    public async Task PartitionByClientIp_DifferentForwardedIps_HaveIndependentLimits()
+    public async Task PartitionByClientIp_DifferentRemoteIpAddresses_HaveIndependentLimits()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RateLimiting:PermitLimit"] = "2",
+                ["RateLimiting:WindowSeconds"] = "60",
+            })
+            .Build();
+
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services => services.AddTallaEggRateLimiting(configuration))
+                    .Configure(app =>
+                    {
+                        app.Use((context, next) =>
+                        {
+                            if (context.Request.Headers.TryGetValue("X-Test-Remote-Ip", out var ipHeader)
+                                && IPAddress.TryParse(ipHeader.ToString(), out var ip))
+                            {
+                                context.Connection.RemoteIpAddress = ip;
+                            }
+
+                            return next(context);
+                        });
+                        app.UseTallaEggRateLimiting();
+                        app.Run(context => context.Response.WriteAsync("ok"));
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+
+        // Client A exhausts its window.
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Test-Remote-Ip", "203.0.113.10")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Test-Remote-Ip", "203.0.113.10")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await SendWithHeaderAsync(client, "/api/orders", "X-Test-Remote-Ip", "203.0.113.10")).StatusCode);
+
+        // Client B on a different RemoteIpAddress is unaffected by Client A's burst.
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Test-Remote-Ip", "203.0.113.20")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PartitionByClientIp_SpoofingXForwardedForHeader_CannotBypassLimit()
     {
         using var host = await StartTestHostAsync(new Dictionary<string, string?>
         {
@@ -159,13 +205,12 @@ public class ApiRateLimitingTests
 
         var client = host.GetTestClient();
 
-        // Client A exhausts its window (multi-hop X-Forwarded-For uses the first client IP).
-        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.10, 10.0.0.1")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.10")).StatusCode);
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.10")).StatusCode);
+        // Rotating raw X-Forwarded-For values from the same connection must not rotate partitions.
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.1")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.2")).StatusCode);
 
-        // Client B is unaffected by Client A's burst.
-        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.20")).StatusCode);
+        var third = await SendWithHeaderAsync(client, "/api/orders", "X-Forwarded-For", "203.0.113.3");
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
     }
 
     [Fact]
@@ -235,7 +280,49 @@ public class ApiRateLimitingTests
     }
 
     [Fact]
-    public void ResolvePartitionKey_UsesAuthenticatedUserIdentityAndFallsBackToIp()
+    public async Task PartitionByUser_AuthenticatedNonApiKeyPrincipalRotatingUserIdHeader_CannotBypassLimit()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RateLimiting:PermitLimit"] = "2",
+                ["RateLimiting:WindowSeconds"] = "60",
+            })
+            .Build();
+
+        using var host = await new HostBuilder()
+            .ConfigureWebHost(webBuilder =>
+            {
+                webBuilder
+                    .UseTestServer()
+                    .ConfigureServices(services => services.AddTallaEggRateLimiting(configuration))
+                    .Configure(app =>
+                    {
+                        app.Use((context, next) =>
+                        {
+                            // Authenticated under Bearer with no NameIdentifier claim — must not honor X-User-Id.
+                            context.User = new ClaimsPrincipal(new ClaimsIdentity(
+                                [new Claim(ClaimTypes.Name, "web-user")],
+                                authenticationType: "Bearer"));
+                            return next(context);
+                        });
+                        app.UseTallaEggRateLimiting();
+                        app.Run(context => context.Response.WriteAsync("ok"));
+                    });
+            })
+            .StartAsync();
+
+        var client = host.GetTestClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-User-Id", "spoof-1")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await SendWithHeaderAsync(client, "/api/orders", "X-User-Id", "spoof-2")).StatusCode);
+
+        var third = await SendWithHeaderAsync(client, "/api/orders", "X-User-Id", "spoof-3");
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+    }
+
+    [Fact]
+    public void ResolvePartitionKey_UsesVerifiedIdentityAndIgnoresSpoofedHeaders()
     {
         var loopbackContext = new DefaultHttpContext();
         Assert.Equal("ip:loopback", RateLimitingExtensions.ResolvePartitionKey(loopbackContext));
@@ -244,34 +331,59 @@ public class ApiRateLimitingTests
         remoteIpContext.Connection.RemoteIpAddress = IPAddress.Parse("198.51.100.7");
         Assert.Equal("ip:198.51.100.7", RateLimitingExtensions.ResolvePartitionKey(remoteIpContext));
 
-        var forwardedContext = new DefaultHttpContext();
-        forwardedContext.Request.Headers["X-Forwarded-For"] = "203.0.113.42, 10.0.0.5";
-        Assert.Equal("ip:203.0.113.42", RateLimitingExtensions.ResolvePartitionKey(forwardedContext));
+        // Raw X-Forwarded-For is ignored; RemoteIpAddress (or loopback) remains the partition key.
+        var spoofedForwardedContext = new DefaultHttpContext();
+        spoofedForwardedContext.Connection.RemoteIpAddress = IPAddress.Parse("198.51.100.7");
+        spoofedForwardedContext.Request.Headers["X-Forwarded-For"] = "203.0.113.42, 10.0.0.5";
+        Assert.Equal("ip:198.51.100.7", RateLimitingExtensions.ResolvePartitionKey(spoofedForwardedContext));
 
-        var authenticatedUserContext = new DefaultHttpContext
+        // Authenticated Bearer user is locked to its verified claim even when sending X-User-Id.
+        var authenticatedBearerUser = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, "user-123")],
                 authenticationType: "Bearer"))
         };
-        Assert.Equal("user:user-123", RateLimitingExtensions.ResolvePartitionKey(authenticatedUserContext));
+        authenticatedBearerUser.Request.Headers["X-User-Id"] = "other-user";
+        Assert.Equal("user:user-123", RateLimitingExtensions.ResolvePartitionKey(authenticatedBearerUser));
 
-        var authenticatedServiceWithUserHeader = new DefaultHttpContext
+        // Authenticated non-ApiKey principal without a NameIdentifier/sub cannot rotate partitions via X-User-Id.
+        var authenticatedBearerNoClaim = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.Name, "anonymous-bearer")],
+                authenticationType: "Bearer"))
+        };
+        authenticatedBearerNoClaim.Request.Headers["X-User-Id"] = "spoofed-user";
+        Assert.Equal("ip:loopback", RateLimitingExtensions.ResolvePartitionKey(authenticatedBearerNoClaim));
+
+        // Authenticated non-ApiKey principal claiming NameIdentifier "api-client" cannot use X-User-Id override.
+        var nonApiKeyClaimingServiceId = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, "api-client")],
+                authenticationType: "Bearer"))
+        };
+        nonApiKeyClaimingServiceId.Request.Headers["X-User-Id"] = "spoofed-user";
+        Assert.Equal("user:api-client", RateLimitingExtensions.ResolvePartitionKey(nonApiKeyClaimingServiceId));
+
+        // Verified ApiKey service client ("api-client") may supply X-User-Id to partition per customer.
+        var verifiedApiKeyWithUserHeader = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, "api-client")],
                 authenticationType: "ApiKey"))
         };
-        authenticatedServiceWithUserHeader.Request.Headers["X-User-Id"] = "customer-99";
-        Assert.Equal("user:customer-99", RateLimitingExtensions.ResolvePartitionKey(authenticatedServiceWithUserHeader));
+        verifiedApiKeyWithUserHeader.Request.Headers["X-User-Id"] = "customer-99";
+        Assert.Equal("user:customer-99", RateLimitingExtensions.ResolvePartitionKey(verifiedApiKeyWithUserHeader));
 
-        var authenticatedServiceWithoutUserHeader = new DefaultHttpContext
+        var verifiedApiKeyWithoutUserHeader = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, "api-client")],
                 authenticationType: "ApiKey"))
         };
-        Assert.Equal("ip:loopback", RateLimitingExtensions.ResolvePartitionKey(authenticatedServiceWithoutUserHeader));
+        Assert.Equal("ip:loopback", RateLimitingExtensions.ResolvePartitionKey(verifiedApiKeyWithoutUserHeader));
     }
 
     [Fact]

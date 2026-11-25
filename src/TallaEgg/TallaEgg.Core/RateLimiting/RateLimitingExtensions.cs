@@ -63,9 +63,9 @@ public static class RateLimitingExtensions
     private const string TOO_MANY_REQUESTS_MESSAGE =
         "تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.";
 
+    private const string API_KEY_AUTH_SCHEME = "ApiKey";
     private const string SERVICE_CLIENT_ID = "api-client";
     private const string USER_ID_HEADER = "X-User-Id";
-    private const string FORWARDED_FOR_HEADER = "X-Forwarded-For";
     private const string LOOPBACK_FALLBACK = "loopback";
 
     /// <summary>
@@ -169,31 +169,42 @@ public static class RateLimitingExtensions
     /// caller carries a distinct user identity, and per client IP otherwise.
     /// </summary>
     /// <remarks>
-    /// An unauthenticated <c>X-User-Id</c> header is deliberately ignored so an untrusted client
-    /// cannot rotate header values to bypass limits. Only an authenticated trusted service caller
-    /// (the shared <c>api-client</c> principal issued by <see cref="ApiKeyAuthenticationHandler"/>)
+    /// Unauthenticated callers and non-<c>ApiKey</c> authenticated principals may never use
+    /// <c>X-User-Id</c> to override their partition key. Only the verified <c>ApiKey</c> service
+    /// client principal (<c>api-client</c>, issued by <see cref="ApiKeyAuthenticationHandler"/>)
     /// may supply <c>X-User-Id</c> to partition on behalf of an end user.
     /// </remarks>
     internal static string ResolvePartitionKey(HttpContext context)
     {
-        if (context.User?.Identity?.IsAuthenticated == true)
+        if (context.User is { Identity: { IsAuthenticated: true } identity } user)
         {
-            var claimId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? context.User.FindFirstValue("sub");
+            var isVerifiedApiKeyServiceClient =
+                string.Equals(identity.AuthenticationType, API_KEY_AUTH_SCHEME, StringComparison.Ordinal)
+                && string.Equals(
+                    user.FindFirstValue(ClaimTypes.NameIdentifier),
+                    SERVICE_CLIENT_ID,
+                    StringComparison.Ordinal);
 
-            if (!string.IsNullOrWhiteSpace(claimId)
-                && !string.Equals(claimId, SERVICE_CLIENT_ID, StringComparison.OrdinalIgnoreCase))
+            if (isVerifiedApiKeyServiceClient)
             {
-                return $"user:{claimId.Trim()}";
+                if (context.Request.Headers.TryGetValue(USER_ID_HEADER, out var forwardedUserId))
+                {
+                    var userId = forwardedUserId.ToString().Trim();
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        return $"user:{userId}";
+                    }
+                }
+
+                return $"ip:{ResolveClientIp(context)}";
             }
 
-            if (context.Request.Headers.TryGetValue(USER_ID_HEADER, out var forwardedUserId))
+            var claimId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? user.FindFirstValue("sub");
+
+            if (!string.IsNullOrWhiteSpace(claimId))
             {
-                var userId = forwardedUserId.ToString().Trim();
-                if (!string.IsNullOrEmpty(userId))
-                {
-                    return $"user:{userId}";
-                }
+                return $"user:{claimId.Trim()}";
             }
         }
 
@@ -202,18 +213,10 @@ public static class RateLimitingExtensions
 
     private static string ResolveClientIp(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue(FORWARDED_FOR_HEADER, out var forwardedFor))
-        {
-            var firstIp = forwardedFor.ToString()
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .FirstOrDefault();
-
-            if (!string.IsNullOrWhiteSpace(firstIp))
-            {
-                return firstIp;
-            }
-        }
-
+        // Never read raw X-Forwarded-For directly: any untrusted client could spoof that header to
+        // rotate partitions and bypass per-IP throttling. Behind a reverse proxy, ASP.NET Core's
+        // UseForwardedHeaders middleware updates Connection.RemoteIpAddress safely from configured
+        // trusted proxies.
         var remoteIp = context.Connection.RemoteIpAddress?.ToString();
         return string.IsNullOrWhiteSpace(remoteIp) ? LOOPBACK_FALLBACK : remoteIp;
     }
