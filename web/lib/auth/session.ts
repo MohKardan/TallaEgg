@@ -101,8 +101,12 @@ export function unsealSessionToken(token: string): SessionPayload | null {
     const payload: SessionPayload = JSON.parse(decrypted.toString("utf8"));
     const now = Math.floor(Date.now() / 1000);
 
-    if (payload.exp && payload.exp < now) {
-      return null; // Expired
+    if (
+      typeof payload.exp !== "number" ||
+      !Number.isFinite(payload.exp) ||
+      payload.exp <= now
+    ) {
+      return null; // Missing, invalid, or expired
     }
 
     return payload;

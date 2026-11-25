@@ -1,6 +1,7 @@
 import crypto from "crypto";
 
 const recentHashes = new Map<string, number>();
+const MAX_RECENT_HASHES = 5000;
 const ALLOWED_FIELDS = new Set([
   "id",
   "first_name",
@@ -36,8 +37,8 @@ export interface VerificationResult {
  * Enforces:
  * 1. HMAC-SHA256 signature verification using the SHA256 hash of the Telegram bot token.
  * 2. Strict replay attack protection (rejects auth_date older than maxAgeSeconds or more than 30s in the future).
- * 3. In-memory replay suppression cache rejecting duplicate use of identical hashes.
- * 4. Whitelisted field processing and newline stripping.
+ * 3. Case-normalized, size-bounded in-memory replay suppression cache rejecting duplicate hashes.
+ * 4. Positive safe integer validation for Telegram user IDs and whitelisted field processing.
  */
 export function verifyTelegramAuth(
   payload: Record<string, any>,
@@ -48,6 +49,10 @@ export function verifyTelegramAuth(
     return { valid: false, error: "Bot token is not configured on the server." };
   }
 
+  if (!payload || typeof payload !== "object") {
+    return { valid: false, error: "Invalid Telegram authentication payload." };
+  }
+
   const { hash, ...data } = payload;
   if (!hash || typeof hash !== "string" || !/^[0-9a-f]{64}$/i.test(hash)) {
     return {
@@ -56,9 +61,16 @@ export function verifyTelegramAuth(
     };
   }
 
+  const normalizedHash = hash.toLowerCase();
+
   const authDateNum = Number(data.auth_date);
-  if (!authDateNum || isNaN(authDateNum)) {
+  if (!authDateNum || !Number.isFinite(authDateNum)) {
     return { valid: false, error: "Missing or invalid auth_date." };
+  }
+
+  const telegramId = Number(data.id);
+  if (!Number.isSafeInteger(telegramId) || telegramId <= 0) {
+    return { valid: false, error: "Invalid Telegram user id." };
   }
 
   // Replay protection: verify auth_date is within window
@@ -71,12 +83,16 @@ export function verifyTelegramAuth(
     };
   }
 
-  // Check for immediate replay of identical hash
-  if (recentHashes.has(hash)) {
-    return {
-      valid: false,
-      error: "Authentication payload has already been used (replay detected).",
-    };
+  // Check for immediate replay of identical hash (case-insensitive via normalization)
+  const existingExpiry = recentHashes.get(normalizedHash);
+  if (existingExpiry !== undefined) {
+    if (existingExpiry > currentTimestamp) {
+      return {
+        valid: false,
+        error: "Authentication payload has already been used (replay detected).",
+      };
+    }
+    recentHashes.delete(normalizedHash);
   }
 
   // Build the data-check-string (whitelisted keys sorted alphabetically, key=value joined with \n)
@@ -102,7 +118,7 @@ export function verifyTelegramAuth(
 
   // Constant-time comparison
   const calculatedBuffer = Buffer.from(calculatedHmac, "hex");
-  const receivedBuffer = Buffer.from(hash, "hex");
+  const receivedBuffer = Buffer.from(normalizedHash, "hex");
 
   if (
     calculatedBuffer.length !== receivedBuffer.length ||
@@ -111,17 +127,23 @@ export function verifyTelegramAuth(
     return { valid: false, error: "Invalid cryptographic signature." };
   }
 
-  // Record verified hash to prevent replay within validity window
-  recentHashes.set(hash, currentTimestamp + maxAgeSeconds);
-
-  // Prune expired hashes
+  // Prune expired hashes first, then enforce size bound (evicting oldest entries)
   recentHashes.forEach((expiry, h) => {
     if (expiry <= currentTimestamp) recentHashes.delete(h);
   });
 
+  while (recentHashes.size >= MAX_RECENT_HASHES) {
+    const oldestKey = recentHashes.keys().next().value;
+    if (oldestKey === undefined) break;
+    recentHashes.delete(oldestKey);
+  }
+
+  // Record verified normalized hash to prevent replay within validity window
+  recentHashes.set(normalizedHash, currentTimestamp + maxAgeSeconds);
+
   return {
     valid: true,
-    telegramId: Number(data.id),
+    telegramId,
     username: data.username,
     firstName: data.first_name,
     lastName: data.last_name,

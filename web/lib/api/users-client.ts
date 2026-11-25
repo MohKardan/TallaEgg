@@ -6,6 +6,14 @@ export type UserStatusName =
   | "Blocked"
   | "Unknown";
 
+export type UserRoleName =
+  | "RegularUser"
+  | "Accountant"
+  | "Admin"
+  | "SuperAdmin"
+  | "User"
+  | "Unknown";
+
 export interface UserDto {
   id: string;
   telegramId: number;
@@ -18,7 +26,7 @@ export interface UserDto {
   createdAt: string;
   lastActiveAt?: string;
   phoneNumber?: string;
-  role: string;
+  role: UserRoleName;
 }
 
 const statusMap: Record<number, UserStatusName> = {
@@ -29,23 +37,35 @@ const statusMap: Record<number, UserStatusName> = {
   4: "Blocked",
 };
 
-export function parseUserStatus(rawStatus: any): {
+// Mirrors src/TallaEgg/TallaEgg.Core/Enums/User/UserRole.cs
+const roleMap: Record<number, UserRoleName> = {
+  0: "RegularUser",
+  1: "Accountant",
+  2: "Admin",
+  3: "SuperAdmin",
+  4: "User",
+};
+
+export function parseUserStatus(rawStatus: unknown): {
   name: UserStatusName;
   code: number;
 } {
-  if (typeof rawStatus === "number") {
+  if (typeof rawStatus === "number" && Number.isInteger(rawStatus)) {
     return {
       name: statusMap[rawStatus] || "Unknown",
       code: rawStatus,
     };
   }
   if (typeof rawStatus === "string") {
-    const numeric = parseInt(rawStatus, 10);
-    if (!isNaN(numeric) && statusMap[numeric]) {
-      return { name: statusMap[numeric], code: numeric };
+    const trimmed = rawStatus.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = parseInt(trimmed, 10);
+      if (statusMap[numeric]) {
+        return { name: statusMap[numeric], code: numeric };
+      }
     }
     const matched = Object.entries(statusMap).find(
-      ([, name]) => name.toLowerCase() === rawStatus.toLowerCase()
+      ([, name]) => name.toLowerCase() === trimmed.toLowerCase()
     );
     if (matched) {
       return { name: matched[1], code: Number(matched[0]) };
@@ -54,10 +74,38 @@ export function parseUserStatus(rawStatus: any): {
   return { name: "Unknown", code: -1 };
 }
 
+export function parseUserRole(rawRole: unknown): UserRoleName {
+  if (rawRole === undefined || rawRole === null) {
+    return "RegularUser";
+  }
+  if (typeof rawRole === "number" && Number.isInteger(rawRole)) {
+    return roleMap[rawRole] || "Unknown";
+  }
+  if (typeof rawRole === "string") {
+    const trimmed = rawRole.trim();
+    if (!trimmed) {
+      return "RegularUser";
+    }
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = parseInt(trimmed, 10);
+      return roleMap[numeric] || "Unknown";
+    }
+    const matched = Object.values(roleMap).find(
+      (name) => name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (matched) {
+      return matched;
+    }
+  }
+  return "Unknown";
+}
+
 export async function getUserByTelegramId(
   telegramId: number
 ): Promise<{ user: UserDto | null; error?: string }> {
-  const baseUrl = process.env.USERS_API_URL || "http://127.0.0.1:5136";
+  const baseUrl = (
+    process.env.USERS_API_URL || "http://127.0.0.1:5136"
+  ).replace(/\/+$/, "");
   const apiKey = process.env.INTERNAL_API_KEY;
 
   const headers: Record<string, string> = {
@@ -68,10 +116,11 @@ export async function getUserByTelegramId(
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/user/${telegramId}`, {
+    const res = await fetch(`${baseUrl}/api/user/${encodeURIComponent(String(telegramId))}`, {
       method: "GET",
       headers,
       cache: "no-store",
+      signal: AbortSignal.timeout(8000),
     });
 
     // 404: user truly does not exist in the database
@@ -82,7 +131,10 @@ export async function getUserByTelegramId(
     // 400: schema or validation error - do not silently mask as missing user
     if (res.status === 400) {
       const errJson = await res.json().catch(() => null);
-      if (errJson?.message?.includes("User not found") || errJson?.message?.includes("کاربر یافت نشد")) {
+      if (
+        errJson?.message?.includes("User not found") ||
+        errJson?.message?.includes("کاربر یافت نشد")
+      ) {
         return { user: null };
       }
       return {
@@ -118,14 +170,15 @@ export async function getUserByTelegramId(
       createdAt: raw.createdAt,
       lastActiveAt: raw.lastActiveAt || undefined,
       phoneNumber: raw.phoneNumber || undefined,
-      role: String(raw.role ?? "RegularUser"),
+      role: parseUserRole(raw.role),
     };
 
     return { user };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     return {
       user: null,
-      error: `Network error connecting to Users.Api: ${err.message}`,
+      error: `Network error connecting to Users.Api: ${message}`,
     };
   }
 }

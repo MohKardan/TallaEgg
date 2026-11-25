@@ -1,5 +1,5 @@
 /**
- * Formats a number with standard thousand separators.
+ * Formats a number with Persian thousand separators.
  */
 export function formatNumber(
   value: number | string,
@@ -13,26 +13,6 @@ export function formatNumber(
     minimumFractionDigits,
     maximumFractionDigits,
   });
-}
-
-/**
- * Formats an English numeral with thousand commas (e.g. 1,234,567.89).
- */
-export function formatNumberEn(
-  value: number | string,
-  maxDecimals = 3
-): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "0";
-
-  const parts = num.toFixed(maxDecimals).split(".");
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  if (maxDecimals > 0 && parts[1]) {
-    // Trim trailing zeros
-    const decimals = parts[1].replace(/0+$/, "");
-    return decimals ? `${parts[0]}.${decimals}` : parts[0];
-  }
-  return parts[0];
 }
 
 /**

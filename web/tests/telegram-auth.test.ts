@@ -62,12 +62,18 @@ describe("Telegram Authentication & Signature Verification", () => {
   it("rejects non-string or malformed hex hash without throwing an unhandled exception", () => {
     const currentTimestamp = Math.floor(Date.now() / 1000);
     // Integer hash
-    const res1 = verifyTelegramAuth({ id: 123, auth_date: currentTimestamp, hash: 12345 }, mockBotToken);
+    const res1 = verifyTelegramAuth(
+      { id: 123, auth_date: currentTimestamp, hash: 12345 },
+      mockBotToken
+    );
     assert.strictEqual(res1.valid, false);
     assert.match(res1.error || "", /invalid cryptographic hash format/i);
 
     // Non-64 hex string
-    const res2 = verifyTelegramAuth({ id: 123, auth_date: currentTimestamp, hash: "not-a-valid-hex" }, mockBotToken);
+    const res2 = verifyTelegramAuth(
+      { id: 123, auth_date: currentTimestamp, hash: "not-a-valid-hex" },
+      mockBotToken
+    );
     assert.strictEqual(res2.valid, false);
     assert.match(res2.error || "", /invalid cryptographic hash format/i);
   });
@@ -99,7 +105,10 @@ describe("Telegram Authentication & Signature Verification", () => {
     const result = verifyTelegramAuth(payload, mockBotToken, 300);
 
     assert.strictEqual(result.valid, false);
-    assert.match(result.error || "", /Auth date expired or out of allowed window/);
+    assert.match(
+      result.error || "",
+      /Auth date expired or out of allowed window/
+    );
   });
 
   it("rejects immediate replay of the exact same valid payload", () => {
@@ -120,8 +129,47 @@ describe("Telegram Authentication & Signature Verification", () => {
     assert.match(secondCheck.error || "", /replay detected/);
   });
 
+  it("rejects case-flipped uppercase hash replay of a previously verified payload", () => {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const rawData = {
+      id: 777888999,
+      first_name: "Maryam",
+      auth_date: currentTimestamp,
+    };
+
+    const payload = createValidPayload(rawData, mockBotToken);
+    const firstCheck = verifyTelegramAuth(payload, mockBotToken);
+    assert.strictEqual(firstCheck.valid, true);
+
+    const upperReplay = {
+      ...payload,
+      hash: String(payload.hash).toUpperCase(),
+    };
+    const secondCheck = verifyTelegramAuth(upperReplay, mockBotToken);
+    assert.strictEqual(secondCheck.valid, false);
+    assert.match(secondCheck.error || "", /replay detected/);
+  });
+
+  it("rejects invalid or non-positive Telegram user ids", () => {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const invalidIds = [0, -10, 12.34, "abc", Number.MAX_SAFE_INTEGER + 10];
+
+    for (const invalidId of invalidIds) {
+      const payload = createValidPayload(
+        { id: invalidId, auth_date: currentTimestamp },
+        mockBotToken
+      );
+      const result = verifyTelegramAuth(payload, mockBotToken);
+      assert.strictEqual(result.valid, false);
+      assert.match(result.error || "", /Invalid Telegram user id/);
+    }
+  });
+
   it("handles missing bot token safely", () => {
-    const result = verifyTelegramAuth({ id: 123, hash: "abc", auth_date: 123 }, "");
+    const result = verifyTelegramAuth(
+      { id: 123, hash: "abc", auth_date: 123 },
+      ""
+    );
     assert.strictEqual(result.valid, false);
     assert.match(result.error || "", /Bot token is not configured/);
   });
