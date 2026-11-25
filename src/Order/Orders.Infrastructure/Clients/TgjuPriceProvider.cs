@@ -72,9 +72,10 @@ public class TgjuPriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// Maps our trading-pair symbol to tgju's instrument key. The three symbols traded today are
-    /// compiled defaults; anything else is looked up under <c>Symbols:{symbol}:Tgju</c> (fields:
-    /// <c>Key</c>, and the optional bool <c>ConvertFromMesghal</c>) in configuration.
+    /// Maps our trading-pair symbol to tgju's instrument key. Looked up under
+    /// <c>Symbols:{symbol}:Tgju</c> (fields: <c>Key</c>, and the optional bool
+    /// <c>ConvertFromMesghal</c>) in configuration first, falling back to compiled defaults for
+    /// the three symbols traded today.
     ///
     /// <para>
     /// <c>crypto-bitcoin-irr</c>, not <c>crypto-bitcoin</c>: the latter is the USD price, and
@@ -85,20 +86,18 @@ public class TgjuPriceProvider : IReferencePriceProvider
     /// </summary>
     private (string Key, bool ConvertFromMesghal)? InstrumentFor(string symbol)
     {
-        (string, bool)? compiled = symbol switch
+        var section = _configuration.GetSection($"Symbols:{symbol}:Tgju");
+        var key = section["Key"];
+        if (!string.IsNullOrWhiteSpace(key))
+            return (key, section.GetValue("ConvertFromMesghal", false));
+
+        return symbol switch
         {
             CurrenciesConstant.MAUA_IRT => ("mesghal", true),
             CurrenciesConstant.SEKE_BAHAR_IRT => ("sekeb", false),
             CurrenciesConstant.BTC_IRT => ("crypto-bitcoin-irr", false),
             _ => null
         };
-        if (compiled is not null) return compiled;
-
-        var section = _configuration.GetSection($"Symbols:{symbol}:Tgju");
-        var key = section["Key"];
-        if (string.IsNullOrWhiteSpace(key)) return null;
-
-        return (key, section.GetValue("ConvertFromMesghal", false));
     }
 
     private async Task<(decimal Rials, DateTimeOffset? AsOf)?> FetchAsync(string key, CancellationToken cancellationToken)

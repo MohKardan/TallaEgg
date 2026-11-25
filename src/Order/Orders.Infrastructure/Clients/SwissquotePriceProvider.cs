@@ -73,16 +73,17 @@ public class SwissquotePriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// The instrument path, e.g. <c>XAU/USD</c>. Compiled for the ounce; anything else comes from
-    /// <c>Symbols:{symbol}:Swissquote:Instrument</c>, which is how a second metal or an FX pair
-    /// would be added without code.
+    /// The instrument path, e.g. <c>XAU/USD</c>. Looked up under
+    /// <c>Symbols:{symbol}:Swissquote:Instrument</c> in configuration first, falling back to the
+    /// compiled default for the ounce — which lets both an override of XAU/USD and a second metal
+    /// or FX pair be configured without code.
     /// </summary>
     private string? InstrumentFor(string symbol)
     {
-        if (symbol == CurrenciesConstant.XAU_USD) return "XAU/USD";
-
         var instrument = _configuration[$"Symbols:{symbol}:Swissquote:Instrument"];
-        return string.IsNullOrWhiteSpace(instrument) ? null : instrument;
+        if (!string.IsNullOrWhiteSpace(instrument)) return instrument;
+
+        return symbol == CurrenciesConstant.XAU_USD ? "XAU/USD" : null;
     }
 
     private ReferencePrice? Read(JsonElement root, string instrument)
