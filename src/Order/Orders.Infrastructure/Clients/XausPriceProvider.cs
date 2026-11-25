@@ -90,17 +90,18 @@ public class XausPriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// Which field of the one response holds this symbol's price. XAU/USD is compiled in; anything
-    /// else is looked up under <c>Symbols:{symbol}:Xaus</c> (field: <c>Field</c>) — the same
-    /// response also carries <c>per_gram_usd</c>, <c>per_kg_usd</c> and <c>silver_usd_oz</c>, so a
-    /// gram- or kilo-denominated gold symbol would need no code here.
+    /// Which field of the one response holds this symbol's price. Looked up under
+    /// <c>Symbols:{symbol}:Xaus</c> (field: <c>Field</c>) in configuration first, falling back to
+    /// the compiled default for XAU/USD — the same response also carries <c>per_gram_usd</c>,
+    /// <c>per_kg_usd</c> and <c>silver_usd_oz</c>, so overriding XAU/USD or adding a gram- or
+    /// kilo-denominated gold symbol needs no code here.
     /// </summary>
     private string? FieldFor(string symbol)
     {
-        if (symbol == CurrenciesConstant.XAU_USD) return "spot_usd_oz";
-
         var field = _configuration[$"Symbols:{symbol}:Xaus:Field"];
-        return string.IsNullOrWhiteSpace(field) ? null : field;
+        if (!string.IsNullOrWhiteSpace(field)) return field;
+
+        return symbol == CurrenciesConstant.XAU_USD ? "spot_usd_oz" : null;
     }
 
     /// <summary>

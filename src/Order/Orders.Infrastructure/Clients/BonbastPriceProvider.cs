@@ -99,26 +99,24 @@ public class BonbastPriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// Maps our trading-pair symbol to bonbast's JSON keys. The two symbols it covers are
-    /// compiled defaults; anything else is looked up under <c>Symbols:{symbol}:Bonbast</c>
-    /// (fields: <c>Key</c>, the optional <c>BuyKey</c>, and the optional bool
-    /// <c>ConvertFromMesghal</c>) in configuration.
+    /// Maps our trading-pair symbol to bonbast's JSON keys. Looked up under
+    /// <c>Symbols:{symbol}:Bonbast</c> (fields: <c>Key</c>, the optional <c>BuyKey</c>, and the
+    /// optional bool <c>ConvertFromMesghal</c>) in configuration first, falling back to compiled
+    /// defaults for the two symbols it covers.
     /// </summary>
     private (string SellKey, string? BuyKey, bool ConvertFromMesghal)? InstrumentFor(string symbol)
     {
-        (string, string?, bool)? compiled = symbol switch
+        var section = _configuration.GetSection($"Symbols:{symbol}:Bonbast");
+        var key = section["Key"];
+        if (!string.IsNullOrWhiteSpace(key))
+            return (key, section["BuyKey"], section.GetValue("ConvertFromMesghal", false));
+
+        return symbol switch
         {
             CurrenciesConstant.MAUA_IRT => ("mithqal", null, true),
             CurrenciesConstant.SEKE_BAHAR_IRT => ("azadi1", "azadi12", false),
             _ => null
         };
-        if (compiled is not null) return compiled;
-
-        var section = _configuration.GetSection($"Symbols:{symbol}:Bonbast");
-        var key = section["Key"];
-        if (string.IsNullOrWhiteSpace(key)) return null;
-
-        return (key, section["BuyKey"], section.GetValue("ConvertFromMesghal", false));
     }
 
     private decimal? Read(JsonElement prices, string key)

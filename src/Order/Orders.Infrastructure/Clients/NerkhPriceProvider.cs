@@ -13,10 +13,10 @@ namespace Orders.Infrastructure.Clients;
 ///
 /// <para>
 /// The instrument each symbol maps to (nerkh's endpoint path, its JSON property key, and
-/// whether the price needs converting from mesghal) is a compiled default for the three symbols
-/// this platform trades today, and falls back to <c>Symbols:{symbol}:Nerkh</c> in configuration
-/// for anything else — so a new symbol nerkh.io also happens to price needs no code change here,
-/// only a config block (see <see cref="InstrumentFor"/>).
+/// whether the price needs converting from mesghal) is read from <c>Symbols:{symbol}:Nerkh</c>
+/// in configuration first, falling back to compiled defaults for the three symbols this platform
+/// trades today — so a new symbol or an upstream key rename needs no code change here, only a
+/// config block (see <see cref="InstrumentFor"/>).
 /// </para>
 /// </summary>
 public class NerkhPriceProvider : IReferencePriceProvider
@@ -68,28 +68,26 @@ public class NerkhPriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// Maps our trading-pair symbol to nerkh.io's endpoint category and instrument key. The
-    /// three symbols traded today are compiled defaults; anything else is looked up under
-    /// <c>Symbols:{symbol}:Nerkh</c> (fields: <c>Path</c>, <c>Key</c>, and the optional bool
-    /// <c>ConvertFromMesghal</c>) in configuration.
+    /// Maps our trading-pair symbol to nerkh.io's endpoint category and instrument key. Looked up
+    /// under <c>Symbols:{symbol}:Nerkh</c> (fields: <c>Path</c>, <c>Key</c>, and the optional bool
+    /// <c>ConvertFromMesghal</c>) in configuration first, falling back to compiled defaults for
+    /// the three symbols traded today.
     /// </summary>
     private (string Path, string Key, bool ConvertFromMesghal)? InstrumentFor(string symbol)
     {
-        (string, string, bool)? compiled = symbol switch
+        var section = _configuration.GetSection($"Symbols:{symbol}:Nerkh");
+        var path = section["Path"];
+        var key = section["Key"];
+        if (!string.IsNullOrWhiteSpace(path) && !string.IsNullOrWhiteSpace(key))
+            return (path, key, section.GetValue("ConvertFromMesghal", false));
+
+        return symbol switch
         {
             CurrenciesConstant.MAUA_IRT => ("gold/MESGHAL", "MESGHAL", true),
             CurrenciesConstant.SEKE_BAHAR_IRT => ("gold/SEKE_BAHAR", "SEKE_BAHAR", false),
             CurrenciesConstant.BTC_IRT => ("crypto/BTC", "BTC", false),
             _ => null
         };
-        if (compiled is not null) return compiled;
-
-        var section = _configuration.GetSection($"Symbols:{symbol}:Nerkh");
-        var path = section["Path"];
-        var key = section["Key"];
-        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(key)) return null;
-
-        return (path, key, section.GetValue("ConvertFromMesghal", false));
     }
 
     private async Task<decimal?> FetchAsync(string path, string key, string apiToken, CancellationToken cancellationToken)

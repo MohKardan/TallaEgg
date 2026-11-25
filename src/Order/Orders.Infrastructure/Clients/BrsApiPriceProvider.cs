@@ -14,8 +14,8 @@ namespace Orders.Infrastructure.Clients;
 ///
 /// <para>
 /// The instrument each symbol maps to (which of brsapi's response arrays, and which symbol
-/// inside it) is a compiled default for the three symbols this platform trades today, and falls
-/// back to <c>Symbols:{symbol}:BrsApi</c> in configuration for anything else — see
+/// inside it) is read from <c>Symbols:{symbol}:BrsApi</c> in configuration first, falling back
+/// to compiled defaults for the three symbols this platform trades today — see
 /// <see cref="InstrumentFor"/>.
 /// </para>
 /// </summary>
@@ -87,28 +87,26 @@ public class BrsApiPriceProvider : IReferencePriceProvider
     }
 
     /// <summary>
-    /// Maps our trading-pair symbol to brsapi.ir's response array and instrument symbol. The
-    /// three symbols traded today are compiled defaults; anything else is looked up under
-    /// <c>Symbols:{symbol}:BrsApi</c> (fields: <c>Array</c> — "gold" or "cryptocurrency" —
-    /// <c>Symbol</c>, and the optional bool <c>ConvertFromMesghal</c>) in configuration.
+    /// Maps our trading-pair symbol to brsapi.ir's response array and instrument symbol. Looked up
+    /// under <c>Symbols:{symbol}:BrsApi</c> (fields: <c>Array</c> — "gold" or "cryptocurrency" —
+    /// <c>Symbol</c>, and the optional bool <c>ConvertFromMesghal</c>) in configuration first,
+    /// falling back to compiled defaults for the three symbols traded today.
     /// </summary>
     private (string Array, string Symbol, bool ConvertFromMesghal)? InstrumentFor(string symbol)
     {
-        (string, string, bool)? compiled = symbol switch
+        var section = _configuration.GetSection($"Symbols:{symbol}:BrsApi");
+        var array = section["Array"];
+        var instrumentSymbol = section["Symbol"];
+        if (!string.IsNullOrWhiteSpace(array) && !string.IsNullOrWhiteSpace(instrumentSymbol))
+            return (array, instrumentSymbol, section.GetValue("ConvertFromMesghal", false));
+
+        return symbol switch
         {
             CurrenciesConstant.MAUA_IRT => ("gold", "IR_GOLD_MELTED", true),
             CurrenciesConstant.SEKE_BAHAR_IRT => ("gold", "IR_COIN_BAHAR", false),
             CurrenciesConstant.BTC_IRT => ("cryptocurrency", "BTC", false),
             _ => null
         };
-        if (compiled is not null) return compiled;
-
-        var section = _configuration.GetSection($"Symbols:{symbol}:BrsApi");
-        var array = section["Array"];
-        var instrumentSymbol = section["Symbol"];
-        if (string.IsNullOrWhiteSpace(array) || string.IsNullOrWhiteSpace(instrumentSymbol)) return null;
-
-        return (array, instrumentSymbol, section.GetValue("ConvertFromMesghal", false));
     }
 
     /// <summary>Toman-denominated instruments — the "gold" array covers metal and coins alike.</summary>
