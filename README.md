@@ -37,6 +37,8 @@ https://private-user-images.githubusercontent.com/45781438/530709883-c2a1096b-5c
 | `src/TallaEgg` | Shared core/application/infrastructure libraries plus a legacy orchestration API |
 | `tests/TallaEgg.AllServices.Tests` | The test suite for the whole platform (see [Testing](#testing)) |
 | `TelegramBot` | Telegram bot host, handlers, and typed API clients |
+| `web/` | Next.js 14 Persian RTL web portal (`ZARORBIT`), Telegram Login BFF, and wallet view |
+| `brand/` | `ZARORBIT` v1.2 (`S1`) visual identity guidelines, pure-vector logo masters, and design tokens |
 | `config/appsettings.global.json` | Shared configuration consumed by every service — git-ignored ([#33](https://github.com/MohKardan/TallaEgg/issues/33)); copy it from `config/appsettings.global.example.json` |
 | `docs/` | Architecture, operations, process, OKRs, and the business proposal |
 | `governance/` | Charter, bylaws, meeting notes, and `P-XXXX` proposals |

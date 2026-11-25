@@ -1,22 +1,26 @@
-/* ZARORBIT Visual Identity System — CSS Design Tokens v1.0 */
+/* ZARORBIT Visual Identity System — CSS Design Tokens v1.2 */
 :root,
 [data-theme="dark"] {
   --zar-obsidian: #17191D;
   --zar-gold: #C9A45A;
+  --zar-gold-hover: #D4B16A;
+  --zar-bronze-light: #82611C;
   --zar-ivory: #F2EEE5;
   --zar-teal: #286B63;
+  --zar-teal-orbit: #4CB3A5;
 
   --zar-bg-canvas: #17191D;
   --zar-bg-surface: #1F2329;
-  --zar-bg-elevated: #282D35;
+  --zar-bg-elevated: #252A32;
   --zar-bg-subtle: #101215;
   --zar-text-primary: #F2EEE5;
   --zar-text-secondary: #9CA3AF;
   --zar-text-brand: #C9A45A;
   --zar-text-accent: #4CB3A5;
+  --zar-border-hairline: rgba(242, 238, 229, 0.08);
   --zar-border-subtle: #2B303A;
   --zar-border-control: #6B7485;
-  --zar-border-focus: #C9A45A;
+  --zar-border-focus: #4CB3A5;
 
   --zar-btn-primary-bg: #C9A45A;
   --zar-btn-primary-fg: #17191D;
