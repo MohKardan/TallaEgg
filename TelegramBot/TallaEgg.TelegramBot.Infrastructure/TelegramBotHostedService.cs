@@ -16,6 +16,8 @@ namespace TallaEgg.TelegramBot.Infrastructure;
 
 public class TelegramBotHostedService : BackgroundService
 {
+    internal const string RunStartupDiagnosticsEnvVar = "TALLAEGG_RUN_STARTUP_DIAGNOSTICS";
+
     private readonly ITelegramBotClient _botClient;
     private readonly IBotHandler _botHandler;
     private readonly ILogger<TelegramBotHostedService> _logger;
@@ -78,10 +80,23 @@ public class TelegramBotHostedService : BackgroundService
             return;
         }
 
-        if (!await RunDiagnosticsAsync())
+        if (ShouldRunStartupDiagnostics(Environment.GetEnvironmentVariable(RunStartupDiagnosticsEnvVar)))
         {
-            _applicationLifetime.StopApplication();
-            return;
+            _logger.LogInformation(
+                "Startup diagnostics enabled via {EnvVar}; running external connectivity probes.",
+                RunStartupDiagnosticsEnvVar);
+
+            if (!await RunDiagnosticsAsync())
+            {
+                _applicationLifetime.StopApplication();
+                return;
+            }
+        }
+        else
+        {
+            _logger.LogDebug(
+                "Skipping external startup diagnostics (set {EnvVar}=true to enable).",
+                RunStartupDiagnosticsEnvVar);
         }
 
         if (!await InitializeBotAsync(cancellationToken))
@@ -153,6 +168,18 @@ public class TelegramBotHostedService : BackgroundService
         }
 
         return true;
+    }
+
+    internal static bool ShouldRunStartupDiagnostics(string? envValue)
+    {
+        if (string.IsNullOrWhiteSpace(envValue))
+        {
+            return false;
+        }
+
+        var trimmed = envValue.Trim();
+        return trimmed.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || trimmed.Equals("1", StringComparison.Ordinal);
     }
 
     private async Task<bool> RunDiagnosticsAsync()

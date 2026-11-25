@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
-using Newtonsoft.Json;
 using Orders.Application;
 using Orders.Application.Services;
 using Orders.Core;
@@ -1071,8 +1070,8 @@ app.MapGet("/api/orders/{Base}/{Quote}/best-prices", async (
             Timestamp = DateTime.UtcNow
         };
 
-        Log.Information("\n" + JsonConvert.SerializeObject(bestPricesDto, Formatting.Indented));
-        //Log.Information<BestPricesDto>("Retrieved best prices successfully", bestPricesDto);    
+        Log.Debug("Retrieved best prices for {Symbol}: Bid={BestBidPrice}, Ask={BestAskPrice}",
+            bestPricesDto.Symbol, bestPricesDto.BestBidPrice, bestPricesDto.BestAskPrice);
 
         return Results.Ok(ApiResponse<BestPricesDto>.Ok(bestPricesDto, "بهترین قیمت‌ها با موفقیت دریافت شد."));
     }

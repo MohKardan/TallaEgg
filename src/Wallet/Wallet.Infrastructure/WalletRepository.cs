@@ -325,6 +325,12 @@ public class WalletRepository : IWalletRepository
 
     public async Task<WalletEntity> UnlockBalanceAsync(Guid userId, string asset, decimal amount)
     {
+        if (amount < 0)
+            throw new BusinessRuleException("مقدار آزادسازی نمی‌تواند منفی باشد.");
+
+        if (amount == 0)
+            throw new BusinessRuleException("مقدار باید بزرگتر از صفر باشد");
+
         return await WithConcurrencyRetryAsync(async () =>
         {
             var wallet = await GetWalletAsync(userId, asset);
@@ -339,9 +345,6 @@ public class WalletRepository : IWalletRepository
 
                 wallet = await CreateWalletAsync(WalletEntity.Create(userId, asset));
             }
-
-            if (amount < 0)
-                throw new ArgumentOutOfRangeException(nameof(amount), "مقدار آزادسازی نمی‌تواند منفی باشد.");
 
             // Releasing more than is locked drives LockedBalance negative while raising Balance —
             // money created from nothing. There used to be no guard here at all, and the
