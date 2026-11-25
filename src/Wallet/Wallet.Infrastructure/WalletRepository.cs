@@ -21,8 +21,17 @@ public class WalletRepository : IWalletRepository
 
     public async Task<WalletEntity?> GetWalletAsync(Guid userId, string asset)
     {
+        if (string.IsNullOrWhiteSpace(asset))
+            return null;
+
+        // Normalize the lookup key before the query rather than wrapping w.Asset in ToUpper(),
+        // which translates to UPPER([Asset]) and prevents SQL Server from seeking on the
+        // trailing column of IX_Wallets_UserId_Asset (issue #282). WalletEntity.Create normalizes
+        // Asset on write, and SQL Server's default CI collation matches case-insensitively too.
+        var normalizedAsset = asset.Trim().ToUpperInvariant();
+
         return await _context.Wallets
-            .FirstOrDefaultAsync(w => w.UserId == userId && w.Asset.ToUpper() == asset.ToUpper());
+            .FirstOrDefaultAsync(w => w.UserId == userId && w.Asset == normalizedAsset);
     }
 
     public async Task<IEnumerable<WalletEntity>> GetUserWalletsAsync(Guid userId)

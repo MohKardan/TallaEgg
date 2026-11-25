@@ -69,7 +69,7 @@ public class WalletEntity
         return new WalletEntity
         {
             Id = Guid.NewGuid(),
-            Asset = asset,
+            Asset = asset.Trim().ToUpperInvariant(),
             Balance = 0,
             LockedBalance = 0,
             UserId = userId,
