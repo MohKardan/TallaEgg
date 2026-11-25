@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Site serves static SVG/PNG assets directly without next/image; disabling
+  // image optimization removes the /_next/image processing surface permanently.
+  images: {
+    unoptimized: true,
+  },
   async headers() {
     return [
       {

@@ -119,7 +119,7 @@ export function unsealSessionToken(token: string): SessionPayload | null {
  * Retrieves the current session user from the incoming request cookies.
  */
 export async function getSessionUser(): Promise<SessionPayload | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
   if (!sessionCookie || !sessionCookie.value) {
     return null;
