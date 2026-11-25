@@ -51,6 +51,9 @@ function mapVerificationErrorToPersian(error?: string): string {
   if (lower.includes("not configured")) {
     return "پیکربندی سرویس احراز هویت تلگرام روی سرور ناقص است.";
   }
+  if (lower.includes("saturated")) {
+    return "سیستم احراز هویت موقتاً شلوغ است. لطفاً دقایقی دیگر دوباره تلاش کنید.";
+  }
   if (lower.includes("replay")) {
     return "این درخواست ورود قبلاً استفاده شده است. لطفاً مجدداً روی دکمه ورود تلگرام کلیک کنید.";
   }
@@ -148,13 +151,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (!verification.valid || !verification.telegramId) {
+    const isSaturated = verification.error?.toLowerCase().includes("saturated");
     return NextResponse.json(
       {
         success: false,
-        code: "INVALID_SIGNATURE",
+        code: isSaturated ? "AUTH_CAPACITY_EXCEEDED" : "INVALID_SIGNATURE",
         message: mapVerificationErrorToPersian(verification.error),
       },
-      { status: 401, headers: NO_STORE_HEADERS }
+      { status: isSaturated ? 503 : 401, headers: NO_STORE_HEADERS }
     );
   }
 

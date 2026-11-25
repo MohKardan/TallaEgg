@@ -1,10 +1,17 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert";
 import crypto from "crypto";
-import { verifyTelegramAuth } from "../lib/auth/telegram";
+import {
+  verifyTelegramAuth,
+  _resetRecentHashesForTests,
+} from "../lib/auth/telegram";
 
 describe("Telegram Authentication & Signature Verification", () => {
   const mockBotToken = "123456789:ABCdefGHIjklMNOpqrsTUVwxyz";
+
+  beforeEach(() => {
+    _resetRecentHashesForTests();
+  });
 
   function createValidPayload(
     data: Record<string, any>,
@@ -148,6 +155,61 @@ describe("Telegram Authentication & Signature Verification", () => {
     const secondCheck = verifyTelegramAuth(upperReplay, mockBotToken);
     assert.strictEqual(secondCheck.valid, false);
     assert.match(secondCheck.error || "", /replay detected/);
+  });
+
+  it("fails closed when replay cache is saturated and never evicts active hashes", () => {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const maxCacheEntries = 3;
+
+    const firstPayload = createValidPayload(
+      { id: 1001, first_name: "User1", auth_date: currentTimestamp },
+      mockBotToken
+    );
+    const secondPayload = createValidPayload(
+      { id: 1002, first_name: "User2", auth_date: currentTimestamp },
+      mockBotToken
+    );
+    const thirdPayload = createValidPayload(
+      { id: 1003, first_name: "User3", auth_date: currentTimestamp },
+      mockBotToken
+    );
+    const fourthPayload = createValidPayload(
+      { id: 1004, first_name: "User4", auth_date: currentTimestamp },
+      mockBotToken
+    );
+
+    assert.strictEqual(
+      verifyTelegramAuth(firstPayload, mockBotToken, 300, maxCacheEntries).valid,
+      true
+    );
+    assert.strictEqual(
+      verifyTelegramAuth(secondPayload, mockBotToken, 300, maxCacheEntries).valid,
+      true
+    );
+    assert.strictEqual(
+      verifyTelegramAuth(thirdPayload, mockBotToken, 300, maxCacheEntries).valid,
+      true
+    );
+
+    // 4th distinct valid payload must fail closed rather than evicting an active entry
+    const saturatedResult = verifyTelegramAuth(
+      fourthPayload,
+      mockBotToken,
+      300,
+      maxCacheEntries
+    );
+    assert.strictEqual(saturatedResult.valid, false);
+    assert.match(saturatedResult.error || "", /Replay protection cache saturated/);
+
+    // The oldest active entry must still be present and rejected as a replay
+    const replayOfOldest = verifyTelegramAuth(
+      firstPayload,
+      mockBotToken,
+      300,
+      maxCacheEntries
+    );
+    assert.strictEqual(replayOfOldest.valid, false);
+    assert.match(replayOfOldest.error || "", /replay detected/);
   });
 
   it("rejects invalid or non-positive Telegram user ids", () => {

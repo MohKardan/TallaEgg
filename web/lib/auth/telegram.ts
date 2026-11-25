@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 const recentHashes = new Map<string, number>();
-const MAX_RECENT_HASHES = 5000;
+export const MAX_RECENT_HASHES = 5000;
 const ALLOWED_FIELDS = new Set([
   "id",
   "first_name",
@@ -10,6 +10,10 @@ const ALLOWED_FIELDS = new Set([
   "photo_url",
   "auth_date",
 ]);
+
+export function _resetRecentHashesForTests(): void {
+  recentHashes.clear();
+}
 
 export interface TelegramAuthPayload {
   id: number | string;
@@ -37,13 +41,15 @@ export interface VerificationResult {
  * Enforces:
  * 1. HMAC-SHA256 signature verification using the SHA256 hash of the Telegram bot token.
  * 2. Strict replay attack protection (rejects auth_date older than maxAgeSeconds or more than 30s in the future).
- * 3. Case-normalized, size-bounded in-memory replay suppression cache rejecting duplicate hashes.
+ * 3. Case-normalized, size-bounded in-memory replay suppression cache that fails closed under saturation
+ *    rather than evicting active non-expired hashes.
  * 4. Positive safe integer validation for Telegram user IDs and whitelisted field processing.
  */
 export function verifyTelegramAuth(
   payload: Record<string, any>,
   botToken: string,
-  maxAgeSeconds = 300
+  maxAgeSeconds = 300,
+  maxCacheEntries = MAX_RECENT_HASHES
 ): VerificationResult {
   if (!botToken) {
     return { valid: false, error: "Bot token is not configured on the server." };
@@ -127,19 +133,25 @@ export function verifyTelegramAuth(
     return { valid: false, error: "Invalid cryptographic signature." };
   }
 
-  // Prune expired hashes first, then enforce size bound (evicting oldest entries)
+  // Prune expired hashes first.
   recentHashes.forEach((expiry, h) => {
     if (expiry <= currentTimestamp) recentHashes.delete(h);
   });
 
-  while (recentHashes.size >= MAX_RECENT_HASHES) {
-    const oldestKey = recentHashes.keys().next().value;
-    if (oldestKey === undefined) break;
-    recentHashes.delete(oldestKey);
+  // Fail closed when saturated with active non-expired hashes — never evict
+  // valid entries early, or captured payloads could be replayed within the window.
+  if (recentHashes.size >= maxCacheEntries) {
+    return {
+      valid: false,
+      error: "Replay protection cache saturated.",
+    };
   }
 
   // Record verified normalized hash to prevent replay within validity window
-  recentHashes.set(normalizedHash, currentTimestamp + maxAgeSeconds);
+  recentHashes.set(
+    normalizedHash,
+    Math.max(currentTimestamp, authDateNum) + maxAgeSeconds
+  );
 
   return {
     valid: true,
