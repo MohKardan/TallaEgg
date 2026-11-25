@@ -7,15 +7,17 @@ import { useRouter } from "next/navigation";
 import { Send, Shield, AlertCircle, CheckCircle2, WifiOff } from "lucide-react";
 import { brandConfig } from "@/config/brand.config";
 import { ZarorbitIntegratedLockupSvg } from "@/components/BrandLogo";
+import { setSessionCache, useSession } from "@/lib/auth/use-session";
 
 declare global {
   interface Window {
-    onTelegramAuth?: (user: any) => void;
+    onTelegramAuth?: (user: Record<string, unknown>) => void;
   }
 }
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user: sessionUser, loading: sessionLoading } = useSession();
   const widgetContainerRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(false);
@@ -24,23 +26,16 @@ export default function LoginPage() {
   const [userStatus, setUserStatus] = useState<string | null>(null);
   const [widgetFailed, setWidgetFailed] = useState(false);
 
-  const botUsername =
-    process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ||
-    brandConfig.telegram.botUsername;
+  const botUsername = brandConfig.telegram.botUsername;
 
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.authenticated) {
-          router.push("/wallet");
-        }
-      })
-      .catch(() => {});
-  }, [router]);
+    if (!sessionLoading && sessionUser) {
+      router.push("/wallet");
+    }
+  }, [sessionLoading, sessionUser, router]);
 
   useEffect(() => {
-    window.onTelegramAuth = async (user: any) => {
+    window.onTelegramAuth = async (user: Record<string, unknown>) => {
       setLoading(true);
       setError(null);
       setStatusMessage(null);
@@ -53,9 +48,12 @@ export default function LoginPage() {
           body: JSON.stringify(user),
         });
 
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
 
-        if (res.ok && data.success) {
+        if (res.ok && data?.success) {
+          if (data.user) {
+            setSessionCache(data.user);
+          }
           setStatusMessage(
             "ورود با موفقیت انجام شد. در حال انتقال به کیف پول..."
           );
@@ -63,13 +61,15 @@ export default function LoginPage() {
             router.push("/wallet");
           }, 800);
         } else {
-          setError(data.message || "خطا در احراز هویت تلگرام.");
-          if (data.status) {
+          setError(data?.message || "خطا در احراز هویت تلگرام.");
+          if (data?.status) {
             setUserStatus(data.status);
           }
         }
-      } catch (err: any) {
-        setError("خطا در برقراری ارتباط با سرور: " + err.message);
+      } catch {
+        setError(
+          "خطا در برقراری ارتباط با سرور. لطفاً اتصال اینترنت خود را بررسی کرده و دوباره تلاش کنید."
+        );
       } finally {
         setLoading(false);
       }
@@ -116,14 +116,17 @@ export default function LoginPage() {
     <>
       <Navbar />
 
-      <main id="main-content" className="relative flex-1 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
+      <main
+        id="main-content"
+        className="relative flex-1 flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8"
+      >
         <div
           className="absolute inset-0 zar-grid-backdrop opacity-25 pointer-events-none"
           aria-hidden="true"
         />
 
-        <div className="relative w-full max-w-md mx-auto">
-          <div className="zar-card p-8 sm:p-10 shadow-card">
+        <div className="relative w-full max-w-[1200px] mx-auto flex justify-center">
+          <div className="w-full max-w-md zar-panel p-8 sm:p-10">
             {/* Header */}
             <div className="text-center space-y-3 mb-8">
               <div className="flex justify-center mb-2">
@@ -158,8 +161,8 @@ export default function LoginPage() {
 
                 {userStatus === "Pending" && (
                   <div className="mt-2 pt-2 border-t border-[#6E3438] text-[11px] text-[#F2EEE5]">
-                    حساب شما هنوز به مرحله تأیید نرسیده است. برای پیگیری
-                    تأیید پایه می‌توانید به ربات رسمی پیام دهید.
+                    حساب شما هنوز به مرحله تأیید نرسیده است. برای پیگیری تأیید
+                    پایه می‌توانید به ربات رسمی پیام دهید.
                   </div>
                 )}
               </div>
@@ -181,8 +184,8 @@ export default function LoginPage() {
                   <div className="flex items-start gap-2.5">
                     <WifiOff className="h-4 w-4 shrink-0 mt-0.5" />
                     <p className="leading-relaxed font-light text-[#F2EEE5]">
-                      ویجت تلگرام بارگذاری نشد؟ اتصال اینترنت به دامنه تلگرام
-                      را بررسی کنید یا از طریق ربات رسمی وارد شوید.
+                      ویجت تلگرام بارگذاری نشد؟ اتصال اینترنت به دامنه تلگرام را
+                      بررسی کنید یا از طریق ربات رسمی وارد شوید.
                     </p>
                   </div>
                 </div>

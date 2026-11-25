@@ -5,13 +5,7 @@ import { useEffect, useState } from "react";
 import { Wallet, LogIn, LogOut, Send, Menu, X } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 import { brandConfig } from "@/config/brand.config";
-
-interface UserProfile {
-  firstName?: string;
-  lastName?: string;
-  username?: string;
-  status?: string;
-}
+import { setSessionCache, useSession } from "@/lib/auth/use-session";
 
 const NAV_LINKS = [
   { href: "/#platform", label: "دفترکل و امکانات" },
@@ -21,21 +15,8 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, loading } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.authenticated && data?.user) {
-          setUser(data.user);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -49,9 +30,14 @@ export default function Navbar() {
   }, [mobileMenuOpen]);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/";
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Proceed to clear client session state and redirect even on transient network errors.
+    } finally {
+      setSessionCache(null);
+      window.location.href = "/";
+    }
   };
 
   return (
@@ -103,7 +89,7 @@ export default function Navbar() {
               </Link>
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => void handleLogout()}
                 aria-label="خروج از حساب کاربری"
                 title="خروج از حساب کاربری"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-[10px] border border-white/[0.1] text-[#9CA3AF] hover:text-[#F07F83] hover:border-[#F07F83]/60 transition-colors"

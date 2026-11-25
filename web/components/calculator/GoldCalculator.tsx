@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { AlertCircle, Calculator, Check, Copy } from "lucide-react";
+import { formatNumber } from "@/lib/formatters";
 import {
   MESGHAL_TO_18K_GRAM,
   convertGoldWeight,
@@ -49,16 +50,14 @@ export default function GoldCalculator() {
     }, 2200);
   };
 
+  const gramText = formatNumber(result.grams18k, 0, 3);
+  const mesghalText = formatNumber(result.mesghals, 0, 4);
+  const totalTomanText = formatNumber(result.estimatedTotalToman, 0, 0);
+
   const handleCopySummary = async () => {
-    const gramText = result.grams18k.toLocaleString("fa-IR", {
-      maximumFractionDigits: 3,
-    });
-    const mesghalText = result.mesghals.toLocaleString("fa-IR", {
-      maximumFractionDigits: 4,
-    });
     const summary =
       result.estimatedTotalToman > 0
-        ? `محاسبه طلای ۱۸ عیار ZARORBIT: ${gramText} گرم (${mesghalText} مثقال) ≈ ${result.estimatedTotalToman.toLocaleString("fa-IR")} تومان (کارمزد ۰٪)`
+        ? `محاسبه طلای ۱۸ عیار ZARORBIT: ${gramText} گرم (${mesghalText} مثقال) ≈ ${totalTomanText} تومان (کارمزد ۰٪)`
         : `محاسبه وزن طلای ۱۸ عیار ZARORBIT: ${gramText} گرم = ${mesghalText} مثقال آبشده`;
 
     try {
@@ -73,8 +72,8 @@ export default function GoldCalculator() {
 
   const liveAnnouncement =
     result.estimatedTotalToman > 0
-      ? `معادل ${result.grams18k.toLocaleString("fa-IR", { maximumFractionDigits: 3 })} گرم ۱۸ عیار، ${result.mesghals.toLocaleString("fa-IR", { maximumFractionDigits: 4 })} مثقال، برآورد ارزش ${result.estimatedTotalToman.toLocaleString("fa-IR")} تومان`
-      : `معادل ${result.grams18k.toLocaleString("fa-IR", { maximumFractionDigits: 3 })} گرم ۱۸ عیار و ${result.mesghals.toLocaleString("fa-IR", { maximumFractionDigits: 4 })} مثقال`;
+      ? `معادل ${gramText} گرم ۱۸ عیار، ${mesghalText} مثقال، برآورد ارزش ${totalTomanText} تومان`
+      : `معادل ${gramText} گرم ۱۸ عیار و ${mesghalText} مثقال`;
 
   return (
     <section id="calculator" className="py-20 sm:py-24">
@@ -249,9 +248,7 @@ export default function GoldCalculator() {
                   معادل گرم (۱۸ عیار)
                 </div>
                 <div className="text-xl font-extrabold text-[#F2EEE5] tabular-nums">
-                  {result.grams18k.toLocaleString("fa-IR", {
-                    maximumFractionDigits: 3,
-                  })}{" "}
+                  {gramText}{" "}
                   <span className="text-xs font-normal text-[#9CA3AF]">
                     گرم
                   </span>
@@ -263,9 +260,7 @@ export default function GoldCalculator() {
                   معادل مثقال آبشده
                 </div>
                 <div className="text-xl font-extrabold text-[#4CB3A5] tabular-nums">
-                  {result.mesghals.toLocaleString("fa-IR", {
-                    maximumFractionDigits: 4,
-                  })}{" "}
+                  {mesghalText}{" "}
                   <span className="text-xs font-normal text-[#9CA3AF]">
                     مثقال
                   </span>
@@ -279,7 +274,7 @@ export default function GoldCalculator() {
                 <div className="text-xl font-extrabold text-[#C9A45A] tabular-nums">
                   {result.estimatedTotalToman > 0 ? (
                     <>
-                      {result.estimatedTotalToman.toLocaleString("fa-IR")}{" "}
+                      {totalTomanText}{" "}
                       <span className="text-xs font-normal text-[#9CA3AF]">
                         تومان
                       </span>
@@ -300,7 +295,7 @@ export default function GoldCalculator() {
                   <span>
                     نرخ هر گرم ۱۸ عیار:{" "}
                     <strong className="text-[#F2EEE5] tabular-nums">
-                      {Math.round(result.gramRateToman).toLocaleString("fa-IR")}{" "}
+                      {formatNumber(Math.round(result.gramRateToman), 0, 0)}{" "}
                       تومان
                     </strong>
                   </span>

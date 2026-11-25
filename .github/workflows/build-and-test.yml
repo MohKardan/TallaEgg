@@ -77,6 +77,31 @@ jobs:
           path: test-results/
           retention-days: 14
 
+      # Web portal (Next.js) gate (issue #364): kept inside this required `test` job
+      # so the `main` branch ruleset enforces web typechecking, unit tests, and build
+      # without needing separate ruleset entries.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Web install
+        working-directory: web
+        run: npm ci
+
+      - name: Web typecheck
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Web test
+        working-directory: web
+        run: npm test
+
+      - name: Web build
+        working-directory: web
+        run: npm run build
+
       # Five consecutive PRs (#189–#195) deleted text describing code that was already gone, and
       # every one of them was verified by a hand-run grep that leaked; #196 moved that
       # verification here. Needs no SDK and takes seconds.

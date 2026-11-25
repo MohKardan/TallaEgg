@@ -108,7 +108,7 @@ export const brandConfig: BrandConfig = {
   theme: {
     obsidianBg: "#17191D",
     surfaceBg: "#1F2329",
-    elevatedBg: "#282D35",
+    elevatedBg: "#252A32",
     goldAccent: "#C9A45A",
     bronzeGoldLight: "#82611C",
     ivoryText: "#F2EEE5",

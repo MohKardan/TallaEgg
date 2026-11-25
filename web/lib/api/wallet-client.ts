@@ -1,3 +1,5 @@
+export type AssetCategory = "gold" | "fiat" | "crypto" | "credit" | "other";
+
 export interface RawWalletDto {
   asset: string;
   balance: number;
@@ -10,49 +12,127 @@ export interface WalletItem {
   balance: number;
   lockedBalance: number;
   availableBalance: number;
+  totalBalance: number;
   updatedAt: string;
   isCreditLedger: boolean;
   persianLabel: string;
   unit: string;
+  category: AssetCategory;
+  decimalPlaces: number;
 }
 
-const assetMeta: Record<string, { label: string; unit: string }> = {
-  IRT: { label: "تومان", unit: "تومان" },
-  MAUA: { label: "طلای آبشده ۱۸ عیار", unit: "گرم" },
-  CREDIT_MAUA: { label: "سقف اعتبار آبشده", unit: "گرم" },
-  SEKE_BAHAR: { label: "سکه بهار آزادی", unit: "سکه" },
-  BTC: { label: "بیت‌کوین", unit: "BTC" },
-  "XAU/USD": { label: "انس طلا", unit: "انس" },
+interface AssetMetaEntry {
+  label: string;
+  unit: string;
+  category: AssetCategory;
+  decimalPlaces: number;
+}
+
+const assetMeta: Record<string, AssetMetaEntry> = {
+  IRT: { label: "تومان", unit: "تومان", category: "fiat", decimalPlaces: 0 },
+  USD: { label: "دلار", unit: "دلار", category: "fiat", decimalPlaces: 2 },
+  MAUA: {
+    label: "طلای آبشده ۱۸ عیار",
+    unit: "گرم",
+    category: "gold",
+    decimalPlaces: 4,
+  },
+  SEKE_BAHAR: {
+    label: "سکه بهار آزادی",
+    unit: "سکه",
+    category: "gold",
+    decimalPlaces: 4,
+  },
+  XAU: { label: "انس طلا", unit: "انس", category: "gold", decimalPlaces: 4 },
+  BTC: { label: "بیت‌کوین", unit: "BTC", category: "crypto", decimalPlaces: 8 },
+  CREDIT_MAUA: {
+    label: "سقف اعتبار آبشده",
+    unit: "گرم",
+    category: "credit",
+    decimalPlaces: 4,
+  },
 };
 
-export function enrichWalletItem(raw: RawWalletDto): WalletItem {
-  const isCredit = raw.asset.toUpperCase().startsWith("CREDIT_");
-  const meta = assetMeta[raw.asset.toUpperCase()] || {
-    label: raw.asset,
-    unit: raw.asset,
+function resolveAssetMeta(asset: string): {
+  meta: AssetMetaEntry;
+  isCreditLedger: boolean;
+} {
+  const upperAsset = asset.toUpperCase();
+  const isCreditLedger = upperAsset.startsWith("CREDIT_");
+
+  const direct = assetMeta[upperAsset];
+  if (direct) {
+    return { meta: direct, isCreditLedger };
+  }
+
+  if (isCreditLedger) {
+    const baseAsset = upperAsset.slice("CREDIT_".length);
+    const baseMeta = assetMeta[baseAsset];
+    if (baseMeta) {
+      return {
+        isCreditLedger: true,
+        meta: {
+          label: `سقف اعتبار ${baseMeta.label}`,
+          unit: baseMeta.unit,
+          category: "credit",
+          decimalPlaces: baseMeta.decimalPlaces,
+        },
+      };
+    }
+
+    return {
+      isCreditLedger: true,
+      meta: {
+        label: `سقف اعتبار ${baseAsset || asset}`,
+        unit: baseAsset || asset,
+        category: "credit",
+        decimalPlaces: 4,
+      },
+    };
+  }
+
+  return {
+    isCreditLedger: false,
+    meta: {
+      label: asset,
+      unit: asset,
+      category: "other",
+      decimalPlaces: 4,
+    },
   };
+}
+
+export function enrichWalletItem(raw: RawWalletDto): WalletItem {
+  const { meta, isCreditLedger } = resolveAssetMeta(raw.asset);
 
   const balance = Number(raw.balance) || 0;
   const lockedBalance = Number(raw.lockedBalance) || 0;
-  // Available is balance minus locked
-  const availableBalance = balance - lockedBalance;
+  // Wallet.Core.LockBalance() already subtracts locked funds out of Balance,
+  // so Balance is the available amount and total balance is Balance + LockedBalance.
+  const availableBalance = balance;
+  const totalBalance = balance + lockedBalance;
 
   return {
     asset: raw.asset,
     balance,
     lockedBalance,
     availableBalance,
+    totalBalance,
     updatedAt: raw.updatedAt,
-    isCreditLedger: isCredit,
+    isCreditLedger,
     persianLabel: meta.label,
     unit: meta.unit,
+    category: meta.category,
+    decimalPlaces: meta.decimalPlaces,
   };
 }
 
 export async function getUserWallets(
   userId: string
 ): Promise<{ wallets: WalletItem[]; error?: string }> {
-  const baseUrl = process.env.WALLET_API_URL || "http://127.0.0.1:60933";
+  const baseUrl = (
+    process.env.WALLET_API_URL || "http://127.0.0.1:60933"
+  ).replace(/\/+$/, "");
   const apiKey = process.env.INTERNAL_API_KEY;
 
   const headers: Record<string, string> = {
@@ -63,11 +143,15 @@ export async function getUserWallets(
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/wallet/balances/${userId}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${baseUrl}/api/wallet/balances/${encodeURIComponent(userId)}`,
+      {
+        method: "GET",
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(8000),
+      }
+    );
 
     // 404: User has no active wallet ledger records yet
     if (res.status === 404) {
@@ -93,10 +177,11 @@ export async function getUserWallets(
       enrichWalletItem
     );
     return { wallets };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     return {
       wallets: [],
-      error: `Network error connecting to Wallet.Api: ${err.message}`,
+      error: `Network error connecting to Wallet.Api: ${message}`,
     };
   }
 }

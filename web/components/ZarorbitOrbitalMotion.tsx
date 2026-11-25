@@ -408,7 +408,7 @@ export default function ZarorbitOrbitalMotion({
           animId = 0;
         }
         renderFrame(performance.now());
-      } else if (!animId) {
+      } else if (!animId && isVisible) {
         lastTime = performance.now();
         animId = requestAnimationFrame(renderFrame);
       }
