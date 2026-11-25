@@ -35,7 +35,7 @@
       "type": "color"
     },
     "bg-elevated": {
-      "value": "#282D35",
+      "value": "#252A32",
       "type": "color"
     },
     "text-primary": {
@@ -60,6 +60,10 @@
     },
     "border-control": {
       "value": "#6B7485",
+      "type": "color"
+    },
+    "border-focus": {
+      "value": "#4CB3A5",
       "type": "color"
     },
     "success": {
@@ -114,6 +118,10 @@
     },
     "border-control": {
       "value": "#7C776B",
+      "type": "color"
+    },
+    "border-focus": {
+      "value": "#286B63",
       "type": "color"
     },
     "success": {

@@ -92,8 +92,9 @@
         "$type": "color"
       },
       "700": {
-        "$value": "#282D35",
-        "$type": "color"
+        "$value": "#252A32",
+        "$type": "color",
+        "$description": "Elevated dark surface (v1.2)"
       },
       "800": {
         "$value": "#1F2329",
@@ -264,7 +265,7 @@
         "$type": "color"
       },
       "borderFocus": {
-        "$value": "{color.gold.400}",
+        "$value": "{color.teal.400}",
         "$type": "color"
       },
       "accentPrimary": {
@@ -626,7 +627,7 @@
         "$type": "shadow"
       },
       "focusRing": {
-        "$value": "0 0 0 3px rgba(201, 164, 90, 0.35)",
+        "$value": "0 0 0 3px rgba(76, 179, 165, 0.35)",
         "$type": "shadow"
       }
     },

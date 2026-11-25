@@ -1,6 +1,6 @@
 # Roadmap — Telegram Bot to Web App Migration
 
-**Status**: Draft — direction, not scheduled work
+**Status**: Active — initial web portal shipped (#350–#360); backend API-contract workstreams remain open
 
 ---
 
@@ -10,9 +10,12 @@ Expose the trading capabilities currently reachable only through the Telegram bo
 application. This requires the backend to become client-agnostic before a web frontend can be
 built on top of it.
 
-`docs/OKR.md` records that the web app is deliberately **out of scope** for the current engineering
-cycle: it is a real strategic need — the bot depends on `api.telegram.org` and stops entirely
-under an international-internet outage — but it has never been the thing blocking a demo.
+An initial Next.js 14 Persian RTL web client (`web/`) — covering the `ZARORBIT` landing page,
+ecosystem vision page, Telegram Login BFF, and read-only wallet view — shipped in #350–#360.
+The backend workstreams below remain tracked alongside `web/` so browser clients can eventually
+consume stable, client-agnostic APIs without depending exclusively on `api.telegram.org`. For
+product-owner sequencing of full web and mobile trading, see
+[`../product/DIRECTION.md`](../product/DIRECTION.md).
 
 ## Why this is a separate document
 
@@ -41,10 +44,12 @@ predicted, not as pending work.
 - Move EF Core migration execution out of application `Startup`/`Program.cs` into a separate deploy-time
   step, so migrations aren't silently re-run (or blocked) by application restarts.
 
-## Out of Scope for Now
+## Remaining Web Scope
 
-- Web frontend implementation itself (framework choice, UI/UX) — not scoped until the API contract above
-  is stable.
+- Full browser-based trading flows in `web/` (quote execution and order placement) — the initial
+  Next.js 14 portal and read-only wallet BFF shipped in #350–#360, while transactional web trading
+  remains dependent on stabilizing the backend API contract above and product-owner prioritization
+  (see [`../product/DIRECTION.md`](../product/DIRECTION.md)).
 
 ---
 

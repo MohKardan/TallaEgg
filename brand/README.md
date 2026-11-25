@@ -17,7 +17,7 @@ Executive visual identity system, pure-vector logo masters, WCAG 2.2 AA verified
 | Artifact | Purpose |
 |---|---|
 | [`ZARORBIT_Visual_Identity_Guidelines_v1.0.md`](./ZARORBIT_Visual_Identity_Guidelines_v1.0.md) | Complete Markdown reference (updated for `S1` master, locked Persian spelling, white-label bot policy, WCAG 2.2 AA audit) |
-| [`ZARORBIT_Visual_Identity_Guidelines_v1.0.pdf`](./ZARORBIT_Visual_Identity_Guidelines_v1.0.pdf) | Initial v1.0 editorial manual archive (PDF; Markdown above is the canonical v1.1 reference) |
+| [`ZARORBIT_Visual_Identity_Guidelines_v1.0.pdf`](./ZARORBIT_Visual_Identity_Guidelines_v1.0.pdf) | Initial v1.0 editorial manual archive (PDF; Markdown above is the canonical v1.2 reference) |
 | [`ZARORBIT_Logo_Symbol_Primary.svg`](./ZARORBIT_Logo_Symbol_Primary.svg) | Primary `S1` Zero-Interrupt Orbital `Z` vector master (`128×128`) |
 | [`ZARORBIT_Logo_Horizontal_Dark.svg`](./ZARORBIT_Logo_Horizontal_Dark.svg) | Separated `[Symbol] ZARORBIT` horizontal lockup (`417×88`) for dark Obsidian surfaces |
 | [`ZARORBIT_Logo_Horizontal_Light.svg`](./ZARORBIT_Logo_Horizontal_Light.svg) | Separated `[Symbol] ZARORBIT` horizontal lockup (`417×88`, WCAG AA/AAA: `#82611C` symbol + `#17191D` wordmark) for Ivory / light surfaces |
@@ -44,7 +44,7 @@ Executive visual identity system, pure-vector logo masters, WCAG 2.2 AA verified
 
 ## Product & Marketing Applications (`applications/`)
 
-Legacy v1.0 HTML/PNG concept explorations retained for reference:
+HTML concept templates synced to the `S1` (`Zero-Interrupt Orbital Z`) identity and `v1.2` tokens (static PNG/PDF renders are retained as legacy concept snapshots):
 
 1. [`01_App_Icon_Showcase.html`](./applications/01_App_Icon_Showcase.html) ([PNG](./applications/01_App_Icon_Showcase.png))
 2. [`02_Website_Hero_Section.html`](./applications/02_Website_Hero_Section.html) ([PNG](./applications/02_Website_Hero_Section.png))
