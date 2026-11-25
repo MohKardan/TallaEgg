@@ -349,10 +349,9 @@ app.MapPost("/api/wallet/unlockBalance", async (WalletRequest request, IWalletSe
     "Returns the amount from LockedBalance to Balance when an order is cancelled or ends. Unlike " +
     "lockBalance, this one is guarded against the stored LockedBalance: releasing more than is " +
     "locked would raise Balance while driving LockedBalance negative — money from nothing — so it " +
-    "is refused with 400 naming both figures (issue #52). A negative amount is refused earlier and " +
-    "less gracefully, as an unhandled ArgumentOutOfRangeException that surfaces as 500 rather than " +
-    "400. Takes no reference and is not idempotent: a repeat releases the amount again if that " +
-    "much is still locked.")
+    "is refused with 400 naming both figures (issue #52). A negative or zero amount is also " +
+    "refused with 400. Takes no reference and is not idempotent: a repeat releases the amount " +
+    "again if that much is still locked.")
 .WithTags("Locks");
 
 app.MapPost("/api/wallet/changeBalance", async (TradeDto trade, IWalletService walletService, ILogger<Program> logger) =>

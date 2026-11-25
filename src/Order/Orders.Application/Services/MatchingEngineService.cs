@@ -476,13 +476,10 @@ public class MatchingEngineService : BackgroundService, IMatchingEngine
     /// <summary>
     /// Decides whether a counterparty is allowed to match.
     ///
-    /// Two rules:
-    /// 1. No user trades with themselves. Always enforced — self-trading is economically neutral
-    ///    but produces a false audit trail and can be used to manufacture fake volume.
-    /// 2. When the market-maker requirement is on, one side must be the admin. At this stage of
-    ///    the product customers trade only with the admin, never with each other.
-    ///
-    /// A rejected order is not cancelled; it is skipped for this matching round and stays open.
+    /// Enforces self-trade prevention: no user may trade with themselves — self-trading is
+    /// economically neutral but produces a false audit trail and can be used to manufacture fake
+    /// volume. A rejected order is not cancelled; it is skipped for this matching round and stays
+    /// open.
     /// </summary>
     private bool IsAllowedCounterparty(Order incomingOrder, Order candidate)
     {
