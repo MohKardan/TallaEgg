@@ -11,6 +11,7 @@ using TallaEgg.Core.DTOs;
 using TallaEgg.Core.DTOs.Order;
 using TallaEgg.Core.DTOs.Wallet;
 using TallaEgg.Core.ErrorHandling;
+using TallaEgg.Core.RateLimiting;
 using TallaEgg.Core.Requests.Wallet;
 using TallaEgg.Core.Startup;
 using Wallet.Application;
@@ -144,6 +145,9 @@ builder.Services.AddTallaEggErrorHandling();
 // CORS — issue #31: a whitelist read from configuration, not AllowAnyOrigin.
 builder.Services.AddTallaEggCors(builder.Configuration);
 
+// Rate limiting — issue #279: partitioned fixed-window throttling configured via RateLimiting.
+builder.Services.AddTallaEggRateLimiting(builder.Configuration);
+
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -191,6 +195,10 @@ app.UseAuthorization();
 
 // Apply the CORS policy.
 app.UseTallaEggCors();
+
+// Apply HTTP rate limiting after auth and CORS so 429 responses carry CORS headers and
+// authenticated callers can be partitioned per user (issue #279).
+app.UseTallaEggRateLimiting();
 
 // API documentation, Development only. Swagger has no consumer in Production: the APIs are
 // called by the Telegram bot through hand-written typed clients, and nothing generates a client
